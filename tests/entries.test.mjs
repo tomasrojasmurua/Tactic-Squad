@@ -190,7 +190,7 @@ test('órdenes de entrada imposibles se rechazan: sin puerta cerca o sin equipo'
   assert.equal(a.route.filter((p) => p.entry === 'flash').length, 1);
 });
 
-/** Una entrada completa por turnos: entreabrir con A, flash y patada por dos puertas con B, los GO agendados al planificar. */
+/** Una entrada completa por turnos: entreabrir con A, flash y patada por dos puertas con B; el jugador da cada GO en el turno, cuando su grupo está en posición (B no antes de 1 s). */
 function playEntryRound(seed) {
   const sim = new Simulation(MAP, { seed, site: 'A', entry: 'principal' });
   sim.skipToAssault();
@@ -203,11 +203,15 @@ function playEntryRound(seed) {
   cmd(sim, { type: 'setEntry', unitId: c.id, mode: 'kick' });
   wp(sim, c, 12, 8);
   for (const u of [a, b]) wp(sim, u, 27.4, 12.7);
-  cmd(sim, { type: 'go', code: 'A' }); // cuando los de A estén en posición
-  cmd(sim, { type: 'go', code: 'B', at: 1 }); // B: no antes de 1 s dentro del turno
+  const called = new Set();
   while (sim.phase === 'plan') {
     sim.advancePhase();
     while (sim.phase === 'exec') {
+      for (const code of ['A', 'B']) {
+        if (called.has(code) || !isGoReady(sim, 'attackers', code) || (code === 'B' && sim.round.execTick < 60)) continue;
+        called.add(code);
+        cmd(sim, { type: 'go', code, atTick: sim.round.execTick });
+      }
       const before = sim.goCount;
       sim.step();
       if (sim.goCount > before) go.push(sim.tick);
@@ -227,6 +231,6 @@ test('una ronda con entradas coordinadas es determinista', () => {
   const a = playEntryRound(4321);
   const b = playEntryRound(4321);
   assert.ok(a.outcome, 'la ronda debe terminar');
-  assert.equal(a.go.length, 2, 'se dieron los dos GO agendados');
+  assert.equal(a.go.length, 2, 'se dieron los dos GO');
   assert.deepEqual(a, b);
 });

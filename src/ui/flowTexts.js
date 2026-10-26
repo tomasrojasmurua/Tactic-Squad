@@ -2,9 +2,8 @@
 // guided tutorial. Merged into ui/texts.js as T.flow.
 
 export const FLOW_TEXTS = Object.freeze({
-  // GO buttons: their schedule for the next turn (sim/round.js).
-  goOff: 'programar',
-  goAt: (at) => (at > 0 ? `a los ${at} s` : 'al estar listos'),
+  // GO buttons during a turn: how many of the group are in position.
+  goReady: (ready, total) => `${ready}/${total}`,
   confirmRestart: '¿Borrar plan?', // restart button armed (second press wipes the plan)
   overview: 'Ver todo',
   tutorialStart: 'Tutorial guiado',
@@ -15,7 +14,9 @@ export const FLOW_TEXTS = Object.freeze({
     confirm_restart: { touch: 'Toca REINICIAR otra vez para borrar todo el plan', desk: 'Pulsa R otra vez para borrar todo el plan' },
     confirm_newPlan: { touch: 'Repite para empezar un plan nuevo (se borra el actual)', desk: 'Pulsa N otra vez para empezar un plan nuevo' },
     replayDiverged: (n) => `Plan cambiado: ${n === 1 ? 'esta fase ya no se repite' : `estas ${n} fases ya no se repiten`}; sigues tú`,
-    noPause: 'Un turno no se pausa: dura 5 s y luego vuelves a planificar',
+    noPause: 'Un turno no se pausa: dura 8 s y luego vuelves a planificar',
+    goInTurn: 'Los GO se dan durante el turno: pulsa LISTO y luego A, B o C cuando quieras',
+    goReplay: 'Este turno es la repetición de tu plan: tomas el control en la próxima planificación',
     planFirst: 'Las órdenes se dan al planificar: espera al fin del turno',
     rerolled: 'Nueva tirada: mismo plan, otra suerte',
     tutorialDone: '¡Tutorial completado! Termina la misión con el resto del escuadrón',
@@ -36,7 +37,7 @@ export const FLOW_TEXTS = Object.freeze({
     route: { touch: 'Arrastra desde ÁGUILA hasta la puerta', desk: 'Arrastra (o haz clic) desde ÁGUILA hasta la puerta del edificio' },
     look: { touch: 'Mantén pulsado el último punto y arrastra: su mirada', desk: 'Clic derecho en el último punto y arrastra: hacia dónde mirará' },
     hold: { touch: 'Pulsa ESPERAR: allí aguardará tu GO', desk: 'Pulsa H: en ese punto aguardará tu código GO' },
-    go: { touch: 'Pulsa GO: saldrá en cuanto esté en posición', desk: 'Pulsa G: el GO saldrá en cuanto esté en posición' },
-    execute: { touch: 'Pulsa LISTO: el turno corre 5 s, sin pausa', desk: 'Pulsa ESPACIO: el turno corre 5 s, sin pausa' },
+    execute: { touch: 'Pulsa LISTO: el turno corre 8 s, sin pausa', desk: 'Pulsa ESPACIO: el turno corre 8 s, sin pausa' },
+    go: { touch: 'Cuando esté en posición, toca GO A: ¡ahora!', desk: 'Cuando esté en posición, pulsa GO A (o G): ¡ahora!' },
   },
 });

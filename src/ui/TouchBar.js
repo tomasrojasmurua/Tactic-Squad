@@ -2,8 +2,7 @@
 // a right-hand column (LISTO, GO, hold, undo, clear) and a bottom
 // row (contextual defuse, restart, see all, fullscreen, music, help). Emits EV.REQUEST.
 import { EV } from '../core/events.js';
-import { canOrderDefuse, isGoReady, codeInUse, nextGoCode, lastUserIndex, holdCode } from '../sim/queries.js';
-import { scheduledGo } from '../sim/round.js';
+import { canOrderDefuse, isGoReady, codeInUse, codeWaiting, goStatus, lastUserIndex, holdCode } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
 import { isDecisionPhase } from '../session/Session.js';
 import { HUD } from '../config/ui.js';
@@ -41,7 +40,11 @@ export class TouchBar {
       return b;
     };
     this.exec = mk(this.column, 'primary big', ICON.play, T.touch.ready, 'ready');
-    this.go = mk(this.column, 'go', `<b>GO</b>`, T.touch.go, 'go');
+    // One button per GO group in use, pressed during the turn ("now!").
+    this.goButtons = ENTRY.goCodes.map((code) => {
+      const b = mk(this.column, 'go', `<b>GO ${code}</b>`, '', `go_${code}`);
+      return { code, b, label: b.querySelector('.tl') };
+    });
     this.hold = mk(this.column, '', ICON.hold, T.touch.hold, 'hold');
     this.undo = mk(this.column, '', ICON.undo, T.touch.undo, 'undo');
     this.clear = mk(this.column, '', ICON.trash, T.touch.clear, 'clear');
@@ -55,8 +58,6 @@ export class TouchBar {
     if (!fullscreenSupported()) this.full.hidden = true;
 
     this.execLabel = this.exec.querySelector('.tl');
-    this.goLabel = this.go.querySelector('.tl');
-    this.goCode = this.go.querySelector('.ti b');
     this.holdLabel = this.hold.querySelector('.tl');
     this.restartLabel = this.restart.querySelector('.tl');
     this.routeButtons = [this.hold, this.undo, this.clear];
@@ -78,17 +79,19 @@ export class TouchBar {
     const canEdit = canPlan && !session.helpOpen && sel && sel.alive;
     const disabled = !canEdit || !sel.route.length;
     for (const b of this.routeButtons) if (b.disabled !== disabled) b.disabled = disabled;
-    // GO schedules the first code (the one already scheduled, else the first in use) for the
-    // next turn: each touch moves it (when everyone is ready, 1·2·3·4 s, off). One big button.
+    // GO groups in use: live only while the turn runs (or is paused); the label says how many are in position.
     const team = session.team;
-    const used = ENTRY.goCodes.filter((c) => codeInUse(sim, team, c) || scheduledGo(sim, team, c));
-    const next = used.find((c) => scheduledGo(sim, team, c)) || used[0] || null;
-    const plan = next ? scheduledGo(sim, team, next) : null;
-    setHidden(this.go, !next || phase === 'ended');
-    if (this.go.disabled !== !canPlan) this.go.disabled = !canPlan;
-    toggle(this.go, 'armed', !!plan);
-    setText(this.goLabel, plan ? T.flow.goAt(plan.at) : canPlan ? T.flow.goOff : T.touch.go);
-    setText(this.goCode, next && used.length > 1 ? `GO ${next}` : 'GO');
+    const live = (phase === 'running' || phase === 'paused') && !session.replay.exec;
+    for (const g of this.goButtons) {
+      const used = codeInUse(sim, team, g.code) && phase !== 'ended';
+      setHidden(g.b, !used);
+      if (!used) continue;
+      if (g.b.disabled !== !live) g.b.disabled = !live;
+      const st = goStatus(sim, team, g.code);
+      setText(g.label, T.flow.goReady(st.ready, st.total));
+      toggle(g.b, 'ready', live && codeWaiting(sim, team, g.code));
+      toggle(g.b, 'all', live && isGoReady(sim, team, g.code));
+    }
     const last = sel && sel.alive ? lastUserIndex(sel) : -1;
     const p = last >= 0 ? sel.route[last] : null;
     setText(this.holdLabel, p && p.hold ? `${T.touch.hold} ${holdCode(p)}` : T.touch.hold);
@@ -98,8 +101,6 @@ export class TouchBar {
     if ((this.exec.dataset.attn || '') !== attn) this.exec.dataset.attn = attn;
     const armed = session.confirm.action === 'restart' ? '1' : '';
     if ((this.restart.dataset.armed || '') !== armed) this.restart.dataset.armed = armed;
-    toggle(this.go, 'ready', !!next && nextGoCode(sim, team) === next);
-    toggle(this.go, 'all', !!next && isGoReady(sim, team, next));
     setHidden(this.defuse, phase !== 'planning' || !canOrderDefuse(sim));
     toggle(this.music, 'off', !session.musicOn);
   }

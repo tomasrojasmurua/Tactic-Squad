@@ -7,7 +7,7 @@ export const HUD = Object.freeze({
   feedMaxItems: 6,
   toastSeconds: 1.8,
   lowAmmoFraction: 0.25, // magazine fraction that turns the ammo counter red
-  lowTimeSeconds: 20,
+  lowTimeSeconds: 30, // the bomb's timer turns red (and beeps: config/audio.js BOMB_BEEP)
   clockWarnSeconds: 5, // the decision clock turns amber this close to its deadline
   deadGunColor: '#666',
   labelOffsetPx: 14, // operator tags float this far above the head

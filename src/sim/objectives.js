@@ -38,7 +38,10 @@ export function updateObjectives(sim, dt) {
   if (sim.bomb.defused) return endRound(sim, 'attackers', 'defused');
   if (!defendersAlive) return endRound(sim, 'attackers', 'elimination');
   if (!attackersAlive) return endRound(sim, 'defenders', 'wiped');
-  if (!sim.round.enabled && sim.timeLeft <= 0) return endRound(sim, 'defenders', 'time');
+  if (!sim.round.enabled && sim.timeLeft <= 0) {
+    sim.emit(EV.BOMB_EXPLODED, { x: sim.bomb.x, y: sim.bomb.y });
+    return endRound(sim, 'defenders', 'time');
+  }
 }
 
 const eye = { x: 0, y: 0, facing: 0 };

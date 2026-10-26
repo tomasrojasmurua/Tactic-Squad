@@ -2,7 +2,8 @@
 // each side has to decide (ROUND.phaseSeconds). The sim never sees this
 // clock — a phase lasting 3 s or 15 s cannot change the result; online, the
 // server keeps it instead. A phase ends when every human side is ready (the
-// LISTO button; AI sides always are) or when its time runs out.
+// LISTO button; AI sides always are) or when its time runs out. A phase with
+// no limit (null: against the AI) only ends with LISTO.
 //
 // The clock stops counting while the player cannot plan: help open, page
 // hidden, phone in portrait (covered by the "rotate" screen), and during the
@@ -16,13 +17,15 @@ export class PhaseClock {
   constructor({ session, advance }) {
     this.session = session;
     this.advance = advance;
-    session.clock = { left: 0, total: 0, unlimited: false, auto: false };
+    session.clock = { left: 0, total: 0, limited: false, unlimited: true, auto: false };
   }
 
   /** A decision phase of the sim (sim/round.js PHASE) starts. */
   start(simPhase, auto) {
     const c = this.session.clock;
-    c.total = c.left = ROUND.phaseSeconds[simPhase] ?? 0;
+    const limit = ROUND.phaseSeconds[simPhase] ?? null;
+    c.limited = limit !== null;
+    c.total = c.left = limit ?? 0;
     c.auto = auto;
     this.autoLeft = FLOW.replayPhaseSeconds;
   }
@@ -41,7 +44,7 @@ export class PhaseClock {
   update(dt) {
     const s = this.session;
     const c = s.clock;
-    c.unlimited = s.tutorial.active;
+    c.unlimited = !c.limited || s.tutorial.active;
     if (this.frozen()) return;
     if (c.auto) {
       this.autoLeft -= dt;

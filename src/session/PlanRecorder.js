@@ -1,13 +1,14 @@
-// Every order of an attempt, grouped by decision phase: segment 0 is the
-// buy, 1 the preparation, 2 the first turn's planning, and so on (orders are
-// only taken while deciding: sim/round.js). This is exactly a list of We-Go
-// turn packets — what an online match sends and a replay needs.
+// Every order of an attempt, grouped by round phase: segment 0 is the buy,
+// 1 the preparation, 2 the first turn's planning, 3 its execution (the GO
+// codes called during it, stamped with their step), 4 the second planning,
+// and so on (sim/round.js). This is exactly a list of We-Go turn packets —
+// what an online match sends and a replay needs.
 //
-// "Retry" starts a new round on the same seed and, on entering each decision
-// phase, re-issues that phase's orders and ends it by itself (the same plan
-// replays the same round — fail, understand, change ONE thing, try again).
-// A new order in a replayed phase means the plan has diverged: the rest of
-// the recording is dropped and the player takes over from there.
+// "Retry" starts a new round on the same seed and, on entering each phase,
+// re-issues that phase's orders; a decision phase then ends by itself (the
+// same plan replays the same round — fail, understand, change ONE thing,
+// try again). A new order in a replayed phase means the plan has diverged:
+// the rest of the recording is dropped and the player takes over from there.
 
 export class PlanRecorder {
   constructor() {
@@ -26,6 +27,11 @@ export class PlanRecorder {
     return this.segments.length <= this.replay.length && this.closedInReplay(this.segments.length - 1);
   }
 
+  /** Is the current phase in the recording being replayed (a replayed turn: its GOs are already queued)? */
+  get inReplay() {
+    return this.segments.length <= this.replay.length;
+  }
+
   closedInReplay(i) {
     // The last recorded segment was never closed (the round ended in its execution).
     return i < this.replay.length - 1;
@@ -42,7 +48,7 @@ export class PlanRecorder {
     return dropped;
   }
 
-  /** The current decision phase ended: the next orders belong to the next one. */
+  /** The current phase ended: the next orders belong to the next one. */
   advance() {
     this.segments.push([]);
   }
@@ -53,7 +59,7 @@ export class PlanRecorder {
     this.segments = [[]];
   }
 
-  /** On entering a decision phase: re-issues (through `emit`) its recorded orders. Returns true if it should end by itself. */
+  /** On entering a phase: re-issues (through `emit`) its recorded orders. Returns true if a decision phase should end by itself. */
   enterPhase(emit) {
     const i = this.segments.length - 1;
     const seg = this.replay[i];

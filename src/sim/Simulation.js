@@ -18,7 +18,7 @@ import { updateFacing, updateMovement } from './movement.js';
 import { resolveCollisions } from './collisions.js';
 import { updateCombat } from './combat.js';
 import { createBomb, updateObjectives, endRound } from './objectives.js';
-import { createRound, advancePhase, canStep, fireScheduledGos, afterTick, PHASE } from './round.js';
+import { createRound, advancePhase, canStep, afterTick, PHASE } from './round.js';
 import { createNoise, collectNoise } from './noise.js';
 import { createMemory, updateMemory } from './view.js';
 
@@ -116,7 +116,7 @@ export class Simulation {
     return this.round.phase;
   }
 
-  /** Current assault turn (1..ROUND.maxTurns; 0 before the assault). */
+  /** Current assault turn (1, 2 ...; 0 before the assault). */
   get turn() {
     return this.round.turn;
   }
@@ -150,7 +150,11 @@ export class Simulation {
     return true;
   }
 
-  /** Queue a player command; applied in order at the next flush/step. */
+  /**
+   * Queue a player command; applied in order at the next flush/step. One
+   * stamped with `atTick` (a GO given during a turn) waits for that step of
+   * the turn (a replay queues the whole turn's GOs at its start).
+   */
   enqueue(cmd) {
     this.commands.push(cmd);
   }
@@ -160,7 +164,15 @@ export class Simulation {
     if (!this.commands.length) return;
     const list = this.commands;
     this.commands = [];
-    for (const c of list) applyCommand(this, c);
+    for (const c of list) {
+      if (c.atTick !== undefined && this.round.phase === PHASE.exec && this.round.execTick < c.atTick) this.commands.push(c);
+      else applyCommand(this, c);
+    }
+  }
+
+  /** Drops the stamped GOs still waiting for their step (the player took over a replayed turn). */
+  dropStamped() {
+    this.commands = this.commands.filter((c) => c.atTick === undefined);
   }
 
   emit(type, data) {
@@ -178,7 +190,6 @@ export class Simulation {
     this.dt = dt;
     const firstEvent = this.events.length;
     this.flushCommands();
-    fireScheduledGos(this);
     for (const u of this.units) {
       u.prevX = u.x;
       u.prevY = u.y;

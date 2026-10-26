@@ -42,14 +42,16 @@ La ronda vive en la simulación (`sim/round.js`): **compra → preparación → 
 
 | Fase | Plazo | Qué se hace |
 | --- | --- | --- |
-| Compra | 20 s | Por ahora solo muestra el equipo de cada rol (la compra llega en el hito 3). |
-| Preparación | 45 s | El atacante elige entrada (el defensor no la ve) y puede adelantar rutas. El defensor sigue saliendo de los datos del mapa. |
-| Planificación | 15 s | El tiempo no corre. Se trazan o cambian rutas, miradas, esperas, entradas por puerta y se programan los GO. No se ve lo que planea el rival. |
-| Ejecución | 5 s | Todo se ejecuta a la vez. No hay pausa ni órdenes: lo que pase al contacto, pasa. Luego se vuelve a planificar (las rutas sin terminar siguen). |
+| Compra | sin límite | Por ahora solo muestra el equipo de cada rol (la compra llega en el hito 3). |
+| Preparación | sin límite | El atacante elige entrada (el defensor no la ve) y puede adelantar rutas. El defensor sigue saliendo de los datos del mapa. |
+| Planificación | sin límite | El tiempo no corre. Se trazan o cambian rutas, miradas, esperas en grupos GO (A, B, C) y entradas por puerta. No se ve lo que planea el rival. |
+| Ejecución | 8 s | Todo se ejecuta a la vez, sin pausa. La única orden son los GO: el jugador dice "¡ahora!" y ese grupo actúa junto. Luego se vuelve a planificar (las rutas sin terminar siguen). |
 
-Hasta 18 turnos (90 s de juego); al acabarse el último ganan los Defensores. **LISTO** (Espacio o Intro) termina una fase antes del plazo. Los plazos son reloj de pared (`ROUND.phaseSeconds`, en `session/PhaseClock.js`) y la sim nunca los ve: tardar 3 s o 15 s en decidir no cambia el resultado. El reloj se detiene con la ayuda abierta, la app en segundo plano o el teléfono en vertical, y no corre en el tutorial.
+**Temporizador de la bomba.** La bomba explota tras 3 minutos de ejecución (`ROUND.timeLimit`); solo corre durante los turnos, así que planificar es gratis pero cada turno la acerca. En 0 explota aunque alguien esté a mitad de la desactivación, y ganan los Defensores. En los últimos 30 s pita cada vez más rápido.
 
-**GO programado.** Un GO ya no se aprieta en vivo: se programa al planificar. Cada pulsación del botón GO (o G) lo mueve: *al estar listos* → a los 1, 2, 3, 4 s del turno → sin programar. Sale en el primer instante a partir de ese segundo en que todos los que esperan ese código están en posición; si no alcanzan en este turno, queda programado para el siguiente.
+**LISTO** (Espacio o Intro) termina una fase. Contra la IA no hay plazo (`ROUND.phaseSeconds` en `null`); para el juego online se pondrá un límite, por ejemplo 60 s para planificar. Los plazos son reloj de pared (`session/PhaseClock.js`) y la sim nunca los ve: tardar 3 s o 15 s en decidir no cambia el resultado.
+
+**Grupos GO en vivo.** Al planificar, cada espera (H o el botón ESPERAR) se asigna a un grupo A, B o C. Durante el turno aparecen los botones GO A/B/C con cuántos del grupo están en posición (por ejemplo 2/3); G llama al primero que tiene a alguien esperando. Al apretarlo, los que esperan salen juntos (si uno lanza flash o granada, los demás esperan el estallido) y los que aún no llegan a su espera ya no se detienen: siguen de largo y hacen su entrada al llegar. Si nadie aprieta, siguen esperando en el turno siguiente. Cada GO se graba con el paso del turno en que se dio (`atTick`), así que el reintento y el futuro servidor lo aplican en el mismo instante.
 
 **Ruido.** Pasos, puertas, patadas, disparos, cargas, granadas y la desactivación se oyen dentro de un radio (`NOISE` en `config/balance.js`, a través de paredes). Al final de cada turno lo que oyó cada bando aparece en su mapa como un pulso aproximado (celda de 3 m, corrida hasta 0,9 m con un hash de la semilla) que se apaga en 3 turnos (`sim/noise.js`). Nadie oye su propio ruido. La IA sigue oyendo como antes.
 
@@ -61,7 +63,7 @@ Una `Simulation` creada con `{ phases: false }` no tiene fases: corre siempre y 
 
 ## Entradas a salas
 
-Cada espera lleva un código GO (A, B o C): el botón o la tecla H rota entre ellos, y el GO de ese código se programa al planificar (ver arriba). Un punto de ruta junto a una puerta puede llevar además cómo se entra (`sim/entries.js`, selector en pantalla o tecla E):
+Cada espera lleva un grupo GO (A, B o C): el botón o la tecla H rota entre ellos, y el GO de ese grupo se da durante el turno (ver arriba). Un punto de ruta junto a una puerta puede llevar además cómo se entra (`sim/entries.js`, selector en pantalla o tecla E):
 
 | Entrada | Qué hace |
 | --- | --- |
@@ -76,4 +78,4 @@ El equipo de cada operador está en `config/operators.js` (`gear`) y todos los n
 
 ## Pruebas
 
-`tests/determinism.test.mjs` juega rondas completas por turnos sin pantalla dos veces con la misma semilla (una por sitio) y comprueba que el resultado es idéntico. `tests/turns.test.mjs` cubre las fases, los turnos de 5 s, el límite de 18 turnos, la desactivación entre turnos, los GO programados, la elección de entrada, el ruido y la vista de cada bando. `tests/round.test.mjs` cubre la desactivación, las condiciones de victoria y la coherencia de los datos del mapa. `tests/entries.test.mjs` cubre los códigos GO y cada tipo de entrada, y repite una ronda con entradas coordinadas para comprobar el determinismo. Algunos comentarios del código mencionan `docs/ARCHITECTURE.md`, `docs/BRIEF.md` y `tests/sim-plans.mjs`, que no venían en el zip original.
+`tests/determinism.test.mjs` juega rondas completas por turnos sin pantalla dos veces con la misma semilla (una por sitio) y comprueba que el resultado es idéntico. `tests/turns.test.mjs` cubre las fases, los turnos de 8 s, la explosión de la bomba, la desactivación entre turnos, los GO en vivo (incluido el que llega tarde), la elección de entrada, el ruido y la vista de cada bando. `tests/round.test.mjs` cubre la desactivación, las condiciones de victoria y la coherencia de los datos del mapa. `tests/entries.test.mjs` cubre los códigos GO y cada tipo de entrada, y repite una ronda con entradas coordinadas para comprobar el determinismo. Algunos comentarios del código mencionan `docs/ARCHITECTURE.md`, `docs/BRIEF.md` y `tests/sim-plans.mjs`, que no venían en el zip original.

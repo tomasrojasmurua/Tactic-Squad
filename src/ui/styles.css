@@ -657,11 +657,10 @@ body.touch .ebtn { min-width: 50px; padding: 3px 4px; }
 .banner.buy::before, .banner.prep::before { background: #c9d2d9; }
 .banner.ended .cbar { display: none; }
 body.touch .banner .clock { font-size: 13px; }
-/* GO scheduled for the next turn: solid, with its moment written on it. */
+/* GO groups: how many are in position written on them; live only during the turn. */
 .btn.go .when { font-weight: 600; letter-spacing: 0.04em; text-transform: none; font-size: 12px; opacity: 0.85; }
-.btn.go:not(.armed):not(:disabled) { background: rgba(31, 107, 43, 0.35); }
-.btn.go.armed, .tbtn.go.armed { box-shadow: inset 0 0 0 2px var(--ok); }
-.tbtn.go.armed .tl, .tbtn.go:not(:disabled) .tl { display: block; font-size: 9px; letter-spacing: 0.02em; text-transform: none; }
+.tbtn.go .tl { display: block; font-size: 9px; letter-spacing: 0.02em; text-transform: none; }
+.tbtn.go .ti b { font-size: 15px; }
 
 /* Buy / preparation panel (ui/PhasePanel.js): a plate under the phase bar, the map stays visible. */
 .phase-panel {

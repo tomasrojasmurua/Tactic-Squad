@@ -14,7 +14,6 @@ export const EV = Object.freeze({
   SPOTTED: 'spotted', // {unitId, byTeam, x, y}
   HOLD_REACHED: 'holdReached', // {unitId, code}
   GO_CODE: 'goCode', // {released, code}
-  GO_SCHEDULED: 'goScheduled', // {team, code, at: s into the turn | null (cancelled)}: planned for the execution
   ENTRY_CHOSEN: 'entryChosen', // {entry}: the attackers start from another entry (preparation)
   // Door entries (sim/entries.js)
   CHARGE_PLANT: 'chargePlant', // {unitId, doorId, x, y, time}: starts planting a breach charge
@@ -28,6 +27,7 @@ export const EV = Object.freeze({
   DEFUSE_START: 'defuseStart', // {unitId, x, y}
   DEFUSE_ABORT: 'defuseAbort', // {unitId}
   BOMB_DEFUSED: 'bombDefused', // {unitId, x, y}
+  BOMB_EXPLODED: 'bombExploded', // {x, y}: the timer reached 0 (the defenders win)
   ROUND_END: 'roundEnd', // {winner, reason}
   ROUND_PHASE: 'roundPhase', // {phase: sim/round.js PHASE, previous, turn}: the round changed phase
   ORDER_REJECTED: 'orderRejected', // {unitId, reason: REJECT code (sim/orders.js)}

@@ -1,14 +1,14 @@
 // Playable onboarding (REVIEW-1 #23): a guided first round on the real map
 // that asks for each gesture in order and only advances once it is done:
-// select → draw a route → set a facing → WAIT (GO hold) → schedule the GO →
-// LISTO (the turn runs). It has no time limit (session/PhaseClock.js).
+// select → draw a route → set a facing → WAIT (GO hold) → LISTO (the turn
+// runs) → call the GO during it. It has no time limit (session/PhaseClock.js).
 // It can be skipped at any time and is remembered on the device once done.
 // State lives in session.tutorial ({active, step}); ui/coach.js shows the step.
 import { FLOW } from '../config/ui.js';
 import { teamUnits, controllableUnit } from '../sim/queries.js';
 import { loadPref, savePref } from './storage.js';
 
-export const TUTORIAL_STEPS = Object.freeze(['select', 'route', 'look', 'hold', 'go', 'execute']);
+export const TUTORIAL_STEPS = Object.freeze(['select', 'route', 'look', 'hold', 'execute', 'go']);
 
 const hasUserPoint = (u) => u.route.some((p) => p.user);
 
@@ -26,7 +26,7 @@ function stepDone(id, sim, session) {
     case 'hold':
       return squad.some((u) => u.route.some((p) => p.hold));
     case 'go':
-      return sim.goCount > 0 || sim.round.gos.some((g) => g.team === session.team);
+      return sim.goCount > 0;
     case 'execute':
       return sim.turn > 1 || session.phase === 'running' || session.phase === 'paused';
     default:

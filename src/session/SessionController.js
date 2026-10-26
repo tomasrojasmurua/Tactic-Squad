@@ -5,7 +5,8 @@
 //
 // The round's phases live in the sim (sim/round.js); this mirrors them on
 // screen (session.phase), ends the decision phases (LISTO, or the deadline:
-// PhaseClock) and runs the fixed-step loop only while a turn executes.
+// PhaseClock) and runs the fixed-step loop only while a turn executes. During
+// a turn the only order is a GO group ("now!"), stamped with its step.
 //
 // Helpers: PhaseClock (deadlines), PlanRecorder (orders per phase, honest
 // retry), AutoPause (system pause), Tutorial (guided first round),
@@ -13,18 +14,13 @@
 import { EV } from '../core/events.js';
 import { SIM } from '../config/balance.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
-import { controllableUnit, defuseCandidate, firstAlive, teamUnits, codeInUse } from '../sim/queries.js';
-import { scheduledGo } from '../sim/round.js';
-import { ENTRY } from '../config/balance.js';
+import { controllableUnit, defuseCandidate, firstAlive, teamUnits } from '../sim/queries.js';
 import { SESSION_PHASE, isDecisionPhase } from './Session.js';
 import { armOrConfirm } from './confirm.js';
 import { PlanRecorder } from './PlanRecorder.js';
 import { PhaseClock } from './PhaseClock.js';
 import { AutoPause } from './AutoPause.js';
 import { Tutorial } from './Tutorial.js';
-
-/** A GO button cycles its code through these moments of the turn (s), then off. */
-const GO_STEPS = Object.freeze([0, 1, 2, 3, 4]);
 
 export class SessionController {
   /**
@@ -87,7 +83,8 @@ export class SessionController {
 
   /**
    * Puts the screen in the sim's phase. Entering a decision phase starts its
-   * clock and, on a retry, re-issues that phase's recorded orders.
+   * clock and, on a retry, re-issues that phase's recorded orders; entering a
+   * replayed turn queues its recorded GOs (each waits for its step).
    * `fresh`: a new round's first phase (even if the screen already shows that phase).
    */
   syncPhase(fresh = false) {
@@ -100,6 +97,13 @@ export class SessionController {
     const phase = SESSION_PHASE[sim.phase];
     if (phase === this.session.phase && !fresh) return;
     this.setPhase(phase);
+    if (phase === 'running') {
+      this.session.replay.exec = this.recorder.inReplay;
+      this.recorder.enterPhase((cmd) => this.bus.emit(EV.COMMAND, cmd));
+      this.session.replay.pending = this.recorder.pending;
+      return;
+    }
+    this.session.replay.exec = false;
     if (!isDecisionPhase(this.session)) return;
     const auto = this.recorder.enterPhase((cmd) => this.bus.emit(EV.COMMAND, cmd));
     this.session.replay.pending = this.recorder.pending;
@@ -124,9 +128,10 @@ export class SessionController {
     this.sound('pause');
   }
 
-  /** Orders are recorded per decision phase (they are not taken otherwise). A new one in a replayed phase takes over. */
+  /** Orders are recorded per phase (a turn only takes GOs). A new one in a replayed decision phase takes over. */
   record(cmd) {
-    if (!isDecisionPhase(this.session)) return;
+    const live = this.session.phase === 'running' || this.session.phase === 'paused';
+    if (!isDecisionPhase(this.session) && !(live && cmd.type === 'go')) return;
     const dropped = this.recorder.record(cmd);
     this.session.replay.pending = this.recorder.pending;
     if (dropped) {
@@ -138,7 +143,10 @@ export class SessionController {
   /** After each fixed step: the turn ended (back to planning) or the round did; the post-round tail. */
   afterStep(sim, dt) {
     const phase = this.session.phase;
-    if (phase === 'running' && sim.phase !== 'exec') this.syncPhase();
+    if (phase === 'running' && sim.phase !== 'exec') {
+      if (sim.phase !== 'end') this.recorder.advance(); // the turn's GOs are one segment
+      this.syncPhase();
+    }
     else if (phase === 'ended') {
       this.postRoundTimer -= dt;
       if (this.postRoundTimer <= 0) this.loop.setSimulating(false);
@@ -199,23 +207,13 @@ export class SessionController {
     } else if (phase === 'running') this.notice('noPause');
   }
 
-  /** A GO button while planning: cycles when in the turn its code goes (0 s, 1 s ... 4 s, off). */
-  cycleGo(code) {
-    const sim = this.sim;
-    sim.flushCommands(); // the holds just drawn count
-    const team = this.session.team;
-    if (!code) {
-      const scheduled = ENTRY.goCodes.find((c) => scheduledGo(sim, team, c));
-      code = scheduled || ENTRY.goCodes.find((c) => codeInUse(sim, team, c));
-    }
-    if (!code || !codeInUse(sim, team, code)) {
-      this.bus.emit(EV.ORDER_REJECTED, { unitId: -1, reason: 'noCode' });
+  /** A GO group during the turn ("now!"; no code: the first one someone waits for). */
+  callGo(code) {
+    if (this.session.replay.exec) {
+      this.notice('goReplay');
       return;
     }
-    const g = scheduledGo(sim, team, code);
-    const i = g ? GO_STEPS.indexOf(Math.round(g.at)) + 1 : 0;
-    if (i >= GO_STEPS.length) this.command({ type: 'cancelGo', code });
-    else this.command({ type: 'go', code, at: GO_STEPS[i] });
+    this.command({ type: 'go', code, atTick: this.sim.round.execTick });
   }
 
   handleRequest(action) {
@@ -272,10 +270,10 @@ export class SessionController {
       case 'go_A':
       case 'go_B':
       case 'go_C': {
-        // Plain GO (key G, touch button): the code already scheduled, else the first in use; go_X: that code.
+        // Plain GO (key G): the first group someone waits for; go_X: that group. Only during the turn.
         const code = action.length > 3 ? action.slice(3) : undefined;
-        if (phase === 'planning' || phase === 'prep') this.cycleGo(code);
-        else if (phase === 'running' || phase === 'paused') this.notice('planFirst');
+        if (phase === 'running' || phase === 'paused') this.callGo(code);
+        else if (phase === 'planning' || phase === 'prep') this.notice('goInTurn');
         return;
       }
       case 'entryCycle':

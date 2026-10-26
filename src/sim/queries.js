@@ -210,6 +210,21 @@ export function isGoReady(sim, team = humanTeam(sim), code = null) {
   return waiting;
 }
 
+/** A GO group of the side: how many are waiting in position for `code`, of everyone who holds for it (waiting or on the way). */
+export function goStatus(sim, team, code) {
+  let ready = 0;
+  let total = 0;
+  for (const u of sim.teams[team]) {
+    if (!u.alive) continue;
+    if (u.waitingGo) {
+      if (u.waitCode !== code) continue;
+      total++;
+      if (isInPosition(u)) ready++;
+    } else if (holdAhead(u, code)) total++;
+  }
+  return { ready, total };
+}
+
 /** Does the unit still have a GO hold (with `code`, or any) ahead on its route? */
 function holdAhead(u, code) {
   for (const p of u.route) if (p.hold && (!code || holdCode(p) === code)) return true;

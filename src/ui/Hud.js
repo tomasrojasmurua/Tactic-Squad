@@ -3,8 +3,8 @@
 // kill feed, toasts and the red damage vignette.
 import { EV } from '../core/events.js';
 import { HUD, VIGNETTE } from '../config/ui.js';
-import { teamUnits, enemyTeam, isGoReady, bombKnownTo, codeInUse, codeWaiting, nextGoCode } from '../sim/queries.js';
-import { scheduledGo, TURN_TICKS } from '../sim/round.js';
+import { teamUnits, enemyTeam, isGoReady, bombKnownTo, codeInUse, codeWaiting, nextGoCode, goStatus } from '../sim/queries.js';
+import { TURN_TICKS } from '../sim/round.js';
 import { ENTRY, ROUND, SIM } from '../config/balance.js';
 import { isDecisionPhase } from '../session/Session.js';
 import { coachHint } from './coach.js';
@@ -46,7 +46,7 @@ export class Hud {
     this.objective = el(
       'div',
       'objective',
-      `<div class="label">${T.objective.title.toUpperCase()}</div><div class="text">${T.objective.text}</div><div class="kills"></div><div class="row"><div class="bomb"></div><div class="timer"></div></div>`,
+      `<div class="label">${T.objective.title.toUpperCase()}</div><div class="text">${T.objective.text}</div><div class="kills"></div><div class="row"><div class="bomb"></div><div class="timer" title="${T.objective.timer}"></div></div>`,
     );
     root.appendChild(this.objective);
     this.kills = this.objective.querySelector('.kills');
@@ -65,8 +65,8 @@ export class Hud {
       return b;
     };
     this.btnExecute = button('primary', `<span class="ico">${ICON.play}</span><span class="lbl">${T.actions.ready}</span><span class="key">ESPACIO</span>`, 'ready');
-    // One GO button per code in use (A, B, C): while planning each press moves when in the
-    // next turn it goes (when everyone is ready, at 1·2·3·4 s, off); G does it for the first code.
+    // One GO button per group in use (A, B, C), pressed during the turn: "now!" — that group
+    // acts together. It shows how many of the group are in position; G calls the first one.
     this.goButtons = ENTRY.goCodes.map((code) => {
       const b = button('go', `<span>${T.actions.go} <span class="code">${code}</span><span class="when"></span></span><span class="key">G</span>`, `go_${code}`);
       return { code, b, when: b.querySelector('.when'), key: b.querySelector('.key') };
@@ -143,13 +143,14 @@ export class Hud {
       if (e.team === enemyTeam(this.viewer.team)) this.pushInfo(T.feed.contact);
     });
     bus.on(EV.GO_CODE, (e) => {
-      if (e.released > 0) this.pushInfo(e.code ? T.feed.goCode(e.code) : T.feed.go);
+      if (e.released > 0 || e.late > 0) this.pushInfo(e.code ? T.feed.goCode(e.code) : T.feed.go);
     });
     bus.on(EV.GRENADE_THROWN, (e) => {
       const u = this.sim && this.sim.units[e.unitId];
       if (u && u.team === this.viewer.team) this.pushInfo(T.feed.grenade[e.kind]);
     });
     bus.on(EV.CHARGE_BLAST, () => this.pushInfo(T.feed.breach));
+    bus.on(EV.BOMB_EXPLODED, () => this.pushInfo(T.feed.exploded));
     bus.on(EV.BLINDED, (e) => {
       const u = this.sim && this.sim.units[e.unitId];
       if (u && e.cause === 'flash' && e.seconds > 1) this.pushInfo(T.feed.flashed(u.name));
@@ -202,10 +203,10 @@ export class Hud {
       return;
     }
 
-    // Banner: phase, turn and the clock (decision phases count down; a turn shows what is left of its 5 s)
+    // Banner: phase, turn and the clock (a limited decision phase counts down; a turn shows what is left of it)
     setClassName(this.banner, `banner ${phase}`);
     const inAssault = sim.turn > 0 && phase !== 'ended';
-    setText(this.phaseText, inAssault ? `${T.phase[phase]} · ${T.turn(sim.turn, ROUND.maxTurns)}` : T.phase[phase]);
+    setText(this.phaseText, inAssault ? `${T.phase[phase]} · ${T.turn(sim.turn)}` : T.phase[phase]);
     const c = session.clock;
     let clock = '';
     let fill = 0;
@@ -262,24 +263,22 @@ export class Hud {
     const deciding = isDecisionPhase(session);
     setText(this.executeLabel, deciding ? T.actions.ready : T.actions.resume);
     setHidden(this.btnExecute, !deciding && phase !== 'paused');
-    // GO buttons: scheduled while planning (each press: when everyone is ready, 1·2·3·4 s, off);
-    // during the turn they only show what is armed.
+    // GO buttons: the groups in use; they can be pressed only while the turn runs (or is paused).
     const team = session.team;
+    const live = (running || phase === 'paused') && !session.replay.exec;
     const next = nextGoCode(sim, team);
     let first = true;
     for (const g of this.goButtons) {
-      const plan = scheduledGo(sim, team, g.code);
-      const used = (codeInUse(sim, team, g.code) || !!plan) && phase !== 'ended';
+      const used = codeInUse(sim, team, g.code) && phase !== 'ended';
       setHidden(g.b, !used);
       if (!used) continue;
-      const canPlan = phase === 'planning' || phase === 'prep';
-      if (g.b.disabled !== !canPlan) g.b.disabled = !canPlan;
-      toggle(g.b, 'armed', !!plan);
-      toggle(g.b, 'ready', codeWaiting(sim, team, g.code));
-      toggle(g.b, 'all', isGoReady(sim, team, g.code));
-      setText(g.when, plan ? ` · ${T.flow.goAt(plan.at)}` : canPlan ? ` · ${T.flow.goOff}` : '');
-      // The G key cycles the first code (the one scheduled, else the first in use).
-      setStyle(g.key, 'display', canPlan && (next ? g.code === next : first) ? '' : 'none');
+      if (g.b.disabled !== !live) g.b.disabled = !live;
+      const st = goStatus(sim, team, g.code);
+      toggle(g.b, 'ready', live && codeWaiting(sim, team, g.code));
+      toggle(g.b, 'all', live && isGoReady(sim, team, g.code));
+      setText(g.when, ` · ${T.flow.goReady(st.ready, st.total)}`);
+      // The G key calls the first group someone waits for, else the first in use.
+      setStyle(g.key, 'display', live && (next ? g.code === next : first) ? '' : 'none');
       first = false;
     }
     const armed = session.confirm.action === 'restart';

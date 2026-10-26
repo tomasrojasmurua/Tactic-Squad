@@ -3,8 +3,7 @@
 // sim/session, returns {text, strong} or null (= the phase's default line).
 // Priority: guided tutorial step > why a turn stopped (system pause) > replay
 // progress > GO prompts > planning steps.
-import { teamUnits, controllableUnit, codeWaiting } from '../sim/queries.js';
-import { scheduledGo } from '../sim/round.js';
+import { teamUnits, controllableUnit, isGoReady } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
 import { T } from './texts.js';
 
@@ -28,13 +27,13 @@ export function coachHint(sim, session) {
   if (session.phase === 'paused' && F.pause[session.pauseReason]) return say(F.pause[session.pauseReason][dev], true);
   if (session.replay.pending > 0 && session.phase !== 'ended') return say(F.replaying(session.replay.pending), false);
   if (session.phase === 'running' || session.phase === 'paused') {
-    const w = teamUnits(sim, team).find((u) => u.alive && u.waitingGo && !scheduledGo(sim, team, u.waitCode));
+    // A whole group in position: it is the player's call ("now!").
+    const ready = ENTRY.goCodes.find((c) => isGoReady(sim, team, c));
+    if (ready) return say(C.goNow[dev](ready), true);
+    const w = teamUnits(sim, team).find((u) => u.alive && u.waitingGo);
     return w ? say(C.goWaiting[dev](w.name), false) : null;
   }
   if (session.phase !== 'planning') return null;
-  // Someone holds for a code nobody scheduled: it would wait forever.
-  const idleCode = ENTRY.goCodes.find((c) => codeWaiting(sim, team, c) && !scheduledGo(sim, team, c));
-  if (idleCode) return say(C.goUnplanned[dev](idleCode), true);
   if (sim.turn > 1) return null; // the first planning teaches the steps; later ones are the player's
   const squad = teamUnits(sim, team);
   const sel = controllableUnit(sim, session.selectedId, team);

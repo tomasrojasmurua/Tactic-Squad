@@ -12,8 +12,7 @@ import { HEIGHTS, OVERLAY } from '../../config/render.js';
 import { ENTRY, MOVE, ROUND, NOISE } from '../../config/balance.js';
 import { teamView } from '../../sim/view.js';
 import { hexToRgb } from '../../core/math.js';
-import { grenadeAt, holdCode } from '../../sim/queries.js';
-import { scheduledGo } from '../../sim/round.js';
+import { grenadeAt } from '../../sim/queries.js';
 import { ShaderProgram } from '../gl/ShaderProgram.js';
 import { ShapeBatch } from '../gl/ShapeBatch.js';
 import { FLAT_VS, FLAT_FS } from '../shaders/flat.js';
@@ -227,8 +226,8 @@ export class OverlayLayer {
   /**
    * Where the operator gets to in one turn (ROUND.turnSeconds at his walking
    * speed along the drawn route): a bar across the route. At a GO hold he
-   * waits for its scheduled moment, or stops there if the code is not
-   * scheduled. An estimate — doors, queues, entries and fights slow him down.
+   * stops (the GO is the player's call during the turn: the hold marker says
+   * it). An estimate — doors, queues, entries and fights slow him down.
    */
   turnReach(t, u, pts, c, mpp, selected) {
     const speed = MOVE.speed * u.mods.speed;
@@ -242,12 +241,7 @@ export class OverlayLayer {
       const time = len / speed;
       if (time < left) {
         left -= time;
-        const p = u.route[i];
-        if (!p.hold) continue;
-        const go = scheduledGo(this.sim, u.team, holdCode(p));
-        if (!go) return; // he will wait there: the hold marker says it
-        left = Math.min(left, ROUND.turnSeconds - go.at);
-        if (left <= 0) return;
+        if (u.route[i].hold) return; // he will wait there
         continue;
       }
       const k = len > 1e-6 ? (left * speed) / len : 0;

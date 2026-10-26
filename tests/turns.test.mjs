@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
 import { TURN_TICKS } from '../src/sim/round.js';
+import { isGoReady } from '../src/sim/queries.js';
 import { teamView } from '../src/sim/view.js';
 import { EV } from '../src/core/events.js';
 import { ROUND } from '../src/config/balance.js';
@@ -17,7 +18,7 @@ const cmd = (sim, c) => sim.enqueue({ team: T, ...c });
 const wp = (sim, u, x, y) => cmd(sim, { type: 'addWaypoint', unitId: u.id, x, y, user: true });
 const rejects = (sim) => sim.drainEvents().filter((e) => e.type === EV.ORDER_REJECTED).map((e) => e.reason);
 
-/** Ejecuta el turno planificado (5 s) y vuelve a planificar (o termina). */
+/** Ejecuta el turno planificado (8 s) y vuelve a planificar (o termina). */
 function playTurn(sim) {
   sim.advancePhase();
   while (sim.phase === 'exec') sim.step();
@@ -40,7 +41,7 @@ test('la ronda pasa por compra, preparación y planificación sin que corra el t
   assert.equal(sim.tick, 0);
 });
 
-test('cada turno ejecuta exactamente 5 s y vuelve a planificar; durante la ejecución no hay órdenes', () => {
+test('cada turno ejecuta exactamente 8 s y vuelve a planificar; durante la ejecución no hay órdenes de ruta', () => {
   const sim = new Simulation(MAP, { seed: 5 });
   sim.skipToAssault();
   const u = sim.teams.attackers[0];
@@ -61,8 +62,9 @@ test('las rutas sin terminar siguen al turno siguiente y se pueden cambiar al pl
   const sim = new Simulation(MAP, { seed: 5, controllers: STILL });
   sim.skipToAssault();
   const u = sim.teams.attackers[0];
-  wp(sim, u, 10.6, 21.55); // lejos: más de 5 s de camino
+  wp(sim, u, 10.6, 21.55); // lejos: más de 8 s de camino
   wp(sim, u, 15.4, 19.5);
+  wp(sim, u, 6.2, 22.4); // y de vuelta
   playTurn(sim);
   assert.ok(u.route.length > 0, 'la ruta sigue');
   const y = u.y;
@@ -72,18 +74,25 @@ test('las rutas sin terminar siguen al turno siguiente y se pueden cambiar al pl
   assert.ok(u.y < y, 'el nuevo plan manda en el turno siguiente');
 });
 
-test('tras el turno 18 sin resultado ganan los defensores por tiempo', () => {
+test('la bomba explota a los 3 min de ejecución (planificar no gasta su tiempo): ganan los defensores', () => {
   const sim = new Simulation(MAP, { seed: 9 });
   sim.skipToAssault();
-  while (sim.phase === 'plan') playTurn(sim);
+  let exploded = 0;
+  while (sim.phase === 'plan') {
+    playTurn(sim);
+    exploded += sim.drainEvents().filter((e) => e.type === EV.BOMB_EXPLODED).length;
+  }
   assert.equal(sim.phase, 'end');
-  assert.deepEqual([sim.outcome?.winner, sim.outcome?.reason, sim.turn], ['defenders', 'time', ROUND.maxTurns]);
-  assert.equal(sim.tick, ROUND.maxTurns * TURN_TICKS);
+  assert.deepEqual([sim.outcome?.winner, sim.outcome?.reason], ['defenders', 'time']);
+  assert.equal(exploded, 1);
+  assert.equal(sim.tick, ROUND.timeLimit * 60, 'explota en el paso exacto, aunque sea a mitad de turno');
+  assert.equal(sim.turn, Math.ceil(ROUND.timeLimit / ROUND.turnSeconds));
   assert.equal(sim.timeLeft, 0);
 });
 
-test('la desactivación de 7 s cruza el turno: el progreso se congela al planificar y sigue', () => {
-  const sim = new Simulation(MAP, { seed: 7, site: 'A', controllers: STILL });
+/** Un atacante junto a la bomba (sitio A), con los defensores lejos y quietos. */
+function atTheBomb(seed) {
+  const sim = new Simulation(MAP, { seed, site: 'A', controllers: STILL });
   sim.teams.defenders.forEach((d, i) => {
     d.x = 11.5 + i * 0.8;
     d.y = 9.5;
@@ -96,9 +105,18 @@ test('la desactivación de 7 s cruza el turno: el progreso se congela al planifi
     o.y = 20;
   });
   sim.skipToAssault();
-  playTurn(sim);
+  return { sim, u };
+}
+
+test('la desactivación de 7 s cruza el turno: el progreso se congela al planificar y sigue', () => {
+  const { sim, u } = atTheBomb(7);
+  // Empieza a desactivar a los 3 s del turno: le quedan 5 de los 7 s.
+  sim.advancePhase();
+  sim.round.execTick = TURN_TICKS - 5 * 60;
+  sim.bomb.progress = 0;
+  while (sim.phase === 'exec') sim.step();
   const p = sim.bomb.progress;
-  assert.ok(p > 0.6 && p < 1, `avanza ${ROUND.turnSeconds} de ${ROUND.defuseTime} s`);
+  assert.ok(p > 0.6 && p < 1, `avanzó ${p.toFixed(2)} de 1`);
   assert.equal(sim.bomb.defuserId, u.id);
   sim.step();
   assert.equal(sim.bomb.progress, p, 'planificar no avanza el progreso');
@@ -106,45 +124,63 @@ test('la desactivación de 7 s cruza el turno: el progreso se congela al planifi
   assert.deepEqual([sim.outcome?.reason, sim.turn], ['defused', 2]);
 });
 
-test('un GO agendado espera a que todos los de su código estén en posición, aunque pase al turno siguiente', () => {
+test('la bomba explota aunque estén a mitad de la desactivación', () => {
+  const { sim } = atTheBomb(7);
+  sim.round.execTotal = (ROUND.timeLimit - 3) * 60; // quedan 3 s en el temporizador
+  playTurn(sim);
+  assert.ok(sim.bomb.progress > 0 && !sim.bomb.defused);
+  assert.deepEqual([sim.outcome?.winner, sim.outcome?.reason], ['defenders', 'time']);
+});
+
+test('los GO no se dan al planificar: son del turno', () => {
+  const sim = new Simulation(MAP, { seed: 11, controllers: STILL });
+  sim.skipToAssault();
+  const a = sim.teams.attackers[0];
+  wp(sim, a, a.x + 0.5, a.y);
+  cmd(sim, { type: 'setHold', unitId: a.id, code: 'A' });
+  cmd(sim, { type: 'go', code: 'A' });
+  sim.flushCommands();
+  assert.deepEqual(rejects(sim), ['notNow']);
+});
+
+test('el GO de un grupo suelta a los que esperan; el que viene atrasado sigue de largo al llegar', () => {
   const sim = new Simulation(MAP, { seed: 11, site: 'A', entry: 'principal', controllers: STILL });
   sim.skipToAssault();
   const [a, b] = sim.teams.attackers;
   wp(sim, a, 8.2, 12.0);
   cmd(sim, { type: 'setHold', unitId: a.id, code: 'A' });
   wp(sim, a, 12, 12.4);
-  wp(sim, b, 6.2, 22.4); // lejos de su espera: llega en el segundo turno
+  wp(sim, b, 6.2, 22.4); // lejos de su espera
   wp(sim, b, 8.2, 13.4);
   cmd(sim, { type: 'setHold', unitId: b.id, code: 'A' });
   wp(sim, b, 12, 13.1);
-  cmd(sim, { type: 'go', code: 'A' });
-  sim.flushCommands();
-  assert.deepEqual(sim.round.gos.map((g) => g.code), ['A']);
-  playTurn(sim);
-  assert.equal(sim.goCount, 0, 'aún falta uno: el GO no se da');
-  assert.ok(a.waitingGo);
-  assert.equal(sim.round.gos.length, 1, 'sigue agendado para el turno siguiente');
-  for (let k = 0; k < 4 && sim.goCount === 0; k++) playTurn(sim);
-  assert.equal(sim.goCount, 1, 'con los dos en posición, sale');
-  assert.equal(sim.round.gos.length, 0);
+  sim.advancePhase();
+  while (!a.waitingGo) sim.step();
+  assert.ok(!b.waitingGo && b.route.some((p) => p.hold), 'b todavía va de camino a su espera');
+  cmd(sim, { type: 'go', code: 'A', atTick: sim.round.execTick });
+  sim.step();
+  assert.equal(sim.goCount, 1);
+  assert.ok(!a.waitingGo, 'a sale');
+  assert.ok(!b.route.some((p) => p.hold), 'b ya no se detendrá: el GO se dio');
+  while (sim.phase === 'exec') sim.step();
+  for (let k = 0; k < 3 && sim.phase === 'plan'; k++) playTurn(sim);
+  assert.ok(!b.waitingGo && Math.hypot(b.x - 12, b.y - 13.1) < 1, 'b llegó al final sin esperar');
 });
 
-test('un GO agendado no sale antes de su segundo dentro del turno', () => {
-  const sim = new Simulation(MAP, { seed: 11, site: 'A', entry: 'principal', controllers: STILL });
+test('un GO marcado con su paso se aplica en ese paso del turno (repeticiones, servidor)', () => {
+  const sim = new Simulation(MAP, { seed: 11, controllers: STILL });
   sim.skipToAssault();
   const a = sim.teams.attackers[0];
   wp(sim, a, a.x + 0.5, a.y);
   cmd(sim, { type: 'setHold', unitId: a.id, code: 'B' });
-  cmd(sim, { type: 'go', code: 'B', at: 3.2 }); // se redondea a 3 s
-  sim.flushCommands();
-  assert.equal(sim.round.gos[0].at, 3);
   sim.advancePhase();
+  cmd(sim, { type: 'go', code: 'B', atTick: 180 });
   let at = -1;
   while (sim.phase === 'exec') {
     sim.step();
     if (at < 0 && sim.goCount > 0) at = sim.round.execTick;
   }
-  assert.equal(at, 3 * 60 + 1, 'sale en el primer paso a partir de los 3 s');
+  assert.equal(at, 181, 'se aplica al empezar el paso 180 (execTick cuenta los pasos ya hechos)');
 });
 
 test('en la preparación el atacante elige entrada; luego ya no puede', () => {

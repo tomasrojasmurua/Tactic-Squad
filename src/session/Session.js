@@ -29,7 +29,7 @@ export function createSession({ touch }) {
     // Why a running turn stopped: 'help' | 'background' | 'graphics' | 'orientation' | null
     pauseReason: null,
     confirm: { action: null, until: 0 }, // destructive request armed until `until` (performance.now ms)
-    replay: { pending: 0, attempt: 0 }, // recorded phases still to replay; retries of this plan
+    replay: { pending: 0, attempt: 0, exec: false }, // recorded phases still to replay; retries of this plan; this turn is a replayed one
     clock: { left: 0, total: 0, unlimited: false, auto: false }, // session/PhaseClock.js (decision phases)
     tutorial: { active: false, step: 0, id: null, count: 0, done: false }, // session/Tutorial.js
     hoverUnitId: -1,

@@ -165,18 +165,18 @@ export const ENTRY = Object.freeze({
 
 export const ROUND = Object.freeze({
   // The assault is played in We-Go turns (sim/round.js): both sides plan blind, then
-  // every order runs at once for turnSeconds, up to maxTurns. timeLimit = their product.
-  turnSeconds: 5, // s of execution per turn
-  maxTurns: 18, // after the last one, time is up: the defenders win
-  timeLimit: 90, // s of execution (turnSeconds × maxTurns; a sim without phases runs this long)
+  // every order runs at once for turnSeconds. The bomb's timer only runs while a turn
+  // executes (deciding is free): at 0 it explodes, even mid-defuse — the defenders win.
+  turnSeconds: 8, // s of execution per turn
+  timeLimit: 180, // s on the bomb's timer (of execution; a sim without phases runs this long)
   // Seconds each side gets to decide in every decision phase (wall clock: the session's
   // PhaseClock, later the server). Never read by the sim: they cannot change the result.
-  phaseSeconds: Object.freeze({ buy: 20, prep: 45, plan: 15 }),
+  // null: no limit, the phase ends with LISTO (against the AI). Online, e.g. {buy: 20, prep: 90, plan: 60}.
+  phaseSeconds: Object.freeze({ buy: null, prep: null, plan: null }),
   endSeconds: 10, // the result stays on screen this long before it offers the next round
   defuseTime: 7.0, // s standing still next to the bomb
   defuseRadius: 1.1, // m from the bomb an attacker can work on it
   goStallHint: 3, // s with every planned operator waiting for GO before the HUD insists
-  goStepSeconds: 0.5, // a GO is scheduled at a multiple of this inside the turn
 });
 
 /**
