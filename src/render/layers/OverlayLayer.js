@@ -1,5 +1,5 @@
 // Tactical overlay: planned routes, waypoints, facing arrows, GO holds,
-// FOV edges, selection rings, contact markers, plant progress.
+// FOV edges, selection rings, contact markers, defuse progress.
 // `drawGround` runs before walls/units (depth-tested rings & shadows),
 // `drawTop` runs last, over everything (routes must always be readable).
 // Rebuilt every frame (animated dashes/pulses), so it is written to avoid

@@ -1,8 +1,8 @@
 // On-screen controls for touch devices (>= 44px targets, safe-area aware):
 // a right-hand column (execute/pause, GO, hold, undo, clear) and a bottom
-// row (contextual plant, restart, see all, fullscreen, music, help). Emits EV.REQUEST.
+// row (contextual defuse, restart, see all, fullscreen, music, help). Emits EV.REQUEST.
 import { EV } from '../core/events.js';
-import { anyWaitingGo, anyGoHold, canOrderPlant, isGoReady } from '../sim/queries.js';
+import { anyWaitingGo, anyGoHold, canOrderDefuse, isGoReady } from '../sim/queries.js';
 import { el, setText, toggle, setHidden } from './dom.js';
 import { ICON } from './icons.js';
 import { T } from './texts.js';
@@ -42,7 +42,7 @@ export class TouchBar {
     this.undo = mk(this.column, '', ICON.undo, T.touch.undo, 'undo');
     this.clear = mk(this.column, '', ICON.trash, T.touch.clear, 'clear');
 
-    this.plant = mk(this.row, 'plant', ICON.bomb, T.touch.plant, 'plant');
+    this.defuse = mk(this.row, 'plant', ICON.bomb, T.touch.defuse, 'defuse');
     this.restart = mk(this.row, 'restart', ICON.restart, T.touch.restart, 'restart'); // set apart from the utilities (CSS)
     this.overview = mk(this.row, 'overview', ICON.overview, T.flow.overview, 'overview');
     this.full = mk(this.row, '', ICON.fullscreen, T.touch.fullscreen, 'fullscreen');
@@ -91,7 +91,7 @@ export class TouchBar {
     if ((this.restart.dataset.armed || '') !== armed) this.restart.dataset.armed = armed;
     toggle(this.go, 'ready', waiting);
     toggle(this.go, 'all', isGoReady(sim)); // everyone in position: the moment to press it
-    setHidden(this.plant, !canOrderPlant(sim));
+    setHidden(this.defuse, !canOrderDefuse(sim));
     toggle(this.music, 'off', !session.musicOn);
   }
 }

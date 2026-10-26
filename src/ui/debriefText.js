@@ -31,7 +31,7 @@ export function buildDebrief(sim, team) {
   }
   for (const n of sim.outcome.notes || []) {
     const u = n.unitId >= 0 ? sim.units[n.unitId] : null;
-    lines.push(D.note[n.code]({ name: u ? u.name : '', place: placeName(n.room) }));
+    lines.push(D.note[n.code]({ name: u ? u.name : '', place: placeName(n.room), site: n.site }));
   }
   const lost = sim.outcome.winner !== team;
   if (lost && sim.outcome.reason === 'time') tipCode ??= 'time';

@@ -52,7 +52,7 @@ export class AutoPause {
       if (!u.alive) continue;
       any = true;
       if (u.visibleEnemies.length) this.lastContact = sim.time;
-      if (u.route.length || u.waitingGo || u.target >= 0 || u.planting || u.moving) idle = false;
+      if (u.route.length || u.waitingGo || u.target >= 0 || u.defusing || u.moving) idle = false;
     }
     if (!idle || !any || sim.outcome) {
       this.idleFor = 0;

@@ -1,7 +1,13 @@
 // "Operación Almacén" — vertical slice map, pure data (meters, x right, y down).
 //
 //  Layout:  yard (attacker spawn) | building: office + kitchen (north),
-//           corridor (center), bathroom + lounge (south) | bomb site A hall (east)
+//           corridor (center), bathroom + lounge with site B (south) | site A hall (east)
+//
+// Round data (Rainbow-style objective): the defenders place the bomb in one
+// of the `sites` (A or B) and set up with that site's `defense`; the
+// attackers come in through one of the `entries` and must defuse it.
+// `deployment` is each side's half (defenders set up east of the line) and
+// doors with `barricade: true` are the gaps defenders may block.
 //
 // Walls are axis-aligned center lines; doors/openings cut gaps automatically.
 // Door `at` is the center of the opening; `axis` is the wall direction
@@ -34,15 +40,17 @@ export default {
   ],
 
   doors: [
-    { id: 'entrada', at: [10, 12.7], axis: 'v', width: 1.15, hinge: 'min' },
-    { id: 'oficina', at: [14.55, 11.4], axis: 'h', width: 1.1, hinge: 'min' },
-    { id: 'cocina', at: [23.55, 11.4], axis: 'h', width: 1.1, hinge: 'max' },
-    { id: 'ofi-cocina', at: [19, 5.55], axis: 'v', width: 1.1, hinge: 'min' },
-    { id: 'banio', at: [13.05, 14], axis: 'h', width: 1.1, hinge: 'min' },
-    { id: 'banio-ext', at: [10, 21.55], axis: 'v', width: 1.1, hinge: 'max' },
-    { id: 'sala', at: [20.55, 14], axis: 'h', width: 1.1, hinge: 'max' },
-    { id: 'sitio-pasillo', at: [28, 12.7], axis: 'v', width: 1.15, hinge: 'min' },
-    { id: 'sitio-sala', at: [28, 21.55], axis: 'v', width: 1.1, hinge: 'max' },
+    { id: 'entrada', at: [10, 12.7], axis: 'v', width: 1.15, hinge: 'min', barricade: true },
+    { id: 'oficina-ext', at: [10, 9.3], axis: 'v', width: 1.1, hinge: 'max', barricade: true },
+    { id: 'oficina', at: [14.55, 11.4], axis: 'h', width: 1.1, hinge: 'min', barricade: true },
+    { id: 'cocina', at: [23.55, 11.4], axis: 'h', width: 1.1, hinge: 'max', barricade: true },
+    { id: 'ofi-cocina', at: [19, 5.55], axis: 'v', width: 1.1, hinge: 'min', barricade: true },
+    { id: 'banio', at: [13.05, 14], axis: 'h', width: 1.1, hinge: 'min', barricade: true },
+    { id: 'banio-ext', at: [10, 21.55], axis: 'v', width: 1.1, hinge: 'max', barricade: true },
+    { id: 'banio-sala', at: [16, 19.5], axis: 'v', width: 1.1, hinge: 'min', barricade: true },
+    { id: 'sala', at: [20.55, 14], axis: 'h', width: 1.1, hinge: 'max', barricade: true },
+    { id: 'sitio-pasillo', at: [28, 12.7], axis: 'v', width: 1.15, hinge: 'min', barricade: true },
+    { id: 'sitio-sala', at: [28, 21.55], axis: 'v', width: 1.1, hinge: 'max', barricade: true },
   ],
 
   // Doorless gaps.
@@ -57,6 +65,7 @@ export default {
     { id: 'cocina', rect: [19, 2, 9, 9.4] },
     { id: 'pasillo', rect: [10, 11.4, 18, 2.6] },
     { id: 'banio', rect: [10, 14, 6, 12] },
+    { id: 'sitioB', rect: [18.4, 15.0, 8.2, 7.8] },
     { id: 'sala', rect: [16, 14, 12, 12] },
     { id: 'sitioA', rect: [31, 8.8, 6.2, 8.4] },
     { id: 'nave', rect: [28, 2, 11, 24] },
@@ -74,14 +83,61 @@ export default {
   ],
 
   zones: {
-    siteA: { rect: [31, 8.8, 6.2, 8.4], label: 'A' },
     spawn: { rect: [2.5, 10.5, 5, 6] },
+  },
+
+  // Bomb sites: `bomb` is where the defenders leave it (it never moves).
+  sites: [
+    { id: 'A', rect: [31, 8.8, 6.2, 8.4], bomb: [34.3, 13.0] },
+    { id: 'B', rect: [18.4, 15.0, 8.2, 7.8], bomb: [22.0, 21.3] },
+  ],
+
+  // Attacker entries: the door each one breaches and where the squad starts for it.
+  entries: [
+    {
+      id: 'norte',
+      door: 'oficina-ext',
+      spawns: [
+        { at: [7.0, 9.1], facing: 0 },
+        { at: [7.0, 10.5], facing: 0 },
+        { at: [5.6, 10.3], facing: 0 },
+      ],
+    },
+    {
+      id: 'principal',
+      door: 'entrada',
+      spawns: [
+        { at: [4.6, 11.9], facing: 0 },
+        { at: [4.6, 13.4], facing: 0 },
+        { at: [4.6, 14.9], facing: 0 },
+      ],
+    },
+    {
+      id: 'sur',
+      door: 'banio-ext',
+      spawns: [
+        { at: [6.2, 21.0], facing: 0 },
+        { at: [6.2, 22.4], facing: 0 },
+        { at: [4.9, 21.7], facing: 0 },
+      ],
+    },
+  ],
+  defaultEntry: 'principal',
+
+  // Each side's half. Defenders set up east of the line (kitchen, hall, lounge,
+  // east corridor); attackers start in the yard.
+  deployment: {
+    line: [[19, 2], [19, 11.4], [16, 11.4], [16, 26]],
+    attackers: [[1, 5, 9, 19]],
+    defenders: [[19, 2, 20, 9.4], [16, 11.4, 23, 14.6]],
   },
 
   // Floor paint (spray-painted decals generated at runtime).
   paint: [
     { kind: 'site', rect: [31, 8.8, 6.2, 8.4], text: 'A', color: '#f2c230' },
+    { kind: 'site', rect: [18.4, 15.0, 8.2, 7.8], text: 'B', color: '#f2c230' },
     { kind: 'arrow', at: [25.6, 12.7], size: 1.4, rot: 0, text: 'A', color: '#f2c230' },
+    { kind: 'arrow', at: [18.2, 12.7], size: 1.1, rot: Math.PI / 2, text: 'B', color: '#f2c230' },
     { kind: 'text', at: [5.0, 18.4], size: 0.62, text: 'DESPLIEGUE', color: '#e8e2d0' },
     { kind: 'stripes', rect: [7.6, 10.4, 0.5, 6.0], color: '#e3b51e' },
   ],
@@ -169,16 +225,13 @@ export default {
     { type: 'pallet', at: [35.2, 3.4], rot: 90 },
   ],
 
-  // Defender behaviors: hold (fixed angle), scan {from, to, period}, patrol
-  // {points, wait}; reactsToNoise: turns to gunfire / footsteps / pain;
-  // rotate {to, look}: on the first firefight heard, moves there once and holds.
-  spawns: {
-    attackers: [
-      { at: [4.6, 11.9], facing: 0 },
-      { at: [4.6, 13.4], facing: 0 },
-      { at: [4.6, 14.9], facing: 0 },
-    ],
-    defenders: [
+  // Defender setup for each bomb site (until the preparation phase lets the
+  // defender place them). Behaviors: hold (fixed angle), scan {from, to,
+  // period}, patrol {points, wait}; reactsToNoise: turns to gunfire /
+  // footsteps / pain; rotate {to, look}: on the first firefight heard, moves
+  // there once and holds.
+  defense: {
+    A: [
       // Site anchor: off the corridor line, pre-aiming the corridor door at an
       // angle (whoever walks in looking straight ahead must turn to find him).
       // Blind to the south door: the lounge flank is the way to beat him.
@@ -187,6 +240,19 @@ export default {
       // Kitchen guard: on the first firefight he rotates to the arch and covers the site.
       { at: [26.1, 8.7], facing: 130 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 112 * DEG, to: 195 * DEG, period: 6.5, reactsToNoise: true, rotate: { to: [27.3, 4.7], look: 45 * DEG } } },
       { at: [18.4, 22.6], facing: 0, weapon: 'smg', behavior: { type: 'patrol', points: [[18.4, 22.6], [26.2, 22.6]], wait: 2.2, reactsToNoise: true } },
+    ],
+    B: [
+      // Site anchor in the lounge corner: covers both the corridor door and the
+      // bathroom door. Blind to the hall door behind him: that is the flank.
+      { at: [25.9, 21.6], facing: -147 * DEG, weapon: 'rifle', behavior: { type: 'hold', reactsToNoise: false } },
+      // Second anchor in the far corner, pre-aiming the corridor door from below.
+      { at: [17.0, 23.2], facing: -75 * DEG, weapon: 'smg', behavior: { type: 'hold', reactsToNoise: false } },
+      // Hall guard watching the corridor door; on the first firefight he rotates
+      // through the hall door into the lounge, behind the anchor.
+      { at: [30.4, 16.8], facing: 175 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 125 * DEG, to: 228 * DEG, period: 6, reactsToNoise: true, rotate: { to: [27.0, 23.6], look: -160 * DEG } } },
+      // Kitchen guard: on the first firefight he rotates into the lounge and
+      // covers the bathroom door from the north side of the site.
+      { at: [26.1, 8.7], facing: 130 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 112 * DEG, to: 195 * DEG, period: 6.5, reactsToNoise: true, rotate: { to: [24.2, 16.0], look: 160 * DEG } } },
     ],
   },
 

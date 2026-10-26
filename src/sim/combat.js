@@ -19,6 +19,7 @@ export function updateCombat(sim, u, dt) {
   u.burstPause = Math.max(0, u.burstPause - dt);
   u.recoil = Math.max(0, u.recoil - COMBAT.recoilRecovery * dt);
   if (u.alertTimer > 0) u.alertTimer -= dt;
+  if (u.defusing) return; // both hands on the bomb: no shooting, no reloading
 
   if (u.reloadTimer > 0) {
     u.reloadTimer -= dt;

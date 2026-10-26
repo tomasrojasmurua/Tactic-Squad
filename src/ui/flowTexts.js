@@ -36,7 +36,7 @@ export const FLOW_TEXTS = Object.freeze({
   /** Guided first round: one instruction per session/Tutorial.js step. */
   tutorial: {
     prefix: (k, n) => `TUTORIAL ${k}/${n} · `,
-    select: { touch: 'Toca a ÁGUILA (lleva la bomba)', desk: 'Haz clic en ÁGUILA (o pulsa 1) para seleccionarlo' },
+    select: { touch: 'Toca a ÁGUILA', desk: 'Haz clic en ÁGUILA (o pulsa 1) para seleccionarlo' },
     route: { touch: 'Arrastra desde ÁGUILA hasta la puerta', desk: 'Arrastra (o haz clic) desde ÁGUILA hasta la puerta del edificio' },
     look: { touch: 'Mantén pulsado el último punto y arrastra: su mirada', desk: 'Clic derecho en el último punto y arrastra: hacia dónde mirará' },
     hold: { touch: 'Pulsa ESPERAR: allí aguardará tu GO', desk: 'Pulsa H: en ese punto aguardará tu código GO' },

@@ -1,5 +1,6 @@
 // Turns map DATA (src/data/maps/*) into runtime geometry: wall boxes with
-// door/opening gaps cut out, door hinges, prop footprints and zones.
+// door/opening gaps cut out, door hinges, prop footprints, zones and the
+// round data (bomb sites, attacker entries, deployment halves, barricade slots).
 // Pure: no DOM, no WebGL. Output is consumed by World (sim) and by render.
 import { PROPS } from '../data/props.js';
 import { DOORS, MAP_FORMAT } from '../config/balance.js';
@@ -34,6 +35,15 @@ export function compileMap(def) {
   }));
   // Named areas (debrief: "fell in the kitchen"). First match wins.
   const rooms = (def.rooms || []).map((r) => ({ id: r.id, box: boxFromRect(r.rect) }));
+  const sites = def.sites.map((s) => ({ id: s.id, rect: s.rect, box: boxFromRect(s.rect), bombX: s.bomb[0], bombY: s.bomb[1] }));
+  const doorIds = new Set(def.doors.map((d) => d.id));
+  for (const e of def.entries) if (!doorIds.has(e.door)) throw new Error(`Entrada ${e.id}: puerta desconocida ${e.door}`);
+  for (const s of def.sites) if (!def.defense[s.id]) throw new Error(`Sitio ${s.id} sin defensa`);
+  const deployment = {
+    line: def.deployment.line,
+    attackers: def.deployment.attackers.map(boxFromRect),
+    defenders: def.deployment.defenders.map(boxFromRect),
+  };
 
   return {
     id: def.id,
@@ -48,7 +58,13 @@ export function compileMap(def) {
     rooms,
     floors: def.floors,
     paint: def.paint || [],
-    spawns: def.spawns,
+    sites,
+    entries: def.entries,
+    defaultEntry: def.defaultEntry ?? def.entries[0].id,
+    defense: def.defense,
+    deployment,
+    // Doorways defenders may barricade (door ids).
+    barricadeSlots: def.doors.filter((d) => d.barricade).map((d) => d.id),
     camera: def.camera,
   };
 }

@@ -8,7 +8,7 @@
 import { EV } from '../core/events.js';
 import { SIM } from '../config/balance.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
-import { controllableUnit, firstAlive, teamUnits } from '../sim/queries.js';
+import { controllableUnit, defuseCandidate, firstAlive, teamUnits } from '../sim/queries.js';
 import { armOrConfirm } from './confirm.js';
 import { PlanRecorder } from './PlanRecorder.js';
 import { AutoPause } from './AutoPause.js';
@@ -183,8 +183,12 @@ export class SessionController {
           this.pause('manual');
         }
         return;
-      case 'plant':
-        if (phase !== 'ended' && phase !== 'title') this.command({ type: 'plantNow' });
+      case 'defuse':
+        if (phase !== 'ended' && phase !== 'title') {
+          // The selected operator if he is at the bomb, else whoever is closest to it.
+          const sel = this.session.selectedId;
+          this.command({ type: 'defuseNow', unitId: defuseCandidate(this.sim, sel) ? sel : -1 });
+        }
         return;
       case 'undo':
         this.planning.undo();

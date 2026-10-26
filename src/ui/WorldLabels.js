@@ -1,4 +1,4 @@
-// Small DOM tags floating over each operator (number, GO hold, bomb),
+// Small DOM tags floating over each operator (number, GO hold, defusing the bomb),
 // positioned every frame through the camera projection.
 import { el, toggle, setStyle } from './dom.js';
 import { HEIGHTS } from '../config/render.js';
@@ -50,7 +50,7 @@ export class WorldLabels {
       toggle(t.tag, 'under-hud', !!occlusion && occlusion.plateAt(s.x, s.y, HUD.labelHudMarginPx) >= 0);
       toggle(t.tag, 'sel', session.selectedId === id);
       toggle(t.go, 'on', u.waitingGo);
-      toggle(t.bomb, 'on', u.carriesBomb && session.selectedId === id);
+      toggle(t.bomb, 'on', u.defusing);
     }
   }
 }

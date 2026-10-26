@@ -4,7 +4,7 @@
 // the ONLY sim helpers that input/ui/render may import besides vision.js.
 import { pointInBox, pointAabbDistance, pointSegDist2 } from '../core/geom.js';
 import { angleDiff } from '../core/math.js';
-import { MOVE } from '../config/balance.js';
+import { MOVE, ROUND } from '../config/balance.js';
 import { PROP_SURFACE, SURFACE_PROBE, DOOR_SURFACE, FENCE_SURFACE } from '../config/materials.js';
 import { TEAMS } from '../config/squad.js';
 
@@ -61,8 +61,8 @@ export function struckSurface(sim, x, y) {
   return 'plaster';
 }
 
-/** Bomb arming progress 0..1 while someone plants, else -1. */
-export const plantProgress = (sim) => (sim.bomb.planterId >= 0 ? sim.bomb.progress : -1);
+/** Bomb defuse progress 0..1 while someone works on it, else -1. */
+export const defuseProgress = (sim) => (sim.bomb.defuserId >= 0 ? sim.bomb.progress : -1);
 
 export function firstAlive(sim, team) {
   for (const u of sim.teams[team]) if (u.alive) return u;
@@ -102,21 +102,48 @@ export function anyGoHold(sim) {
   return false;
 }
 
-export function inSiteA(sim, x, y) {
-  const site = sim.world.zones.siteA;
-  return !!site && pointInBox(x, y, site.box);
+/** Id of the bomb site ('A' | 'B') containing a point, or null. */
+export function siteAt(sim, x, y) {
+  for (const s of sim.compiled.sites) if (pointInBox(x, y, s.box)) return s.id;
+  return null;
 }
 
-/** The living bomb carrier, or null. */
-export function bombCarrier(sim) {
-  const u = sim.bomb.carrierId >= 0 ? sim.units[sim.bomb.carrierId] : null;
-  return u && u.alive ? u : null;
+/** Does this side know where the bomb is? The defenders placed it; the attackers must find it. */
+export const bombKnownTo = (sim, team) => team === 'defenders' || sim.bomb.spotted || !!sim.outcome;
+
+/** Within defuse reach of the bomb (ROUND.defuseRadius). */
+export function nearBomb(sim, u) {
+  const b = sim.bomb;
+  return (u.x - b.x) ** 2 + (u.y - b.y) ** 2 <= ROUND.defuseRadius * ROUND.defuseRadius;
 }
 
-/** True when a "plant now" order would be accepted right now. */
-export function canOrderPlant(sim) {
-  const c = bombCarrier(sim);
-  return !!c && !c.planting && inSiteA(sim, c.x, c.y);
+/**
+ * The attacker a "defuse now" order would put on the bomb: the given unit,
+ * else the closest living one in reach; null when the bomb is not found yet,
+ * already defused or nobody is next to it.
+ */
+export function defuseCandidate(sim, unitId = -1) {
+  const b = sim.bomb;
+  if (!b.spotted || b.defused) return null;
+  const given = unitId >= 0 ? sim.units[unitId] : null;
+  if (given) return given.alive && given.team === 'attackers' && nearBomb(sim, given) ? given : null;
+  let best = null;
+  let bestD = Infinity;
+  for (const u of sim.teams.attackers) {
+    if (!u.alive || !nearBomb(sim, u)) continue;
+    const d = (u.x - b.x) ** 2 + (u.y - b.y) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = u;
+    }
+  }
+  return best;
+}
+
+/** True when a "defuse now" order would put someone new on the bomb right now. */
+export function canOrderDefuse(sim) {
+  const u = defuseCandidate(sim);
+  return !!u && !u.defusing && controllableUnit(sim, u.id, 'attackers') !== null;
 }
 
 /** Id of the named area (map `rooms`) containing a point, or null. */

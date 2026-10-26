@@ -5,12 +5,12 @@
 //
 // victim.deathCause = {
 //   code: 'reloading' | 'outnumbered' | 'blindside' | 'preaimed' | 'moving' | 'duel',
-//   killerId, room, killerRoom, doorway (id or null), from: 'N'|'S'|'E'|'W' (killer's side), carrier
+//   killerId, room, killerRoom, doorway (id or null), from: 'N'|'S'|'E'|'W' (killer's side), defusing
 // }
-// sim.outcome.notes = [{code, unitId?, room?}]  codes: 'waitingGo' | 'noRoute' | 'bombIdle' |
-//   'bombShort' | 'flawless' | 'synced'
+// sim.outcome.notes = [{code, unitId?, room?, site?}]  codes: 'waitingGo' | 'noRoute' |
+//   'bombHidden' | 'bombNotDefused' | 'flawless' | 'synced'
 import { DEBRIEF } from '../config/balance.js';
-import { roomAt, doorwayNear, inSiteA, bombCarrier } from './queries.js';
+import { roomAt, doorwayNear } from './queries.js';
 
 /** Called by combat.kill BEFORE the victim's state is cleared. */
 export function recordDeath(sim, victim, killer) {
@@ -23,7 +23,7 @@ export function recordDeath(sim, victim, killer) {
     killerRoom: killer ? roomAt(w, killer.x, killer.y) : null,
     doorway: door ? door.id : null,
     from: killer ? compass(killer.x - victim.x, killer.y - victim.y) : null,
-    carrier: victim.carriesBomb,
+    defusing: victim.defusing,
   };
   if (killer) {
     let shooters = 0;
@@ -59,8 +59,8 @@ export function buildNotes(sim, winner, reason) {
     if (u.waitingGo) notes.push({ code: 'waitingGo', unitId: u.id, room: roomAt(sim.world, u.x, u.y) });
     else if (!u.route.length && !u.distanceWalked) notes.push({ code: 'noRoute', unitId: u.id });
   }
-  const carrier = bombCarrier(sim);
-  if (!carrier && !sim.bomb.planted) notes.push({ code: 'bombIdle', room: roomAt(sim.world, sim.bomb.x, sim.bomb.y) });
-  else if (carrier && !inSiteA(sim, carrier.x, carrier.y)) notes.push({ code: 'bombShort', unitId: carrier.id, room: roomAt(sim.world, carrier.x, carrier.y) });
+  const bomb = sim.bomb;
+  if (!bomb.spotted) notes.push({ code: 'bombHidden', site: bomb.site });
+  else notes.push({ code: 'bombNotDefused', site: bomb.site });
   return notes;
 }

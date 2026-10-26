@@ -19,12 +19,25 @@ import { updateCombat } from './combat.js';
 import { createBomb, updateObjectives } from './objectives.js';
 
 export class Simulation {
-  /** @param opts.controllers {team: 'human'|'ai'} who commands each side (config/squad.js CONTROLLERS). */
-  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS } = {}) {
+  /**
+   * @param opts.controllers {team: 'human'|'ai'} who commands each side (config/squad.js CONTROLLERS).
+   * @param opts.site  bomb site id ('A' | 'B'); omitted, the defending side picks it from the seed.
+   * @param opts.entry attacker entry id (map `entries`); omitted, the map's default entry.
+   */
+  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null } = {}) {
     this.seed = seed;
     this.controllers = controllers;
     this.rng = new Rng(seed);
     this.compiled = compileMap(mapDef);
+    const sites = this.compiled.sites;
+    // Hidden from the attackers: until the preparation phase the defender's
+    // choice is a roll of the round's seed (a retry keeps the seed, so the site).
+    // Rolled even when forced, so the rest of the RNG stream does not depend on it.
+    const rolled = this.rng.pick(sites);
+    this.site = site ? sites.find((s) => s.id === site) : rolled;
+    if (!this.site) throw new Error(`Sitio desconocido: ${site}`);
+    this.entry = this.compiled.entries.find((e) => e.id === (entry || this.compiled.defaultEntry));
+    if (!this.entry) throw new Error(`Entrada desconocida: ${entry}`);
     this.world = new World(this.compiled);
     this.doors = this.compiled.doors.map(createDoorState);
     this.world.updateDoorSegments(this.doors);
@@ -43,12 +56,13 @@ export class Simulation {
     /** Units per team in spawn order (read through sim/queries.js teamUnits). */
     this.teams = {};
     for (const t of TEAMS) this.teams[t] = this.units.filter((u) => u.team === t);
-    this.bomb = createBomb(this.units);
+    this.bomb = createBomb(this.site);
     initAbilities(this);
   }
 
   spawnUnits() {
-    const { attackers, defenders } = this.compiled.spawns;
+    const attackers = this.entry.spawns;
+    const defenders = this.compiled.defense[this.site.id];
     attackers.forEach((s, i) => {
       const op = SQUAD[i % SQUAD.length];
       this.units.push(
@@ -63,7 +77,6 @@ export class Simulation {
           facing: s.facing,
           role: op.role,
           weaponId: op.weapon, // optional override of the role's weapon
-          carriesBomb: op.carriesBomb,
         }),
       );
     });
