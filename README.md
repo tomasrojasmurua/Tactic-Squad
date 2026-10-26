@@ -1,0 +1,35 @@
+# Tactic Squad
+
+Juego web táctico de escuadra en vista cenital. JavaScript puro (módulos ES, sin framework) y WebGL2 propio. Interfaz en español; se juega en escritorio y en celular.
+
+## Cómo correrlo
+
+El juego no necesita build: basta servir la carpeta.
+
+```sh
+npm start          # http://localhost:8080 (cualquier servidor estático sirve)
+npm test           # pruebas de la simulación (Node 20+)
+npm install && npm run build   # dist/tactic-squad.html, un solo HTML autocontenido
+```
+
+Abrir `index.html` directamente con `file://` no funciona, porque los navegadores no cargan módulos ES desde disco. El HTML de `npm run build` sí funciona así.
+
+## Estructura
+
+| Carpeta | Qué contiene | Reglas |
+| --- | --- | --- |
+| `src/sim/` | Simulación autoritativa y determinista: unidades, movimiento, visión, combate, IA, puertas, objetivos | Sin DOM, WebGL, audio ni reloj real. Solo avanza con `step(dt)` y la semilla (`core/rng.js`). Recibe órdenes como datos (`sim/orders.js`) y reporta con eventos. |
+| `src/config/` | Todos los números y fichas: equilibrio (`balance.js`), armas, roles de operador, escuadra, render, audio, UI | Los números de juego van aquí, no en el código de la sim. |
+| `src/data/` | Mapas (`maps/`) y props como datos puros | Un mapa nuevo = un archivo y una línea en `maps/index.js`. |
+| `src/core/` | Utilidades sin dependencias: matemáticas, geometría, RNG, bus de eventos, bucle fijo | |
+| `src/session/` | Estado de la partida fuera de la sim: fases de pantalla, pausa, tutorial, grabación de planes | |
+| `src/input/` | Mouse, teclado y táctil; planificación de rutas | |
+| `src/render/` | Renderer WebGL2 por capas, shaders, geometría y efectos | Solo lee la sim. |
+| `src/audio/` | Motor de audio procedural, sonidos horneados en un worker, música | Solo escucha eventos. |
+| `src/ui/` | HUD, pantallas y textos (`texts.js`) | |
+
+Para agregar una clase de operador: una entrada en `config/operators.js` (`ROLES`) y, si tiene habilidad, un módulo en `sim/abilities/` registrado en `sim/abilities/index.js`.
+
+## Pruebas
+
+`tests/determinism.test.mjs` juega una ronda completa sin pantalla dos veces con la misma semilla y comprueba que el resultado es idéntico. Algunos comentarios del código mencionan `docs/ARCHITECTURE.md`, `docs/BRIEF.md` y `tests/sim-plans.mjs`, que no venían en el zip original.
