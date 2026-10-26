@@ -63,6 +63,8 @@ Una `Simulation` creada con `{ phases: false }` no tiene fases: corre siempre y 
 
 ## Entradas a salas
 
+**Puertas sin decidir.** Si una ruta cruza una puerta cerrada, el juego no decide por ti: pone un punto **?** justo antes de la puerta (`ENTRY.askDistance`, `markDoors` en `sim/orders.js`) y el soldado se detiene ahí. Al tocar el **?** el selector pregunta *cómo* (abrir, patada, entreabrir, flash, granada, carga) y *cuándo* (de inmediato o con el GO A, B o C); "Abrir, de inmediato" es pasar de corrido como antes, pero elegido. Si aprietas LISTO con alguna puerta en **?**, avisa y pide un segundo LISTO para confirmar; esos soldados esperan en la puerta y decides en la siguiente planificación.
+
 Cada espera lleva un grupo GO (A, B o C): el botón o la tecla H rota entre ellos, y el GO de ese grupo se da durante el turno (ver arriba). Un punto de ruta junto a una puerta puede llevar además cómo se entra (`sim/entries.js`, selector en pantalla o tecla E):
 
 | Entrada | Qué hace |

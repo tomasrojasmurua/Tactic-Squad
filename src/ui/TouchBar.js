@@ -71,7 +71,7 @@ export class TouchBar {
     const phase = session.phase;
     const deciding = isDecisionPhase(session);
     // LISTO ends a decision phase; a running turn cannot be paused (no button), a system pause resumes here.
-    setText(this.execLabel, deciding ? T.touch.ready : T.touch.resume);
+    setText(this.execLabel, !deciding ? T.touch.resume : session.confirm.action === 'ready' ? T.flow.confirmReady : T.touch.ready);
     setHidden(this.exec, !deciding && phase !== 'paused');
 
     const sel = sim.units[session.selectedId];

@@ -644,6 +644,25 @@ body.touch .ebtn { min-width: 50px; padding: 3px 4px; }
 .ptag.sel { opacity: 1; }
 .ptag.off { display: none; }
 .ptag.under-hud { visibility: hidden; }
+/* A door nobody decided: an amber "?" that breathes until it is tapped (minimal, but it asks for attention). */
+.ptag.ask {
+  pointer-events: auto; cursor: pointer; touch-action: manipulation; width: 22px; height: 22px; padding: 0; margin-top: -4px; border-radius: 50%;
+  justify-content: center; font-size: 14px; color: #1a1000; background: var(--amber); opacity: 1; animation: askPulse 1.3s ease-in-out infinite;
+}
+.ptag.ask::before { content: ''; position: absolute; inset: -11px; } /* a finger-size target */
+.ptag.ask.target { animation: none; box-shadow: 0 0 0 2px #fff, 0 1px 0 rgba(0, 0, 0, 0.9); }
+@keyframes askPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 176, 46, 0.65), 0 1px 0 rgba(0, 0, 0, 0.9); }
+  50% { box-shadow: 0 0 0 7px rgba(255, 176, 46, 0), 0 1px 0 rgba(0, 0, 0, 0.9); }
+}
+.entry-picker.ask .ep-title { color: var(--amber); }
+.entry-picker .ep-when { display: flex; align-items: center; gap: 4px; }
+.entry-picker .ep-wl { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #cfd6db; margin-right: 4px; }
+.wbtn {
+  pointer-events: auto; touch-action: manipulation; min-height: 30px; padding: 2px 10px; font-family: var(--font); font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #fff; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.wbtn.active { background: var(--ok-deep); border-color: var(--ok); }
 
 /* ------------------------------------------------------------ We-Go turns (hito 2) */
 /* Phase bar: turn + clock; the thin bar under it empties with the decision clock / the 5 s turn. */

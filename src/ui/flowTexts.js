@@ -5,6 +5,7 @@ export const FLOW_TEXTS = Object.freeze({
   // GO buttons during a turn: how many of the group are in position.
   goReady: (ready, total) => `${ready}/${total}`,
   confirmRestart: '¿Borrar plan?', // restart button armed (second press wipes the plan)
+  confirmReady: '¿Listo igual?', // LISTO armed: some door is still on "?"
   overview: 'Ver todo',
   tutorialStart: 'Tutorial guiado',
   tutorialSkip: 'Saltar tutorial',
@@ -12,6 +13,7 @@ export const FLOW_TEXTS = Object.freeze({
   /** EV.NOTICE codes -> toast text. */
   notice: {
     confirm_restart: { touch: 'Toca REINICIAR otra vez para borrar todo el plan', desk: 'Pulsa R otra vez para borrar todo el plan' },
+    confirm_ready: (n) => `${n === 1 ? 'Hay una puerta' : `Hay ${n} puertas`} sin decidir (?): ${n === 1 ? 'ese soldado se detendrá' : 'esos soldados se detendrán'} ahí. Pulsa LISTO otra vez para confirmar`,
     confirm_newPlan: { touch: 'Repite para empezar un plan nuevo (se borra el actual)', desk: 'Pulsa N otra vez para empezar un plan nuevo' },
     replayDiverged: (n) => `Plan cambiado: ${n === 1 ? 'esta fase ya no se repite' : `estas ${n} fases ya no se repiten`}; sigues tú`,
     noPause: 'Un turno no se pausa: dura 8 s y luego vuelves a planificar',

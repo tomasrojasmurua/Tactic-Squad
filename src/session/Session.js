@@ -12,6 +12,7 @@
 // The deadlines of the decision phases are session/PhaseClock.js (session.clock).
 
 import { PLAYER_TEAM } from '../config/squad.js';
+import { lastUserIndex } from '../sim/queries.js';
 
 export const PHASES = Object.freeze(['title', 'buy', 'prep', 'planning', 'running', 'paused', 'ended']);
 
@@ -26,6 +27,9 @@ export function createSession({ touch }) {
     phase: 'title',
     team: PLAYER_TEAM, // the side this player commands (orders are stamped with it)
     selectedId: -1, // unit id of the player's side, -1 = none
+    // The waypoint the entry picker edits when it is not the last one: a "?" door point the
+    // player tapped ({unitId, index}), null = the selected operator's last waypoint.
+    pointTarget: null,
     // Why a running turn stopped: 'help' | 'background' | 'graphics' | 'orientation' | null
     pauseReason: null,
     confirm: { action: null, until: 0 }, // destructive request armed until `until` (performance.now ms)
@@ -55,6 +59,13 @@ export const canEditRoutes = (session) => (session.phase === 'prep' || session.p
 
 /** Is this destructive request armed (waiting for its confirming repeat)? */
 export const isArmed = (session, action) => session.confirm.action === action && performance.now() < session.confirm.until;
+
+/** The waypoint the door picker and E / H act on for operator u: the tapped "?" point, else his last one. */
+export function targetIndex(session, u) {
+  const t = session.pointTarget;
+  if (t && t.unitId === u.id && t.index < u.route.length && u.route[t.index].user) return t.index;
+  return lastUserIndex(u);
+}
 
 /** Phases where time is stopped and the player is planning. */
 export const isPlanningTime = (session) => session.phase === 'prep' || session.phase === 'planning';

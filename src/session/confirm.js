@@ -1,17 +1,18 @@
-// Two-step confirmation for requests that wipe the plan (REVIEW-1 #3): the
-// first press arms it (the button says so, a toast explains), a second press
-// within FLOW.confirmSeconds does it. With nothing to lose it acts at once.
+// Two-step confirmation for requests that wipe the plan (REVIEW-1 #3), and
+// for LISTO while some door is still undecided ("?"): the first press arms
+// it (the button says so, a toast explains), a second press within
+// FLOW.confirmSeconds does it. With nothing at stake it acts at once.
 import { FLOW } from '../config/ui.js';
 import { isArmed } from './Session.js';
 
-/** Requests that wipe the plan, and the phases where they do. */
+/** Requests that need a confirming repeat, and the phases where they do. */
 const IN_ROUND = ['buy', 'prep', 'planning', 'running', 'paused'];
-const DESTRUCTIVE = Object.freeze({ restart: IN_ROUND, newPlan: IN_ROUND });
+const DESTRUCTIVE = Object.freeze({ restart: IN_ROUND, newPlan: IN_ROUND, ready: ['prep', 'planning'] });
 
 /** 'go' (act now) | 'armed' (wait for the repeat). */
-export function armOrConfirm(session, action, hasPlan) {
+export function armOrConfirm(session, action, atStake) {
   const c = session.confirm;
-  if (!DESTRUCTIVE[action]?.includes(session.phase) || !hasPlan) return 'go';
+  if (!DESTRUCTIVE[action]?.includes(session.phase) || !atStake) return 'go';
   if (isArmed(session, action)) {
     c.action = null;
     return 'go';

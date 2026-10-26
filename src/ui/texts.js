@@ -105,12 +105,17 @@ export const T = Object.freeze({
   defuse: 'DESACTIVANDO BOMBA',
   reloadTag: 'RECARGANDO',
   tagGo: 'GO',
+  tagAsk: 'PUERTA ?',
   tagBomb: 'BOMBA',
   tagBlind: 'CIEGO',
 
   /** Door entries (sim/entries.js): picker labels, short tags on the map and the help line. */
   entry: {
     title: 'Entrada',
+    askTitle: 'Puerta sin decidir',
+    askHint: 'Elige cómo abrirla y cuándo: hasta entonces se detiene aquí',
+    when: 'Cuándo',
+    now: 'De inmediato',
     none: 'Abrir',
     modes: { kick: 'Patada', slow: 'Entreabrir', flash: 'Flash', frag: 'Granada', breach: 'Carga' },
     tags: { kick: 'PATADA', slow: 'ENTREABRIR', flash: 'FLASH', frag: 'GRANADA', breach: 'CARGA' },
@@ -302,6 +307,10 @@ export const T = Object.freeze({
     ready: { touch: 'Pulsa LISTO · ESPERAR marca un grupo GO que lanzas en el turno', desk: 'ESPACIO: listo · H marca un grupo GO que lanzas en el turno' },
     goNow: { touch: (c) => `Grupo ${c} en posición: toca GO ${c} cuando quieras`, desk: (c) => `Grupo ${c} en posición: pulsa GO ${c} (o G) cuando quieras` },
     goWaiting: { touch: (n) => `${n} espera el GO`, desk: (n) => `${n} espera el GO` },
+    doors: {
+      touch: (n) => `${n === 1 ? 'Una puerta' : `${n} puertas`} sin decidir: toca el ? para elegir cómo y cuándo`,
+      desk: (n) => `${n === 1 ? 'Una puerta' : `${n} puertas`} sin decidir: haz clic en el ? para elegir cómo y cuándo`,
+    },
   },
 
   reject: 'Orden rechazada',

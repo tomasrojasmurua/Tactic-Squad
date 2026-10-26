@@ -143,6 +143,9 @@ export const ENTRY = Object.freeze({
   modes: Object.freeze(['kick', 'slow', 'flash', 'frag', 'breach']), // order of the picker
   goCodes: Object.freeze(['A', 'B', 'C']), // GO hold codes, in cycling and release order
   doorRange: 1.8, // m: a waypoint this close to a doorway can carry an entry for it
+  // A route drawn through a closed door stops this far before it, on a "?" point: how and when to go
+  // through is the player's call (sim/orders.js markDoors). Closer than DOORS.triggerDistance would open it.
+  askDistance: 0.75,
   lookPast: 1.6, // m past the doorway a stacked operator aims (through the crack / at the room)
   followGap: 0.12, // s after the grenade / charge goes off before the rest of the code moves in
   // De golpe: the door bursts open (no breach pause), loud, and whoever stands right behind it reels.

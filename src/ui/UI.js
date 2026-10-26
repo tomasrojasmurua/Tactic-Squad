@@ -19,7 +19,7 @@ export class UI {
   /** `session` is read live (its `team` = the side this screen plays); the UI never writes it. */
   constructor(root, bus, input, session) {
     this.root = root;
-    this.labels = new WorldLabels(root);
+    this.labels = new WorldLabels(root, bus);
     this.hud = new Hud(root, bus, session);
     this.squad = new SquadPanel(root, bus);
     this.screens = new Screens(root, bus);

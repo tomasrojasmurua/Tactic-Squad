@@ -147,11 +147,11 @@ test('el GO de un grupo suelta a los que esperan; el que viene atrasado sigue de
   const sim = new Simulation(MAP, { seed: 11, site: 'A', entry: 'principal', controllers: STILL });
   sim.skipToAssault();
   const [a, b] = sim.teams.attackers;
-  wp(sim, a, 8.2, 12.0);
+  wp(sim, a, 9.0, 12.2); // pegado a la puerta: la espera es la decisión de esa puerta
   cmd(sim, { type: 'setHold', unitId: a.id, code: 'A' });
   wp(sim, a, 12, 12.4);
   wp(sim, b, 6.2, 22.4); // lejos de su espera
-  wp(sim, b, 8.2, 13.4);
+  wp(sim, b, 9.0, 13.2);
   cmd(sim, { type: 'setHold', unitId: b.id, code: 'A' });
   wp(sim, b, 12, 13.1);
   sim.advancePhase();

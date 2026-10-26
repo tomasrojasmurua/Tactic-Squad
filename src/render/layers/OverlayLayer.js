@@ -241,7 +241,7 @@ export class OverlayLayer {
       const time = len / speed;
       if (time < left) {
         left -= time;
-        if (u.route[i].hold) return; // he will wait there
+        if (u.route[i].hold || u.route[i].ask) return; // he will wait there
         continue;
       }
       const k = len > 1e-6 ? (left * speed) / len : 0;

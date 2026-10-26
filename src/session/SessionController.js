@@ -14,8 +14,8 @@
 import { EV } from '../core/events.js';
 import { SIM } from '../config/balance.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
-import { controllableUnit, defuseCandidate, firstAlive, teamUnits } from '../sim/queries.js';
-import { SESSION_PHASE, isDecisionPhase } from './Session.js';
+import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors } from '../sim/queries.js';
+import { SESSION_PHASE, isDecisionPhase, isPlanningTime } from './Session.js';
 import { armOrConfirm } from './confirm.js';
 import { PlanRecorder } from './PlanRecorder.js';
 import { PhaseClock } from './PhaseClock.js';
@@ -51,7 +51,12 @@ export class SessionController {
     bus.on(EV.COMMAND, (cmd) => this.record(cmd));
     bus.on(EV.REQUEST, ({ action }) => this.handleRequest(action));
     bus.on(EV.SELECT, ({ unitId }) => this.select(unitId));
-    bus.on(EV.ROUTE_CHANGED, () => this.planning.refresh());
+    bus.on(EV.ROUTE_CHANGED, ({ unitId, kind }) => {
+      // A new / undone / cleared leg: the picker goes back to the last waypoint (indices may have moved).
+      const t = this.session.pointTarget;
+      if (t && t.unitId === unitId && (kind === 'add' || kind === 'undo' || kind === 'clear')) this.session.pointTarget = null;
+      this.planning.refresh();
+    });
     bus.on(EV.DEATH, ({ unitId }) => {
       if (unitId === this.session.selectedId) this.selectNextAlive();
     });
@@ -74,6 +79,7 @@ export class SessionController {
     this.session.phase = phase;
     this.session.pauseReason = phase === 'paused' ? reason : null;
     this.session.helpOpen = false; // the help never survives a phase change (it would cover the result)
+    this.session.pointTarget = null;
     if (phase !== 'paused') this.helpPaused = false;
     this.planning.cancel();
     this.planning.refresh();
@@ -200,7 +206,16 @@ export class SessionController {
       this.notice('tutorialFirst');
       return;
     }
-    if (isDecisionPhase(this.session)) return this.advance();
+    if (isDecisionPhase(this.session)) {
+      // Doors still on "?": their operators will stop there. Say so once; a second LISTO confirms.
+      const doors = pendingDoors(this.sim, this.session.team);
+      if (armOrConfirm(this.session, 'ready', doors > 0) === 'armed') {
+        this.notice('confirm_ready', doors);
+        this.sound('hold');
+        return;
+      }
+      return this.advance();
+    }
     if (phase === 'paused') {
       this.setPhase('running');
       this.sound('resume');
@@ -219,7 +234,8 @@ export class SessionController {
   handleRequest(action) {
     const phase = this.session.phase;
     const session = this.session;
-    if (session.confirm.action && session.confirm.action !== action) session.confirm.action = null;
+    const key = action === 'toggle' || action === 'execute' ? 'ready' : action; // LISTO's other names
+    if (session.confirm.action && session.confirm.action !== key) session.confirm.action = null;
     switch (action) {
       case 'start':
       case 'tutorial':
@@ -315,8 +331,21 @@ export class SessionController {
       }
       default:
         if (action.startsWith('entry_')) this.planning.setEntry(action.slice(6));
+        else if (action.startsWith('when_')) this.planning.setWhen(action === 'when_now' ? null : action.slice(5));
+        else if (action.startsWith('door_')) this.targetDoor(action);
         else if (action.startsWith('chooseEntry_') && phase === 'prep') this.chooseEntry(action.slice(12));
     }
+  }
+
+  /** A tapped "?" door point (door_<unitId>_<index>): its operator is selected and the picker edits that point. */
+  targetDoor(action) {
+    if (!isPlanningTime(this.session)) return;
+    const [, id, index] = action.split('_');
+    const u = controllableUnit(this.sim, +id, this.session.team);
+    if (!u) return;
+    this.select(u.id);
+    this.session.pointTarget = { unitId: u.id, index: +index };
+    this.sound('select');
   }
 
   /** Preparation: the squad starts from another entry (the camera follows). */
@@ -360,6 +389,7 @@ export class SessionController {
   select(unitId) {
     if (!controllableUnit(this.sim, unitId, this.session.team)) return;
     this.session.selectedId = unitId;
+    this.session.pointTarget = null;
     this.planning.refresh();
   }
 

@@ -261,7 +261,7 @@ export class Hud {
     // Actions: LISTO ends a decision phase; a running turn has no button (it cannot be paused).
     const running = phase === 'running';
     const deciding = isDecisionPhase(session);
-    setText(this.executeLabel, deciding ? T.actions.ready : T.actions.resume);
+    setText(this.executeLabel, !deciding ? T.actions.resume : session.confirm.action === 'ready' ? T.flow.confirmReady : T.actions.ready);
     setHidden(this.btnExecute, !deciding && phase !== 'paused');
     // GO buttons: the groups in use; they can be pressed only while the turn runs (or is paused).
     const team = session.team;

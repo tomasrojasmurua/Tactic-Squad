@@ -234,6 +234,16 @@ function holdAhead(u, code) {
 /** GO code of a hold waypoint (old plans without one wait for the first code). */
 export const holdCode = (p) => p.code || ENTRY.goCodes[0];
 
+/** unit.waitCode of an operator stopped at a "?" door point (no GO releases it: a decision does). */
+export const ASK_CODE = '?';
+
+/** "?" door points of the side still undecided (operators already stopped at one included). */
+export function pendingDoors(sim, team) {
+  let n = 0;
+  for (const u of sim.teams[team]) if (u.alive) for (const p of u.route) if (p.ask) n++;
+  return n;
+}
+
 /** Is someone of the side waiting for this GO code? */
 export function codeWaiting(sim, team, code) {
   for (const u of sim.teams[team]) if (u.alive && u.waitingGo && u.waitCode === code) return true;

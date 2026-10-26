@@ -14,7 +14,7 @@ import { POINTER, TOUCH } from '../config/input.js';
 import { NAV } from '../config/balance.js';
 import { routeTail, lastUserIndex, controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
-import { canEditRoutes } from '../session/Session.js';
+import { canEditRoutes, targetIndex } from '../session/Session.js';
 import { unitAt, waypointAt, nearTail, pickRadius } from './picking.js';
 import { RoutePreview } from './RoutePreview.js';
 
@@ -247,12 +247,14 @@ export class PlanningController {
   setEntry(mode) {
     const u = this.selectedUnit();
     if (!u || !this.canEdit) return true;
-    const i = lastUserIndex(u);
+    const i = targetIndex(this.session, u);
     if (i < 0) return true;
     const p = u.route[i];
-    const next = mode === 'none' || mode === p.entry ? null : mode;
+    // On a "?" door point every press is a decision ("Abrir" too); elsewhere the active mode toggles off.
+    const next = mode === 'none' || (mode === p.entry && !p.ask) ? null : mode;
     this.command({ type: 'setEntry', unitId: u.id, mode: next, index: i });
-    if (next && !p.hold && entryModeFits(this.getSim(), entryDoorwayAt(this.getSim().world, p.x, p.y), next)) {
+    // A door point waits for nobody unless the player says when; a plain stack waits for GO A.
+    if (next && !p.hold && !p.ask && entryModeFits(this.getSim(), entryDoorwayAt(this.getSim().world, p.x, p.y), next)) {
       this.command({ type: 'setHold', unitId: u.id, code: ENTRY.goCodes[0], index: i });
     }
     return true;
@@ -262,11 +264,11 @@ export class PlanningController {
   cycleEntry() {
     const u = this.selectedUnit();
     if (!u || !this.canEdit) return true;
-    const i = lastUserIndex(u);
+    const i = targetIndex(this.session, u);
     if (i < 0) return true;
     const sim = this.getSim();
     const p = u.route[i];
-    const k = entryDoorwayAt(sim.world, p.x, p.y);
+    const k = p.door >= 0 ? p.door : entryDoorwayAt(sim.world, p.x, p.y);
     if (k < 0) {
       this.command({ type: 'setEntry', unitId: u.id, mode: 'kick', index: i }); // rejected: tells why
       return true;
@@ -285,9 +287,28 @@ export class PlanningController {
     return true;
   }
 
+  /** When he goes through the door of the targeted point: right away (null) or with GO `code`. */
+  setWhen(code) {
+    const u = this.selectedUnit();
+    if (!u || !this.canEdit) return true;
+    const i = targetIndex(this.session, u);
+    if (i >= 0) this.command({ type: 'setHold', unitId: u.id, code, index: i });
+    return true;
+  }
+
+  /** H: the targeted waypoint waits for GO A -> B -> C -> no wait. */
   toggleHold() {
     const u = this.selectedUnit();
-    if (u && this.canEdit) this.command({ type: 'toggleHold', unitId: u.id });
+    if (!u || !this.canEdit) return true;
+    const i = targetIndex(this.session, u);
+    if (i < 0 || i === lastUserIndex(u)) {
+      this.command({ type: 'toggleHold', unitId: u.id }); // rejected without a waypoint: tells why
+      return true;
+    }
+    const p = u.route[i];
+    const codes = ENTRY.goCodes;
+    const next = p.hold ? codes.indexOf(p.code || codes[0]) + 1 : 0;
+    this.command({ type: 'setHold', unitId: u.id, code: next < codes.length ? codes[next] : null, index: i });
     return true;
   }
 }

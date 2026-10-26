@@ -3,7 +3,7 @@
 // sim/session, returns {text, strong} or null (= the phase's default line).
 // Priority: guided tutorial step > why a turn stopped (system pause) > replay
 // progress > GO prompts > planning steps.
-import { teamUnits, controllableUnit, isGoReady } from '../sim/queries.js';
+import { teamUnits, controllableUnit, isGoReady, pendingDoors } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
 import { T } from './texts.js';
 
@@ -33,6 +33,10 @@ export function coachHint(sim, session) {
     const w = teamUnits(sim, team).find((u) => u.alive && u.waitingGo);
     return w ? say(C.goWaiting[dev](w.name), false) : null;
   }
+  if (session.phase !== 'planning' && session.phase !== 'prep') return null;
+  // A door nobody decided: its operator will stop there.
+  const doors = pendingDoors(sim, team);
+  if (doors > 0) return say(C.doors[dev](doors), true);
   if (session.phase !== 'planning') return null;
   if (sim.turn > 1) return null; // the first planning teaches the steps; later ones are the player's
   const squad = teamUnits(sim, team);
