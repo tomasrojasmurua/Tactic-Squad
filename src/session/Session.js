@@ -16,11 +16,11 @@ export function createSession({ touch }) {
     phase: 'title',
     team: PLAYER_TEAM, // the side this player commands (orders are stamped with it)
     selectedId: -1, // unit id of the player's side, -1 = none
-    // Why time stopped: 'manual' | 'help' | 'contact' | 'idle' | 'background' | 'graphics' | 'orientation' | null
+    // Why time stopped: 'manual' | 'help' | 'idle' | 'background' | 'graphics' | 'orientation' | null
     pauseReason: null,
     confirm: { action: null, until: 0 }, // destructive request armed until `until` (performance.now ms)
     replay: { pending: 0, attempt: 0 }, // recorded orders still to re-issue; retries of this plan
-    autoPause: { contact: true, idle: true }, // session/AutoPause.js (saved per device)
+    autoPause: { idle: true }, // session/AutoPause.js (saved per device)
     tutorial: { active: false, step: 0, id: null, count: 0, done: false }, // session/Tutorial.js
     hoverUnitId: -1,
     helpOpen: false,

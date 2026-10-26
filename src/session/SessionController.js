@@ -43,7 +43,6 @@ export class SessionController {
     bus.on(EV.REQUEST, ({ action }) => this.handleRequest(action));
     bus.on(EV.SELECT, ({ unitId }) => this.select(unitId));
     bus.on(EV.ROUTE_CHANGED, () => this.planning.refresh());
-    bus.on(EV.SPOTTED, (e) => this.autoPause.onSpotted(e, this.sim));
     bus.on(EV.DEATH, ({ unitId }) => {
       if (unitId === this.session.selectedId) this.selectNextAlive();
     });
@@ -74,7 +73,7 @@ export class SessionController {
     this.bus.emit(EV.PHASE, { phase, previous, reason: this.session.pauseReason });
   }
 
-  /** Stops time if it runs (auto-pause reasons, help, background...); a contact is brought on screen. Never resumes. */
+  /** Stops time if it runs (auto-pause reasons, help, background...); a given focus point is brought on screen. Never resumes. */
   pause(reason, focus = null) {
     if (this.session.phase !== 'running') return;
     this.setPhase('paused', reason);
@@ -231,12 +230,9 @@ export class SessionController {
       case 'help':
         this.toggleHelp();
         return;
-      case 'autoPauseContact':
-      case 'autoPauseIdle': {
-        const kind = action === 'autoPauseContact' ? 'contact' : 'idle';
-        this.notice(`${kind}${this.autoPause.toggle(kind) ? 'On' : 'Off'}`);
+      case 'autoPauseIdle':
+        this.notice(`idle${this.autoPause.toggle('idle') ? 'On' : 'Off'}`);
         return;
-      }
       case 'mute':
         this.bus.emit(EV.MUTE_CHANGED, { muted: this.audio.toggleMute() });
         return;

@@ -85,7 +85,7 @@ export class TouchBar {
     setText(this.goLabel, goLater ? T.flow.goLater : T.touch.go);
     setText(this.restartLabel, session.confirm.action === 'restart' ? T.flow.confirmRestart : T.touch.restart);
     // Smart pause: the resume button asks for attention (amber pulse: styles.css [data-attn]).
-    const attn = phase === 'paused' && (session.pauseReason === 'idle' || session.pauseReason === 'contact') ? '1' : '';
+    const attn = phase === 'paused' && session.pauseReason === 'idle' ? '1' : '';
     if ((this.exec.dataset.attn || '') !== attn) this.exec.dataset.attn = attn;
     const armed = session.confirm.action === 'restart' ? '1' : '';
     if ((this.restart.dataset.armed || '') !== armed) this.restart.dataset.armed = armed;
