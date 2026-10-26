@@ -9,10 +9,14 @@
 //   {type:'cancelStroke', unitId}              removes the stroke drawn since the mark
 //   {type:'promoteLast', unitId}               last point becomes a user waypoint
 //   {type:'setLook', unitId, angle, index?}    facing at a user waypoint (default: last; none: idle facing)
-//   {type:'toggleHold', unitId}                last user waypoint waits for the GO code
+//   {type:'toggleHold', unitId}                last user waypoint waits for a GO code: none -> A -> B -> C -> none
+//   {type:'setHold', unitId, code, index?}     that waypoint (default: last) waits for `code` ('A'|'B'|'C'; null: no hold)
+//   {type:'setEntry', unitId, mode, index?}    how he goes through the doorway next to that waypoint (default: last):
+//                                              ENTRY.modes ('kick'|'slow'|'flash'|'frag'|'breach') or null (just walk through)
 //   {type:'undoWaypoint', unitId}              removes the last user waypoint (and its leg)
-//   {type:'clearRoute', unitId}
-//   {type:'go'}                                releases every unit of the side waiting for GO (rejected if none)
+//   {type:'clearRoute', unitId}                also cancels an entry he is preparing
+//   {type:'go', code?}                         releases the units of the side waiting for that GO code
+//                                              (none given: the first code someone waits for; rejected if nobody)
 //   {type:'defuseNow', unitId?}                an attacker next to the found bomb stops and defuses
 //                                              (that unit, else the closest one in range)
 //
@@ -22,10 +26,11 @@
 // replays) the unit's side must be human-controlled.
 // Rejections are reported as EV.ORDER_REJECTED with a REJECT code; the UI
 // turns codes into text (ui/texts.js T.rejectReason), the sim never does.
-import { NAV } from '../config/balance.js';
+import { NAV, ENTRY } from '../config/balance.js';
 import { EV } from '../core/events.js';
-import { routeTail, lastUserIndex, doorwayNear, defuseCandidate } from './queries.js';
+import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode } from './queries.js';
 import { startDefuse } from './objectives.js';
+import { cancelEntry, releaseDelay } from './entries.js';
 
 export const REJECT = Object.freeze({
   routeTooLong: 'routeTooLong',
@@ -33,6 +38,8 @@ export const REJECT = Object.freeze({
   noWaypoint: 'noWaypoint',
   notAtBomb: 'notAtBomb',
   nobodyWaiting: 'nobodyWaiting',
+  noDoor: 'noDoor', // an entry on a waypoint with no (suitable) doorway next to it
+  noGear: 'noGear', // an entry needing a flash / grenade / charge he no longer has
   goBeforeStart: 'goBeforeStart', // emitted by the session: GO pressed while still planning
 });
 
@@ -57,6 +64,10 @@ export function applyCommand(sim, cmd) {
       return setLook(sim, unit, cmd.angle, cmd.index);
     case 'toggleHold':
       return toggleHold(sim, unit);
+    case 'setHold':
+      return setHold(sim, unit, cmd.code ?? null, cmd.index);
+    case 'setEntry':
+      return setEntry(sim, unit, cmd.mode ?? null, cmd.index);
     case 'undoWaypoint':
       return undoWaypoint(sim, unit);
     case 'beginStroke':
@@ -70,6 +81,7 @@ export function applyCommand(sim, cmd) {
     case 'clearRoute':
       unit.route.length = 0;
       unit.waitingGo = false;
+      cancelEntry(unit);
       return changed(sim, unit, 'clear');
     default:
       break;
@@ -87,7 +99,7 @@ function addWaypoint(sim, unit, { x, y, user = true, quiet = false }) {
   const path = sim.world.nav.findPath(from.x, from.y, p.x, p.y, NAV.snapRadius);
   if (!path || !path.length) return quiet ? undefined : reject(sim, unit, REJECT.unreachable);
   path.forEach((q, i) => {
-    unit.route.push({ x: q.x, y: q.y, user: user && i === path.length - 1, look: null, hold: false });
+    unit.route.push({ x: q.x, y: q.y, user: user && i === path.length - 1, look: null, hold: false, code: null, entry: null, entryDoor: -1 });
   });
   changed(sim, unit, 'add');
 }
@@ -164,11 +176,52 @@ function setLook(sim, unit, angle, index = -1) {
   changed(sim, unit, 'look');
 }
 
+/** Cycles the last user waypoint's hold through the GO codes: none -> A -> B -> C -> none. */
 function toggleHold(sim, unit) {
   const last = lastUserIndex(unit);
   if (last < 0) return reject(sim, unit, REJECT.noWaypoint);
-  unit.route[last].hold = !unit.route[last].hold;
+  const p = unit.route[last];
+  const codes = ENTRY.goCodes;
+  const next = p.hold ? codes.indexOf(holdCode(p)) + 1 : 0;
+  applyHold(p, next < codes.length ? codes[next] : null);
   changed(sim, unit, 'hold');
+}
+
+function setHold(sim, unit, code, index) {
+  const i = userIndex(unit, index);
+  if (i < 0) return reject(sim, unit, REJECT.noWaypoint);
+  applyHold(unit.route[i], ENTRY.goCodes.includes(code) ? code : null);
+  changed(sim, unit, 'hold');
+}
+
+function applyHold(p, code) {
+  p.hold = code !== null;
+  p.code = code;
+}
+
+/** A valid user waypoint index (given, else the last one), or -1. */
+function userIndex(unit, index) {
+  if (index !== undefined && index !== null && index >= 0) return index < unit.route.length && unit.route[index].user ? index : -1;
+  return lastUserIndex(unit);
+}
+
+/** Sets (or clears, mode null) the entry of a user waypoint next to a doorway. */
+function setEntry(sim, unit, mode, index) {
+  const i = userIndex(unit, index);
+  if (i < 0) return reject(sim, unit, REJECT.noWaypoint);
+  const p = unit.route[i];
+  if (mode === null) {
+    p.entry = null;
+    p.entryDoor = -1;
+    return changed(sim, unit, 'entry');
+  }
+  const k = entryDoorwayAt(sim.world, p.x, p.y);
+  if (!entryModeFits(sim, k, mode)) return reject(sim, unit, REJECT.noDoor);
+  const item = ENTRY_GEAR[mode];
+  if (item && gearLeft(unit, item, i) <= 0) return reject(sim, unit, REJECT.noGear);
+  p.entry = mode;
+  p.entryDoor = k;
+  changed(sim, unit, 'entry');
 }
 
 function undoWaypoint(sim, unit) {
@@ -179,20 +232,43 @@ function undoWaypoint(sim, unit) {
   changed(sim, unit, 'undo');
 }
 
+/**
+ * Releases everyone of the side waiting for one GO code. If one of them
+ * throws a grenade or fires a charge, the others hold until it goes off
+ * (unit.goDelay), so they enter right after the bang.
+ */
 function issueGo(sim, cmd) {
-  let released = 0;
+  const team = cmd.team || null;
+  const code = ENTRY.goCodes.includes(cmd.code) ? cmd.code : firstCode(sim, cmd, team);
+  const released = [];
+  const own = []; // per released unit: its own bang delay (0 = it follows the others)
+  let delay = 0;
   for (const u of sim.units) {
-    if (u.waitingGo && obeys(sim, u, cmd)) {
-      u.waitingGo = false;
-      released++;
+    if (u.alive && u.waitingGo && u.waitCode === code && obeys(sim, u, cmd)) {
+      const d = releaseDelay(sim, u);
+      released.push(u);
+      own.push(d);
+      delay = Math.max(delay, d);
     }
   }
-  if (!released) {
+  if (!released.length) {
     sim.emit(EV.ORDER_REJECTED, { unitId: -1, reason: REJECT.nobodyWaiting });
     return;
   }
+  released.forEach((u, i) => {
+    u.waitingGo = false;
+    u.waitCode = null;
+    u.goDelay = own[i] > 0 ? 0 : delay;
+  });
   sim.goCount++;
-  sim.emit(EV.GO_CODE, { released });
+  sim.emit(EV.GO_CODE, { released: released.length, code });
+}
+
+/** The code a plain GO releases: the first one someone the order may command waits for. */
+function firstCode(sim, cmd, team) {
+  if (team) return nextGoCode(sim, team);
+  for (const c of ENTRY.goCodes) for (const u of sim.units) if (u.alive && u.waitingGo && u.waitCode === c && obeys(sim, u, cmd)) return c;
+  return null;
 }
 
 function defuseNow(sim, cmd) {
@@ -203,6 +279,7 @@ function defuseNow(sim, cmd) {
   }
   u.route.length = 0;
   u.waitingGo = false;
+  cancelEntry(u);
   changed(sim, u, 'clear');
   if (sim.bomb.defuserId !== u.id) startDefuse(sim, u);
 }

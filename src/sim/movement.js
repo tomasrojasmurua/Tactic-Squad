@@ -10,7 +10,8 @@ import { MOVE } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { angleDiff, angleTo, approachAngle } from '../core/math.js';
 import { tryOpenDoors, segmentCrossesDoorway } from './doors.js';
-import { isAiControlled } from './queries.js';
+import { armEntry } from './entries.js';
+import { isAiControlled, holdCode } from './queries.js';
 
 const carrot = { x: 0, y: 0 };
 
@@ -22,6 +23,7 @@ function desiredFacing(sim, u) {
   }
   if (u.alertTimer > 0) return angleTo(u.x, u.y, u.alertX, u.alertY);
   if (u.lastKnown && u.lastKnown.until > sim.time) return angleTo(u.x, u.y, u.lastKnown.x, u.lastKnown.y);
+  if (u.entry) return u.entry.look; // stacked on a door: aim through it
   if (u.route.length && !u.waitingGo) {
     if (u.lookOverride !== null) return u.lookOverride;
     if (!isAiControlled(sim, u) && lookAheadPoint(sim, u, carrot)) return angleTo(u.x, u.y, carrot.x, carrot.y);
@@ -90,7 +92,7 @@ export function updateMovement(sim, u, dt) {
     u.stun -= dt;
     return;
   }
-  if (u.waitingGo || !u.route.length) return;
+  if (u.waitingGo || u.entry || u.goDelay > 0 || !u.route.length) return;
 
   let speed = (u.behavior && u.behavior.type === 'patrol' ? MOVE.patrolSpeed : MOVE.speed) * u.mods.speed;
   if (u.target >= 0) speed *= MOVE.engageFactor;
@@ -103,7 +105,7 @@ export function updateMovement(sim, u, dt) {
   u.speedFraction = speed / MOVE.speed;
   let budget = speed * dt;
   let moved = 0;
-  while (budget > 0 && u.route.length && !u.waitingGo) {
+  while (budget > 0 && u.route.length && !u.waitingGo && !u.entry) {
     const p = u.route[0];
     const dx = p.x - u.x;
     const dy = p.y - u.y;
@@ -203,8 +205,10 @@ function arriveAt(sim, u, p) {
   u.lookOverride = p.look;
   if (p.hold) {
     u.waitingGo = true;
-    sim.emit(EV.HOLD_REACHED, { unitId: u.id });
+    u.waitCode = holdCode(p);
+    sim.emit(EV.HOLD_REACHED, { unitId: u.id, code: u.waitCode });
   }
+  if (p.entry) armEntry(sim, u, p);
   if (!u.route.length) {
     // End of the plan: hold the angle set there, or keep facing the way he came.
     u.idleLook = p.look !== null ? p.look : isAiControlled(sim, u) ? null : u.heading;

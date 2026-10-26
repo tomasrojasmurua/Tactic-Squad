@@ -126,12 +126,38 @@ export const DOORS = Object.freeze({
   triggerDistance: 0.85, // a moving unit this close to a closed door opens it
   openAngle: 98 * DEG,
   swingSpeed: 640 * DEG, // rad/s
-  kickPause: 0.16, // the opener stops this long (the "breach" beat)
+  kickPause: 0.16, // the opener stops this long (pushing the door open)
   thickness: 0.12,
   routeLookahead: 4, // route points checked for "does my path cross this doorway?" (stops at GO holds)
   crossingSlack: 0.2, // m beyond the door half-width still counted as crossing it
-  // How each side opens a door (presentation only: EV.DOOR_OPEN.mode). Attackers breach, defenders walk through.
-  openMode: Object.freeze({ attackers: 'kick', defenders: 'push' }),
+  crackAngle: 24 * DEG, // "entreabrir": the slab stops this far open (a crack to look through)
+  crackSpeed: 40 * DEG, // rad/s: a cracked door opens slowly and quietly
+});
+
+/**
+ * Door entries (sim/entries.js), Door Kickers style: an operator stacked on a
+ * waypoint next to a doorway is given HOW to go through it. Every number of
+ * the six modes lives here. Ranges in m, times in s.
+ */
+export const ENTRY = Object.freeze({
+  modes: Object.freeze(['kick', 'slow', 'flash', 'frag', 'breach']), // order of the picker
+  goCodes: Object.freeze(['A', 'B', 'C']), // GO hold codes, in cycling and release order
+  doorRange: 1.8, // m: a waypoint this close to a doorway can carry an entry for it
+  lookPast: 1.6, // m past the doorway a stacked operator aims (through the crack / at the room)
+  followGap: 0.12, // s after the grenade / charge goes off before the rest of the code moves in
+  // De golpe: the door bursts open (no breach pause), loud, and whoever stands right behind it reels.
+  kick: { hearing: 12, dazeRadius: 1.4, daze: 0.45 },
+  // Entreabrir: on arrival the door is cracked (DOORS.crackAngle) and he waits; GO opens it fully.
+  slow: { prepTime: 0.7, hearing: 2.2 },
+  // Grenades go through the doorway: open it first (if closed), then throw `throwDistance` inside.
+  throwDelay: 0.3, // s from the release (door opening) to the throw
+  throwDistance: 3.2, // m past the doorway, along its normal (short of a wall)
+  wallMargin: 0.45, // m kept from the wall the throw would hit
+  throwSpeed: 9, // m/s of the arc (flight time = path length / speed)
+  flash: { fuse: 0.9, radius: 9, blind: 3.2, minBlind: 0.4, awayFactor: 0.3, hearing: 18 },
+  frag: { fuse: 1.1, radius: 4.2, damage: 160, minDamage: 8, hearing: 22 },
+  // Carga de brecha: planted on arrival (prepTime), fired by the release. The door is destroyed.
+  breach: { prepTime: 1.8, fuse: 0.35, radius: 3.0, damage: 75, blind: 1.8, hearing: 22, depth: 0.25 },
 });
 
 export const ROUND = Object.freeze({

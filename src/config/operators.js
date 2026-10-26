@@ -23,12 +23,13 @@ export const BASE_MODIFIERS = Object.freeze({
 /**
  * Role fields: label (UI), weapon (config/weapons.js id), ability (id in
  * sim/abilities/index.js or null), modifiers (subset of BASE_MODIFIERS),
- * maxHp (optional, default UNIT.maxHp).
+ * maxHp (optional, default UNIT.maxHp), gear (door-entry utility carried:
+ * {flash, frag, breach} counts, sim/entries.js; the round economy will buy it later).
  */
 export const ROLES = Object.freeze({
   // Player squad (attackers).
-  assault: { label: 'Asaltante', weapon: 'rifle', ability: null, modifiers: {} },
-  entry: { label: 'Entrada', weapon: 'smg', ability: null, modifiers: {} },
+  assault: { label: 'Asaltante', weapon: 'rifle', ability: null, modifiers: {}, gear: { flash: 1, frag: 1 } },
+  entry: { label: 'Entrada', weapon: 'smg', ability: null, modifiers: {}, gear: { flash: 1, frag: 1, breach: 1 } },
   // AI defenders (their weapon comes from each map spawn).
   defender: { label: 'Defensor', weapon: 'rifle', ability: null, modifiers: {} },
 });

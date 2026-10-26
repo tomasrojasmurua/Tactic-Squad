@@ -14,7 +14,7 @@ export function updatePerception(sim) {
   }
 
   for (const viewer of units) {
-    if (!viewer.alive) continue;
+    if (!viewer.alive || viewer.blind > 0) continue; // flashed: sees nothing
     const cfg = viewer.vision; // VISION[team], scaled by the role
     for (const other of units) {
       if (!other.alive || other.team === viewer.team) continue;

@@ -266,8 +266,34 @@ function applyHit(sim, shooter, victim, x, y, dx, dy, covered) {
   kill(sim, victim, shooter, Math.atan2(dy, dx));
 }
 
-export function kill(sim, victim, killer, angle) {
-  recordDeath(sim, victim, killer); // reads the state BEFORE it is cleared below
+/**
+ * Explosion damage (grenade, breach charge: sim/entries.js) from (x, y).
+ * Same consequences as a bullet: wound flinch and pain alert, or death.
+ */
+export function applyBlast(sim, attacker, victim, amount, x, y) {
+  const damage = Math.round(amount);
+  const dx = victim.x - x;
+  const dy = victim.y - y;
+  const len = Math.hypot(dx, dy) || 1;
+  victim.hp -= damage;
+  const lethal = victim.hp <= 0;
+  sim.emit(EV.HIT, {
+    unitId: victim.id, team: victim.team, role: victim.role, attackerId: attacker ? attacker.id : -1, x: victim.x, y: victim.y,
+    dirX: dx / len, dirY: dy / len, damage, headshot: false, part: 'torso', covered: false, lethal, blast: true,
+  });
+  if (lethal) return kill(sim, victim, attacker, Math.atan2(dy, dx), 'explosive');
+  victim.recoil = Math.min(COMBAT.maxRecoil + COMBAT.flinchRecoil, victim.recoil + COMBAT.flinchRecoil);
+  if (victim.reaction > 0) victim.reaction += COMBAT.flinchDelay;
+  if (victim.target < 0) {
+    victim.alertTimer = COMBAT.alertDuration;
+    victim.alertX = x;
+    victim.alertY = y;
+  }
+}
+
+/** `code` forces the debrief cause (e.g. 'explosive'); otherwise it is read from the duel. */
+export function kill(sim, victim, killer, angle, code = null) {
+  recordDeath(sim, victim, killer, code); // reads the state BEFORE it is cleared below
   victim.hp = 0;
   victim.alive = false;
   victim.deathTime = sim.time;
@@ -276,6 +302,7 @@ export function kill(sim, victim, killer, angle) {
   victim.route.length = 0;
   victim.target = -1;
   victim.waitingGo = false;
-  if (killer) killer.stats.kills++;
+  victim.entry = null;
+  if (killer && killer.team !== victim.team) killer.stats.kills++;
   sim.emit(EV.DEATH, { unitId: victim.id, killerId: victim.killerId, team: victim.team, x: victim.x, y: victim.y, angle });
 }
