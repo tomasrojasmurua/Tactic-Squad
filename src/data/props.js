@@ -1,0 +1,36 @@
+// Prop catalog: gameplay footprint of each furniture type (meters).
+// w = size along local X, d = size along local Y, h = height.
+// blocksMove: units/paths avoid it. blocksVision: tall enough to block sight
+// and bullets. The look of each type is built in render/geometry/props.js.
+
+export const PROPS = Object.freeze({
+  desk: { w: 1.6, d: 0.8, h: 0.76, blocksMove: true },
+  officeChair: { w: 0.55, d: 0.55, h: 0.95, blocksMove: false },
+  cabinet: { w: 0.5, d: 0.6, h: 1.3, blocksMove: true },
+  bookshelf: { w: 1.8, d: 0.4, h: 2.0, blocksMove: true, blocksVision: true },
+  plant: { w: 0.5, d: 0.5, h: 1.1, blocksMove: true },
+  counter: { w: 2.0, d: 0.65, h: 0.92, blocksMove: true },
+  stove: { w: 0.8, d: 0.65, h: 0.92, blocksMove: true },
+  sink: { w: 1.0, d: 0.65, h: 0.92, blocksMove: true },
+  fridge: { w: 0.8, d: 0.75, h: 1.9, blocksMove: true, blocksVision: true },
+  table: { w: 1.6, d: 1.0, h: 0.76, blocksMove: true },
+  chair: { w: 0.45, d: 0.45, h: 0.9, blocksMove: false },
+  sofa: { w: 2.2, d: 0.9, h: 0.85, blocksMove: true },
+  armchair: { w: 0.9, d: 0.9, h: 0.85, blocksMove: true },
+  coffeeTable: { w: 1.2, d: 0.6, h: 0.45, blocksMove: true },
+  tvStand: { w: 1.6, d: 0.45, h: 1.1, blocksMove: true },
+  vending: { w: 1.0, d: 0.8, h: 1.9, blocksMove: true, blocksVision: true },
+  toilet: { w: 0.45, d: 0.7, h: 0.8, blocksMove: true },
+  washbasin: { w: 0.6, d: 0.45, h: 0.9, blocksMove: true },
+  stallWall: { w: 0.08, d: 1.5, h: 1.9, blocksMove: true, blocksVision: true },
+  crate: { w: 1.2, d: 1.2, h: 1.1, blocksMove: true },
+  crateStack: { w: 1.3, d: 1.3, h: 2.2, blocksMove: true, blocksVision: true },
+  barrel: { w: 0.6, d: 0.6, h: 1.0, blocksMove: true },
+  pallet: { w: 1.2, d: 1.0, h: 0.15, blocksMove: false },
+  rack: { w: 2.6, d: 0.8, h: 2.3, blocksMove: true, blocksVision: true },
+  van: { w: 5.0, d: 2.1, h: 2.1, blocksMove: true, blocksVision: true },
+  barrier: { w: 2.0, d: 0.5, h: 0.9, blocksMove: true },
+  cone: { w: 0.35, d: 0.35, h: 0.5, blocksMove: false },
+  bin: { w: 0.45, d: 0.45, h: 0.8, blocksMove: true },
+  bench: { w: 1.6, d: 0.45, h: 0.45, blocksMove: true },
+});

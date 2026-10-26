@@ -1,0 +1,150 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta charset="utf-8" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#000000" />
+    <title>Tactic Squad</title>
+    <link rel="icon" href="data:," />
+    <!-- HUD typeface (the only external resource the BRIEF allows). Static, so it loads before the first frame
+         (no font swap mid-HUD); offline, styles.css falls back to a condensed system stack. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="modulepreload" href="src/Game.js" />
+    <link rel="modulepreload" href="src/audio/Ambience.js" />
+    <link rel="modulepreload" href="src/audio/AudioDirector.js" />
+    <link rel="modulepreload" href="src/audio/AudioEngine.js" />
+    <link rel="modulepreload" href="src/audio/Music.js" />
+    <link rel="modulepreload" href="src/audio/SoundBank.js" />
+    <link rel="modulepreload" href="src/audio/Spatializer.js" />
+    <link rel="modulepreload" href="src/audio/VoicePool.js" />
+    <link rel="modulepreload" href="src/audio/dsp.js" />
+    <link rel="modulepreload" href="src/audio/music/ScenePlayer.js" />
+    <link rel="modulepreload" href="src/audio/music/Synth.js" />
+    <link rel="modulepreload" href="src/audio/music/scenes.js" />
+    <link rel="modulepreload" href="src/audio/recipes/drums.js" />
+    <link rel="modulepreload" href="src/audio/recipes/foley.js" />
+    <link rel="modulepreload" href="src/audio/recipes/guns.js" />
+    <link rel="modulepreload" href="src/audio/recipes/index.js" />
+    <link rel="modulepreload" href="src/audio/recipes/interface.js" />
+    <link rel="modulepreload" href="src/audio/recipes/weapons.js" />
+    <link rel="modulepreload" href="src/audio/recipes/world.js" />
+    <link rel="modulepreload" href="src/audio/reverb.js" />
+    <link rel="modulepreload" href="src/audio/surfaces.js" />
+    <link rel="modulepreload" href="src/config/audio.js" />
+    <link rel="modulepreload" href="src/config/balance.js" />
+    <link rel="modulepreload" href="src/config/input.js" />
+    <link rel="modulepreload" href="src/config/materials.js" />
+    <link rel="modulepreload" href="src/config/operators.js" />
+    <link rel="modulepreload" href="src/config/render.js" />
+    <link rel="modulepreload" href="src/config/squad.js" />
+    <link rel="modulepreload" href="src/config/ui.js" />
+    <link rel="modulepreload" href="src/config/weapons.js" />
+    <link rel="modulepreload" href="src/core/EventBus.js" />
+    <link rel="modulepreload" href="src/core/FixedLoop.js" />
+    <link rel="modulepreload" href="src/core/events.js" />
+    <link rel="modulepreload" href="src/core/geom.js" />
+    <link rel="modulepreload" href="src/core/mat4.js" />
+    <link rel="modulepreload" href="src/core/math.js" />
+    <link rel="modulepreload" href="src/core/rng.js" />
+    <link rel="modulepreload" href="src/data/maps/index.js" />
+    <link rel="modulepreload" href="src/data/maps/warehouse.js" />
+    <link rel="modulepreload" href="src/data/props.js" />
+    <link rel="modulepreload" href="src/input/CameraController.js" />
+    <link rel="modulepreload" href="src/input/CameraFraming.js" />
+    <link rel="modulepreload" href="src/input/InputManager.js" />
+    <link rel="modulepreload" href="src/input/MouseKeyController.js" />
+    <link rel="modulepreload" href="src/input/PlanningController.js" />
+    <link rel="modulepreload" href="src/input/RoutePreview.js" />
+    <link rel="modulepreload" href="src/input/ShortcutController.js" />
+    <link rel="modulepreload" href="src/input/TouchController.js" />
+    <link rel="modulepreload" href="src/input/picking.js" />
+    <link rel="modulepreload" href="src/main.js" />
+    <link rel="modulepreload" href="src/render/AdaptiveResolution.js" />
+    <link rel="modulepreload" href="src/render/Camera.js" />
+    <link rel="modulepreload" href="src/render/FramePacer.js" />
+    <link rel="modulepreload" href="src/render/PlanView.js" />
+    <link rel="modulepreload" href="src/render/Renderer.js" />
+    <link rel="modulepreload" href="src/render/decor/mapDecor.js" />
+    <link rel="modulepreload" href="src/render/fx/FxDirector.js" />
+    <link rel="modulepreload" href="src/render/fx/Particles.js" />
+    <link rel="modulepreload" href="src/render/fx/impacts.js" />
+    <link rel="modulepreload" href="src/render/geometry/MeshBuilder.js" />
+    <link rel="modulepreload" href="src/render/geometry/character.js" />
+    <link rel="modulepreload" href="src/render/geometry/props.js" />
+    <link rel="modulepreload" href="src/render/gl/Mesh.js" />
+    <link rel="modulepreload" href="src/render/gl/RenderTarget.js" />
+    <link rel="modulepreload" href="src/render/gl/ShaderProgram.js" />
+    <link rel="modulepreload" href="src/render/gl/ShapeBatch.js" />
+    <link rel="modulepreload" href="src/render/gl/context.js" />
+    <link rel="modulepreload" href="src/render/layers/ContactMarkers.js" />
+    <link rel="modulepreload" href="src/render/layers/DecalLayer.js" />
+    <link rel="modulepreload" href="src/render/layers/DoorLayer.js" />
+    <link rel="modulepreload" href="src/render/layers/FloorLayer.js" />
+    <link rel="modulepreload" href="src/render/layers/OverlayLayer.js" />
+    <link rel="modulepreload" href="src/render/layers/OverlayPings.js" />
+    <link rel="modulepreload" href="src/render/layers/StaticLayer.js" />
+    <link rel="modulepreload" href="src/render/layers/UnitLayer.js" />
+    <link rel="modulepreload" href="src/render/layers/VisionLayer.js" />
+    <link rel="modulepreload" href="src/render/layers/overlayColors.js" />
+    <link rel="modulepreload" href="src/render/sceneUniforms.js" />
+    <link rel="modulepreload" href="src/render/shaders/common.js" />
+    <link rel="modulepreload" href="src/render/shaders/decal.js" />
+    <link rel="modulepreload" href="src/render/shaders/flat.js" />
+    <link rel="modulepreload" href="src/render/shaders/floor.js" />
+    <link rel="modulepreload" href="src/render/shaders/lit.js" />
+    <link rel="modulepreload" href="src/render/shaders/particle.js" />
+    <link rel="modulepreload" href="src/render/textures/floorDecor.js" />
+    <link rel="modulepreload" href="src/render/textures/paint.js" />
+    <link rel="modulepreload" href="src/render/textures/shadowMap.js" />
+    <link rel="modulepreload" href="src/session/AutoPause.js" />
+    <link rel="modulepreload" href="src/session/PlanRecorder.js" />
+    <link rel="modulepreload" href="src/session/Session.js" />
+    <link rel="modulepreload" href="src/session/SessionController.js" />
+    <link rel="modulepreload" href="src/session/Tutorial.js" />
+    <link rel="modulepreload" href="src/session/confirm.js" />
+    <link rel="modulepreload" href="src/session/storage.js" />
+    <link rel="modulepreload" href="src/sim/NavGrid.js" />
+    <link rel="modulepreload" href="src/sim/Simulation.js" />
+    <link rel="modulepreload" href="src/sim/World.js" />
+    <link rel="modulepreload" href="src/sim/abilities/index.js" />
+    <link rel="modulepreload" href="src/sim/ai.js" />
+    <link rel="modulepreload" href="src/sim/collisions.js" />
+    <link rel="modulepreload" href="src/sim/combat.js" />
+    <link rel="modulepreload" href="src/sim/debrief.js" />
+    <link rel="modulepreload" href="src/sim/doors.js" />
+    <link rel="modulepreload" href="src/sim/mapCompiler.js" />
+    <link rel="modulepreload" href="src/sim/movement.js" />
+    <link rel="modulepreload" href="src/sim/objectives.js" />
+    <link rel="modulepreload" href="src/sim/orders.js" />
+    <link rel="modulepreload" href="src/sim/perception.js" />
+    <link rel="modulepreload" href="src/sim/queries.js" />
+    <link rel="modulepreload" href="src/sim/units.js" />
+    <link rel="modulepreload" href="src/sim/vision.js" />
+    <link rel="modulepreload" href="src/ui/Cursor.js" />
+    <link rel="modulepreload" href="src/ui/GfxNotice.js" />
+    <link rel="modulepreload" href="src/ui/Hud.js" />
+    <link rel="modulepreload" href="src/ui/HudOcclusion.js" />
+    <link rel="modulepreload" href="src/ui/Screens.js" />
+    <link rel="modulepreload" href="src/ui/SquadPanel.js" />
+    <link rel="modulepreload" href="src/ui/TouchBar.js" />
+    <link rel="modulepreload" href="src/ui/UI.js" />
+    <link rel="modulepreload" href="src/ui/WorldLabels.js" />
+    <link rel="modulepreload" href="src/ui/coach.js" />
+    <link rel="modulepreload" href="src/ui/debriefText.js" />
+    <link rel="modulepreload" href="src/ui/device.js" />
+    <link rel="modulepreload" href="src/ui/dom.js" />
+    <link rel="modulepreload" href="src/ui/flowTexts.js" />
+    <link rel="modulepreload" href="src/ui/icons.js" />
+    <link rel="modulepreload" href="src/ui/texts.js" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" />
+    <link rel="stylesheet" href="src/ui/styles.css" />
+  
+  
+    <div id="app">
+      <canvas id="view" tabindex="0"></canvas>
+      <div id="ui"></div>
+    </div>
+    <script type="module" src="src/main.js"></script>
+
+</body></html>

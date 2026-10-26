@@ -1,0 +1,262 @@
+// Every user-facing string (Spanish). Keep UI copy here, not in components.
+
+import { FLOW_TEXTS } from './flowTexts.js';
+
+export const T = Object.freeze({
+  gameTitle: 'TACTIC SQUAD',
+  subtitle: 'Prototipo táctico · Operación Almacén',
+  briefing:
+    'Tu escuadrón de Atacantes debe tomar el almacén. Planifica cada ruta, controla los ángulos y sincroniza la entrada. Elimina a los Defensores o planta la bomba en el sitio A.',
+  start: 'COMENZAR',
+  startHint: 'Clic o Intro',
+
+  phase: {
+    planning: 'PLANIFICACIÓN',
+    paused: 'PAUSA TÁCTICA',
+    running: 'EN EJECUCIÓN',
+    ended: 'FIN DE RONDA',
+  },
+  phaseSub: {
+    planning: 'Traza las rutas y pulsa ESPACIO para ejecutar',
+    paused: 'Edita rutas · ESPACIO para reanudar',
+    running: 'ESPACIO: pausa táctica · G: código GO',
+    ended: 'R: reintentar',
+  },
+
+  phaseSubTouch: {
+    planning: 'Dibuja rutas con el dedo · EJECUTAR para empezar',
+    paused: 'Edita rutas · SEGUIR para reanudar',
+    running: 'PAUSA para planificar · GO sincroniza',
+    ended: 'REINICIAR para otro intento',
+  },
+
+  /** Title screen: how to play in three steps (touch / desktop). */
+  howTo: {
+    touch: [
+      ['1', 'Toca un operador y arrastra el dedo para dibujar su ruta.'],
+      ['2', 'Mantén pulsado un punto para elegir hacia dónde mira.'],
+      ['3', 'EJECUTAR. Pausa cuando quieras y corrige sobre la marcha.'],
+    ],
+    desk: [
+      ['1', 'Selecciona un operador (1·2·3) y haz clic o arrastra su ruta.'],
+      ['2', 'Clic derecho y arrastra en un punto: hacia dónde mira.'],
+      ['3', 'ESPACIO ejecuta y pausa. H + G sincronizan la entrada.'],
+    ],
+  },
+
+  hints: [
+    ['Clic', 'punto de ruta'],
+    ['Arrastrar', 'dibujar ruta'],
+    ['Clic der.', 'mirar hacia'],
+    ['H', 'esperar GO'],
+    ['Retroceso', 'deshacer'],
+    ['X', 'borrar ruta'],
+  ],
+
+  actions: {
+    execute: 'Ejecutar',
+    pause: 'Pausa',
+    resume: 'Reanudar',
+    go: 'GO',
+    restart: 'Reiniciar',
+    help: 'Controles',
+    music: 'Música',
+  },
+
+  status: {
+    dead: 'Abatido',
+    waitingGo: 'Esperando GO',
+    planting: 'Plantando',
+    reloading: 'Recargando',
+    combat: 'En combate',
+    moving: 'Avanzando',
+    breaching: 'Abriendo',
+    planned: 'Ruta lista',
+    idle: 'En posición',
+  },
+
+  objective: {
+    title: 'Objetivo',
+    text: 'Plantar en A o eliminar Defensores',
+    kills: (n, total) => `Defensores abatidos: ${n}/${total}`,
+    bombCarrier: (name) => `Bomba: ${name}`,
+    bombDropped: 'Bomba: caída',
+    bombPlanted: 'Bomba: plantada',
+  },
+
+  plant: 'PLANTANDO BOMBA',
+  reloadTag: 'RECARGANDO',
+  tagGo: 'GO',
+  tagBomb: 'BOMBA',
+
+  result: {
+    win: 'MISIÓN CUMPLIDA',
+    lose: 'MISIÓN FALLIDA',
+    reason: {
+      planted: 'Bomba plantada en el sitio A',
+      elimination: 'Todos los Defensores abatidos',
+      wiped: 'Escuadrón abatido',
+      time: 'Se acabó el tiempo',
+    },
+    retry: 'R: reintentar el mismo plan · N: plan nuevo',
+    retryTouch: 'Mismo plan, nueva tirada: corrige lo que falló.',
+    retryButton: 'REINTENTAR PLAN',
+    newPlanButton: 'PLAN NUEVO',
+    whyLost: 'Por qué',
+    stats: { time: 'Tiempo', kills: 'Bajas', losses: 'Pérdidas', accuracy: 'Precisión' },
+  },
+
+  /** Area names (map rooms / doorways ids), used by the debrief. */
+  places: {
+    patio: 'el patio',
+    oficina: 'la oficina',
+    cocina: 'la cocina',
+    pasillo: 'el pasillo',
+    banio: 'el baño',
+    sala: 'la sala',
+    sitioA: 'el sitio A',
+    nave: 'la nave',
+  },
+  /** Doorway names (map door / opening ids). */
+  doors: {
+    entrada: 'la puerta de entrada',
+    oficina: 'la puerta de la oficina',
+    cocina: 'la puerta de la cocina',
+    'ofi-cocina': 'la puerta oficina–cocina',
+    banio: 'la puerta del baño',
+    'banio-ext': 'la puerta exterior del baño',
+    sala: 'la puerta de la sala',
+    'sitio-pasillo': 'la puerta del pasillo al sitio',
+    'sitio-sala': 'la puerta sur del sitio',
+    'arco-cocina': 'el arco de la cocina',
+  },
+  side: { N: 'el norte', S: 'el sur', E: 'el este', W: 'el oeste' },
+
+  /**
+   * Round debrief: one sentence per fallen operator (sim/debrief.js codes)
+   * and per outcome note. `d` = {name, killer, place, killerPlace, side};
+   * `place` is the doorway he fell in when there is one, else the room.
+   */
+  debrief: {
+    death: {
+      blindside: (d) => `${d.name} no cubría ${d.side}: ${d.killer} lo abatió desde ${d.killerPlace}.`,
+      preaimed: (d) => `${d.name} entró en ${d.place} directo a un ángulo que ${d.killer} ya vigilaba.`,
+      outnumbered: (d) => `${d.name} quedó solo contra dos en ${d.place}.`,
+      reloading: (d) => `${d.name} recargaba en ${d.place} cuando apareció ${d.killer}.`,
+      moving: (d) => `${d.name} disparó en movimiento contra ${d.killer}, que lo esperaba quieto.`,
+      duel: (d) => `${d.name} perdió el duelo con ${d.killer} en ${d.place}.`,
+    },
+    tip: {
+      blindside: 'Fija la mirada de cada punto hacia los ángulos que quedan abiertos.',
+      preaimed: 'No cruces una puerta vigilada de frente: flanquea o entra por dos lados a la vez con GO.',
+      outnumbered: 'Avanzad juntos: usa ESPERAR en cada operador y da el GO cuando todos estén en posición.',
+      reloading: 'Recarga detrás de una pared, no en medio de la sala.',
+      moving: 'Para cerca de la esquina y apunta antes de asomarte: quieto disparas mejor.',
+      duel: 'Apunta de antemano hacia donde aparecerá el enemigo: quien ya mira el ángulo dispara primero.',
+      time: 'Cada segundo cuenta: el reloj solo corre mientras ejecutas.',
+    },
+    note: {
+      waitingGo: (d) => `${d.name} se quedó esperando el código GO en ${d.place}.`,
+      noRoute: (d) => `${d.name} no recibió ninguna ruta.`,
+      bombIdle: (d) => `La bomba quedó tirada en ${d.place}: nadie la recogió.`,
+      bombShort: (d) => `${d.name} llevaba la bomba pero no llegó al sitio A.`,
+      flawless: () => 'Sin bajas: una ejecución limpia.',
+      synced: () => 'Entrada sincronizada con GO.',
+    },
+  },
+
+  feed: {
+    contact: '¡Contacto!',
+    go: 'Código GO',
+    bombDropped: 'Bomba caída',
+    bombPicked: (n) => `${n} recogió la bomba`,
+    planted: 'Bomba plantada',
+  },
+
+  help: {
+    title: 'CONTROLES',
+    rows: [
+      ['1 · 2 · 3 / Tab', 'Seleccionar operador'],
+      ['Clic izquierdo', 'Añadir punto de ruta (con pathfinding)'],
+      ['Arrastrar', 'Dibujar ruta a mano alzada'],
+      ['Clic derecho (arrastrar)', 'Fijar dirección de mirada del último punto'],
+      ['H', 'El último punto espera el código GO'],
+      ['G', 'Dar el código GO (todos avanzan a la vez)'],
+      ['Retroceso / Z', 'Deshacer último punto'],
+      ['X / Supr', 'Borrar ruta'],
+      ['Espacio', 'Ejecutar / pausa táctica'],
+      ['WASD · flechas · bordes', 'Mover cámara'],
+      ['Rueda · + / −', 'Zoom'],
+      ['Botón central (arrastrar)', 'Mover cámara'],
+      ['F', 'Centrar en el operador'],
+      ['R', 'Reintentar con el mismo plan'],
+      ['N', 'Plan nuevo (borra todas las rutas)'],
+      ['Esc', 'Cancelar el trazo en curso'],
+      ['P', 'Plantar la bomba (portador en el sitio A)'],
+      ['M', 'Silenciar'],
+      ['B', 'Música sí / no'],
+      ['F1 / I', 'Mostrar u ocultar controles'],
+    ],
+    close: 'Cerrar',
+  },
+
+  touch: {
+    execute: 'Ejecutar',
+    pause: 'Pausa',
+    resume: 'Seguir',
+    go: 'GO',
+    hold: 'Esperar',
+    undo: 'Deshacer',
+    clear: 'Borrar',
+    plant: 'Plantar',
+    restart: 'Reiniciar',
+    fullscreen: 'Pantalla',
+    help: 'Ayuda',
+    music: 'Música',
+    rows: [
+      ['Tocar operador / tarjeta', 'Seleccionar'],
+      ['Tocar el suelo', 'Añadir punto de ruta'],
+      ['Arrastrar un dedo', 'Dibujar ruta (desde el operador o el punto tocado)'],
+      ['Mantener pulsado un punto', 'Arrastrar para fijar la mirada'],
+      ['Mantener pulsado el suelo', 'El último punto mira hacia ahí'],
+      ['Arrastrar desde el último punto', 'Continuar la ruta'],
+      ['Dos dedos', 'Mover cámara · pellizcar para zoom'],
+      ['Dedo en el borde al dibujar', 'La cámara te sigue'],
+      ['Esperar', 'El último punto espera el código GO'],
+      ['GO', 'Todos los que esperan avanzan a la vez'],
+    ],
+    startHint: 'Toca para comenzar',
+  },
+  rotate: { title: 'Gira tu teléfono', text: 'Tactic Squad se juega en horizontal.' },
+  gfxLost: { title: 'Restaurando gráficos…', text: 'El sistema liberó la pantalla del juego. La ronda está en pausa y tu plan sigue intacto.' },
+
+  /** Onboarding: the banner's sub line tells a new player the next step. */
+  coach: {
+    select: { touch: 'Toca a un operador para darle órdenes', desk: 'Selecciona un operador (clic o 1·2·3)' },
+    route: { touch: (n) => `Arrastra desde ${n} para dibujar su ruta`, desk: (n) => `Clic o arrastra para trazar la ruta de ${n}` },
+    look: { touch: 'Mantén pulsado un punto y arrastra: hacia dónde mira', desk: 'Clic derecho y arrastra: hacia dónde mira' },
+    next: { touch: (n) => `Bien. Ahora ${n}: tócalo y traza su ruta`, desk: (n) => `Bien. Ahora ${n} (tecla o clic)` },
+    ready: { touch: 'Listo: pulsa EJECUTAR · ESPERAR + GO = entrada sincronizada', desk: 'Listo: ESPACIO para ejecutar · H + G = entrada sincronizada' },
+    goReady: { touch: '¡Todos en posición! Pulsa GO', desk: '¡Todos en posición! Pulsa G' },
+    goWaiting: { touch: (n) => `${n} espera el GO`, desk: (n) => `${n} espera el GO (G)` },
+  },
+
+  reject: 'Orden rechazada',
+  /** Text for each sim/orders.js REJECT code. */
+  rejectReason: {
+    routeTooLong: 'Ruta demasiado larga',
+    unreachable: 'Destino inalcanzable',
+    noWaypoint: 'Sin punto de ruta',
+    carrierNotInSite: 'El portador no está en el sitio A',
+    nobodyWaiting: 'Nadie espera el GO: marca ESPERAR en un punto',
+    goBeforeStart: 'El GO se da durante la ejecución',
+  },
+  webgl: 'Tu navegador no soporta WebGL2, necesario para Tactic Squad. Prueba con una versión reciente de Chrome, Edge o Firefox.',
+  fatal: 'Se produjo un error al iniciar el juego.',
+  muted: 'Sonido desactivado',
+  unmuted: 'Sonido activado',
+  musicOn: 'Música activada',
+  musicOff: 'Música desactivada',
+
+  flow: FLOW_TEXTS, // ui/flowTexts.js (owner: gameplay)
+});
