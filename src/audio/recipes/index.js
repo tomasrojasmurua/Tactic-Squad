@@ -13,7 +13,7 @@ import { GUN_LAYERS, GUN_LAYER_RECIPES } from './guns.js';
 
 export { GUN_LAYERS };
 import { footstep, gear, bodyFall, gunDrop, impactWall, impactWood, impactMetal, impactFlesh, impactHead, ricochet, whiz } from './foley.js';
-import { doorKick, doorSlam, creak, ventLoop, cityLoop, pipeClank, farHorn, farPlane } from './world.js';
+import { doorKick, doorSlam, creak, ventLoop, cityLoop, pipeClank, farHorn, farPlane, explosion, flashbang, grenadePin } from './world.js';
 import { UI_RECIPES } from './interface.js';
 import { DRUMS } from './drums.js';
 
@@ -88,6 +88,11 @@ add('ricochet', 3, ricochet);
 add('door.kick', 4, (k) => doorKick(k, DOOR_SWING_SECONDS));
 add('door.slam', 3, doorSlam, MID); // -51 dB above 11 kHz
 add('door.creak', 4, (k) => creak(k, 260, 620, k.vary(0.34, 0.25), [[950, 7], [1900, 9], [3100, 10]]));
+// Door entries (sim/entries.js): a slow, long creak for a door eased ajar, explosions, flashbangs, the pin.
+add('door.crack', 2, (k) => creak(k, 120, 260, k.vary(0.8, 0.15), [[700, 6], [1400, 8], [2600, 9]]));
+add('blast', 3, explosion);
+add('flashbang', 2, flashbang);
+add('grenade.pin', 2, grenadePin);
 for (const s of SURFACES) add(`casing.${s}`, 4, (k) => casing(k, s));
 add('dryFire', 3, dryFire);
 // Reload parts used only by lazy weapons are lazy too (config/audio.js RELOADS).

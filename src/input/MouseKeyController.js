@@ -88,6 +88,7 @@ export class MouseKeyController {
       this.p.command({ type: 'toggleHold', unitId: u.id });
       return true;
     }
+    if (matches(KEYS.entry, e.code)) return this.p.cycleEntry();
     return false;
   }
 }

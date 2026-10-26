@@ -84,7 +84,9 @@ test('el botón de espera rota entre los códigos: A, B, C y sin espera', () => 
 });
 
 test('entreabrir: al llegar la puerta queda entornada (se ve, no se pasa) y con el GO se abre', () => {
-  const { sim, a, door } = atTheDoor({ defender: [36, 3] });
+  const { sim, a, b, d0, door } = atTheDoor({ defender: [14, 13.2], facing: 0 });
+  b.x = 3; // LOBO lejos: por la rendija también pasan las balas
+  b.y = 18;
   stack(sim, a, 11.75, 'A', 'slow');
   runFor(sim, 1.0);
   assert.equal(a.entry?.mode, 'slow');
@@ -93,6 +95,9 @@ test('entreabrir: al llegar la puerta queda entornada (se ve, no se pasa) y con 
   assert.ok(door.cracked && !door.open, 'entornada, todavía cerrada para el paso');
   assert.ok(Math.abs(Math.abs(door.angle) - DOORS.crackAngle) < 1e-9);
   assert.ok(isGoReady(sim, T));
+  assert.ok(d0.seenByEnemy, 'por la rendija se ve al defensor del pasillo');
+  assert.equal(a.target, -1, 'pero no se le dispara a través de la puerta');
+  assert.equal(a.stats.shots, 0);
   cmd(sim, { type: 'go' });
   runFor(sim, 2.5);
   assert.ok(door.open);

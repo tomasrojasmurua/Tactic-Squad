@@ -130,8 +130,8 @@ export const DOORS = Object.freeze({
   thickness: 0.12,
   routeLookahead: 4, // route points checked for "does my path cross this doorway?" (stops at GO holds)
   crossingSlack: 0.2, // m beyond the door half-width still counted as crossing it
-  crackAngle: 24 * DEG, // "entreabrir": the slab stops this far open (a crack to look through)
-  crackSpeed: 40 * DEG, // rad/s: a cracked door opens slowly and quietly
+  crackAngle: 32 * DEG, // "entreabrir": the slab stops this far open (a crack to look through)
+  crackSpeed: 50 * DEG, // rad/s: a cracked door opens slowly and quietly
 });
 
 /**
@@ -148,7 +148,10 @@ export const ENTRY = Object.freeze({
   // De golpe: the door bursts open (no breach pause), loud, and whoever stands right behind it reels.
   kick: { hearing: 12, dazeRadius: 1.4, daze: 0.45 },
   // Entreabrir: on arrival the door is cracked (DOORS.crackAngle) and he waits; GO opens it fully.
-  slow: { prepTime: 0.7, hearing: 2.2 },
+  // While the door stays ajar he looks through the gap: an extra eye just past the cracked slab, facing
+  // into the room with this field of view (it only reveals: no shooting through a closed door).
+  // peekDepth: m beyond the point where the slab crosses the doorway's center line.
+  slow: { prepTime: 0.7, hearing: 2.2, peekFov: 70 * DEG, peekDepth: 0.08 },
   // Grenades go through the doorway: open it first (if closed), then throw `throwDistance` inside.
   throwDelay: 0.3, // s from the release (door opening) to the throw
   throwDistance: 3.2, // m past the doorway, along its normal (short of a wall)

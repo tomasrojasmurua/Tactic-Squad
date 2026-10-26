@@ -3,7 +3,8 @@
 // kill feed, toasts and the red damage vignette.
 import { EV } from '../core/events.js';
 import { HUD, VIGNETTE } from '../config/ui.js';
-import { teamUnits, enemyTeam, anyWaitingGo, anyGoHold, isGoReady, bombKnownTo } from '../sim/queries.js';
+import { teamUnits, enemyTeam, isGoReady, bombKnownTo, codeInUse, codeWaiting, nextGoCode } from '../sim/queries.js';
+import { ENTRY } from '../config/balance.js';
 import { coachHint } from './coach.js';
 import { el, setText, toggle, formatTime, setStyle, setClassName, setHidden } from './dom.js';
 import { ICON, WEAPON_ICONS } from './icons.js';
@@ -58,7 +59,11 @@ export class Hud {
       return b;
     };
     this.btnExecute = button('primary', `<span class="ico">${ICON.play}</span><span class="lbl">${T.actions.execute}</span><span class="key">ESPACIO</span>`, 'execute');
-    this.btnGo = button('go', `<span>${T.actions.go}</span><span class="key">G</span>`, 'go');
+    // One GO button per code in use (A, B, C); G gives the next one someone waits for.
+    this.goButtons = ENTRY.goCodes.map((code) => {
+      const b = button('go', `<span>${T.actions.go} <span class="code">${code}</span></span><span class="key">G</span>`, `go_${code}`);
+      return { code, b, label: b.firstChild, key: b.querySelector('.key') };
+    });
     this.btnRestart = button('', `<span>${T.actions.restart}</span><span class="key">R</span>`, 'restart');
     this.btnHelp = button('', `<span>${T.actions.help}</span><span class="key">F1</span>`, 'help');
     this.btnMusic = button('music', `<span class="ico">${ICON.music}</span><span class="key">B</span>`, 'music');
@@ -67,7 +72,6 @@ export class Hud {
     this.executeLabel = this.btnExecute.querySelector('.lbl');
     this.executeIcon = this.btnExecute.querySelector('.ico');
     this.executeIconKind = 'play';
-    this.goLabel = this.btnGo.firstChild;
     this.restartLabel = this.btnRestart.firstChild;
 
     // Guided tutorial: always-available way out (flow); shown with `display` from update().
@@ -134,7 +138,16 @@ export class Hud {
       if (e.team === enemyTeam(this.viewer.team)) this.pushInfo(T.feed.contact);
     });
     bus.on(EV.GO_CODE, (e) => {
-      if (e.released > 0) this.pushInfo(T.feed.go);
+      if (e.released > 0) this.pushInfo(e.code ? T.feed.goCode(e.code) : T.feed.go);
+    });
+    bus.on(EV.GRENADE_THROWN, (e) => {
+      const u = this.sim && this.sim.units[e.unitId];
+      if (u && u.team === this.viewer.team) this.pushInfo(T.feed.grenade[e.kind]);
+    });
+    bus.on(EV.CHARGE_BLAST, () => this.pushInfo(T.feed.breach));
+    bus.on(EV.BLINDED, (e) => {
+      const u = this.sim && this.sim.units[e.unitId];
+      if (u && e.cause === 'flash' && e.seconds > 1) this.pushInfo(T.feed.flashed(u.name));
     });
     bus.on(EV.BOMB_SPOTTED, (e) => this.pushInfo(T.feed.bombSpotted(e.site)));
     bus.on(EV.DEFUSE_START, (e) => this.pushInfo(T.feed.defusing(this.sim.units[e.unitId].name)));
@@ -233,19 +246,27 @@ export class Hud {
       this.executeIcon.innerHTML = ICON[iconKind];
     }
     setHidden(this.btnExecute, phase === 'ended');
-    const waiting = anyWaitingGo(sim);
-    const holds = anyGoHold(sim);
-    setHidden(this.btnGo, !(waiting || holds) || phase === 'ended');
-    // GO only works while time runs: in planning it shows what it will do, disabled.
+    // GO only works while time runs: in planning the buttons show what they will do, disabled.
     const goLater = phase === 'planning';
-    if (this.btnGo.disabled !== goLater) this.btnGo.disabled = goLater;
-    setText(this.goLabel, goLater ? T.flow.goLater : T.actions.go);
+    const team = session.team;
+    const next = nextGoCode(sim, team);
+    let first = true;
+    for (const g of this.goButtons) {
+      const used = codeInUse(sim, team, g.code) && phase !== 'ended';
+      setHidden(g.b, !used);
+      if (!used) continue;
+      if (g.b.disabled !== goLater) g.b.disabled = goLater;
+      toggle(g.b, 'ready', codeWaiting(sim, team, g.code));
+      toggle(g.b, 'all', isGoReady(sim, team, g.code)); // everyone of that code in position: the moment to press it
+      // The G key gives the next code someone waits for (or the first in use).
+      setStyle(g.key, 'display', (next ? g.code === next : first) ? '' : 'none');
+      setText(g.label.firstChild, goLater && first ? `${T.flow.goLater} · ` : `${T.actions.go} `);
+      first = false;
+    }
     const armed = session.confirm.action === 'restart';
     setText(this.restartLabel, armed ? T.flow.confirmRestart : T.actions.restart);
     if ((this.btnRestart.dataset.armed || '') !== (armed ? '1' : '')) this.btnRestart.dataset.armed = armed ? '1' : '';
     setStyle(this.tutSkip, 'display', session.tutorial.active ? '' : 'none');
-    toggle(this.btnGo, 'ready', waiting);
-    toggle(this.btnGo, 'all', isGoReady(sim)); // everyone in position: the moment to press it
     toggle(this.btnMusic, 'off', !session.musicOn);
     toggle(this.hints, 'hidden', running || phase === 'ended');
 

@@ -205,8 +205,17 @@ export class SessionController {
         if (phase !== 'title') this.framing.toggleOverview();
         return;
       case 'go':
-        if (phase === 'running' || phase === 'paused') this.command({ type: 'go' });
+      case 'go_A':
+      case 'go_B':
+      case 'go_C': {
+        // Plain GO (key G, touch button): the next code someone waits for; go_X: that code.
+        const code = action.length > 3 ? action.slice(3) : undefined;
+        if (phase === 'running' || phase === 'paused') this.command(code ? { type: 'go', code } : { type: 'go' });
         else if (phase === 'planning') this.bus.emit(EV.ORDER_REJECTED, { unitId: -1, reason: 'goBeforeStart' });
+        return;
+      }
+      case 'entryCycle':
+        this.planning.cycleEntry();
         return;
       case 'restart':
         // Retry: the same plan (every recorded order, at its tick) on the same seed.
@@ -246,6 +255,7 @@ export class SessionController {
         return;
       }
       default:
+        if (action.startsWith('entry_')) this.planning.setEntry(action.slice(6));
     }
   }
 

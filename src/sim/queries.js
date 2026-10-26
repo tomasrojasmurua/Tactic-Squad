@@ -4,7 +4,7 @@
 // the ONLY sim helpers that input/ui/render may import besides vision.js.
 import { pointInBox, pointAabbDistance, pointSegDist2 } from '../core/geom.js';
 import { angleDiff } from '../core/math.js';
-import { MOVE, ROUND, ENTRY } from '../config/balance.js';
+import { MOVE, ROUND, ENTRY, DOORS } from '../config/balance.js';
 import { PROP_SURFACE, SURFACE_PROBE, DOOR_SURFACE, FENCE_SURFACE } from '../config/materials.js';
 import { TEAMS } from '../config/squad.js';
 
@@ -274,6 +274,25 @@ export function gearLeft(u, item, skip = -1) {
   for (let i = 0; i < u.route.length; i++) if (i !== skip && u.route[i].entry && ENTRY_GEAR[u.route[i].entry] === item) n--;
   if (u.entry && !u.entry.spent && ENTRY_GEAR[u.entry.mode] === item) n--;
   return n;
+}
+
+/**
+ * The eye of an operator looking through a door he cracked ajar ("entreabrir"):
+ * on the doorway's center line just past the cracked slab, facing into the
+ * room (a head poked through the gap: a real 30° gap shows almost nothing). Writes {x, y, facing} into `out`;
+ * false when he is not peeking (door still swinging, opened, or no such entry).
+ */
+export function peekEye(sim, u, out) {
+  const e = u.entry;
+  if (!u.alive || !e || e.mode !== 'slow' || e.phase !== 'armed' || e.doorway >= sim.doors.length) return false;
+  const door = sim.doors[e.doorway];
+  if (!door.cracked || door.angle !== door.target) return false;
+  const d = sim.world.doorways[e.doorway];
+  const depth = (d.length / 2) * Math.tan(DOORS.crackAngle) + ENTRY.slow.peekDepth;
+  out.x = d.cx + d.normalX * e.side * depth;
+  out.y = d.cy + d.normalY * e.side * depth;
+  out.facing = Math.atan2(d.normalY * e.side, d.normalX * e.side);
+  return true;
 }
 
 /** Position of a thrown grenade `age` seconds after the throw (2D; its height is presentation). */

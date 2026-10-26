@@ -13,6 +13,7 @@ export const HUD = Object.freeze({
   labelFarPxPerMeter: 30, // below this zoom tags shrink and sit behind the operator (never on a body)
   labelHudMarginPx: 22, // a tag this close to a HUD plate is hidden (tags are ~60 px wide with a status)
   labelBehindMeters: 0.95, // distance of a far tag from the operator, opposite to where it looks
+  pointTagOffsetPx: 11, // waypoint tags (GO code, door entry) sit this far below the waypoint
   coachInterval: 0.12, // s between re-evaluations of the onboarding hint (gameplay flow)
 });
 

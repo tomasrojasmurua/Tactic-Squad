@@ -195,7 +195,13 @@ export const OVERLAY = Object.freeze({
     enemyTick: Object.freeze([0.38, 0.55]),
     waitGo: 0.4, // pulsing white ring of an operator waiting for GO (+ pulse amplitude)
     waitGoPulse: 0.06,
+    blind: 0.52, // flashed / dazed unit: pale yellow flicker ring
+    prep: 0.47, // progress arc of an entry being prepared (cracking a door, planting a charge)
   }),
+  // Door entries: dashed link waypoint -> doorway and a marker on the doorway, per mode (rgb).
+  entryColors: Object.freeze({ kick: [1, 1, 1], slow: [0.6, 0.85, 1], flash: [1, 0.96, 0.62], frag: [0.72, 0.85, 0.45], breach: [1, 0.69, 0.18] }),
+  entryMarker: 0.2, // m, half-size of the doorway marker
+  grenadeRadius: 0.09, // m, a grenade in flight / on the floor
 });
 
 /** Feedback pings (render/layers/OverlayPings.js): life (s), radii (m), ring width (px). */
@@ -227,7 +233,10 @@ export const FX = Object.freeze({
   bloodRed: [0.86, 0.02, 0.03],
   bloodDark: [0.55, 0.0, 0.02],
   muzzleLight: { radius: 4.5, intensity: 0.85, life: 0.07, color: [1.0, 0.75, 0.4] },
-  shake: { ownShot: 0.025, death: 0.12, door: 0.07, hitTaken: 0.18 },
+  shake: { ownShot: 0.025, death: 0.12, door: 0.07, hitTaken: 0.18, flash: 0.12, frag: 0.3, breach: 0.35 },
+  // Grenades and the breach charge (render/fx/FxDirector.js).
+  flashLight: { radius: 9, intensity: 2.6, life: 0.45, color: [1, 0.98, 0.9] },
+  blastLight: { radius: 7, intensity: 2.0, life: 0.35, color: [1, 0.6, 0.25] },
   maxParticles: 4000,
   maxDecals: 700,
   hitFlashSeconds: 0.09,

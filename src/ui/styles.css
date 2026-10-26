@@ -596,3 +596,51 @@ body.touch .weapon-plate { left: var(--sal); }
   .help-box .help-options { margin-top: 8px; }
   .help-box .help-options .btn { font-size: 11px; letter-spacing: 0.03em; flex-basis: 160px; }
 }
+
+/* ------------------------------------------------------------ door entry picker (ui/EntryPicker.js) */
+.entry-picker {
+  position: absolute; left: 50%; bottom: calc(122px + var(--sab)); transform: translateX(-50%); display: none; flex-direction: column; gap: 4px;
+  padding: 6px 8px 8px; background: var(--plate-strong); border: 1px solid var(--line-strong); pointer-events: none; z-index: 5;
+}
+.entry-picker.on { display: flex; }
+.entry-picker .ep-head { display: flex; align-items: baseline; gap: 8px; font-size: 11px; letter-spacing: 0.12em; white-space: nowrap; }
+.entry-picker .ep-title { font-weight: 800; text-transform: uppercase; color: var(--cyan); }
+.entry-picker .ep-code { font-weight: 900; color: #071a0b; background: var(--ok); padding: 0 5px; letter-spacing: 0.06em; }
+.entry-picker .ep-code[hidden] { display: none; }
+.entry-picker .ep-hint { color: #cfd6db; letter-spacing: 0.02em; overflow: hidden; text-overflow: ellipsis; max-width: 380px; }
+.entry-picker .ep-row { display: flex; gap: 4px; }
+.ebtn {
+  pointer-events: auto; touch-action: manipulation; min-width: 62px; min-height: 48px; padding: 4px 6px; position: relative;
+  font-family: var(--font); color: #fff; background: rgba(20, 23, 27, 0.95); border: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer;
+}
+.ebtn:hover { border-color: rgba(255, 255, 255, 0.45); }
+.ebtn:active { transform: scale(0.95); }
+.ebtn .ei { width: 20px; height: 20px; }
+.ebtn .ei svg { width: 100%; height: 100%; }
+.ebtn .el { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.ebtn .en { position: absolute; top: 2px; right: 4px; font-size: 9.5px; font-weight: 800; color: var(--amber); }
+.ebtn.active { background: var(--cyan-deep); border-color: var(--cyan); box-shadow: 0 0 0 1px rgba(47, 215, 255, 0.35); }
+.ebtn[disabled] { opacity: 0.32; cursor: default; }
+.ebtn-flash .ei { color: #fff6c4; }
+.ebtn-frag .ei { color: #b9d38a; }
+.ebtn-breach .ei { color: var(--amber); }
+/* Phones: centred at the bottom, under the thumb, between the chips and the objective. */
+body.touch .entry-picker { bottom: calc(6px + var(--sab)); padding: 4px 6px 6px; }
+body.touch .entry-picker .ep-hint { display: none; }
+body.touch .ebtn { min-width: 50px; padding: 3px 4px; }
+@media (max-width: 700px) { body.touch .ebtn .el { font-size: 8.5px; letter-spacing: 0.04em; } body.touch .ebtn { min-width: 46px; } }
+
+/* GO buttons per code (desktop): the code letter rides on the button. */
+.actions .btn.go .code { font-weight: 900; }
+.tag .s.blind { color: #111; background: #fff6c4; }
+.tag .s.entry { color: var(--cyan); }
+/* Waypoint tags: GO code + door entry under the planned point (ui/WorldLabels.js). */
+.ptag {
+  position: absolute; left: 0; top: 0; height: 15px; padding: 0 4px; font-size: 9.5px; font-weight: 900; letter-spacing: 0.08em; white-space: nowrap;
+  color: #0b0b0b; background: var(--op); opacity: 0.78; display: flex; align-items: center; will-change: transform;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+.ptag.sel { opacity: 1; }
+.ptag.off { display: none; }
+.ptag.under-hud { visibility: hidden; }

@@ -40,6 +40,7 @@ export class DoorLayer {
     applyLit(p, frame);
     applyDoorAccent(p);
     for (const d of sim.doors) {
+      if (d.destroyed) continue; // blown off by a breach charge (its debris is FX)
       const def = d.def;
       mat4.fromTransform(this.model, def.hingeX, def.hingeY, 0, def.closedAngle + d.angle);
       p.mat4('uModel', this.model);

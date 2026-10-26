@@ -37,11 +37,18 @@ export function armEntry(sim, u, p) {
   const d = sim.world.doorways[k];
   if (!d) return;
   const side = farSide(d, u, u.route[0]);
-  // While stacked he aims through the doorway (unless the player set a look there).
-  const look = p.look !== null ? p.look : angleTo(u.x, u.y, d.cx + d.normalX * side * ENTRY.lookPast, d.cy + d.normalY * side * ENTRY.lookPast);
+  const door = doorOf(sim, k);
+  // While stacked he aims through the doorway (unless the player set a look there);
+  // cracking a door, through the gap it leaves at the latch side.
+  let ax = d.cx;
+  let ay = d.cy;
+  if (p.entry === 'slow' && door && !door.open) {
+    ax = door.def.hingeX + Math.cos(door.def.closedAngle) * door.def.length * 0.85;
+    ay = door.def.hingeY + Math.sin(door.def.closedAngle) * door.def.length * 0.85;
+  }
+  const look = p.look !== null ? p.look : angleTo(u.x, u.y, ax + d.normalX * side * ENTRY.lookPast, ay + d.normalY * side * ENTRY.lookPast);
   const prep = PREP[p.entry] || 0;
   u.entry = { mode: p.entry, doorway: k, side, look, phase: prep > 0 ? 'prep' : 'armed', t: prep, spent: false, step: null, grenade: null };
-  const door = doorOf(sim, k);
   if (p.entry === 'slow' && door) {
     crackDoor(sim, door, u);
     alertNear(sim, u, d.cx, d.cy, ENTRY.slow.hearing, false);
