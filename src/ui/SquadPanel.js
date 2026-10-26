@@ -67,7 +67,7 @@ export class SquadPanel {
       setText(c.chipAmmo, u.alive ? u.mag : '—');
       toggle(c.root, 'selected', session.selectedId === id && u.alive);
       toggle(c.root, 'dead', !u.alive);
-      toggle(c.root, 'has-bomb', u.carriesBomb);
+      toggle(c.root, 'has-bomb', u.defusing);
       setStatus(c.status, u, sim);
     }
   }
@@ -81,8 +81,8 @@ function setStatus(node, u, sim) {
   if (!u.alive) {
     text = S.dead;
     cls = 'alert';
-  } else if (u.planting) {
-    text = `${S.planting} ${Math.round(sim.bomb.progress * 100)}%`;
+  } else if (u.defusing) {
+    text = `${S.defusing} ${Math.round(sim.bomb.progress * 100)}%`;
     cls = 'plant';
   } else if (u.target >= 0) {
     text = S.combat;

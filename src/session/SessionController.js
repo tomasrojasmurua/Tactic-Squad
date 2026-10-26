@@ -8,7 +8,7 @@
 import { EV } from '../core/events.js';
 import { SIM } from '../config/balance.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
-import { controllableUnit, firstAlive, teamUnits } from '../sim/queries.js';
+import { controllableUnit, defuseCandidate, firstAlive, teamUnits } from '../sim/queries.js';
 import { armOrConfirm } from './confirm.js';
 import { PlanRecorder } from './PlanRecorder.js';
 import { AutoPause } from './AutoPause.js';
@@ -43,7 +43,6 @@ export class SessionController {
     bus.on(EV.REQUEST, ({ action }) => this.handleRequest(action));
     bus.on(EV.SELECT, ({ unitId }) => this.select(unitId));
     bus.on(EV.ROUTE_CHANGED, () => this.planning.refresh());
-    bus.on(EV.SPOTTED, (e) => this.autoPause.onSpotted(e, this.sim));
     bus.on(EV.DEATH, ({ unitId }) => {
       if (unitId === this.session.selectedId) this.selectNextAlive();
     });
@@ -74,7 +73,7 @@ export class SessionController {
     this.bus.emit(EV.PHASE, { phase, previous, reason: this.session.pauseReason });
   }
 
-  /** Stops time if it runs (auto-pause reasons, help, background...); a contact is brought on screen. Never resumes. */
+  /** Stops time if it runs (auto-pause reasons, help, background...); a given focus point is brought on screen. Never resumes. */
   pause(reason, focus = null) {
     if (this.session.phase !== 'running') return;
     this.setPhase('paused', reason);
@@ -183,8 +182,12 @@ export class SessionController {
           this.pause('manual');
         }
         return;
-      case 'plant':
-        if (phase !== 'ended' && phase !== 'title') this.command({ type: 'plantNow' });
+      case 'defuse':
+        if (phase !== 'ended' && phase !== 'title') {
+          // The selected operator if he is at the bomb, else whoever is closest to it.
+          const sel = this.session.selectedId;
+          this.command({ type: 'defuseNow', unitId: defuseCandidate(this.sim, sel) ? sel : -1 });
+        }
         return;
       case 'undo':
         this.planning.undo();
@@ -227,12 +230,9 @@ export class SessionController {
       case 'help':
         this.toggleHelp();
         return;
-      case 'autoPauseContact':
-      case 'autoPauseIdle': {
-        const kind = action === 'autoPauseContact' ? 'contact' : 'idle';
-        this.notice(`${kind}${this.autoPause.toggle(kind) ? 'On' : 'Off'}`);
+      case 'autoPauseIdle':
+        this.notice(`idle${this.autoPause.toggle('idle') ? 'On' : 'Off'}`);
         return;
-      }
       case 'mute':
         this.bus.emit(EV.MUTE_CHANGED, { muted: this.audio.toggleMute() });
         return;

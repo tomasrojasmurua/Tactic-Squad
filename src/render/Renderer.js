@@ -24,10 +24,11 @@ import { LIGHTING, DISPLAY } from '../config/render.js';
 import { BOMB_COLOR } from '../config/materials.js';
 import { hexToRgb } from '../core/math.js';
 import { EV } from '../core/events.js';
+import { bombKnownTo } from '../sim/queries.js';
 
 const MAX_LIGHTS = LIGHTING.maxDynamicLights;
 const BOMB_LIGHT = hexToRgb(BOMB_COLOR.light);
-/** Blinking light of a planted bomb. */
+/** Blinking light of the bomb (only once the viewer's side knows where it is). */
 const BOMB_BLINK = Object.freeze({ rate: 9, threshold: 0.2, radius: 2.2, intensity: 0.9 });
 
 export class Renderer {
@@ -173,7 +174,7 @@ export class Renderer {
       const l = list[i];
       writeLight(L, n++, l.x, l.y, l.radius, l.intensity * (1 - l.age / l.life), l.color);
     }
-    if (sim.bomb.planted && n < MAX_LIGHTS && Math.sin(this.time * BOMB_BLINK.rate) > BOMB_BLINK.threshold) {
+    if (!sim.bomb.defused && bombKnownTo(sim, this.frame.viewer) && n < MAX_LIGHTS && Math.sin(this.time * BOMB_BLINK.rate) > BOMB_BLINK.threshold) {
       writeLight(L, n++, sim.bomb.x, sim.bomb.y, BOMB_BLINK.radius, BOMB_BLINK.intensity, BOMB_LIGHT);
     }
     L.count = n;

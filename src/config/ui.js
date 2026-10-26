@@ -47,14 +47,12 @@ export const HUD_OCCLUSION = Object.freeze({
 /**
  * Session flow tuning (owner: gameplay — what happens and when, not how it looks).
  *   confirmSeconds   a destructive request (wipe the plan) must be repeated within this time
- *   autoPause        smart pause (DK2-style); the player toggles each one in the help screen
+ *   autoPause        smart pause; the player toggles it in the help screen (never on contact)
  *   storageKeys      localStorage keys (read/written through session/storage.js, try/catch)
  */
 export const FLOW = Object.freeze({
   confirmSeconds: 3,
   autoPause: Object.freeze({
-    contact: true, // default: pause when the squad spots an enemy after a quiet spell...
-    contactQuietSeconds: 4, // ...of this long without any enemy in sight (not every bullet)
     idle: true, // default: pause when every operator is done (no route, no GO hold) for...
     idleSeconds: 1.0, // ...this long
   }),

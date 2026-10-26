@@ -14,11 +14,10 @@ export const EV = Object.freeze({
   SPOTTED: 'spotted', // {unitId, byTeam, x, y}
   HOLD_REACHED: 'holdReached', // {unitId}
   GO_CODE: 'goCode', // {}
-  BOMB_DROPPED: 'bombDropped', // {x, y}
-  BOMB_PICKED: 'bombPicked', // {unitId}
-  PLANT_START: 'plantStart', // {unitId}
-  PLANT_ABORT: 'plantAbort', // {unitId}
-  BOMB_PLANTED: 'bombPlanted', // {unitId, x, y}
+  BOMB_SPOTTED: 'bombSpotted', // {unitId, site, x, y}: the attackers found the bomb
+  DEFUSE_START: 'defuseStart', // {unitId, x, y}
+  DEFUSE_ABORT: 'defuseAbort', // {unitId}
+  BOMB_DEFUSED: 'bombDefused', // {unitId, x, y}
   ROUND_END: 'roundEnd', // {winner, reason}
   ORDER_REJECTED: 'orderRejected', // {unitId, reason: REJECT code (sim/orders.js)}
   ROUTE_CHANGED: 'routeChanged', // {unitId, kind}
@@ -27,7 +26,7 @@ export const EV = Object.freeze({
   COMMAND: 'command', // a sim command object, queued for the simulation
   SELECT: 'select', // {unitId}
   PHASE: 'phase', // {phase, previous}
-  // {action}: start | toggle | execute | go | plant | hold | undo | clear |
+  // {action}: start | toggle | execute | go | defuse | hold | undo | clear |
   //           restart | newPlan | help | mute | music | focus | fullscreen  (session/SessionController.js)
   REQUEST: 'request',
   ROUND_RESET: 'roundReset', // {sim}

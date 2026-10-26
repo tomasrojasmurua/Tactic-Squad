@@ -1,4 +1,4 @@
-// Session-level shortcuts (execute/pause, GO, restart, new plan, help, mute, music, focus, plant, overview).
+// Session-level shortcuts (execute/pause, GO, restart, new plan, help, mute, music, focus, defuse, overview).
 // Emits EV.REQUEST; the Game decides what each request means in each phase.
 import { EV } from '../core/events.js';
 import { KEYS } from '../config/input.js';
@@ -32,7 +32,7 @@ export class ShortcutController {
     if (matches(KEYS.mute, code)) return this.request('mute');
     if (matches(KEYS.music, code)) return this.request('music');
     if (matches(KEYS.focus, code)) return this.request('focus');
-    if (matches(KEYS.plant, code)) return this.request('plant');
+    if (matches(KEYS.defuse, code)) return this.request('defuse');
     if (matches(KEYS.overview, code)) return this.request('overview');
     return false;
   }

@@ -22,9 +22,9 @@ export const TEAM_LABEL = Object.freeze({
 
 /** Squad slots in spawn order. `role` -> config/operators.js ROLES (stats, weapon, ability); `weapon` overrides the role's. */
 export const SQUAD = Object.freeze([
-  { callsign: 'ÁGUILA', color: '#38c6ff', role: 'assault', carriesBomb: true },
-  { callsign: 'LOBO', color: '#ffab2e', role: 'entry', carriesBomb: false },
-  { callsign: 'ZORRO', color: '#9be15d', role: 'assault', carriesBomb: false },
+  { callsign: 'ÁGUILA', color: '#38c6ff', role: 'assault' },
+  { callsign: 'LOBO', color: '#ffab2e', role: 'entry' },
+  { callsign: 'ZORRO', color: '#9be15d', role: 'assault' },
 ]);
 
 export const DEFENDER_NAME = 'Defensor';

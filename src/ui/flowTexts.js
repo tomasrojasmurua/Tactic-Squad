@@ -8,7 +8,6 @@ export const FLOW_TEXTS = Object.freeze({
   tutorialStart: 'Tutorial guiado',
   tutorialSkip: 'Saltar tutorial',
   rerollButton: 'Nueva tirada',
-  autoPauseContact: (on) => `Autopausa al contacto: ${on ? 'SÍ' : 'NO'}`,
   autoPauseIdle: (on) => `Autopausa sin órdenes: ${on ? 'SÍ' : 'NO'}`,
   /** EV.NOTICE codes -> toast text. */
   notice: {
@@ -19,14 +18,11 @@ export const FLOW_TEXTS = Object.freeze({
     tutorialDone: '¡Tutorial completado! Termina la misión con el resto del escuadrón',
     tutorialSkipped: 'Tutorial omitido (puedes repetirlo desde el título)',
     tutorialFirst: 'Primero completa el paso del tutorial',
-    contactOn: 'Autopausa al contacto: activada',
-    contactOff: 'Autopausa al contacto: desactivada',
     idleOn: 'Autopausa sin órdenes: activada',
     idleOff: 'Autopausa sin órdenes: desactivada',
   },
   /** Banner hint while paused, by session.pauseReason. */
   pause: {
-    contact: { touch: '¡Contacto! Revisa la amenaza, ajusta y pulsa SEGUIR', desk: '¡Contacto! Revisa la amenaza, ajusta y pulsa ESPACIO' },
     idle: { touch: 'Todos en posición y sin órdenes: dales nuevas rutas y pulsa SEGUIR', desk: 'Todos en posición y sin órdenes: traza nuevas rutas y pulsa ESPACIO' },
     background: { touch: 'Pausa automática al salir del juego · SEGUIR para continuar', desk: 'Pausa automática al salir del juego · ESPACIO para continuar' },
     graphics: { touch: 'Pausa: se restauraron los gráficos · SEGUIR para continuar', desk: 'Pausa: se restauraron los gráficos · ESPACIO para continuar' },
@@ -36,7 +32,7 @@ export const FLOW_TEXTS = Object.freeze({
   /** Guided first round: one instruction per session/Tutorial.js step. */
   tutorial: {
     prefix: (k, n) => `TUTORIAL ${k}/${n} · `,
-    select: { touch: 'Toca a ÁGUILA (lleva la bomba)', desk: 'Haz clic en ÁGUILA (o pulsa 1) para seleccionarlo' },
+    select: { touch: 'Toca a ÁGUILA', desk: 'Haz clic en ÁGUILA (o pulsa 1) para seleccionarlo' },
     route: { touch: 'Arrastra desde ÁGUILA hasta la puerta', desk: 'Arrastra (o haz clic) desde ÁGUILA hasta la puerta del edificio' },
     look: { touch: 'Mantén pulsado el último punto y arrastra: su mirada', desk: 'Clic derecho en el último punto y arrastra: hacia dónde mirará' },
     hold: { touch: 'Pulsa ESPERAR: allí aguardará tu GO', desk: 'Pulsa H: en ese punto aguardará tu código GO' },

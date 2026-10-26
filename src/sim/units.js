@@ -23,7 +23,7 @@ function resolveRole(roleId, team) {
   return r;
 }
 
-export function createUnit({ id, team, slot, name, color, x, y, facing, role: roleId, weaponId, behavior = null, carriesBomb = false }) {
+export function createUnit({ id, team, slot, name, color, x, y, facing, role: roleId, weaponId, behavior = null }) {
   const r = resolveRole(roleId, team);
   weaponId = weaponId || r.role.weapon;
   const weapon = WEAPONS[weaponId];
@@ -90,8 +90,7 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     behavior,
     ai: { patrolIndex: 0, wait: 0, baseFacing: facing, repath: 0, noiseX: 0, noiseY: 0, rotating: null, rotated: false },
 
-    carriesBomb,
-    planting: false,
+    defusing: false, // working on the bomb (sim/objectives.js): still, not shooting
     deathTime: -1,
     killerId: -1,
     deathAngle: 0,

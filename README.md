@@ -30,6 +30,12 @@ Abrir `index.html` directamente con `file://` no funciona, porque los navegadore
 
 Para agregar una clase de operador: una entrada en `config/operators.js` (`ROLES`) y, si tiene habilidad, un módulo en `sim/abilities/` registrado en `sim/abilities/index.js`.
 
+## Objetivo de la ronda
+
+Los Defensores dejan la bomba en el sitio A o en el B (por ahora lo decide la semilla de la ronda; un reintento conserva el sitio). Los Atacantes no saben en cuál está hasta verla. Para ganar la desactivan, 7 s quietos junto a ella sin disparar (moverse o morir pierde el progreso), o eliminan a todos los Defensores. Los Defensores ganan si se acaba el tiempo o eliminan a todos los Atacantes.
+
+Cada mapa declara como datos (`src/data/maps/warehouse.js`): `sites` (rectángulo y punto de la bomba), `entries` (puerta y posiciones de inicio de cada entrada atacante), `deployment` (línea de despliegue y mitad de cada bando), puertas con `barricade: true` (huecos aptos para barricadas) y `defense` (la disposición de los Defensores para cada sitio, hasta que llegue la fase de preparación).
+
 ## Pruebas
 
-`tests/determinism.test.mjs` juega una ronda completa sin pantalla dos veces con la misma semilla y comprueba que el resultado es idéntico. Algunos comentarios del código mencionan `docs/ARCHITECTURE.md`, `docs/BRIEF.md` y `tests/sim-plans.mjs`, que no venían en el zip original.
+`tests/determinism.test.mjs` juega rondas completas sin pantalla dos veces con la misma semilla (una por sitio) y comprueba que el resultado es idéntico. `tests/round.test.mjs` cubre la desactivación, las condiciones de victoria y la coherencia de los datos del mapa. Algunos comentarios del código mencionan `docs/ARCHITECTURE.md`, `docs/BRIEF.md` y `tests/sim-plans.mjs`, que no venían en el zip original.

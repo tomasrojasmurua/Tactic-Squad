@@ -53,8 +53,7 @@ export const ANIMATION = Object.freeze({
   recoilRecovery: 9, // gun kick decay (1/s)
   deathSlide: 0.4, // m a falling body slides along the killing shot
   deathTurnSpeed: 1.6, // fraction of the fall after which the body faces the shot
-  bombOnBack: [-0.24, 0, 1.0], // carried bomb position (unit-local m)
-  droppedBombYaw: 0.4,
+  bombYaw: 0.4, // the bomb lying on the floor
   hitTint: [1, 0.92, 0.85], // flash color when hit
   hitTintStrength: 0.75,
   aimBlendSpeed: 9, // low ready <-> shouldered (1/s)

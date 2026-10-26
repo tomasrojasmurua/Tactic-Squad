@@ -23,7 +23,7 @@ export const KEYS = Object.freeze({
   panRight: ['KeyD', 'ArrowRight'],
   zoomIn: ['Equal', 'NumpadAdd'],
   zoomOut: ['Minus', 'NumpadSubtract'],
-  plant: ['KeyP'],
+  defuse: ['KeyP'],
   overview: ['KeyV'], // see the whole map (again = back)
 });
 

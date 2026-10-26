@@ -136,8 +136,8 @@ export const DOORS = Object.freeze({
 
 export const ROUND = Object.freeze({
   timeLimit: 120, // seconds of execution
-  plantTime: 4.0,
-  bombPickupRadius: 0.7,
+  defuseTime: 7.0, // s standing still next to the bomb
+  defuseRadius: 1.1, // m from the bomb an attacker can work on it
   goStallHint: 3, // s with every planned operator waiting for GO before the HUD insists
 });
 

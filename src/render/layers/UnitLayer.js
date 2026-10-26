@@ -12,6 +12,7 @@ import { LIT_LAYOUT } from '../geometry/MeshBuilder.js';
 import { buildCharacterGeometry, createPose, standingPose, deadPose, blendPose, PART_NAMES } from '../geometry/character.js';
 import { LIT_VS, LIT_FS } from '../shaders/lit.js';
 import { applyLit } from '../sceneUniforms.js';
+import { bombKnownTo } from '../../sim/queries.js';
 
 const PART_MESH = {
   legL: 'leg',
@@ -192,14 +193,6 @@ export class UnitLayer {
       if (name === 'pack' && gear.extra) gear.extra.draw();
     }
 
-    if (u.carriesBomb && u.alive) {
-      p.f3('uColorMul', 1, 1, 1);
-      const [bx, by, bz] = ANIMATION.bombOnBack;
-      mat4.fromTransform(this.part, bx, by, bz, Math.PI / 2);
-      mat4.multiply(this.model, this.root, this.part);
-      p.mat4('uModel', this.model);
-      this.bombMesh.draw();
-    }
   }
 
   /** Head / pack / extra meshes for the unit's role (silhouette per class). */
@@ -220,11 +213,11 @@ export class UnitLayer {
 
   drawBomb(p, frame, sim) {
     const b = sim.bomb;
-    if (b.carrierId >= 0) return;
+    if (!bombKnownTo(sim, frame.viewer)) return; // the attackers must find it
     p.f1('uFogEnabled', 1);
     p.f4('uTint', 0, 0, 0, 0);
     p.f3('uColorMul', 1, 1, 1);
-    mat4.fromTransform(this.model, b.x, b.y, 0, ANIMATION.droppedBombYaw);
+    mat4.fromTransform(this.model, b.x, b.y, 0, ANIMATION.bombYaw);
     p.mat4('uModel', this.model);
     this.bombMesh.draw();
   }

@@ -12,7 +12,7 @@ import {
 import { WEAPONS } from '../config/weapons.js';
 import { ROLE_GEAR, TEAM_GEAR } from '../config/render.js';
 import { TEAMS, PLAYER_TEAM } from '../config/squad.js';
-import { unitById, plantProgress, teamUnits, enemyTeam } from '../sim/queries.js';
+import { unitById, defuseProgress, teamUnits, enemyTeam } from '../sim/queries.js';
 import { weaponSoundNames, gunLayerNames, GUN_LAYERS } from './recipes/index.js';
 import { acousticsAt, impactSoundFor, nearMiss } from './surfaces.js';
 import { Ambience } from './Ambience.js';
@@ -58,12 +58,11 @@ export class AudioDirector {
       this.music.onEvent('go');
     });
     on(EV.HOLD_REACHED, () => this.ui('hold', 0.6));
-    on(EV.PLANT_START, () => {
+    on(EV.DEFUSE_START, () => {
       this.ui('plant');
       this.music.onEvent('plant');
     });
-    on(EV.BOMB_PLANTED, () => this.ui('planted'));
-    on(EV.BOMB_DROPPED, (ev) => this.at('gunDrop.soft', ev.x, ev.y, L.gunDrop, 'foley'));
+    on(EV.BOMB_DEFUSED, () => this.ui('planted'));
     on(EV.ORDER_REJECTED, () => this.ui('error'));
     on(EV.ROUND_END, (ev) => this.music.stinger(ev.winner === this.viewer.team));
     on(EV.UI_SOUND, (ev) => this.ui(ev.name));
@@ -283,8 +282,8 @@ export class AudioDirector {
     }
     this.ambience.update(dt, this.spatialize.listener ? this.spatialize.listener() : { x: 0, y: 0 });
     this.music.update(dt);
-    // Bomb arming beeps speed up with progress.
-    const progress = this.sim ? plantProgress(this.sim) : -1;
+    // Bomb beeps speed up with the defuse progress.
+    const progress = this.sim ? defuseProgress(this.sim) : -1;
     if (progress >= 0 && !paused) {
       this.lastPlantBeep += dt;
       const interval = PLANT_BEEP.startInterval - progress * PLANT_BEEP.speedup;

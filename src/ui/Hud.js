@@ -1,9 +1,9 @@
 // In-game HUD: phase banner + pause glyph, weapon plate (bottom-left),
-// objective/timer (bottom-right), action buttons, hints, plant bar,
+// objective/timer (bottom-right), action buttons, hints, defuse bar,
 // kill feed, toasts and the red damage vignette.
 import { EV } from '../core/events.js';
 import { HUD, VIGNETTE } from '../config/ui.js';
-import { teamUnits, enemyTeam, anyWaitingGo, anyGoHold, isGoReady } from '../sim/queries.js';
+import { teamUnits, enemyTeam, anyWaitingGo, anyGoHold, isGoReady, bombKnownTo } from '../sim/queries.js';
 import { coachHint } from './coach.js';
 import { el, setText, toggle, formatTime, setStyle, setClassName, setHidden } from './dom.js';
 import { ICON, WEAPON_ICONS } from './icons.js';
@@ -77,7 +77,7 @@ export class Hud {
     this.tutSkip.addEventListener('click', () => this.bus.emit(EV.REQUEST, { action: 'tutorialSkip' }));
     root.appendChild(this.tutSkip);
 
-    this.plant = el('div', 'plantbar', `<div class="t">${T.plant}</div><div class="bar"><div class="fill"></div></div>`);
+    this.plant = el('div', 'plantbar', `<div class="t">${T.defuse}</div><div class="bar"><div class="fill"></div></div>`);
     this.plantFill = this.plant.querySelector('.fill');
     root.appendChild(this.plant);
 
@@ -136,9 +136,10 @@ export class Hud {
     bus.on(EV.GO_CODE, (e) => {
       if (e.released > 0) this.pushInfo(T.feed.go);
     });
-    bus.on(EV.BOMB_DROPPED, () => this.pushInfo(T.feed.bombDropped));
-    bus.on(EV.BOMB_PICKED, (e) => this.pushInfo(T.feed.bombPicked(this.sim.units[e.unitId].name)));
-    bus.on(EV.BOMB_PLANTED, () => this.pushInfo(T.feed.planted));
+    bus.on(EV.BOMB_SPOTTED, (e) => this.pushInfo(T.feed.bombSpotted(e.site)));
+    bus.on(EV.DEFUSE_START, (e) => this.pushInfo(T.feed.defusing(this.sim.units[e.unitId].name)));
+    bus.on(EV.DEFUSE_ABORT, () => this.pushInfo(T.feed.defuseAborted));
+    bus.on(EV.BOMB_DEFUSED, () => this.pushInfo(T.feed.defused));
     bus.on(EV.ROUND_END, (e) => {
       if (e.winner !== this.viewer.team) this.vignetteFloor = VIGNETTE.defeatFloor;
     });
@@ -219,8 +220,7 @@ export class Hud {
     for (const d of enemies) if (!d.alive) dead++;
     setText(this.kills, T.objective.kills(dead, enemies.length));
     const b = sim.bomb;
-    const carrier = b.carrierId >= 0 ? sim.units[b.carrierId] : null;
-    setText(this.bombText, b.planted ? T.objective.bombPlanted : carrier ? T.objective.bombCarrier(carrier.name) : T.objective.bombDropped);
+    setText(this.bombText, b.defused ? T.objective.bombDefused : bombKnownTo(sim, session.team) ? T.objective.bombAt(b.site) : T.objective.bombUnknown);
     setText(this.timer, formatTime(sim.timeLeft));
     toggle(this.timer, 'low', sim.timeLeft < HUD.lowTimeSeconds);
 
@@ -249,10 +249,10 @@ export class Hud {
     toggle(this.btnMusic, 'off', !session.musicOn);
     toggle(this.hints, 'hidden', running || phase === 'ended');
 
-    // Plant progress
-    const planting = b.planterId >= 0 && !b.planted;
-    toggle(this.plant, 'on', planting);
-    if (planting) setStyle(this.plantFill, 'width', `${(b.progress * 100).toFixed(1)}%`);
+    // Defuse progress
+    const defusing = b.defuserId >= 0 && !b.defused;
+    toggle(this.plant, 'on', defusing);
+    if (defusing) setStyle(this.plantFill, 'width', `${(b.progress * 100).toFixed(1)}%`);
 
     // Toast
     if (this.toastTime > 0) {

@@ -1,97 +1,105 @@
-// Bomb carry/drop/pickup, planting on site A and round outcome.
-import { ROUND, NAV } from '../config/balance.js';
+// The bomb (placed by the defenders on site A or B, it never moves), finding
+// it, defusing it and the round outcome.
+//
+// Defusing: an attacker standing next to a bomb his side has found, with no
+// route and no enemy in sight, starts on his own (or at once with the
+// "defuse now" order). It takes ROUND.defuseTime standing still and he does
+// not shoot meanwhile; walking off or dying loses the progress. The tools are
+// loud: AI defenders within earshot turn to the bomb (and rotate, like gunfire).
+import { ROUND, COMBAT } from '../config/balance.js';
 import { EV } from '../core/events.js';
-import { pointInBox } from '../core/geom.js';
+import { canSee } from './vision.js';
+import { nearBomb, isAiControlled } from './queries.js';
+import { alertAiUnit } from './ai.js';
 import { buildNotes } from './debrief.js';
 
-export function createBomb(units) {
-  const carrier = units.find((u) => u.carriesBomb);
+export function createBomb(site) {
   return {
-    carrierId: carrier ? carrier.id : -1,
-    x: carrier ? carrier.x : 0,
-    y: carrier ? carrier.y : 0,
-    progress: 0, // 0..1 while planting
-    planterId: -1,
-    planted: false,
+    site: site.id,
+    x: site.bombX,
+    y: site.bombY,
+    spotted: false, // the attackers have seen it (until then they do not know the site)
+    progress: 0, // 0..1 while defusing
+    defuserId: -1,
+    defused: false,
   };
 }
 
 export function updateObjectives(sim, dt) {
   if (sim.outcome) return;
-  updateBomb(sim, dt);
+  spotBomb(sim);
+  updateDefuse(sim, dt);
   sim.timeLeft = Math.max(0, sim.timeLeft - dt);
 
   const attackersAlive = sim.units.some((u) => u.team === 'attackers' && u.alive);
   const defendersAlive = sim.units.some((u) => u.team === 'defenders' && u.alive);
-  if (sim.bomb.planted) return endRound(sim, 'attackers', 'planted');
+  if (sim.bomb.defused) return endRound(sim, 'attackers', 'defused');
   if (!defendersAlive) return endRound(sim, 'attackers', 'elimination');
   if (!attackersAlive) return endRound(sim, 'defenders', 'wiped');
   if (sim.timeLeft <= 0) return endRound(sim, 'defenders', 'time');
 }
 
-function updateBomb(sim, dt) {
+function spotBomb(sim) {
   const bomb = sim.bomb;
-  if (bomb.planted) return;
-  let carrier = bomb.carrierId >= 0 ? sim.units[bomb.carrierId] : null;
-
-  if (carrier && !carrier.alive) {
-    carrier.carriesBomb = false;
-    bomb.carrierId = -1;
-    // Dropped where a route can always reach it (never inside a prop or wall).
-    const spot = sim.world.nav.nearestWalkable(carrier.x, carrier.y, NAV.snapRadius);
-    bomb.x = spot ? spot.x : carrier.x;
-    bomb.y = spot ? spot.y : carrier.y;
-    abortPlant(sim, carrier);
-    sim.emit(EV.BOMB_DROPPED, { x: bomb.x, y: bomb.y });
-    carrier = null;
-  }
-
-  if (!carrier) {
-    const r2 = ROUND.bombPickupRadius * ROUND.bombPickupRadius;
-    for (const u of sim.units) {
-      if (!u.alive || u.team !== 'attackers') continue;
-      if ((u.x - bomb.x) ** 2 + (u.y - bomb.y) ** 2 <= r2) {
-        u.carriesBomb = true;
-        bomb.carrierId = u.id;
-        sim.emit(EV.BOMB_PICKED, { unitId: u.id });
-        carrier = u;
-        break;
-      }
+  if (bomb.spotted) return;
+  for (const u of sim.teams.attackers) {
+    if (u.alive && canSee(sim.world, u, bomb.x, bomb.y, u.vision)) {
+      bomb.spotted = true;
+      sim.emit(EV.BOMB_SPOTTED, { unitId: u.id, site: bomb.site, x: bomb.x, y: bomb.y });
+      return;
     }
-    if (!carrier) return;
-  }
-
-  bomb.x = carrier.x;
-  bomb.y = carrier.y;
-  const site = sim.world.zones.siteA;
-  const canPlant =
-    site && pointInBox(carrier.x, carrier.y, site.box) && !carrier.route.length && !carrier.moving && carrier.target < 0 && carrier.reloadTimer <= 0;
-
-  if (!canPlant) {
-    if (carrier.planting) abortPlant(sim, carrier);
-    return;
-  }
-  if (!carrier.planting) {
-    carrier.planting = true;
-    bomb.planterId = carrier.id;
-    sim.emit(EV.PLANT_START, { unitId: carrier.id });
-  }
-  bomb.progress = Math.min(1, bomb.progress + dt / ROUND.plantTime);
-  if (bomb.progress >= 1) {
-    bomb.planted = true;
-    carrier.planting = false;
-    carrier.carriesBomb = false;
-    bomb.carrierId = -1;
-    sim.emit(EV.BOMB_PLANTED, { unitId: carrier.id, x: bomb.x, y: bomb.y });
   }
 }
 
-function abortPlant(sim, u) {
-  if (!u.planting) return;
-  u.planting = false;
+/** Standing still next to the bomb with nothing else to do (the automatic start). */
+function readyToDefuse(sim, u) {
+  return u.alive && !u.route.length && !u.moving && !u.waitingGo && u.target < 0 && u.reloadTimer <= 0 && nearBomb(sim, u);
+}
+
+function updateDefuse(sim, dt) {
+  const bomb = sim.bomb;
+  if (bomb.defused || !bomb.spotted) return;
+  let defuser = bomb.defuserId >= 0 ? sim.units[bomb.defuserId] : null;
+
+  if (defuser && (!defuser.alive || defuser.route.length || !nearBomb(sim, defuser))) {
+    abortDefuse(sim, defuser);
+    defuser = null;
+  }
+  if (!defuser) {
+    defuser = sim.teams.attackers.find((u) => readyToDefuse(sim, u));
+    if (!defuser) return;
+    startDefuse(sim, defuser);
+  }
+
+  bomb.progress = Math.min(1, bomb.progress + dt / ROUND.defuseTime);
+  if (bomb.progress >= 1) {
+    bomb.defused = true;
+    defuser.defusing = false;
+    bomb.defuserId = -1;
+    sim.emit(EV.BOMB_DEFUSED, { unitId: defuser.id, x: bomb.x, y: bomb.y });
+  }
+}
+
+/** Starts (or restarts from zero) a defuse by this unit. Used by the "defuse now" order too. */
+export function startDefuse(sim, u) {
+  const bomb = sim.bomb;
+  const previous = bomb.defuserId >= 0 ? sim.units[bomb.defuserId] : null;
+  if (previous) previous.defusing = false;
+  u.defusing = true;
+  bomb.defuserId = u.id;
+  bomb.progress = 0;
+  sim.emit(EV.DEFUSE_START, { unitId: u.id, x: bomb.x, y: bomb.y });
+  const r2 = COMBAT.hearingRadius * COMBAT.hearingRadius;
+  for (const d of sim.teams.defenders) {
+    if (isAiControlled(sim, d) && (d.x - bomb.x) ** 2 + (d.y - bomb.y) ** 2 <= r2) alertAiUnit(d, bomb.x, bomb.y, COMBAT.alertDuration, true);
+  }
+}
+
+function abortDefuse(sim, u) {
+  u.defusing = false;
   sim.bomb.progress = 0;
-  sim.bomb.planterId = -1;
-  sim.emit(EV.PLANT_ABORT, { unitId: u.id });
+  sim.bomb.defuserId = -1;
+  sim.emit(EV.DEFUSE_ABORT, { unitId: u.id });
 }
 
 function endRound(sim, winner, reason) {

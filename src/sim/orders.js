@@ -13,7 +13,8 @@
 //   {type:'undoWaypoint', unitId}              removes the last user waypoint (and its leg)
 //   {type:'clearRoute', unitId}
 //   {type:'go'}                                releases every unit of the side waiting for GO (rejected if none)
-//   {type:'plantNow'}                          bomb carrier inside site A stops and plants
+//   {type:'defuseNow', unitId?}                an attacker next to the found bomb stops and defuses
+//                                              (that unit, else the closest one in range)
 //
 // Every command may carry `team` (the side giving it; the session stamps it):
 // a unit only obeys its own side, and only a side whose controller is
@@ -23,13 +24,14 @@
 // turns codes into text (ui/texts.js T.rejectReason), the sim never does.
 import { NAV } from '../config/balance.js';
 import { EV } from '../core/events.js';
-import { routeTail, lastUserIndex, inSiteA, doorwayNear } from './queries.js';
+import { routeTail, lastUserIndex, doorwayNear, defuseCandidate } from './queries.js';
+import { startDefuse } from './objectives.js';
 
 export const REJECT = Object.freeze({
   routeTooLong: 'routeTooLong',
   unreachable: 'unreachable',
   noWaypoint: 'noWaypoint',
-  carrierNotInSite: 'carrierNotInSite',
+  notAtBomb: 'notAtBomb',
   nobodyWaiting: 'nobodyWaiting',
   goBeforeStart: 'goBeforeStart', // emitted by the session: GO pressed while still planning
 });
@@ -42,7 +44,7 @@ function obeys(sim, unit, cmd) {
 
 export function applyCommand(sim, cmd) {
   if (cmd.type === 'go') return issueGo(sim, cmd);
-  if (cmd.type === 'plantNow') return plantNow(sim, cmd);
+  if (cmd.type === 'defuseNow') return defuseNow(sim, cmd);
   const unit = sim.units[cmd.unitId];
   if (!unit || !unit.alive || !obeys(sim, unit, cmd)) return;
   switch (cmd.type) {
@@ -193,15 +195,16 @@ function issueGo(sim, cmd) {
   sim.emit(EV.GO_CODE, { released });
 }
 
-function plantNow(sim, cmd) {
-  const carrier = sim.units[sim.bomb.carrierId];
-  if (!carrier || !carrier.alive || !obeys(sim, carrier, cmd) || !inSiteA(sim, carrier.x, carrier.y)) {
-    sim.emit(EV.ORDER_REJECTED, { unitId: carrier ? carrier.id : -1, reason: REJECT.carrierNotInSite });
+function defuseNow(sim, cmd) {
+  const u = defuseCandidate(sim, cmd.unitId);
+  if (!u || !obeys(sim, u, cmd)) {
+    sim.emit(EV.ORDER_REJECTED, { unitId: cmd.unitId ?? -1, reason: REJECT.notAtBomb });
     return;
   }
-  carrier.route.length = 0;
-  carrier.waitingGo = false;
-  changed(sim, carrier, 'clear');
+  u.route.length = 0;
+  u.waitingGo = false;
+  changed(sim, u, 'clear');
+  if (sim.bomb.defuserId !== u.id) startDefuse(sim, u);
 }
 
 function reject(sim, unit, reason) {

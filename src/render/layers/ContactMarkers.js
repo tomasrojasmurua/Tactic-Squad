@@ -1,9 +1,10 @@
 // Enemy contact markers (red "spotted" pulse, dashed last-known position)
-// and bomb markers (dropped, planting progress, planted pulse) on the
+// and bomb markers (pulse once found, defuse progress) on the
 // tactical overlay. Owns the contact-tracking state. Allocation-free per frame.
 import { OVERLAY, FX } from '../../config/render.js';
 import { clamp } from '../../core/math.js';
 import { BLACK, RED, ORANGE } from './overlayColors.js';
+import { bombKnownTo } from '../../sim/queries.js';
 
 const LAST_KNOWN_SEGMENTS = 24;
 
@@ -71,20 +72,16 @@ export class ContactMarkers {
 
   bomb(t, sim, unitLayer, frame, mpp) {
     const b = sim.bomb;
+    if (b.defused || !bombKnownTo(sim, frame.viewer)) return;
     const time = frame.time;
-    if (b.planted) {
+    const defuser = b.defuserId >= 0 ? sim.units[b.defuserId] : null;
+    if (!defuser) {
       const k = (time * 1.4) % 1;
       t.ring(b.x, b.y, 0.4 + k * 1.6, 3 * mpp, RED(1 - k), 40);
       return;
     }
-    if (b.carrierId < 0) {
-      const pulse = 0.5 + 0.5 * Math.sin(time * 6);
-      t.ring(b.x, b.y, 0.45 + pulse * 0.1, 2.5 * mpp, ORANGE(0.6 + 0.4 * pulse), 32);
-      return;
-    }
-    const carrier = sim.units[b.carrierId];
-    if (carrier && carrier.planting) {
-      const p = unitLayer.poseInto(carrier, frame.alpha, this.pose);
+    if (defuser.alive) {
+      const p = unitLayer.poseInto(defuser, frame.alpha, this.pose);
       t.ring(p.x, p.y, 0.72, 6 * mpp, BLACK(0.55), 48);
       t.arc(p.x, p.y, 0.72, 4.5 * mpp, -Math.PI / 2, -Math.PI / 2 + b.progress * Math.PI * 2, ORANGE(1), 48);
     }

@@ -71,16 +71,13 @@ export class Screens {
         <table class="desk-only">${T.help.rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
         <table class="touch-only">${T.touch.rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
         <div class="help-options">
-          <button class="btn opt-contact"></button>
           <button class="btn opt-idle"></button>
         </div>
         <button class="btn close">${T.help.close}</button>
       </div>`;
     this.help.querySelector('.close').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'help' }));
     // Smart-pause preferences (saved per device by the session).
-    this.optContact = this.help.querySelector('.opt-contact');
     this.optIdle = this.help.querySelector('.opt-idle');
-    this.optContact.addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'autoPauseContact' }));
     this.optIdle.addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'autoPauseIdle' }));
     this.help.addEventListener('pointerdown', (e) => e.stopPropagation());
 
@@ -96,9 +93,7 @@ export class Screens {
     toggle(this.title, 'hidden', session.phase !== 'title');
     toggle(this.help, 'hidden', !session.helpOpen);
     if (session.helpOpen) {
-      setText(this.optContact, T.flow.autoPauseContact(session.autoPause.contact));
       setText(this.optIdle, T.flow.autoPauseIdle(session.autoPause.idle));
-      this.optContact.dataset.on = session.autoPause.contact ? '1' : '';
       this.optIdle.dataset.on = session.autoPause.idle ? '1' : '';
     }
     const showResult = session.phase === 'ended' && sim.outcome;
