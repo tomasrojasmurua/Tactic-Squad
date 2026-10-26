@@ -1,6 +1,7 @@
 // Tactical overlay: planned routes, waypoints, facing arrows, GO holds,
 // door entries, grenades in flight, flashed units, FOV edges, selection
-// rings, contact markers, defuse progress.
+// rings, contact markers, defuse progress, where each operator gets to in
+// the next 5 s turn (while planning) and the noise heard of the enemy.
 // `drawGround` runs before walls/units (depth-tested rings & shadows),
 // `drawTop` runs last, over everything (routes must always be readable).
 // Rebuilt every frame (animated dashes/pulses), so it is written to avoid
@@ -8,9 +9,11 @@
 // scratch buffers. A pooled color is valid until 16 more are requested,
 // which is always enough because ShapeBatch consumes colors immediately.
 import { HEIGHTS, OVERLAY } from '../../config/render.js';
-import { ENTRY } from '../../config/balance.js';
+import { ENTRY, MOVE, ROUND, NOISE } from '../../config/balance.js';
+import { teamView } from '../../sim/view.js';
 import { hexToRgb } from '../../core/math.js';
-import { grenadeAt } from '../../sim/queries.js';
+import { grenadeAt, holdCode } from '../../sim/queries.js';
+import { scheduledGo } from '../../sim/round.js';
 import { ShaderProgram } from '../gl/ShaderProgram.js';
 import { ShapeBatch } from '../gl/ShapeBatch.js';
 import { FLAT_VS, FLAT_FS } from '../shaders/flat.js';
@@ -78,7 +81,8 @@ export class OverlayLayer {
     const mpp = frame.camera.metersPerPixel(0);
     const time = frame.time;
     const selected = session.selectedId;
-    const editable = session.phase !== 'ended' && session.phase !== 'title';
+    const editable = session.phase === 'prep' || session.phase === 'planning';
+    this.planning = editable;
 
     const own = (this.viewer = frame.viewer); // the side this screen plays (session.team)
     const R = OVERLAY.unitRing;
@@ -144,6 +148,7 @@ export class OverlayLayer {
     for (const u of order) this.route(t, u, unitLayer.poseInto(u, frame.alpha, this.pose), mpp, time, u.id === selected);
 
     this.grenades(t, sim, frame, mpp);
+    if (session.phase !== 'title') this.noise(g, teamView(sim, own), sim.turn, mpp, time);
     if (editable) this.planningPreview(t, sim, session, mpp);
     this.markers.contacts(t, sim, unitLayer, frame, mpp, own);
     this.markers.bomb(t, sim, unitLayer, frame, mpp);
@@ -200,6 +205,7 @@ export class OverlayLayer {
         if (selected) t.circle(p.x, p.y, rr * (end ? 0.5 : 0.38), end ? BLACK(0.7) : WHITE(0.95), 12);
       }
     }
+    if (this.planning && pts.length >= 4) this.turnReach(t, u, pts, c, mpp, selected);
     if (u.route.length === 0 && u.idleLook !== null && !u.waitingGo) {
       this.lookMarker(t, pos.x, pos.y, u.idleLook, c, selected ? 0.9 : 0.5, mpp, u.vision.fov);
     }
@@ -215,6 +221,64 @@ export class OverlayLayer {
     if (u.waitingGo) {
       const pulse = 0.5 + 0.5 * Math.sin(time * 5);
       t.ring(pos.x, pos.y, OVERLAY.unitRing.waitGo + pulse * OVERLAY.unitRing.waitGoPulse, 2.4 * mpp, WHITE(0.5 + 0.4 * pulse), 36);
+    }
+  }
+
+  /**
+   * Where the operator gets to in one turn (ROUND.turnSeconds at his walking
+   * speed along the drawn route): a bar across the route. At a GO hold he
+   * waits for its scheduled moment, or stops there if the code is not
+   * scheduled. An estimate — doors, queues, entries and fights slow him down.
+   */
+  turnReach(t, u, pts, c, mpp, selected) {
+    const speed = MOVE.speed * u.mods.speed;
+    let left = ROUND.turnSeconds; // s of the turn still to spend
+    for (let i = 0; i < pts.length / 2 - 1; i++) {
+      const ax = pts[i * 2];
+      const ay = pts[i * 2 + 1];
+      const bx = pts[i * 2 + 2];
+      const by = pts[i * 2 + 3];
+      const len = Math.hypot(bx - ax, by - ay);
+      const time = len / speed;
+      if (time < left) {
+        left -= time;
+        const p = u.route[i];
+        if (!p.hold) continue;
+        const go = scheduledGo(this.sim, u.team, holdCode(p));
+        if (!go) return; // he will wait there: the hold marker says it
+        left = Math.min(left, ROUND.turnSeconds - go.at);
+        if (left <= 0) return;
+        continue;
+      }
+      const k = len > 1e-6 ? (left * speed) / len : 0;
+      const x = ax + (bx - ax) * k;
+      const y = ay + (by - ay) * k;
+      const nx = len > 1e-6 ? -(by - ay) / len : 0;
+      const ny = len > 1e-6 ? (bx - ax) / len : 1;
+      const h = (selected ? 9 : 6) * mpp;
+      t.line(x - nx * h, y - ny * h, x + nx * h, y + ny * h, 5 * mpp, BLACK(0.8));
+      t.line(x - nx * h, y - ny * h, x + nx * h, y + ny * h, 2.6 * mpp, selected ? WHITE(0.95) : withAlpha(c, 0.85));
+      return;
+    }
+  }
+
+  /**
+   * Noise the viewer's side heard of the enemy in the last turns (sim/noise.js,
+   * read through the side's view): soft rings at a rough position, fading
+   * with each turn. Loud kinds (shots, blasts) are red, the rest amber.
+   */
+  noise(g, view, turn, mpp, time) {
+    for (const p of view.pulses) {
+      const age = Math.max(0, turn - 1 - p.turn); // 0 = the turn that just ran
+      const fade = 1 - age / NOISE.keepTurns;
+      if (fade <= 0) continue;
+      const loud = NOISE.rank.indexOf(p.kind) >= NOISE.rank.indexOf('shot');
+      const col = loud ? [1, 0.32, 0.25] : [1, 0.72, 0.2];
+      const r = NOISE.cell * 0.42;
+      const beat = age === 0 ? 0.5 + 0.5 * Math.sin(time * 4) : 0;
+      g.circle(p.x, p.y, r, rgba(col[0], col[1], col[2], 0.1 * fade), 28, rgba(col[0], col[1], col[2], 0));
+      g.ring(p.x, p.y, r * (0.75 + 0.25 * beat), 2.4 * mpp, rgba(col[0], col[1], col[2], (0.35 + 0.35 * beat) * fade), 32);
+      g.ring(p.x, p.y, r * 0.35, 1.6 * mpp, rgba(col[0], col[1], col[2], 0.45 * fade), 20);
     }
   }
 

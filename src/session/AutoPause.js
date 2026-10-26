@@ -1,62 +1,20 @@
-// Smart pause: time stops by itself when the player would otherwise lose
-// control. Never resumes by itself (except closing the help it opened).
-// Seeing an enemy never stops time: a contact plays out like it would for real.
-//   idle        every operator is done: no route, no GO hold, nobody fighting (toggle)
-//   background  the page is hidden / frozen / loses focus on a phone
-//   graphics    the WebGL context is lost (the renderer restores it)
+// System pause: during an execution turn time stops by itself when the
+// player cannot follow it — the page is hidden or frozen, a phone loses
+// focus, the WebGL context is lost. Never on contact, never by itself
+// otherwise: a turn plays out like it would for real (the planning between
+// turns is the only "pause" there is). In the decision phases the clock just
+// stops counting meanwhile (session/PhaseClock.js).
 // The reason is kept in session.pauseReason; ui/coach.js turns it into the hint.
-import { FLOW } from '../config/ui.js';
-import { teamUnits } from '../sim/queries.js';
-import { loadPref, savePref } from './storage.js';
 
 export class AutoPause {
-  /** @param pause (reason, focus?: {x, y}) => void — pauses if time is running (and shows `focus`) */
+  /** @param pause (reason) => void — pauses if a turn is running */
   constructor({ session, pause }) {
     this.session = session;
     this.pause = pause;
-    const saved = loadPref(FLOW.storageKeys.autoPause, null);
-    session.autoPause = {
-      idle: typeof saved?.idle === 'boolean' ? saved.idle : FLOW.autoPause.idle,
-    };
-    this.onRoundStart();
     this.watchPage();
   }
 
-  onRoundStart() {
-    this.idleFor = 0;
-    this.idleFired = false;
-  }
-
-  /** Toggles one auto-pause ('idle') and remembers it on this device. */
-  toggle(kind) {
-    const a = this.session.autoPause;
-    a[kind] = !a[kind];
-    savePref(FLOW.storageKeys.autoPause, a);
-    return a[kind];
-  }
-
-  /** After each fixed step: the "everyone is done" detector. */
-  afterStep(sim, dt) {
-    let idle = true;
-    let any = false;
-    for (const u of teamUnits(sim, this.session.team)) {
-      if (!u.alive) continue;
-      any = true;
-      if (u.route.length || u.waitingGo || u.target >= 0 || u.defusing || u.moving) idle = false;
-    }
-    if (!idle || !any || sim.outcome) {
-      this.idleFor = 0;
-      this.idleFired = false;
-      return;
-    }
-    this.idleFor += dt;
-    if (!this.idleFired && this.session.autoPause.idle && this.session.phase === 'running' && this.idleFor >= FLOW.autoPause.idleSeconds) {
-      this.idleFired = true;
-      this.pause('idle');
-    }
-  }
-
-  /** Background, page freeze and lost graphics pause the round (they never resume it). */
+  /** Background, page freeze and lost graphics pause the turn (they never resume it). */
   watchPage() {
     const away = () => this.pause('background');
     document.addEventListener('visibilitychange', () => {

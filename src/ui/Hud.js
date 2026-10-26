@@ -1,10 +1,12 @@
-// In-game HUD: phase banner + pause glyph, weapon plate (bottom-left),
+// In-game HUD: phase banner (turn, decision clock) + pause glyph, weapon plate (bottom-left),
 // objective/timer (bottom-right), action buttons, hints, defuse bar,
 // kill feed, toasts and the red damage vignette.
 import { EV } from '../core/events.js';
 import { HUD, VIGNETTE } from '../config/ui.js';
 import { teamUnits, enemyTeam, isGoReady, bombKnownTo, codeInUse, codeWaiting, nextGoCode } from '../sim/queries.js';
-import { ENTRY } from '../config/balance.js';
+import { scheduledGo, TURN_TICKS } from '../sim/round.js';
+import { ENTRY, ROUND, SIM } from '../config/balance.js';
+import { isDecisionPhase } from '../session/Session.js';
 import { coachHint } from './coach.js';
 import { el, setText, toggle, formatTime, setStyle, setClassName, setHidden } from './dom.js';
 import { ICON, WEAPON_ICONS } from './icons.js';
@@ -20,7 +22,11 @@ export class Hud {
     this.vignetteFloor = 0;
     root.appendChild(this.vignette);
 
-    this.banner = el('div', 'banner', `<div class="phase"></div><div class="sub"></div>`);
+    this.banner = el('div', 'banner', `<div class="phase"></div><div class="clock"></div><div class="sub"></div><div class="cbar"><i></i></div>`);
+    this.phaseText = this.banner.querySelector('.phase');
+    this.clockText = this.banner.querySelector('.clock');
+    this.subText = this.banner.querySelector('.sub');
+    this.clockBar = this.banner.querySelector('.cbar i');
     this.pauseGlyph = el('div', 'pause-glyph', ICON.pause);
     root.append(this.banner, this.pauseGlyph);
 
@@ -58,11 +64,12 @@ export class Hud {
       this.actions.appendChild(b);
       return b;
     };
-    this.btnExecute = button('primary', `<span class="ico">${ICON.play}</span><span class="lbl">${T.actions.execute}</span><span class="key">ESPACIO</span>`, 'execute');
-    // One GO button per code in use (A, B, C); G gives the next one someone waits for.
+    this.btnExecute = button('primary', `<span class="ico">${ICON.play}</span><span class="lbl">${T.actions.ready}</span><span class="key">ESPACIO</span>`, 'ready');
+    // One GO button per code in use (A, B, C): while planning each press moves when in the
+    // next turn it goes (when everyone is ready, at 1·2·3·4 s, off); G does it for the first code.
     this.goButtons = ENTRY.goCodes.map((code) => {
-      const b = button('go', `<span>${T.actions.go} <span class="code">${code}</span></span><span class="key">G</span>`, `go_${code}`);
-      return { code, b, label: b.firstChild, key: b.querySelector('.key') };
+      const b = button('go', `<span>${T.actions.go} <span class="code">${code}</span><span class="when"></span></span><span class="key">G</span>`, `go_${code}`);
+      return { code, b, when: b.querySelector('.when'), key: b.querySelector('.key') };
     });
     this.btnRestart = button('', `<span>${T.actions.restart}</span><span class="key">R</span>`, 'restart');
     this.btnHelp = button('', `<span>${T.actions.help}</span><span class="key">F1</span>`, 'help');
@@ -70,8 +77,6 @@ export class Hud {
     this.btnMusic.title = T.actions.music;
     root.appendChild(this.actions);
     this.executeLabel = this.btnExecute.querySelector('.lbl');
-    this.executeIcon = this.btnExecute.querySelector('.ico');
-    this.executeIconKind = 'play';
     this.restartLabel = this.btnRestart.firstChild;
 
     // Guided tutorial: always-available way out (flow); shown with `display` from update().
@@ -197,9 +202,24 @@ export class Hud {
       return;
     }
 
-    // Banner
+    // Banner: phase, turn and the clock (decision phases count down; a turn shows what is left of its 5 s)
     setClassName(this.banner, `banner ${phase}`);
-    setText(this.banner.firstChild, T.phase[phase]);
+    const inAssault = sim.turn > 0 && phase !== 'ended';
+    setText(this.phaseText, inAssault ? `${T.phase[phase]} · ${T.turn(sim.turn, ROUND.maxTurns)}` : T.phase[phase]);
+    const c = session.clock;
+    let clock = '';
+    let fill = 0;
+    if (isDecisionPhase(session)) {
+      clock = c.unlimited ? T.clockUnlimited : formatTime(c.left);
+      fill = c.unlimited || !c.total ? 1 : c.left / c.total;
+    } else if (phase === 'running' || phase === 'paused') {
+      const left = (TURN_TICKS - sim.round.execTick) / SIM.tickRate;
+      clock = T.execLeft(Math.ceil(left));
+      fill = left / ROUND.turnSeconds;
+    }
+    setText(this.clockText, clock);
+    toggle(this.clockText, 'low', isDecisionPhase(session) && !c.unlimited && c.left <= HUD.clockWarnSeconds);
+    setStyle(this.clockBar, 'transform', `scaleX(${fill.toFixed(3)})`);
     // Sub line: the coach's next step for a new player, else the phase's default.
     this.coachTimer -= dt;
     if (this.coachTimer <= 0 || session.phase !== this.coachPhase) {
@@ -208,8 +228,8 @@ export class Hud {
       this.coach = coachHint(sim, session);
     }
     const coach = this.coach;
-    setText(this.banner.lastChild, coach ? coach.text : (session.touch ? T.phaseSubTouch : T.phaseSub)[phase]);
-    toggle(this.banner.lastChild, 'coach', !!coach && coach.strong);
+    setText(this.subText, coach ? coach.text : (session.touch ? T.phaseSubTouch : T.phaseSub)[phase]);
+    toggle(this.subText, 'coach', !!coach && coach.strong);
     toggle(this.pauseGlyph, 'on', phase === 'paused');
 
     // Weapon plate for the selected operator
@@ -237,30 +257,29 @@ export class Hud {
     setText(this.timer, formatTime(sim.timeLeft));
     toggle(this.timer, 'low', sim.timeLeft < HUD.lowTimeSeconds);
 
-    // Actions
+    // Actions: LISTO ends a decision phase; a running turn has no button (it cannot be paused).
     const running = phase === 'running';
-    setText(this.executeLabel, phase === 'planning' ? T.actions.execute : running ? T.actions.pause : T.actions.resume);
-    const iconKind = running ? 'pause' : 'play';
-    if (iconKind !== this.executeIconKind) {
-      this.executeIconKind = iconKind;
-      this.executeIcon.innerHTML = ICON[iconKind];
-    }
-    setHidden(this.btnExecute, phase === 'ended');
-    // GO only works while time runs: in planning the buttons show what they will do, disabled.
-    const goLater = phase === 'planning';
+    const deciding = isDecisionPhase(session);
+    setText(this.executeLabel, deciding ? T.actions.ready : T.actions.resume);
+    setHidden(this.btnExecute, !deciding && phase !== 'paused');
+    // GO buttons: scheduled while planning (each press: when everyone is ready, 1·2·3·4 s, off);
+    // during the turn they only show what is armed.
     const team = session.team;
     const next = nextGoCode(sim, team);
     let first = true;
     for (const g of this.goButtons) {
-      const used = codeInUse(sim, team, g.code) && phase !== 'ended';
+      const plan = scheduledGo(sim, team, g.code);
+      const used = (codeInUse(sim, team, g.code) || !!plan) && phase !== 'ended';
       setHidden(g.b, !used);
       if (!used) continue;
-      if (g.b.disabled !== goLater) g.b.disabled = goLater;
+      const canPlan = phase === 'planning' || phase === 'prep';
+      if (g.b.disabled !== !canPlan) g.b.disabled = !canPlan;
+      toggle(g.b, 'armed', !!plan);
       toggle(g.b, 'ready', codeWaiting(sim, team, g.code));
-      toggle(g.b, 'all', isGoReady(sim, team, g.code)); // everyone of that code in position: the moment to press it
-      // The G key gives the next code someone waits for (or the first in use).
-      setStyle(g.key, 'display', (next ? g.code === next : first) ? '' : 'none');
-      setText(g.label.firstChild, goLater && first ? `${T.flow.goLater} · ` : `${T.actions.go} `);
+      toggle(g.b, 'all', isGoReady(sim, team, g.code));
+      setText(g.when, plan ? ` · ${T.flow.goAt(plan.at)}` : canPlan ? ` · ${T.flow.goOff}` : '');
+      // The G key cycles the first code (the one scheduled, else the first in use).
+      setStyle(g.key, 'display', canPlan && (next ? g.code === next : first) ? '' : 'none');
       first = false;
     }
     const armed = session.confirm.action === 'restart';
@@ -268,7 +287,7 @@ export class Hud {
     if ((this.btnRestart.dataset.armed || '') !== (armed ? '1' : '')) this.btnRestart.dataset.armed = armed ? '1' : '';
     setStyle(this.tutSkip, 'display', session.tutorial.active ? '' : 'none');
     toggle(this.btnMusic, 'off', !session.musicOn);
-    toggle(this.hints, 'hidden', running || phase === 'ended');
+    toggle(this.hints, 'hidden', running || phase === 'ended' || phase === 'buy');
 
     // Defuse progress
     const defusing = b.defuserId >= 0 && !b.defused;

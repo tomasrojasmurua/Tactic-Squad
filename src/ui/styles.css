@@ -430,14 +430,14 @@ body.touch .help-box { max-height: calc(100dvh - 66px - var(--sat)); overflow: a
   display: block; position: absolute; top: calc(100% + 4px); right: 0; padding: 3px 7px; white-space: nowrap;
   font-size: 11px; color: #fff; background: rgba(120, 14, 10, 0.95); border-left: 3px solid var(--red);
 }
-/* GO while planning ("GO al ejecutar"): plainly disabled, no pulse; the touch button shows its label. */
+/* GO during a turn (it is scheduled while planning): plainly disabled, no pulse; the touch button shows its label. */
 .btn.go:disabled, .tbtn.go:disabled {
   background: var(--plate-strong); border-color: rgba(143, 227, 107, 0.3); color: var(--muted); animation: none; box-shadow: none; transform: none; cursor: default;
 }
 .tbtn.go:disabled > * { opacity: 0.75; }
 .tbtn.go:disabled .tl { display: block; font-size: 9px; letter-spacing: 0.02em; text-transform: none; color: var(--muted); }
 .tbtn.go:disabled .ti b { font-size: 13px; color: var(--muted); }
-/* Help: smart-pause switches (text says SÍ/NO; [data-on] lights the plate). */
+/* Help: option switches (text says SÍ/NO; [data-on] lights the plate). */
 .help-options { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 .help-box .help-options .btn { flex: 1 1 200px; margin-top: 0; min-height: 44px; justify-content: center; font-size: 12px; letter-spacing: 0.08em; color: var(--muted); }
 .help-options .btn[data-on="1"] { color: #fff; border-color: var(--cyan); box-shadow: inset 3px 0 0 var(--cyan); }
@@ -644,3 +644,41 @@ body.touch .ebtn { min-width: 50px; padding: 3px 4px; }
 .ptag.sel { opacity: 1; }
 .ptag.off { display: none; }
 .ptag.under-hud { visibility: hidden; }
+
+/* ------------------------------------------------------------ We-Go turns (hito 2) */
+/* Phase bar: turn + clock; the thin bar under it empties with the decision clock / the 5 s turn. */
+.banner .clock { font-family: var(--font-display); font-size: 17px; font-weight: 800; letter-spacing: 0.12em; color: var(--cyan); line-height: 1.1; }
+.banner .clock:empty { display: none; }
+.banner .clock.low { color: var(--amber); }
+.banner .cbar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(255, 255, 255, 0.08); }
+.banner .cbar i { display: block; height: 100%; background: var(--cyan); transform-origin: left center; }
+.banner.running .cbar i, .banner.paused .cbar i { background: var(--ok); }
+.banner.running .clock { font-size: 13px; color: var(--ok); }
+.banner.buy::before, .banner.prep::before { background: #c9d2d9; }
+.banner.ended .cbar { display: none; }
+body.touch .banner .clock { font-size: 13px; }
+/* GO scheduled for the next turn: solid, with its moment written on it. */
+.btn.go .when { font-weight: 600; letter-spacing: 0.04em; text-transform: none; font-size: 12px; opacity: 0.85; }
+.btn.go:not(.armed):not(:disabled) { background: rgba(31, 107, 43, 0.35); }
+.btn.go.armed, .tbtn.go.armed { box-shadow: inset 0 0 0 2px var(--ok); }
+.tbtn.go.armed .tl, .tbtn.go:not(:disabled) .tl { display: block; font-size: 9px; letter-spacing: 0.02em; text-transform: none; }
+
+/* Buy / preparation panel (ui/PhasePanel.js): a plate under the phase bar, the map stays visible. */
+.phase-panel {
+  position: absolute; top: calc(92px + var(--sat)); left: 50%; transform: translateX(-50%); width: min(460px, calc(100vw - 32px));
+  padding: 10px 14px 12px; background: var(--plate-strong); border: 1px solid var(--line-strong); pointer-events: auto; z-index: 6;
+}
+.phase-panel.hidden { display: none; }
+.phase-panel .pp-title { font-family: var(--font-display); font-size: 15px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan); }
+.phase-panel .pp-body { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.phase-panel .pp-row { display: grid; grid-template-columns: 74px 1fr auto; gap: 8px; align-items: baseline; font-size: 13px; }
+.phase-panel .pp-role { color: #cfd6db; }
+.phase-panel .pp-gear { color: var(--muted); font-size: 12px; }
+.phase-panel .pp-entry { justify-content: center; min-height: 44px; }
+.phase-panel .pp-entry.on { border-color: var(--cyan); background: var(--cyan-deep); }
+.phase-panel .pp-note { margin-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.35; }
+body.touch .phase-panel { top: calc(62px + var(--sat)); width: min(380px, calc(100vw - 300px)); padding: 6px 10px 8px; }
+body.touch .phase-panel .pp-body { flex-direction: row; flex-wrap: wrap; }
+body.touch .phase-panel .pp-row { grid-template-columns: 1fr; gap: 0; flex: 1 1 100px; font-size: 12px; }
+body.touch .phase-panel .pp-entry { flex: 1 1 90px; font-size: 12px; padding: 6px 8px; letter-spacing: 0.06em; }
+body.touch .phase-panel .pp-note { display: none; }

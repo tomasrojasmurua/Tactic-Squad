@@ -74,7 +74,12 @@ export class AudioDirector {
     on(EV.SELECT, (ev) => this.select(ev.unitId));
     on(EV.ROUTE_CHANGED, (ev) => this.route(ev.kind));
     on(EV.PHASE, (ev) => {
-      this.music.setPhase(ev.phase);
+      // The music follows the round, not every 5 s turn: from the first execution on,
+      // the plannings between turns keep the assault's music (no calm cue every turn).
+      if (ev.phase === 'running') this.assault = true;
+      else if (ev.phase === 'title' || ev.phase === 'buy') this.assault = false;
+      const turnPause = this.assault && (ev.phase === 'planning' || ev.phase === 'paused');
+      this.music.setPhase(turnPause ? 'running' : ev.phase === 'buy' || ev.phase === 'prep' ? 'planning' : ev.phase);
       if (ev.phase === 'running') this.e.bank.startCombat(); // combat sounds now, if not baked yet
     });
   }

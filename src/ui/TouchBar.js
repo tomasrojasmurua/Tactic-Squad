@@ -1,9 +1,12 @@
 // On-screen controls for touch devices (>= 44px targets, safe-area aware):
-// a right-hand column (execute/pause, GO, hold, undo, clear) and a bottom
+// a right-hand column (LISTO, GO, hold, undo, clear) and a bottom
 // row (contextual defuse, restart, see all, fullscreen, music, help). Emits EV.REQUEST.
 import { EV } from '../core/events.js';
 import { canOrderDefuse, isGoReady, codeInUse, nextGoCode, lastUserIndex, holdCode } from '../sim/queries.js';
+import { scheduledGo } from '../sim/round.js';
 import { ENTRY } from '../config/balance.js';
+import { isDecisionPhase } from '../session/Session.js';
+import { HUD } from '../config/ui.js';
 import { el, setText, toggle, setHidden } from './dom.js';
 import { ICON } from './icons.js';
 import { T } from './texts.js';
@@ -37,7 +40,7 @@ export class TouchBar {
       parent.appendChild(b);
       return b;
     };
-    this.exec = mk(this.column, 'primary big', ICON.play, T.touch.execute, 'toggle');
+    this.exec = mk(this.column, 'primary big', ICON.play, T.touch.ready, 'ready');
     this.go = mk(this.column, 'go', `<b>GO</b>`, T.touch.go, 'go');
     this.hold = mk(this.column, '', ICON.hold, T.touch.hold, 'hold');
     this.undo = mk(this.column, '', ICON.undo, T.touch.undo, 'undo');
@@ -51,9 +54,7 @@ export class TouchBar {
     this.help = mk(this.row, '', ICON.help, T.touch.help, 'help');
     if (!fullscreenSupported()) this.full.hidden = true;
 
-    this.execIcon = this.exec.querySelector('.ti');
     this.execLabel = this.exec.querySelector('.tl');
-    this.execState = 'play';
     this.goLabel = this.go.querySelector('.tl');
     this.goCode = this.go.querySelector('.ti b');
     this.holdLabel = this.hold.querySelector('.tl');
@@ -67,41 +68,39 @@ export class TouchBar {
     toggle(this.row, 'on', show);
     if (!show) return;
     const phase = session.phase;
-    const running = phase === 'running';
-    const state = running ? 'pause' : 'play';
-    if (state !== this.execState) {
-      this.execState = state;
-      this.execIcon.innerHTML = ICON[state];
-    }
-    setText(this.execLabel, phase === 'planning' ? T.touch.execute : running ? T.touch.pause : T.touch.resume);
-    setHidden(this.exec, phase === 'ended');
+    const deciding = isDecisionPhase(session);
+    // LISTO ends a decision phase; a running turn cannot be paused (no button), a system pause resumes here.
+    setText(this.execLabel, deciding ? T.touch.ready : T.touch.resume);
+    setHidden(this.exec, !deciding && phase !== 'paused');
 
     const sel = sim.units[session.selectedId];
-    const canEdit = phase !== 'ended' && !session.helpOpen && sel && sel.alive;
+    const canPlan = phase === 'planning' || phase === 'prep';
+    const canEdit = canPlan && !session.helpOpen && sel && sel.alive;
     const disabled = !canEdit || !sel.route.length;
     for (const b of this.routeButtons) if (b.disabled !== disabled) b.disabled = disabled;
-    // GO releases the next code someone waits for (A, then B, then C): one big button, the thumb never hunts.
+    // GO schedules the first code (the one already scheduled, else the first in use) for the
+    // next turn: each touch moves it (when everyone is ready, 1·2·3·4 s, off). One big button.
     const team = session.team;
-    const used = ENTRY.goCodes.filter((c) => codeInUse(sim, team, c));
-    const next = nextGoCode(sim, team) || used[0] || null;
+    const used = ENTRY.goCodes.filter((c) => codeInUse(sim, team, c) || scheduledGo(sim, team, c));
+    const next = used.find((c) => scheduledGo(sim, team, c)) || used[0] || null;
+    const plan = next ? scheduledGo(sim, team, next) : null;
     setHidden(this.go, !next || phase === 'ended');
-    // GO only works while time runs: while planning it says so and is disabled.
-    const goLater = phase === 'planning';
-    if (this.go.disabled !== goLater) this.go.disabled = goLater;
-    setText(this.goLabel, goLater ? T.flow.goLater : T.touch.go);
+    if (this.go.disabled !== !canPlan) this.go.disabled = !canPlan;
+    toggle(this.go, 'armed', !!plan);
+    setText(this.goLabel, plan ? T.flow.goAt(plan.at) : canPlan ? T.flow.goOff : T.touch.go);
     setText(this.goCode, next && used.length > 1 ? `GO ${next}` : 'GO');
     const last = sel && sel.alive ? lastUserIndex(sel) : -1;
     const p = last >= 0 ? sel.route[last] : null;
     setText(this.holdLabel, p && p.hold ? `${T.touch.hold} ${holdCode(p)}` : T.touch.hold);
     setText(this.restartLabel, session.confirm.action === 'restart' ? T.flow.confirmRestart : T.touch.restart);
-    // Smart pause: the resume button asks for attention (amber pulse: styles.css [data-attn]).
-    const attn = phase === 'paused' && session.pauseReason === 'idle' ? '1' : '';
+    // The planning clock is running out: LISTO asks for attention (amber pulse: styles.css [data-attn]).
+    const attn = deciding && !session.clock.unlimited && session.clock.left <= HUD.clockWarnSeconds ? '1' : '';
     if ((this.exec.dataset.attn || '') !== attn) this.exec.dataset.attn = attn;
     const armed = session.confirm.action === 'restart' ? '1' : '';
     if ((this.restart.dataset.armed || '') !== armed) this.restart.dataset.armed = armed;
     toggle(this.go, 'ready', !!next && nextGoCode(sim, team) === next);
-    toggle(this.go, 'all', !!next && isGoReady(sim, team, next)); // everyone of that code in position: the moment to press it
-    setHidden(this.defuse, !canOrderDefuse(sim));
+    toggle(this.go, 'all', !!next && isGoReady(sim, team, next));
+    setHidden(this.defuse, phase !== 'planning' || !canOrderDefuse(sim));
     toggle(this.music, 'off', !session.musicOn);
   }
 }

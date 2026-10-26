@@ -8,6 +8,7 @@ export const HUD = Object.freeze({
   toastSeconds: 1.8,
   lowAmmoFraction: 0.25, // magazine fraction that turns the ammo counter red
   lowTimeSeconds: 20,
+  clockWarnSeconds: 5, // the decision clock turns amber this close to its deadline
   deadGunColor: '#666',
   labelOffsetPx: 14, // operator tags float this far above the head
   labelFarPxPerMeter: 30, // below this zoom tags shrink and sit behind the operator (never on a body)
@@ -48,17 +49,14 @@ export const HUD_OCCLUSION = Object.freeze({
 /**
  * Session flow tuning (owner: gameplay — what happens and when, not how it looks).
  *   confirmSeconds   a destructive request (wipe the plan) must be repeated within this time
- *   autoPause        smart pause; the player toggles it in the help screen (never on contact)
+ *   replayPhaseSeconds  on a retry, each recorded decision phase replays and ends by itself
  *   storageKeys      localStorage keys (read/written through session/storage.js, try/catch)
  */
 export const FLOW = Object.freeze({
   confirmSeconds: 3,
-  autoPause: Object.freeze({
-    idle: true, // default: pause when every operator is done (no route, no GO hold) for...
-    idleSeconds: 1.0, // ...this long
-  }),
+  replayPhaseSeconds: 0.8, // a replayed decision phase (retry) ends by itself after this long
   framePaddingM: 1.0, // m of map kept around a framed rectangle ("see all", first shot)
   overviewTapMs: 320, // a two-finger tap (both fingers up within this, barely moving)...
   overviewTapPx: 14, // ...toggles the whole-map view
-  storageKeys: Object.freeze({ tutorialDone: 'ts.tutorialDone', autoPause: 'ts.autoPause' }),
+  storageKeys: Object.freeze({ tutorialDone: 'ts.tutorialDone' }),
 });

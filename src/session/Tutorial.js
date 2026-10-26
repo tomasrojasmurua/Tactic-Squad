@@ -1,13 +1,14 @@
 // Playable onboarding (REVIEW-1 #23): a guided first round on the real map
 // that asks for each gesture in order and only advances once it is done:
-// select → draw a route → set a facing → WAIT (GO hold) → EXECUTE → GO.
+// select → draw a route → set a facing → WAIT (GO hold) → schedule the GO →
+// LISTO (the turn runs). It has no time limit (session/PhaseClock.js).
 // It can be skipped at any time and is remembered on the device once done.
 // State lives in session.tutorial ({active, step}); ui/coach.js shows the step.
 import { FLOW } from '../config/ui.js';
 import { teamUnits, controllableUnit } from '../sim/queries.js';
 import { loadPref, savePref } from './storage.js';
 
-export const TUTORIAL_STEPS = Object.freeze(['select', 'route', 'look', 'hold', 'execute', 'go']);
+export const TUTORIAL_STEPS = Object.freeze(['select', 'route', 'look', 'hold', 'go', 'execute']);
 
 const hasUserPoint = (u) => u.route.some((p) => p.user);
 
@@ -24,10 +25,10 @@ function stepDone(id, sim, session) {
       return squad.some((u) => u.route.some((p) => p.user && p.look !== null));
     case 'hold':
       return squad.some((u) => u.route.some((p) => p.hold));
-    case 'execute':
-      return session.phase === 'running' || session.phase === 'paused';
     case 'go':
-      return sim.goCount > 0;
+      return sim.goCount > 0 || sim.round.gos.some((g) => g.team === session.team);
+    case 'execute':
+      return sim.turn > 1 || session.phase === 'running' || session.phase === 'paused';
     default:
       return true;
   }
@@ -78,7 +79,7 @@ export class Tutorial {
     return advanced ? 'step' : null;
   }
 
-  /** While guided, EXECUTE waits until the planning gestures were made. */
+  /** While guided, LISTO waits until the planning gestures were made. */
   blocksExecute() {
     const t = this.session.tutorial;
     return t.active && t.step < TUTORIAL_STEPS.indexOf('execute');

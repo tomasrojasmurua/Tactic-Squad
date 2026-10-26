@@ -5,7 +5,8 @@ import { FLOW } from '../config/ui.js';
 import { isArmed } from './Session.js';
 
 /** Requests that wipe the plan, and the phases where they do. */
-const DESTRUCTIVE = Object.freeze({ restart: ['planning'], newPlan: ['planning', 'running', 'paused'] });
+const IN_ROUND = ['buy', 'prep', 'planning', 'running', 'paused'];
+const DESTRUCTIVE = Object.freeze({ restart: IN_ROUND, newPlan: IN_ROUND });
 
 /** 'go' (act now) | 'armed' (wait for the repeat). */
 export function armOrConfirm(session, action, hasPlan) {

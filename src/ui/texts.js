@@ -6,41 +6,51 @@ export const T = Object.freeze({
   gameTitle: 'TACTIC SQUAD',
   subtitle: 'Prototipo táctico · Operación Almacén',
   briefing:
-    'Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. Planifica cada ruta, controla los ángulos y sincroniza la entrada. Encuentra la bomba y desactívala (7 s quieto, sin disparar) o elimina a los Defensores.',
+    'Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. El asalto va por turnos: planificas 15 s sin ver al rival y todo se ejecuta a la vez durante 5 s, sin pausa. Encuentra la bomba y desactívala (7 s quieto, sin disparar) o elimina a los Defensores antes del turno 18.',
   start: 'COMENZAR',
   startHint: 'Clic o Intro',
 
   phase: {
+    buy: 'COMPRA',
+    prep: 'PREPARACIÓN',
     planning: 'PLANIFICACIÓN',
-    paused: 'PAUSA TÁCTICA',
-    running: 'EN EJECUCIÓN',
+    paused: 'PAUSA',
+    running: 'EJECUCIÓN',
     ended: 'FIN DE RONDA',
   },
   phaseSub: {
-    planning: 'Traza las rutas y pulsa ESPACIO para ejecutar',
-    paused: 'Edita rutas · ESPACIO para reanudar',
-    running: 'ESPACIO: pausa táctica · G: código GO',
+    buy: 'Revisa el equipo · ESPACIO: listo',
+    prep: 'Elige por dónde entrar y adelanta rutas · ESPACIO: listo',
+    planning: 'Traza o cambia rutas · ESPACIO: listo',
+    paused: 'ESPACIO para reanudar',
+    running: 'Todo se ejecuta a la vez: el plan sigue al terminar el turno',
     ended: 'R: reintentar',
   },
 
   phaseSubTouch: {
-    planning: 'Dibuja rutas con el dedo · EJECUTAR para empezar',
-    paused: 'Edita rutas · SEGUIR para reanudar',
-    running: 'PAUSA para planificar · GO sincroniza',
+    buy: 'Revisa el equipo · LISTO para seguir',
+    prep: 'Elige la entrada y adelanta rutas · LISTO',
+    planning: 'Dibuja o cambia rutas · LISTO para ejecutar',
+    paused: 'SEGUIR para reanudar',
+    running: 'Todo se ejecuta a la vez: el plan sigue al terminar el turno',
     ended: 'REINICIAR para otro intento',
   },
+  /** Phase bar: turn and the decision clock (ui/Hud.js). */
+  turn: (n, max) => `TURNO ${n}/${max}`,
+  clockUnlimited: 'sin límite',
+  execLeft: (s) => `${s} s`,
 
   /** Title screen: how to play in three steps (touch / desktop). */
   howTo: {
     touch: [
       ['1', 'Toca un operador y arrastra el dedo para dibujar su ruta.'],
       ['2', 'Mantén pulsado un punto para elegir hacia dónde mira.'],
-      ['3', 'EJECUTAR. Pausa cuando quieras y corrige sobre la marcha.'],
+      ['3', 'LISTO: el turno corre 5 s. Luego corriges el plan con lo que pasó.'],
     ],
     desk: [
       ['1', 'Selecciona un operador (1·2·3) y haz clic o arrastra su ruta.'],
       ['2', 'Clic derecho y arrastra en un punto: hacia dónde mira.'],
-      ['3', 'ESPACIO ejecuta y pausa. H + G sincronizan la entrada.'],
+      ['3', 'ESPACIO: listo, el turno corre 5 s. H + G sincronizan la entrada.'],
     ],
   },
 
@@ -55,8 +65,7 @@ export const T = Object.freeze({
   ],
 
   actions: {
-    execute: 'Ejecutar',
-    pause: 'Pausa',
+    ready: 'Listo',
     resume: 'Reanudar',
     go: 'GO',
     restart: 'Reiniciar',
@@ -220,15 +229,15 @@ export const T = Object.freeze({
       ['Clic derecho (arrastrar)', 'Fijar dirección de mirada del último punto'],
       ['H', 'El último punto espera un código GO (A → B → C → sin espera)'],
       ['E', 'Cómo entra por la puerta junto al último punto: patada, entreabrir, flash, granada, carga'],
-      ['G', 'Dar el siguiente código GO (los que lo esperan avanzan a la vez)'],
+      ['G', 'Programar el código GO: cuando todos estén en posición, o a los 1·2·3·4 s del turno'],
       ['Retroceso / Z', 'Deshacer último punto'],
       ['X / Supr', 'Borrar ruta'],
-      ['Espacio', 'Ejecutar / pausa táctica'],
+      ['Espacio / Intro', 'Listo: termina la fase y ejecuta el turno (5 s, sin pausa)'],
       ['WASD · flechas · bordes', 'Mover cámara'],
       ['Rueda · + / −', 'Zoom'],
       ['Botón central (arrastrar)', 'Mover cámara'],
       ['F', 'Centrar en el operador'],
-      ['R', 'Reintentar con el mismo plan'],
+      ['R', 'Reintentar con el mismo plan (durante la ronda: empezarla de nuevo)'],
       ['N', 'Plan nuevo (borra todas las rutas)'],
       ['Esc', 'Cancelar el trazo en curso'],
       ['P', 'Desactivar la bomba (operador junto a ella)'],
@@ -240,8 +249,7 @@ export const T = Object.freeze({
   },
 
   touch: {
-    execute: 'Ejecutar',
-    pause: 'Pausa',
+    ready: 'Listo',
     resume: 'Seguir',
     go: 'GO',
     hold: 'Esperar',
@@ -263,12 +271,25 @@ export const T = Object.freeze({
       ['Dedo en el borde al dibujar', 'La cámara te sigue'],
       ['Esperar', 'El último punto espera un código GO (cada toque: A, B, C, sin espera)'],
       ['Entrada (junto a una puerta)', 'Patada, entreabrir, flash, granada o carga'],
-      ['GO', 'Los que esperan ese código avanzan a la vez'],
+      ['GO', 'Programa el código: sale cuando todos están en posición (cada toque: +1 s, hasta quitarlo)'],
+      ['Listo', 'Termina la fase; el turno corre 5 s sin pausa'],
     ],
     startHint: 'Toca para comenzar',
   },
   rotate: { title: 'Gira tu teléfono', text: 'Tactic Squad se juega en horizontal.' },
-  gfxLost: { title: 'Restaurando gráficos…', text: 'El sistema liberó la pantalla del juego. La ronda está en pausa y tu plan sigue intacto.' },
+  gfxLost: { title: 'Restaurando gráficos…', text: 'El sistema liberó la pantalla del juego. El turno está en pausa y tu plan sigue intacto.' },
+  /** Buy and preparation panels (ui/PhasePanel.js). */
+  buy: {
+    title: 'Equipo de la ronda',
+    note: 'La compra llega en el próximo hito: por ahora cada operador lleva el equipo de su rol.',
+    gear: { flash: 'flash', frag: 'granada', breach: 'carga' },
+    none: 'sin utilidad',
+  },
+  prep: {
+    title: 'Entrada del escuadrón',
+    note: 'El defensor no sabe por dónde entras. Puedes adelantar rutas para el primer turno.',
+    entries: { norte: 'Norte · oficina', principal: 'Principal · pasillo', sur: 'Sur · baño' },
+  },
 
   /** Onboarding: the banner's sub line tells a new player the next step. */
   coach: {
@@ -276,9 +297,9 @@ export const T = Object.freeze({
     route: { touch: (n) => `Arrastra desde ${n} para dibujar su ruta`, desk: (n) => `Clic o arrastra para trazar la ruta de ${n}` },
     look: { touch: 'Mantén pulsado un punto y arrastra: hacia dónde mira', desk: 'Clic derecho y arrastra: hacia dónde mira' },
     next: { touch: (n) => `Bien. Ahora ${n}: tócalo y traza su ruta`, desk: (n) => `Bien. Ahora ${n} (tecla o clic)` },
-    ready: { touch: 'Listo: pulsa EJECUTAR · ESPERAR + GO = entrada sincronizada', desk: 'Listo: ESPACIO para ejecutar · H + G = entrada sincronizada' },
-    goReady: { touch: '¡Todos en posición! Pulsa GO', desk: '¡Todos en posición! Pulsa G' },
-    goWaiting: { touch: (n) => `${n} espera el GO`, desk: (n) => `${n} espera el GO (G)` },
+    ready: { touch: 'Pulsa LISTO · ESPERAR + GO = entrada sincronizada', desk: 'ESPACIO: listo · H + G = entrada sincronizada' },
+    goUnplanned: { touch: (c) => `Hay quien espera el GO ${c}: tócalo para programarlo`, desk: (c) => `Hay quien espera el GO ${c}: pulsa G para programarlo` },
+    goWaiting: { touch: (n) => `${n} espera el GO`, desk: (n) => `${n} espera el GO` },
   },
 
   reject: 'Orden rechazada',
@@ -291,7 +312,10 @@ export const T = Object.freeze({
     nobodyWaiting: 'Nadie espera el GO: marca ESPERAR en un punto',
     noDoor: 'No hay una puerta junto a ese punto',
     noGear: 'No le queda equipo para eso',
-    goBeforeStart: 'El GO se da durante la ejecución',
+    goBeforeStart: 'El GO se programa al planificar',
+    notNow: 'No se dan órdenes durante la ejecución: espera a planificar',
+    noCode: 'Nadie espera ese código GO: marca ESPERAR en un punto',
+    badEntry: 'Esa entrada no existe en el mapa',
   },
   webgl: 'Tu navegador no soporta WebGL2, necesario para Tactic Squad. Prueba con una versión reciente de Chrome, Edge o Firefox.',
   fatal: 'Se produjo un error al iniciar el juego.',
