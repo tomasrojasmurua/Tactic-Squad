@@ -14,13 +14,18 @@ const PLANS = {
 function playRound(seed, site) {
   const plan = PLANS[site];
   const sim = new Simulation(MAPS[DEFAULT_MAP], { seed, site, entry: plan.entry });
+  sim.skipToAssault();
   for (const u of sim.teams.attackers) {
     for (const [x, y] of plan.points) sim.enqueue({ type: 'addWaypoint', unitId: u.id, x, y: y + (u.slot - 1) * 0.6, user: true, team: 'attackers' });
   }
-  const maxTicks = 60 * 150;
-  while (!sim.outcome && sim.tick < maxTicks) sim.step();
+  // Turnos We-Go: el plan se da en el primer turno; los demás se ejecutan sin cambios.
+  while (sim.phase === 'plan') {
+    sim.advancePhase();
+    while (sim.phase === 'exec') sim.step();
+  }
   return {
     tick: sim.tick,
+    turn: sim.turn,
     outcome: sim.outcome && { winner: sim.outcome.winner, reason: sim.outcome.reason },
     bomb: { ...sim.bomb },
     units: sim.units.map((u) => [u.alive, u.hp, +u.x.toFixed(6), +u.y.toFixed(6)]),

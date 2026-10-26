@@ -10,11 +10,13 @@ import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
 
 const MAP = MAPS[DEFAULT_MAP];
 // Ambos bandos por órdenes: los defensores se quedan quietos donde se los pone.
+// Sin fases (phases: false): la sim corre siempre y acepta órdenes en cualquier
+// momento; las fases y los turnos se prueban en turns.test.mjs.
 const STILL = { attackers: 'human', defenders: 'human' };
 
 /** Ronda con los defensores encerrados en la oficina (no ven el sitio) y ÁGUILA junto a la bomba. */
 function atTheBomb(site) {
-  const sim = new Simulation(MAP, { seed: 7, site, controllers: STILL });
+  const sim = new Simulation(MAP, { seed: 7, site, controllers: STILL, phases: false });
   sim.teams.defenders.forEach((d, i) => {
     d.x = 11.5 + i * 0.8;
     d.y = 9.5;
@@ -88,7 +90,7 @@ test('quien desactiva no dispara', () => {
 });
 
 test('sin bomba desactivada, el tiempo da la ronda al defensor', () => {
-  const sim = new Simulation(MAP, { seed: 3, controllers: STILL });
+  const sim = new Simulation(MAP, { seed: 3, controllers: STILL, phases: false });
   sim.timeLeft = 0.05;
   runFor(sim, 0.2);
   assert.equal(sim.outcome?.winner, 'defenders');
@@ -97,11 +99,11 @@ test('sin bomba desactivada, el tiempo da la ronda al defensor', () => {
 });
 
 test('eliminar a todos gana para cualquier bando', () => {
-  const a = new Simulation(MAP, { seed: 3, controllers: STILL });
+  const a = new Simulation(MAP, { seed: 3, controllers: STILL, phases: false });
   for (const d of a.teams.defenders) kill(a, d, null, 0);
   a.step();
   assert.deepEqual([a.outcome?.winner, a.outcome?.reason], ['attackers', 'elimination']);
-  const b = new Simulation(MAP, { seed: 3, controllers: STILL });
+  const b = new Simulation(MAP, { seed: 3, controllers: STILL, phases: false });
   for (const u of b.teams.attackers) kill(b, u, null, 0);
   b.step();
   assert.deepEqual([b.outcome?.winner, b.outcome?.reason], ['defenders', 'wiped']);

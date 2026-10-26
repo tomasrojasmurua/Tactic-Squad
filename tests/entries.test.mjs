@@ -9,6 +9,8 @@ import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
 
 const MAP = MAPS[DEFAULT_MAP];
 // Ambos bandos por órdenes: los defensores se quedan quietos donde se los pone.
+// Las mecánicas se prueban sin fases (phases: false: GO en vivo); la ronda
+// completa del final se juega por turnos, con los GO agendados al planificar.
 const STILL = { attackers: 'human', defenders: 'human' };
 const T = 'attackers';
 
@@ -17,7 +19,7 @@ const T = 'attackers';
  * (x = 10, el pasillo queda al este). Un defensor en el pasillo, el resto lejos.
  */
 function atTheDoor({ defender = [13, 12.7], facing = Math.PI } = {}) {
-  const sim = new Simulation(MAP, { seed: 11, site: 'A', controllers: STILL });
+  const sim = new Simulation(MAP, { seed: 11, site: 'A', controllers: STILL, phases: false });
   const [d0, ...others] = sim.teams.defenders;
   d0.x = defender[0];
   d0.y = defender[1];
@@ -188,9 +190,10 @@ test('órdenes de entrada imposibles se rechazan: sin puerta cerca o sin equipo'
   assert.equal(a.route.filter((p) => p.entry === 'flash').length, 1);
 });
 
-/** Una entrada completa: entreabrir con A, flash y patada por dos puertas con B. */
+/** Una entrada completa por turnos: entreabrir con A, flash y patada por dos puertas con B, los GO agendados al planificar. */
 function playEntryRound(seed) {
   const sim = new Simulation(MAP, { seed, site: 'A', entry: 'principal' });
+  sim.skipToAssault();
   const [a, b, c] = sim.teams.attackers;
   const go = [];
   stack(sim, a, 11.75, 'A', 'slow', [12.5, 12.4]);
@@ -200,13 +203,19 @@ function playEntryRound(seed) {
   cmd(sim, { type: 'setEntry', unitId: c.id, mode: 'kick' });
   wp(sim, c, 12, 8);
   for (const u of [a, b]) wp(sim, u, 27.4, 12.7);
-  while (!sim.outcome && sim.tick < 60 * 150) {
-    if (!go.length && isGoReady(sim, T, 'A') && codeWaiting(sim, T, 'A')) go.push(sim.tick, cmd(sim, { type: 'go', code: 'A' }));
-    if (go.length === 2 && codeWaiting(sim, T, 'B') && isGoReady(sim, T, 'B')) go.push(sim.tick, cmd(sim, { type: 'go', code: 'B' }));
-    sim.step();
+  cmd(sim, { type: 'go', code: 'A' }); // cuando los de A estén en posición
+  cmd(sim, { type: 'go', code: 'B', at: 1 }); // B: no antes de 1 s dentro del turno
+  while (sim.phase === 'plan') {
+    sim.advancePhase();
+    while (sim.phase === 'exec') {
+      const before = sim.goCount;
+      sim.step();
+      if (sim.goCount > before) go.push(sim.tick);
+    }
   }
   return {
     tick: sim.tick,
+    turn: sim.turn,
     go,
     outcome: sim.outcome && { winner: sim.outcome.winner, reason: sim.outcome.reason },
     doors: sim.doors.map((d) => [d.open, d.cracked, d.destroyed, +d.angle.toFixed(9)]),
@@ -218,6 +227,6 @@ test('una ronda con entradas coordinadas es determinista', () => {
   const a = playEntryRound(4321);
   const b = playEntryRound(4321);
   assert.ok(a.outcome, 'la ronda debe terminar');
-  assert.ok(a.go.length === 4, 'se dieron los dos GO');
+  assert.equal(a.go.length, 2, 'se dieron los dos GO agendados');
   assert.deepEqual(a, b);
 });

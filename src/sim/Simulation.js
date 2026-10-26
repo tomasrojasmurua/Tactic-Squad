@@ -17,15 +17,21 @@ import { updateAiUnit } from './ai.js';
 import { updateFacing, updateMovement } from './movement.js';
 import { resolveCollisions } from './collisions.js';
 import { updateCombat } from './combat.js';
-import { createBomb, updateObjectives } from './objectives.js';
+import { createBomb, updateObjectives, endRound } from './objectives.js';
+import { createRound, advancePhase, canStep, fireScheduledGos, afterTick, PHASE } from './round.js';
+import { createNoise, collectNoise } from './noise.js';
+import { createMemory, updateMemory } from './view.js';
 
 export class Simulation {
   /**
    * @param opts.controllers {team: 'human'|'ai'} who commands each side (config/squad.js CONTROLLERS).
    * @param opts.site  bomb site id ('A' | 'B'); omitted, the defending side picks it from the seed.
    * @param opts.entry attacker entry id (map `entries`); omitted, the map's default entry.
+   *                    The attackers may change it during the preparation (chooseEntry order).
+   * @param opts.phases true: the round goes through its phases (sim/round.js, starts at 'buy');
+   *                    false: no phases, it always runs and takes orders (mechanics tests).
    */
-  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null } = {}) {
+  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, phases = true } = {}) {
     this.seed = seed;
     this.controllers = controllers;
     this.rng = new Rng(seed);
@@ -53,6 +59,9 @@ export class Simulation {
     this.outcome = null;
     this.commands = [];
     this.events = [];
+    this.round = createRound(phases);
+    this.noise = createNoise(); // sim/noise.js: heard this turn, pulses per listening side
+    this.memory = createMemory(); // sim/view.js: last known enemy positions per side
 
     this.units = []; // indexed by unit id; fixed for the whole round
     this.spawnUnits();
@@ -102,6 +111,45 @@ export class Simulation {
     });
   }
 
+  /** Current round phase (sim/round.js PHASE). */
+  get phase() {
+    return this.round.phase;
+  }
+
+  /** Current assault turn (1..ROUND.maxTurns; 0 before the assault). */
+  get turn() {
+    return this.round.turn;
+  }
+
+  /** Ends the current decision phase (buy -> prep -> plan -> exec); applies pending orders first. */
+  advancePhase() {
+    this.flushCommands();
+    advancePhase(this);
+  }
+
+  /** Buy and preparation skipped: straight to planning the first turn (scripts, tests). */
+  skipToAssault() {
+    while (this.round.enabled && this.round.phase !== PHASE.plan) this.advancePhase();
+  }
+
+  /** Moves the attackers to another entry's start positions (preparation phase; their routes are lost). */
+  setEntry(id) {
+    const entry = this.compiled.entries.find((e) => e.id === id);
+    if (!entry || entry === this.entry) return false;
+    this.entry = entry;
+    for (const u of this.teams.attackers) {
+      const s = entry.spawns[u.slot % entry.spawns.length];
+      u.x = u.prevX = s.at[0];
+      u.y = u.prevY = s.at[1];
+      u.facing = u.prevFacing = u.heading = u.ai.baseFacing = s.facing;
+      u.route.length = 0;
+      u.idleLook = null;
+      u.waitingGo = false;
+      u.waitCode = null;
+    }
+    return true;
+  }
+
   /** Queue a player command; applied in order at the next flush/step. */
   enqueue(cmd) {
     this.commands.push(cmd);
@@ -126,8 +174,11 @@ export class Simulation {
   }
 
   step(dt = this.dt) {
+    if (!canStep(this)) return; // decision phases: time does not run
     this.dt = dt;
+    const firstEvent = this.events.length;
     this.flushCommands();
+    fireScheduledGos(this);
     for (const u of this.units) {
       u.prevX = u.x;
       u.prevY = u.y;
@@ -137,6 +188,7 @@ export class Simulation {
     updateDoors(this, dt);
     updateEntries(this, dt);
     updatePerception(this);
+    updateMemory(this);
     for (const u of this.units) {
       if (!u.alive) continue;
       if (this.controllers[u.team] === 'ai') updateAiUnit(this, u, dt);
@@ -147,6 +199,8 @@ export class Simulation {
     for (const u of this.units) if (u.alive) updateCombat(this, u, dt);
     updateAbilities(this, dt);
     updateObjectives(this, dt);
+    if (this.round.enabled) collectNoise(this, firstEvent);
+    afterTick(this, endRound);
 
     this.tick++;
     this.time += dt;

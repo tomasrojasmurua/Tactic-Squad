@@ -15,10 +15,18 @@
 //                                              ENTRY.modes ('kick'|'slow'|'flash'|'frag'|'breach') or null (just walk through)
 //   {type:'undoWaypoint', unitId}              removes the last user waypoint (and its leg)
 //   {type:'clearRoute', unitId}                also cancels an entry he is preparing
-//   {type:'go', code?}                         releases the units of the side waiting for that GO code
-//                                              (none given: the first code someone waits for; rejected if nobody)
+//   {type:'go', code?, at?}                    planning: schedules that GO code at `at` s into the turn
+//                                              (default 0); it fires once everyone holding for it is in
+//                                              position (sim/round.js). Without phases: releases the units
+//                                              waiting for it now (none given: the first code someone waits for)
+//   {type:'cancelGo', code}                    planning: unschedules that GO code
 //   {type:'defuseNow', unitId?}                an attacker next to the found bomb stops and defuses
 //                                              (that unit, else the closest one in range)
+//   {type:'chooseEntry', entry}                preparation: the attackers start from another entry (map `entries`)
+//
+// Each round phase takes only some orders (PHASE_ORDERS; sim/round.js):
+// nothing during buy or the execution — a turn runs untouched — and the
+// rest are rejected with REJECT.notNow. A sim without phases takes all.
 //
 // Every command may carry `team` (the side giving it; the session stamps it):
 // a unit only obeys its own side, and only a side whose controller is
@@ -28,9 +36,10 @@
 // turns codes into text (ui/texts.js T.rejectReason), the sim never does.
 import { NAV, ENTRY } from '../config/balance.js';
 import { EV } from '../core/events.js';
-import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode } from './queries.js';
+import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode, codeInUse, humanTeam } from './queries.js';
 import { startDefuse } from './objectives.js';
 import { cancelEntry, releaseDelay } from './entries.js';
+import { scheduleGo } from './round.js';
 
 export const REJECT = Object.freeze({
   routeTooLong: 'routeTooLong',
@@ -41,6 +50,20 @@ export const REJECT = Object.freeze({
   noDoor: 'noDoor', // an entry on a waypoint with no (suitable) doorway next to it
   noGear: 'noGear', // an entry needing a flash / grenade / charge he no longer has
   goBeforeStart: 'goBeforeStart', // emitted by the session: GO pressed while still planning
+  notNow: 'notNow', // this order is not taken in the current round phase (e.g. during an execution turn)
+  noCode: 'noCode', // a GO scheduled for a code nobody of the side holds for
+  badEntry: 'badEntry', // chooseEntry with an entry the map does not have
+});
+
+const ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'endStroke', 'cancelStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute'];
+
+/** Orders each round phase takes (sim/round.js PHASE; literal keys: round.js imports this module). */
+const PHASE_ORDERS = Object.freeze({
+  buy: [],
+  prep: [...ROUTE_ORDERS, 'go', 'cancelGo', 'chooseEntry'],
+  plan: [...ROUTE_ORDERS, 'go', 'cancelGo', 'defuseNow'],
+  exec: [],
+  end: [],
 });
 
 /** May the side that sent `cmd` command this unit? */
@@ -50,8 +73,15 @@ function obeys(sim, unit, cmd) {
 }
 
 export function applyCommand(sim, cmd) {
-  if (cmd.type === 'go') return issueGo(sim, cmd);
+  const r = sim.round;
+  if (r.enabled && !PHASE_ORDERS[r.phase].includes(cmd.type)) {
+    sim.emit(EV.ORDER_REJECTED, { unitId: cmd.unitId ?? -1, reason: REJECT.notNow });
+    return;
+  }
+  if (cmd.type === 'go') return r.enabled ? planGo(sim, cmd) : issueGo(sim, cmd);
+  if (cmd.type === 'cancelGo') return planGo(sim, { ...cmd, at: null });
   if (cmd.type === 'defuseNow') return defuseNow(sim, cmd);
+  if (cmd.type === 'chooseEntry') return chooseEntry(sim, cmd);
   const unit = sim.units[cmd.unitId];
   if (!unit || !unit.alive || !obeys(sim, unit, cmd)) return;
   switch (cmd.type) {
@@ -232,12 +262,48 @@ function undoWaypoint(sim, unit) {
   changed(sim, unit, 'undo');
 }
 
+/** The side an order speaks for: its `team`, else the (only) human side. */
+const sideOf = (sim, cmd) => cmd.team || humanTeam(sim);
+
+/** Schedules (or with at: null, cancels) a GO code for the next execution (sim/round.js). */
+function planGo(sim, cmd) {
+  const team = sideOf(sim, cmd);
+  if (!team || sim.controllers[team] !== 'human') return;
+  const code = ENTRY.goCodes.includes(cmd.code) ? cmd.code : ENTRY.goCodes.find((c) => codeInUse(sim, team, c));
+  if (cmd.at !== null && (!code || !codeInUse(sim, team, code))) {
+    sim.emit(EV.ORDER_REJECTED, { unitId: -1, reason: REJECT.noCode });
+    return;
+  }
+  if (!code) return;
+  scheduleGo(sim, team, code, cmd.at === null ? null : cmd.at ?? 0);
+  sim.emit(EV.GO_SCHEDULED, { team, code, at: cmd.at === null ? null : (scheduledAt(sim, team, code) ?? null) });
+}
+
+function scheduledAt(sim, team, code) {
+  const g = sim.round.gos.find((q) => q.team === team && q.code === code);
+  return g ? g.at : null;
+}
+
+function chooseEntry(sim, cmd) {
+  const team = sideOf(sim, cmd);
+  if (team !== 'attackers' || sim.controllers.attackers !== 'human') return;
+  if (!sim.compiled.entries.some((e) => e.id === cmd.entry)) {
+    sim.emit(EV.ORDER_REJECTED, { unitId: -1, reason: REJECT.badEntry });
+    return;
+  }
+  if (!sim.setEntry(cmd.entry)) return;
+  // Scheduled GO codes were about the old routes.
+  sim.round.gos = sim.round.gos.filter((g) => g.team !== 'attackers');
+  sim.emit(EV.ENTRY_CHOSEN, { entry: cmd.entry });
+  for (const u of sim.teams.attackers) changed(sim, u, 'clear');
+}
+
 /**
  * Releases everyone of the side waiting for one GO code. If one of them
  * throws a grenade or fires a charge, the others hold until it goes off
  * (unit.goDelay), so they enter right after the bang.
  */
-function issueGo(sim, cmd) {
+export function issueGo(sim, cmd) {
   const team = cmd.team || null;
   const code = ENTRY.goCodes.includes(cmd.code) ? cmd.code : firstCode(sim, cmd, team);
   const released = [];

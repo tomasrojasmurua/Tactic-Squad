@@ -30,14 +30,15 @@ export function updateObjectives(sim, dt) {
   if (sim.outcome) return;
   spotBomb(sim);
   updateDefuse(sim, dt);
-  sim.timeLeft = Math.max(0, sim.timeLeft - dt);
+  // With phases the turns count the time (sim/round.js); without, the clock does.
+  if (!sim.round.enabled) sim.timeLeft = Math.max(0, sim.timeLeft - dt);
 
   const attackersAlive = sim.units.some((u) => u.team === 'attackers' && u.alive);
   const defendersAlive = sim.units.some((u) => u.team === 'defenders' && u.alive);
   if (sim.bomb.defused) return endRound(sim, 'attackers', 'defused');
   if (!defendersAlive) return endRound(sim, 'attackers', 'elimination');
   if (!attackersAlive) return endRound(sim, 'defenders', 'wiped');
-  if (sim.timeLeft <= 0) return endRound(sim, 'defenders', 'time');
+  if (!sim.round.enabled && sim.timeLeft <= 0) return endRound(sim, 'defenders', 'time');
 }
 
 const eye = { x: 0, y: 0, facing: 0 };
@@ -106,7 +107,7 @@ function abortDefuse(sim, u) {
   sim.emit(EV.DEFUSE_ABORT, { unitId: u.id });
 }
 
-function endRound(sim, winner, reason) {
+export function endRound(sim, winner, reason) {
   sim.outcome = { winner, reason, time: sim.time, notes: buildNotes(sim, winner, reason) };
   sim.emit(EV.ROUND_END, { winner, reason });
 }

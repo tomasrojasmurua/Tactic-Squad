@@ -164,10 +164,34 @@ export const ENTRY = Object.freeze({
 });
 
 export const ROUND = Object.freeze({
-  timeLimit: 120, // seconds of execution
+  // The assault is played in We-Go turns (sim/round.js): both sides plan blind, then
+  // every order runs at once for turnSeconds, up to maxTurns. timeLimit = their product.
+  turnSeconds: 5, // s of execution per turn
+  maxTurns: 18, // after the last one, time is up: the defenders win
+  timeLimit: 90, // s of execution (turnSeconds × maxTurns; a sim without phases runs this long)
+  // Seconds each side gets to decide in every decision phase (wall clock: the session's
+  // PhaseClock, later the server). Never read by the sim: they cannot change the result.
+  phaseSeconds: Object.freeze({ buy: 20, prep: 45, plan: 15 }),
+  endSeconds: 10, // the result stays on screen this long before it offers the next round
   defuseTime: 7.0, // s standing still next to the bomb
   defuseRadius: 1.1, // m from the bomb an attacker can work on it
   goStallHint: 3, // s with every planned operator waiting for GO before the HUD insists
+  goStepSeconds: 0.5, // a GO is scheduled at a multiple of this inside the turn
+});
+
+/**
+ * Noise (sim/noise.js): what the other side hears of a turn. Each loud thing is
+ * heard by the enemy if one of them is within its radius (m, through walls), and
+ * at the end of the turn it becomes a pulse on their map: a cell of `cell` m,
+ * shifted up to `jitter` m — where, roughly, never who or exactly.
+ */
+export const NOISE = Object.freeze({
+  cell: 3, // m: pulses are snapped to this grid...
+  jitter: 0.9, // ...and shifted up to this much (deterministic, from the seed)
+  keepTurns: 3, // a pulse stays on the map this many turns, fading
+  // Radius heard (m) by kind; the loudest kind of a cell names its pulse.
+  radius: Object.freeze({ step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, flash: 18, frag: 22, breach: 22 }),
+  rank: Object.freeze(['step', 'crack', 'door', 'plant', 'defuse', 'kick', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
 });
 
 export const NAV = Object.freeze({
