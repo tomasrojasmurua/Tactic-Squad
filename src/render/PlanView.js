@@ -1,5 +1,6 @@
 // Planning "blueprint" state: how much of the unseen map is drawn as a
-// tactical plan (planning / pause) versus the black Redie fog (execution).
+// tactical plan (deciding: buy, preparation, a turn's planning) versus the
+// black Redie fog (a turn's execution).
 // Changes sweep as a circular wipe from the squad (config/render.js BLUEPRINT).
 // Produces the vec4 the fog shaders read as uPlan: origin xy, radius, mode.
 import { BLUEPRINT } from '../config/render.js';
@@ -7,7 +8,7 @@ import { teamUnits } from '../sim/queries.js';
 
 const FAR = 1e5;
 
-const wantsPlan = (phase) => phase === 'title' || phase === 'planning' || phase === 'paused';
+const wantsPlan = (phase) => phase === 'title' || phase === 'buy' || phase === 'prep' || phase === 'planning';
 const ease = (t) => t * t * (3 - 2 * t);
 
 export class PlanView {

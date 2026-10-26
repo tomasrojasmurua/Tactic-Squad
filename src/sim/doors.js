@@ -39,7 +39,7 @@ export function tryOpenDoors(sim, unit) {
 
 /**
  * Does the next stretch of the unit's route pass through this doorway?
- * Stops at a GO hold: an operator stacked on a door waits with it CLOSED.
+ * Stops at a GO hold or a "?" point: an operator stacked on a door waits with it CLOSED.
  */
 function routeCrossesDoor(unit, def) {
   if (unit.waitingGo) return false;
@@ -49,7 +49,7 @@ function routeCrossesDoor(unit, def) {
   for (let i = 0; i < n; i++) {
     const p = unit.route[i];
     if (segmentCrossesDoorway(ax, ay, p.x, p.y, def) >= 0) return true;
-    if (p.hold) return false;
+    if (p.hold || p.ask) return false;
     ax = p.x;
     ay = p.y;
   }

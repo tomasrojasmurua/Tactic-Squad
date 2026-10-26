@@ -430,14 +430,14 @@ body.touch .help-box { max-height: calc(100dvh - 66px - var(--sat)); overflow: a
   display: block; position: absolute; top: calc(100% + 4px); right: 0; padding: 3px 7px; white-space: nowrap;
   font-size: 11px; color: #fff; background: rgba(120, 14, 10, 0.95); border-left: 3px solid var(--red);
 }
-/* GO while planning ("GO al ejecutar"): plainly disabled, no pulse; the touch button shows its label. */
+/* GO during a turn (it is scheduled while planning): plainly disabled, no pulse; the touch button shows its label. */
 .btn.go:disabled, .tbtn.go:disabled {
   background: var(--plate-strong); border-color: rgba(143, 227, 107, 0.3); color: var(--muted); animation: none; box-shadow: none; transform: none; cursor: default;
 }
 .tbtn.go:disabled > * { opacity: 0.75; }
 .tbtn.go:disabled .tl { display: block; font-size: 9px; letter-spacing: 0.02em; text-transform: none; color: var(--muted); }
 .tbtn.go:disabled .ti b { font-size: 13px; color: var(--muted); }
-/* Help: smart-pause switches (text says SÍ/NO; [data-on] lights the plate). */
+/* Help: option switches (text says SÍ/NO; [data-on] lights the plate). */
 .help-options { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 .help-box .help-options .btn { flex: 1 1 200px; margin-top: 0; min-height: 44px; justify-content: center; font-size: 12px; letter-spacing: 0.08em; color: var(--muted); }
 .help-options .btn[data-on="1"] { color: #fff; border-color: var(--cyan); box-shadow: inset 3px 0 0 var(--cyan); }
@@ -644,3 +644,59 @@ body.touch .ebtn { min-width: 50px; padding: 3px 4px; }
 .ptag.sel { opacity: 1; }
 .ptag.off { display: none; }
 .ptag.under-hud { visibility: hidden; }
+/* A door nobody decided: an amber "?" that breathes until it is tapped (minimal, but it asks for attention). */
+.ptag.ask {
+  pointer-events: auto; cursor: pointer; touch-action: manipulation; width: 22px; height: 22px; padding: 0; margin-top: -4px; border-radius: 50%;
+  justify-content: center; font-size: 14px; color: #1a1000; background: var(--amber); opacity: 1; animation: askPulse 1.3s ease-in-out infinite;
+}
+.ptag.ask::before { content: ''; position: absolute; inset: -11px; } /* a finger-size target */
+.ptag.ask.target { animation: none; box-shadow: 0 0 0 2px #fff, 0 1px 0 rgba(0, 0, 0, 0.9); }
+@keyframes askPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 176, 46, 0.65), 0 1px 0 rgba(0, 0, 0, 0.9); }
+  50% { box-shadow: 0 0 0 7px rgba(255, 176, 46, 0), 0 1px 0 rgba(0, 0, 0, 0.9); }
+}
+.entry-picker.ask .ep-title { color: var(--amber); }
+.entry-picker .ep-when { display: flex; align-items: center; gap: 4px; }
+.entry-picker .ep-wl { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #cfd6db; margin-right: 4px; }
+.wbtn {
+  pointer-events: auto; touch-action: manipulation; min-height: 30px; padding: 2px 10px; font-family: var(--font); font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #fff; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.wbtn.active { background: var(--ok-deep); border-color: var(--ok); }
+
+/* ------------------------------------------------------------ We-Go turns (hito 2) */
+/* Phase bar: turn + clock; the thin bar under it empties with the decision clock / the 5 s turn. */
+.banner .clock { font-family: var(--font-display); font-size: 17px; font-weight: 800; letter-spacing: 0.12em; color: var(--cyan); line-height: 1.1; }
+.banner .clock:empty { display: none; }
+.banner .clock.low { color: var(--amber); }
+.banner .cbar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(255, 255, 255, 0.08); }
+.banner .cbar i { display: block; height: 100%; background: var(--cyan); transform-origin: left center; }
+.banner.running .cbar i, .banner.paused .cbar i { background: var(--ok); }
+.banner.running .clock { font-size: 13px; color: var(--ok); }
+.banner.buy::before, .banner.prep::before { background: #c9d2d9; }
+.banner.ended .cbar { display: none; }
+body.touch .banner .clock { font-size: 13px; }
+/* GO groups: how many are in position written on them; live only during the turn. */
+.btn.go .when { font-weight: 600; letter-spacing: 0.04em; text-transform: none; font-size: 12px; opacity: 0.85; }
+.tbtn.go .tl { display: block; font-size: 9px; letter-spacing: 0.02em; text-transform: none; }
+.tbtn.go .ti b { font-size: 15px; }
+
+/* Buy / preparation panel (ui/PhasePanel.js): a plate under the phase bar, the map stays visible. */
+.phase-panel {
+  position: absolute; top: calc(92px + var(--sat)); left: 50%; transform: translateX(-50%); width: min(460px, calc(100vw - 32px));
+  padding: 10px 14px 12px; background: var(--plate-strong); border: 1px solid var(--line-strong); pointer-events: auto; z-index: 6;
+}
+.phase-panel.hidden { display: none; }
+.phase-panel .pp-title { font-family: var(--font-display); font-size: 15px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan); }
+.phase-panel .pp-body { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.phase-panel .pp-row { display: grid; grid-template-columns: 74px 1fr auto; gap: 8px; align-items: baseline; font-size: 13px; }
+.phase-panel .pp-role { color: #cfd6db; }
+.phase-panel .pp-gear { color: var(--muted); font-size: 12px; }
+.phase-panel .pp-entry { justify-content: center; min-height: 44px; }
+.phase-panel .pp-entry.on { border-color: var(--cyan); background: var(--cyan-deep); }
+.phase-panel .pp-note { margin-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.35; }
+body.touch .phase-panel { top: calc(62px + var(--sat)); width: min(380px, calc(100vw - 300px)); padding: 6px 10px 8px; }
+body.touch .phase-panel .pp-body { flex-direction: row; flex-wrap: wrap; }
+body.touch .phase-panel .pp-row { grid-template-columns: 1fr; gap: 0; flex: 1 1 100px; font-size: 12px; }
+body.touch .phase-panel .pp-entry { flex: 1 1 90px; font-size: 12px; padding: 6px 8px; letter-spacing: 0.06em; }
+body.touch .phase-panel .pp-note { display: none; }

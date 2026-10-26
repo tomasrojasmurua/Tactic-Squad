@@ -210,6 +210,21 @@ export function isGoReady(sim, team = humanTeam(sim), code = null) {
   return waiting;
 }
 
+/** A GO group of the side: how many are waiting in position for `code`, of everyone who holds for it (waiting or on the way). */
+export function goStatus(sim, team, code) {
+  let ready = 0;
+  let total = 0;
+  for (const u of sim.teams[team]) {
+    if (!u.alive) continue;
+    if (u.waitingGo) {
+      if (u.waitCode !== code) continue;
+      total++;
+      if (isInPosition(u)) ready++;
+    } else if (holdAhead(u, code)) total++;
+  }
+  return { ready, total };
+}
+
 /** Does the unit still have a GO hold (with `code`, or any) ahead on its route? */
 function holdAhead(u, code) {
   for (const p of u.route) if (p.hold && (!code || holdCode(p) === code)) return true;
@@ -218,6 +233,16 @@ function holdAhead(u, code) {
 
 /** GO code of a hold waypoint (old plans without one wait for the first code). */
 export const holdCode = (p) => p.code || ENTRY.goCodes[0];
+
+/** unit.waitCode of an operator stopped at a "?" door point (no GO releases it: a decision does). */
+export const ASK_CODE = '?';
+
+/** "?" door points of the side still undecided (operators already stopped at one included). */
+export function pendingDoors(sim, team) {
+  let n = 0;
+  for (const u of sim.teams[team]) if (u.alive) for (const p of u.route) if (p.ask) n++;
+  return n;
+}
 
 /** Is someone of the side waiting for this GO code? */
 export function codeWaiting(sim, team, code) {

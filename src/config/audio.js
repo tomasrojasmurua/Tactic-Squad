@@ -153,6 +153,8 @@ export const NEAR_MISS = Object.freeze({ radius: 1.7, minTravel: 2.5, perShot: 1
 
 /** Bomb arming beeps speed up with progress: interval = start - progress * speedup. */
 export const PLANT_BEEP = Object.freeze({ startInterval: 0.5, speedup: 0.32 });
+/** The bomb's timer in its last `window` s of execution: beeps from `slowest` s apart down to `fastest`. */
+export const BOMB_BEEP = Object.freeze({ window: 30, slowest: 1.0, fastest: 0.15 });
 
 /**
  * Gunshot recipes keyed by weapon id (audio/recipes/guns.js): four independently varied layers
@@ -283,7 +285,7 @@ export const UI_SOUNDS = Object.freeze({
   gain: 1,
   levels: {
     select: 0.45, waypoint: 0.4, look: 0.4, undo: 0.45, hold: 0.5, error: 0.4, button: 0.5, execute: 1, go: 0.85,
-    pause: 0.7, resume: 0.6, contact: 0.75, plant: 0.5, planted: 0.8, hurt: 0.7,
+    pause: 0.7, resume: 0.6, contact: 0.75, plant: 0.5, bombTick: 0.55, planted: 0.8, hurt: 0.7,
   },
   waypointSteps: [0, 2, 4, 7, 9, 12, 14], // semitones: consecutive waypoints climb a pentatonic scale
   waypointResetSeconds: 1.6,

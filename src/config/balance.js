@@ -143,6 +143,9 @@ export const ENTRY = Object.freeze({
   modes: Object.freeze(['kick', 'slow', 'flash', 'frag', 'breach']), // order of the picker
   goCodes: Object.freeze(['A', 'B', 'C']), // GO hold codes, in cycling and release order
   doorRange: 1.8, // m: a waypoint this close to a doorway can carry an entry for it
+  // A route drawn through a closed door stops this far before it, on a "?" point: how and when to go
+  // through is the player's call (sim/orders.js markDoors). Closer than DOORS.triggerDistance would open it.
+  askDistance: 0.75,
   lookPast: 1.6, // m past the doorway a stacked operator aims (through the crack / at the room)
   followGap: 0.12, // s after the grenade / charge goes off before the rest of the code moves in
   // De golpe: the door bursts open (no breach pause), loud, and whoever stands right behind it reels.
@@ -164,10 +167,34 @@ export const ENTRY = Object.freeze({
 });
 
 export const ROUND = Object.freeze({
-  timeLimit: 120, // seconds of execution
+  // The assault is played in We-Go turns (sim/round.js): both sides plan blind, then
+  // every order runs at once for turnSeconds. The bomb's timer only runs while a turn
+  // executes (deciding is free): at 0 it explodes, even mid-defuse — the defenders win.
+  turnSeconds: 8, // s of execution per turn
+  timeLimit: 180, // s on the bomb's timer (of execution; a sim without phases runs this long)
+  // Seconds each side gets to decide in every decision phase (wall clock: the session's
+  // PhaseClock, later the server). Never read by the sim: they cannot change the result.
+  // null: no limit, the phase ends with LISTO (against the AI). Online, e.g. {buy: 20, prep: 90, plan: 60}.
+  phaseSeconds: Object.freeze({ buy: null, prep: null, plan: null }),
+  endSeconds: 10, // the result stays on screen this long before it offers the next round
   defuseTime: 7.0, // s standing still next to the bomb
   defuseRadius: 1.1, // m from the bomb an attacker can work on it
   goStallHint: 3, // s with every planned operator waiting for GO before the HUD insists
+});
+
+/**
+ * Noise (sim/noise.js): what the other side hears of a turn. Each loud thing is
+ * heard by the enemy if one of them is within its radius (m, through walls), and
+ * at the end of the turn it becomes a pulse on their map: a cell of `cell` m,
+ * shifted up to `jitter` m — where, roughly, never who or exactly.
+ */
+export const NOISE = Object.freeze({
+  cell: 3, // m: pulses are snapped to this grid...
+  jitter: 0.9, // ...and shifted up to this much (deterministic, from the seed)
+  keepTurns: 3, // a pulse stays on the map this many turns, fading
+  // Radius heard (m) by kind; the loudest kind of a cell names its pulse.
+  radius: Object.freeze({ step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, flash: 18, frag: 22, breach: 22 }),
+  rank: Object.freeze(['step', 'crack', 'door', 'plant', 'defuse', 'kick', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
 });
 
 export const NAV = Object.freeze({

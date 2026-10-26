@@ -1,57 +1,73 @@
-// Every order of an attempt, stamped with the sim tick it applies at: the
-// ones given in planning (tick 0) AND the corrections given in tactical pause
-// or while time runs. "Retry" re-issues the planning orders at once and the
-// rest exactly at their ticks, with the same seed, so the same plan replays
-// the same round — fail, understand, change ONE thing, try again. The same
-// tick-stamped list is what a We-Go turn exchange or a replay needs.
+// Every order of an attempt, grouped by round phase: segment 0 is the buy,
+// 1 the preparation, 2 the first turn's planning, 3 its execution (the GO
+// codes called during it, stamped with their step), 4 the second planning,
+// and so on (sim/round.js). This is exactly a list of We-Go turn packets —
+// what an online match sends and a replay needs.
 //
-// Orders apply at the start of the step whose tick they carry: a paused or
-// running order is flushed before the next step (sim.tick at emission), and
-// a scheduled one is enqueued right before that step — the same instant.
+// "Retry" starts a new round on the same seed and, on entering each phase,
+// re-issues that phase's orders; a decision phase then ends by itself (the
+// same plan replays the same round — fail, understand, change ONE thing,
+// try again). A new order in a replayed phase means the plan has diverged:
+// the rest of the recording is dropped and the player takes over from there.
 
 export class PlanRecorder {
   constructor() {
-    this.log = []; // [{tick, cmd}] of the current attempt
-    this.schedule = []; // [{tick, cmd}] still to re-issue (tick > 0), in order
-    this.next = 0;
-    this.replaying = false;
+    this.segments = [[]]; // orders of each decision phase of the current attempt
+    this.replay = []; // segments of the attempt being replayed
+    this.replaying = false; // re-issuing (those orders are not a divergence)
   }
 
-  /** Recorded orders still to be re-issued in this attempt. */
+  /** Recorded phases still to replay after the current one. */
   get pending() {
-    return this.schedule.length - this.next;
+    return Math.max(0, this.replay.length - this.segments.length);
   }
 
-  /**
-   * Logs an order. A new live order (tick > 0, not a replayed one) while
-   * recorded orders are still pending means the plan has diverged: the rest
-   * of the recording is dropped. Returns how many were dropped.
-   */
-  record(cmd, tick) {
+  /** Is the current phase a replayed one (it ends by itself)? */
+  get replayingPhase() {
+    return this.segments.length <= this.replay.length && this.closedInReplay(this.segments.length - 1);
+  }
+
+  /** Is the current phase in the recording being replayed (a replayed turn: its GOs are already queued)? */
+  get inReplay() {
+    return this.segments.length <= this.replay.length;
+  }
+
+  closedInReplay(i) {
+    // The last recorded segment was never closed (the round ended in its execution).
+    return i < this.replay.length - 1;
+  }
+
+  /** Logs an order of the current phase. A new one in a replayed phase drops the rest: returns how many phases. */
+  record(cmd) {
     let dropped = 0;
-    if (!this.replaying && tick > 0 && this.pending > 0) {
-      dropped = this.pending;
-      this.schedule.length = this.next;
+    if (!this.replaying && this.replayingPhase) {
+      dropped = this.replay.length - this.segments.length + 1;
+      this.replay.length = this.segments.length - 1;
     }
-    this.log.push({ tick, cmd });
+    this.segments[this.segments.length - 1].push(cmd);
     return dropped;
   }
 
-  /** Starts a new attempt from `log`: returns the tick-0 orders to issue now; later ones are scheduled. */
-  beginAttempt(log) {
-    this.log = [];
-    this.schedule = [];
-    this.next = 0;
-    const now = [];
-    for (const e of log) (e.tick > 0 ? this.schedule : now).push(e.tick > 0 ? e : e.cmd);
-    return now;
+  /** The current phase ended: the next orders belong to the next one. */
+  advance() {
+    this.segments.push([]);
   }
 
-  /** Before each fixed step: re-issues (through `emit`) the recorded orders due at `tick`. */
-  due(tick, emit) {
-    if (this.next >= this.schedule.length || this.schedule[this.next].tick > tick) return;
-    this.replaying = true;
-    while (this.next < this.schedule.length && this.schedule[this.next].tick <= tick) emit(this.schedule[this.next++].cmd);
-    this.replaying = false;
+  /** New attempt replaying `segments` (empty: a fresh plan). */
+  beginAttempt(segments) {
+    this.replay = segments.map((s) => s.slice());
+    this.segments = [[]];
+  }
+
+  /** On entering a phase: re-issues (through `emit`) its recorded orders. Returns true if a decision phase should end by itself. */
+  enterPhase(emit) {
+    const i = this.segments.length - 1;
+    const seg = this.replay[i];
+    if (seg) {
+      this.replaying = true;
+      for (const cmd of seg) emit(cmd);
+      this.replaying = false;
+    }
+    return this.closedInReplay(i);
   }
 }

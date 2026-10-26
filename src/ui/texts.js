@@ -6,41 +6,51 @@ export const T = Object.freeze({
   gameTitle: 'TACTIC SQUAD',
   subtitle: 'Prototipo táctico · Operación Almacén',
   briefing:
-    'Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. Planifica cada ruta, controla los ángulos y sincroniza la entrada. Encuentra la bomba y desactívala (7 s quieto, sin disparar) o elimina a los Defensores.',
+    'Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. El asalto va por turnos: planificas sin ver al rival, con todo el tiempo que quieras, y todo se ejecuta a la vez durante 8 s, sin pausa; durante el turno lanzas los grupos GO A·B·C. La bomba estalla tras 3 minutos de ejecución: encuéntrala y desactívala (7 s quieto, sin disparar) o elimina a los Defensores antes.',
   start: 'COMENZAR',
   startHint: 'Clic o Intro',
 
   phase: {
+    buy: 'COMPRA',
+    prep: 'PREPARACIÓN',
     planning: 'PLANIFICACIÓN',
-    paused: 'PAUSA TÁCTICA',
-    running: 'EN EJECUCIÓN',
+    paused: 'PAUSA',
+    running: 'EJECUCIÓN',
     ended: 'FIN DE RONDA',
   },
   phaseSub: {
-    planning: 'Traza las rutas y pulsa ESPACIO para ejecutar',
-    paused: 'Edita rutas · ESPACIO para reanudar',
-    running: 'ESPACIO: pausa táctica · G: código GO',
+    buy: 'Revisa el equipo · ESPACIO: listo',
+    prep: 'Elige por dónde entrar y adelanta rutas · ESPACIO: listo',
+    planning: 'Traza o cambia rutas · ESPACIO: listo',
+    paused: 'ESPACIO para reanudar',
+    running: 'Todo se ejecuta a la vez: el plan sigue al terminar el turno',
     ended: 'R: reintentar',
   },
 
   phaseSubTouch: {
-    planning: 'Dibuja rutas con el dedo · EJECUTAR para empezar',
-    paused: 'Edita rutas · SEGUIR para reanudar',
-    running: 'PAUSA para planificar · GO sincroniza',
+    buy: 'Revisa el equipo · LISTO para seguir',
+    prep: 'Elige la entrada y adelanta rutas · LISTO',
+    planning: 'Dibuja o cambia rutas · LISTO para ejecutar',
+    paused: 'SEGUIR para reanudar',
+    running: 'Todo se ejecuta a la vez: el plan sigue al terminar el turno',
     ended: 'REINICIAR para otro intento',
   },
+  /** Phase bar: turn and the decision clock (ui/Hud.js). */
+  turn: (n) => `TURNO ${n}`,
+  clockUnlimited: 'sin límite',
+  execLeft: (s) => `${s} s`,
 
   /** Title screen: how to play in three steps (touch / desktop). */
   howTo: {
     touch: [
       ['1', 'Toca un operador y arrastra el dedo para dibujar su ruta.'],
       ['2', 'Mantén pulsado un punto para elegir hacia dónde mira.'],
-      ['3', 'EJECUTAR. Pausa cuando quieras y corrige sobre la marcha.'],
+      ['3', 'LISTO: el turno corre 8 s. Luego corriges el plan con lo que pasó.'],
     ],
     desk: [
       ['1', 'Selecciona un operador (1·2·3) y haz clic o arrastra su ruta.'],
       ['2', 'Clic derecho y arrastra en un punto: hacia dónde mira.'],
-      ['3', 'ESPACIO ejecuta y pausa. H + G sincronizan la entrada.'],
+      ['3', 'ESPACIO: listo, el turno corre 8 s. H marca un grupo GO; en el turno, A·B·C lo lanzan.'],
     ],
   },
 
@@ -48,15 +58,14 @@ export const T = Object.freeze({
     ['Clic', 'punto de ruta'],
     ['Arrastrar', 'dibujar ruta'],
     ['Clic der.', 'mirar hacia'],
-    ['H', 'esperar GO A·B·C'],
+    ['H', 'grupo GO A·B·C'],
     ['E', 'cómo entrar'],
     ['Retroceso', 'deshacer'],
     ['X', 'borrar ruta'],
   ],
 
   actions: {
-    execute: 'Ejecutar',
-    pause: 'Pausa',
+    ready: 'Listo',
     resume: 'Reanudar',
     go: 'GO',
     restart: 'Reiniciar',
@@ -85,7 +94,8 @@ export const T = Object.freeze({
 
   objective: {
     title: 'Objetivo',
-    text: 'Desactivar la bomba (A o B) o eliminar Defensores',
+    text: 'Desactivar la bomba (A o B) antes de que explote, o eliminar Defensores',
+    timer: 'La bomba explota cuando llega a 0 (solo corre en la ejecución)',
     kills: (n, total) => `Defensores abatidos: ${n}/${total}`,
     bombUnknown: 'Bomba: ¿A o B?',
     bombAt: (site) => `Bomba: sitio ${site}`,
@@ -95,12 +105,17 @@ export const T = Object.freeze({
   defuse: 'DESACTIVANDO BOMBA',
   reloadTag: 'RECARGANDO',
   tagGo: 'GO',
+  tagAsk: 'PUERTA ?',
   tagBomb: 'BOMBA',
   tagBlind: 'CIEGO',
 
   /** Door entries (sim/entries.js): picker labels, short tags on the map and the help line. */
   entry: {
     title: 'Entrada',
+    askTitle: 'Puerta sin decidir',
+    askHint: 'Elige cómo abrirla y cuándo: hasta entonces se detiene aquí',
+    when: 'Cuándo',
+    now: 'De inmediato',
     none: 'Abrir',
     modes: { kick: 'Patada', slow: 'Entreabrir', flash: 'Flash', frag: 'Granada', breach: 'Carga' },
     tags: { kick: 'PATADA', slow: 'ENTREABRIR', flash: 'FLASH', frag: 'GRANADA', breach: 'CARGA' },
@@ -122,7 +137,7 @@ export const T = Object.freeze({
       defused: 'Bomba desactivada',
       elimination: 'Todos los Defensores abatidos',
       wiped: 'Escuadrón abatido',
-      time: 'Se acabó el tiempo',
+      time: 'La bomba explotó',
     },
     retry: 'R: reintentar el mismo plan · N: plan nuevo',
     retryTouch: 'Mismo plan, nueva tirada: corrige lo que falló.',
@@ -186,7 +201,7 @@ export const T = Object.freeze({
       duel: 'Apunta de antemano hacia donde aparecerá el enemigo: quien ya mira el ángulo dispara primero.',
       explosive: 'Un flash o una granada antes de entrar cambia el duelo: úsalos en las salas vigiladas.',
       friendly: 'Que nadie espere frente a la puerta donde cae la granada: apílate al costado.',
-      time: 'Cada segundo cuenta: el reloj solo corre mientras ejecutas.',
+      time: 'La bomba no espera: su temporizador corre mientras ejecutas. Planificar es gratis.',
     },
     note: {
       waitingGo: (d) => `${d.name} se quedó esperando el código GO en ${d.place}.`,
@@ -199,6 +214,7 @@ export const T = Object.freeze({
   },
 
   feed: {
+    exploded: 'La bomba explotó',
     contact: '¡Contacto!',
     go: 'Código GO',
     bombSpotted: (site) => `Bomba localizada en el sitio ${site}`,
@@ -218,17 +234,17 @@ export const T = Object.freeze({
       ['Clic izquierdo', 'Añadir punto de ruta (con pathfinding)'],
       ['Arrastrar', 'Dibujar ruta a mano alzada'],
       ['Clic derecho (arrastrar)', 'Fijar dirección de mirada del último punto'],
-      ['H', 'El último punto espera un código GO (A → B → C → sin espera)'],
+      ['H', 'El último punto espera a un grupo GO (A → B → C → sin espera)'],
       ['E', 'Cómo entra por la puerta junto al último punto: patada, entreabrir, flash, granada, carga'],
-      ['G', 'Dar el siguiente código GO (los que lo esperan avanzan a la vez)'],
+      ['A · B · C (o G)', 'Durante el turno: ¡ahora! Ese grupo actúa a la vez (los que aún no llegan, siguen de largo)'],
       ['Retroceso / Z', 'Deshacer último punto'],
       ['X / Supr', 'Borrar ruta'],
-      ['Espacio', 'Ejecutar / pausa táctica'],
+      ['Espacio / Intro', 'Listo: termina la fase y ejecuta el turno (8 s, sin pausa)'],
       ['WASD · flechas · bordes', 'Mover cámara'],
       ['Rueda · + / −', 'Zoom'],
       ['Botón central (arrastrar)', 'Mover cámara'],
       ['F', 'Centrar en el operador'],
-      ['R', 'Reintentar con el mismo plan'],
+      ['R', 'Reintentar con el mismo plan (durante la ronda: empezarla de nuevo)'],
       ['N', 'Plan nuevo (borra todas las rutas)'],
       ['Esc', 'Cancelar el trazo en curso'],
       ['P', 'Desactivar la bomba (operador junto a ella)'],
@@ -240,8 +256,7 @@ export const T = Object.freeze({
   },
 
   touch: {
-    execute: 'Ejecutar',
-    pause: 'Pausa',
+    ready: 'Listo',
     resume: 'Seguir',
     go: 'GO',
     hold: 'Esperar',
@@ -261,14 +276,27 @@ export const T = Object.freeze({
       ['Arrastrar desde el último punto', 'Continuar la ruta'],
       ['Dos dedos', 'Mover cámara · pellizcar para zoom'],
       ['Dedo en el borde al dibujar', 'La cámara te sigue'],
-      ['Esperar', 'El último punto espera un código GO (cada toque: A, B, C, sin espera)'],
+      ['Esperar', 'El último punto espera a un grupo GO (cada toque: A, B, C, sin espera)'],
       ['Entrada (junto a una puerta)', 'Patada, entreabrir, flash, granada o carga'],
-      ['GO', 'Los que esperan ese código avanzan a la vez'],
+      ['GO A · B · C', 'Durante el turno: ¡ahora! Ese grupo actúa a la vez'],
+      ['Listo', 'Termina la fase; el turno corre 8 s sin pausa'],
     ],
     startHint: 'Toca para comenzar',
   },
   rotate: { title: 'Gira tu teléfono', text: 'Tactic Squad se juega en horizontal.' },
-  gfxLost: { title: 'Restaurando gráficos…', text: 'El sistema liberó la pantalla del juego. La ronda está en pausa y tu plan sigue intacto.' },
+  gfxLost: { title: 'Restaurando gráficos…', text: 'El sistema liberó la pantalla del juego. El turno está en pausa y tu plan sigue intacto.' },
+  /** Buy and preparation panels (ui/PhasePanel.js). */
+  buy: {
+    title: 'Equipo de la ronda',
+    note: 'La compra llega en el próximo hito: por ahora cada operador lleva el equipo de su rol.',
+    gear: { flash: 'flash', frag: 'granada', breach: 'carga' },
+    none: 'sin utilidad',
+  },
+  prep: {
+    title: 'Entrada del escuadrón',
+    note: 'El defensor no sabe por dónde entras. Puedes adelantar rutas para el primer turno.',
+    entries: { norte: 'Norte · oficina', principal: 'Principal · pasillo', sur: 'Sur · baño' },
+  },
 
   /** Onboarding: the banner's sub line tells a new player the next step. */
   coach: {
@@ -276,9 +304,13 @@ export const T = Object.freeze({
     route: { touch: (n) => `Arrastra desde ${n} para dibujar su ruta`, desk: (n) => `Clic o arrastra para trazar la ruta de ${n}` },
     look: { touch: 'Mantén pulsado un punto y arrastra: hacia dónde mira', desk: 'Clic derecho y arrastra: hacia dónde mira' },
     next: { touch: (n) => `Bien. Ahora ${n}: tócalo y traza su ruta`, desk: (n) => `Bien. Ahora ${n} (tecla o clic)` },
-    ready: { touch: 'Listo: pulsa EJECUTAR · ESPERAR + GO = entrada sincronizada', desk: 'Listo: ESPACIO para ejecutar · H + G = entrada sincronizada' },
-    goReady: { touch: '¡Todos en posición! Pulsa GO', desk: '¡Todos en posición! Pulsa G' },
-    goWaiting: { touch: (n) => `${n} espera el GO`, desk: (n) => `${n} espera el GO (G)` },
+    ready: { touch: 'Pulsa LISTO · ESPERAR marca un grupo GO que lanzas en el turno', desk: 'ESPACIO: listo · H marca un grupo GO que lanzas en el turno' },
+    goNow: { touch: (c) => `Grupo ${c} en posición: toca GO ${c} cuando quieras`, desk: (c) => `Grupo ${c} en posición: pulsa GO ${c} (o G) cuando quieras` },
+    goWaiting: { touch: (n) => `${n} espera el GO`, desk: (n) => `${n} espera el GO` },
+    doors: {
+      touch: (n) => `${n === 1 ? 'Una puerta' : `${n} puertas`} sin decidir: toca el ? para elegir cómo y cuándo`,
+      desk: (n) => `${n === 1 ? 'Una puerta' : `${n} puertas`} sin decidir: haz clic en el ? para elegir cómo y cuándo`,
+    },
   },
 
   reject: 'Orden rechazada',
@@ -291,7 +323,9 @@ export const T = Object.freeze({
     nobodyWaiting: 'Nadie espera el GO: marca ESPERAR en un punto',
     noDoor: 'No hay una puerta junto a ese punto',
     noGear: 'No le queda equipo para eso',
-    goBeforeStart: 'El GO se da durante la ejecución',
+    goBeforeStart: 'El GO se da durante el turno: pulsa LISTO primero',
+    notNow: 'Durante la ejecución solo se dan los GO: espera a planificar',
+    badEntry: 'Esa entrada no existe en el mapa',
   },
   webgl: 'Tu navegador no soporta WebGL2, necesario para Tactic Squad. Prueba con una versión reciente de Chrome, Edge o Firefox.',
   fatal: 'Se produjo un error al iniciar el juego.',

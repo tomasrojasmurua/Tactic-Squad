@@ -11,7 +11,7 @@ import { EV } from '../core/events.js';
 import { angleDiff, angleTo, approachAngle } from '../core/math.js';
 import { tryOpenDoors, segmentCrossesDoorway } from './doors.js';
 import { armEntry } from './entries.js';
-import { isAiControlled, holdCode } from './queries.js';
+import { isAiControlled, holdCode, ASK_CODE } from './queries.js';
 
 const carrot = { x: 0, y: 0 };
 
@@ -116,6 +116,11 @@ export function updateMovement(sim, u, dt) {
       u.y = p.y;
       budget -= d;
       moved += d;
+      if (p.ask) {
+        // A door nobody decided: stop on the "?" point (kept: the decision is made on it).
+        stopAtAsk(sim, u, p);
+        break;
+      }
       arriveAt(sim, u, u.route.shift());
     } else {
       u.x += (dx / d) * budget;
@@ -198,6 +203,13 @@ function doorwayBusy(sim, u) {
     ay = p.y;
   }
   return false;
+}
+
+function stopAtAsk(sim, u, p) {
+  u.waitingGo = true;
+  u.waitCode = ASK_CODE;
+  u.lookOverride = p.look;
+  sim.emit(EV.HOLD_REACHED, { unitId: u.id, code: ASK_CODE });
 }
 
 function arriveAt(sim, u, p) {

@@ -43,7 +43,7 @@ const LOOP = { loop: true };
 
 // ---- tier 'plan': title + planning
 // < -60 dB above 5.5 kHz: dark rate; < -60 dB above 11 kHz: mid rate (measured).
-const UI_RATES = Object.freeze({ error: DARK, hurt: DARK, planted: MID, go: MID, plant: MID });
+const UI_RATES = Object.freeze({ error: DARK, hurt: DARK, planted: MID, go: MID, plant: MID, bombTick: MID });
 for (const name of Object.keys(UI_RECIPES)) add(`ui.${name}`, 1, UI_RECIPES[name], UI_RATES[name]);
 
 // Music: only percussion is baked (native rate, rate 1); tonal voices are live (audio/music/Synth.js).

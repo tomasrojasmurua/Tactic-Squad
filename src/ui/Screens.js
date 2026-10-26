@@ -70,15 +70,9 @@ export class Screens {
         <h3>${T.help.title}</h3>
         <table class="desk-only">${T.help.rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
         <table class="touch-only">${T.touch.rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
-        <div class="help-options">
-          <button class="btn opt-idle"></button>
-        </div>
         <button class="btn close">${T.help.close}</button>
       </div>`;
     this.help.querySelector('.close').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'help' }));
-    // Smart-pause preferences (saved per device by the session).
-    this.optIdle = this.help.querySelector('.opt-idle');
-    this.optIdle.addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'autoPauseIdle' }));
     this.help.addEventListener('pointerdown', (e) => e.stopPropagation());
 
     this.resultShown = false;
@@ -92,10 +86,6 @@ export class Screens {
   update(sim, session) {
     toggle(this.title, 'hidden', session.phase !== 'title');
     toggle(this.help, 'hidden', !session.helpOpen);
-    if (session.helpOpen) {
-      setText(this.optIdle, T.flow.autoPauseIdle(session.autoPause.idle));
-      this.optIdle.dataset.on = session.autoPause.idle ? '1' : '';
-    }
     const showResult = session.phase === 'ended' && sim.outcome;
     toggle(this.result, 'hidden', !showResult);
     if (showResult && !this.resultShown) this.fillResult(sim, session.team);

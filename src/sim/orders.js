@@ -13,12 +13,25 @@
 //   {type:'setHold', unitId, code, index?}     that waypoint (default: last) waits for `code` ('A'|'B'|'C'; null: no hold)
 //   {type:'setEntry', unitId, mode, index?}    how he goes through the doorway next to that waypoint (default: last):
 //                                              ENTRY.modes ('kick'|'slow'|'flash'|'frag'|'breach') or null (just walk through)
+//
+// A route drawn through a closed door gets a "?" point just before it
+// (waypoint.ask, .door = the doorway): the operator stops there until the
+// player says how (setEntry) and when (setHold) — nothing happens at a door
+// that was not decided. Either order on that point settles it.
 //   {type:'undoWaypoint', unitId}              removes the last user waypoint (and its leg)
 //   {type:'clearRoute', unitId}                also cancels an entry he is preparing
-//   {type:'go', code?}                         releases the units of the side waiting for that GO code
-//                                              (none given: the first code someone waits for; rejected if nobody)
+//   {type:'go', code?, atTick?}                during a turn ("now!"): releases the units waiting for that code
+//                                              (none given: the first code someone waits for); whoever is still
+//                                              on the way to a hold of it goes straight through when he gets
+//                                              there. atTick: the step of the turn it was given at (replays)
 //   {type:'defuseNow', unitId?}                an attacker next to the found bomb stops and defuses
 //                                              (that unit, else the closest one in range)
+//   {type:'chooseEntry', entry}                preparation: the attackers start from another entry (map `entries`)
+//
+// Each round phase takes only some orders (PHASE_ORDERS; sim/round.js):
+// nothing during buy, only GO codes during the execution, routes while
+// deciding; the rest are rejected with REJECT.notNow. A sim without phases
+// takes all.
 //
 // Every command may carry `team` (the side giving it; the session stamps it):
 // a unit only obeys its own side, and only a side whose controller is
@@ -28,7 +41,8 @@
 // turns codes into text (ui/texts.js T.rejectReason), the sim never does.
 import { NAV, ENTRY } from '../config/balance.js';
 import { EV } from '../core/events.js';
-import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode } from './queries.js';
+import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode, codeInUse, humanTeam, ASK_CODE } from './queries.js';
+import { segmentCrossesDoorway } from './doors.js';
 import { startDefuse } from './objectives.js';
 import { cancelEntry, releaseDelay } from './entries.js';
 
@@ -41,6 +55,19 @@ export const REJECT = Object.freeze({
   noDoor: 'noDoor', // an entry on a waypoint with no (suitable) doorway next to it
   noGear: 'noGear', // an entry needing a flash / grenade / charge he no longer has
   goBeforeStart: 'goBeforeStart', // emitted by the session: GO pressed while still planning
+  notNow: 'notNow', // this order is not taken in the current round phase (e.g. during an execution turn)
+  badEntry: 'badEntry', // chooseEntry with an entry the map does not have
+});
+
+const ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'endStroke', 'cancelStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute'];
+
+/** Orders each round phase takes (sim/round.js PHASE; literal keys: round.js imports this module). */
+const PHASE_ORDERS = Object.freeze({
+  buy: [],
+  prep: [...ROUTE_ORDERS, 'chooseEntry'],
+  plan: [...ROUTE_ORDERS, 'defuseNow'],
+  exec: ['go'],
+  end: [],
 });
 
 /** May the side that sent `cmd` command this unit? */
@@ -50,8 +77,14 @@ function obeys(sim, unit, cmd) {
 }
 
 export function applyCommand(sim, cmd) {
+  const r = sim.round;
+  if (r.enabled && !PHASE_ORDERS[r.phase].includes(cmd.type)) {
+    sim.emit(EV.ORDER_REJECTED, { unitId: cmd.unitId ?? -1, reason: REJECT.notNow });
+    return;
+  }
   if (cmd.type === 'go') return issueGo(sim, cmd);
   if (cmd.type === 'defuseNow') return defuseNow(sim, cmd);
+  if (cmd.type === 'chooseEntry') return chooseEntry(sim, cmd);
   const unit = sim.units[cmd.unitId];
   if (!unit || !unit.alive || !obeys(sim, unit, cmd)) return;
   switch (cmd.type) {
@@ -89,6 +122,11 @@ export function applyCommand(sim, cmd) {
 }
 
 function changed(sim, unit, kind) {
+  // Waiting on a "?" point that is gone (undone, cleared): nothing to wait for.
+  if (unit.waitingGo && unit.waitCode === ASK_CODE && !(unit.route.length && unit.route[0].ask)) {
+    unit.waitingGo = false;
+    unit.waitCode = null;
+  }
   sim.emit(EV.ROUTE_CHANGED, { unitId: unit.id, kind });
 }
 
@@ -98,9 +136,11 @@ function addWaypoint(sim, unit, { x, y, user = true, quiet = false }) {
   const p = snapToDoorway(sim.world, x, y);
   const path = sim.world.nav.findPath(from.x, from.y, p.x, p.y, NAV.snapRadius);
   if (!path || !path.length) return quiet ? undefined : reject(sim, unit, REJECT.unreachable);
+  const start = unit.route.length;
   path.forEach((q, i) => {
-    unit.route.push({ x: q.x, y: q.y, user: user && i === path.length - 1, look: null, hold: false, code: null, entry: null, entryDoor: -1 });
+    unit.route.push({ x: q.x, y: q.y, user: user && i === path.length - 1, look: null, hold: false, code: null, entry: null, entryDoor: -1, ask: false, door: -1 });
   });
+  markDoors(sim, unit, start);
   changed(sim, unit, 'add');
 }
 
@@ -184,6 +224,7 @@ function toggleHold(sim, unit) {
   const codes = ENTRY.goCodes;
   const next = p.hold ? codes.indexOf(holdCode(p)) + 1 : 0;
   applyHold(p, next < codes.length ? codes[next] : null);
+  settleAsk(unit, last);
   changed(sim, unit, 'hold');
 }
 
@@ -191,7 +232,72 @@ function setHold(sim, unit, code, index) {
   const i = userIndex(unit, index);
   if (i < 0) return reject(sim, unit, REJECT.noWaypoint);
   applyHold(unit.route[i], ENTRY.goCodes.includes(code) ? code : null);
+  settleAsk(unit, i);
   changed(sim, unit, 'hold');
+}
+
+/**
+ * Puts a "?" point before every closed door the route crosses from leg
+ * `from` on (legs already decided keep their stack points). It is a user
+ * waypoint ASK_DISTANCE before the door, on the leg itself (so it stays
+ * walkable); the operator waits there until the player decides.
+ */
+function markDoors(sim, unit, from) {
+  const r = unit.route;
+  for (let i = Math.max(0, from); i < r.length; i++) {
+    const a = i > 0 ? r[i - 1] : unit;
+    const b = r[i];
+    for (let k = 0; k < sim.doors.length; k++) {
+      const door = sim.doors[k];
+      if (door.open || door.destroyed) continue;
+      if (unit.entry && unit.entry.doorway === k) continue; // already working on it
+      const d = sim.world.doorways[k];
+      if (segmentCrossesDoorway(a.x, a.y, b.x, b.y, d) < 0) continue;
+      const sa = (a.x - d.cx) * d.normalX + (a.y - d.cy) * d.normalY;
+      const sb = (b.x - d.cx) * d.normalX + (b.y - d.cy) * d.normalY;
+      if (Math.abs(sa) < 1e-6) continue; // the leg starts in the doorway: it was decided before
+      if (stackedOn(sim, r, i, k)) continue; // the player already said what to do at this door
+      const ask = { x: a.x, y: a.y, user: true, look: null, hold: false, code: null, entry: null, entryDoor: -1, ask: true, door: k };
+      const side = Math.sign(sa);
+      if (Math.abs(sa) > ENTRY.askDistance) {
+        const t = (sa - side * ENTRY.askDistance) / (sa - sb);
+        ask.x = a.x + (b.x - a.x) * t;
+        ask.y = a.y + (b.y - a.y) * t;
+      } else {
+        // The leg starts too close to the door (a path corner by the frame): stack on its center line.
+        ask.x = d.cx + d.normalX * side * ENTRY.askDistance;
+        ask.y = d.cy + d.normalY * side * ENTRY.askDistance;
+        if (i > 0 && !a.user) {
+          r[i - 1] = ask; // that corner is replaced by the stack point
+          continue;
+        }
+      }
+      r.splice(i, 0, ask);
+      break; // the leg after the new point is checked next
+    }
+  }
+}
+
+/** Is the last user point before leg i a hold / entry / "?" on doorway k? */
+function stackedOn(sim, r, i, k) {
+  for (let j = i - 1; j >= 0; j--) {
+    const q = r[j];
+    if (!q.user) continue;
+    if (!(q.ask || q.entry || q.hold)) return false;
+    return (q.door >= 0 ? q.door : entryDoorwayAt(sim.world, q.x, q.y)) === k;
+  }
+  return false;
+}
+
+/** A decision (how or when) on a "?" point settles it; an operator waiting on it goes on. */
+function settleAsk(unit, i) {
+  const p = unit.route[i];
+  if (!p.ask) return;
+  p.ask = false;
+  if (i === 0 && unit.waitingGo && unit.waitCode === ASK_CODE) {
+    unit.waitingGo = false;
+    unit.waitCode = null;
+  }
 }
 
 function applyHold(p, code) {
@@ -213,14 +319,16 @@ function setEntry(sim, unit, mode, index) {
   if (mode === null) {
     p.entry = null;
     p.entryDoor = -1;
+    settleAsk(unit, i); // "just open it and go" is a decision too
     return changed(sim, unit, 'entry');
   }
-  const k = entryDoorwayAt(sim.world, p.x, p.y);
+  const k = p.door >= 0 ? p.door : entryDoorwayAt(sim.world, p.x, p.y);
   if (!entryModeFits(sim, k, mode)) return reject(sim, unit, REJECT.noDoor);
   const item = ENTRY_GEAR[mode];
   if (item && gearLeft(unit, item, i) <= 0) return reject(sim, unit, REJECT.noGear);
   p.entry = mode;
   p.entryDoor = k;
+  settleAsk(unit, i);
   changed(sim, unit, 'entry');
 }
 
@@ -232,26 +340,48 @@ function undoWaypoint(sim, unit) {
   changed(sim, unit, 'undo');
 }
 
+/** The side an order speaks for: its `team`, else the (only) human side. */
+const sideOf = (sim, cmd) => cmd.team || humanTeam(sim);
+
+function chooseEntry(sim, cmd) {
+  const team = sideOf(sim, cmd);
+  if (team !== 'attackers' || sim.controllers.attackers !== 'human') return;
+  if (!sim.compiled.entries.some((e) => e.id === cmd.entry)) {
+    sim.emit(EV.ORDER_REJECTED, { unitId: -1, reason: REJECT.badEntry });
+    return;
+  }
+  if (!sim.setEntry(cmd.entry)) return;
+  sim.emit(EV.ENTRY_CHOSEN, { entry: cmd.entry });
+  for (const u of sim.teams.attackers) changed(sim, u, 'clear');
+}
+
 /**
  * Releases everyone of the side waiting for one GO code. If one of them
  * throws a grenade or fires a charge, the others hold until it goes off
- * (unit.goDelay), so they enter right after the bang.
+ * (unit.goDelay), so they enter right after the bang. Whoever has not
+ * reached his hold of that code yet loses it: he goes straight through
+ * (and does his entry) when he gets there — the GO was already given.
  */
-function issueGo(sim, cmd) {
+export function issueGo(sim, cmd) {
   const team = cmd.team || null;
   const code = ENTRY.goCodes.includes(cmd.code) ? cmd.code : firstCode(sim, cmd, team);
   const released = [];
   const own = []; // per released unit: its own bang delay (0 = it follows the others)
+  const late = []; // still on the way to a hold of the code
   let delay = 0;
   for (const u of sim.units) {
-    if (u.alive && u.waitingGo && u.waitCode === code && obeys(sim, u, cmd)) {
+    if (!u.alive || !obeys(sim, u, cmd)) continue;
+    if (u.waitingGo && u.waitCode === code) {
       const d = releaseDelay(sim, u);
       released.push(u);
       own.push(d);
       delay = Math.max(delay, d);
+    } else if (!u.waitingGo) {
+      const p = u.route.find((q) => q.hold && holdCode(q) === code);
+      if (p) late.push([u, p]);
     }
   }
-  if (!released.length) {
+  if (!released.length && !late.length) {
     sim.emit(EV.ORDER_REJECTED, { unitId: -1, reason: REJECT.nobodyWaiting });
     return;
   }
@@ -260,13 +390,17 @@ function issueGo(sim, cmd) {
     u.waitCode = null;
     u.goDelay = own[i] > 0 ? 0 : delay;
   });
+  for (const [u, p] of late) {
+    p.hold = false;
+    changed(sim, u, 'hold');
+  }
   sim.goCount++;
-  sim.emit(EV.GO_CODE, { released: released.length, code });
+  sim.emit(EV.GO_CODE, { released: released.length, late: late.length, code });
 }
 
 /** The code a plain GO releases: the first one someone the order may command waits for. */
 function firstCode(sim, cmd, team) {
-  if (team) return nextGoCode(sim, team);
+  if (team) return nextGoCode(sim, team) || ENTRY.goCodes.find((c) => codeInUse(sim, team, c)) || null;
   for (const c of ENTRY.goCodes) for (const u of sim.units) if (u.alive && u.waitingGo && u.waitCode === c && obeys(sim, u, cmd)) return c;
   return null;
 }

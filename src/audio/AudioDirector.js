@@ -6,7 +6,7 @@
 import { EV } from '../core/events.js';
 import { clamp, lerp, invLerp } from '../core/math.js';
 import {
-  MIX, SPATIAL, ZONES, EVENT_SOUNDS as L, STEP, NEAR_MISS, PLANT_BEEP, RELOADS, MUSIC, UI_SOUNDS, DOOR_SWING_SECONDS, DISTANCE_LOWPASS,
+  MIX, SPATIAL, ZONES, EVENT_SOUNDS as L, STEP, NEAR_MISS, PLANT_BEEP, BOMB_BEEP, RELOADS, MUSIC, UI_SOUNDS, DOOR_SWING_SECONDS, DISTANCE_LOWPASS,
   HELMET_HEADGEAR, GUN_MIX,
 } from '../config/audio.js';
 import { WEAPONS } from '../config/weapons.js';
@@ -31,6 +31,7 @@ export class AudioDirector {
     this.ambience = new Ambience(engine, (x, y) => acousticsAt(this.sim, x, y));
     this.music = new Music(engine);
     this.lastPlantBeep = 0;
+    this.lastBombBeep = 0;
     this.paused = false;
     this.reloads = []; // per unit: voices of an ongoing reload (cut if the unit dies)
     this.waypointRun = 0;
@@ -68,13 +69,19 @@ export class AudioDirector {
       this.music.onEvent('plant');
     });
     on(EV.BOMB_DEFUSED, () => this.ui('planted'));
+    on(EV.BOMB_EXPLODED, (ev) => this.bang('blast', ev.x, ev.y));
     on(EV.ORDER_REJECTED, () => this.ui('error'));
     on(EV.ROUND_END, (ev) => this.music.stinger(ev.winner === this.viewer.team));
     on(EV.UI_SOUND, (ev) => this.ui(ev.name));
     on(EV.SELECT, (ev) => this.select(ev.unitId));
     on(EV.ROUTE_CHANGED, (ev) => this.route(ev.kind));
     on(EV.PHASE, (ev) => {
-      this.music.setPhase(ev.phase);
+      // The music follows the round, not every 5 s turn: from the first execution on,
+      // the plannings between turns keep the assault's music (no calm cue every turn).
+      if (ev.phase === 'running') this.assault = true;
+      else if (ev.phase === 'title' || ev.phase === 'buy') this.assault = false;
+      const turnPause = this.assault && (ev.phase === 'planning' || ev.phase === 'paused');
+      this.music.setPhase(turnPause ? 'running' : ev.phase === 'buy' || ev.phase === 'prep' ? 'planning' : ev.phase);
       if (ev.phase === 'running') this.e.bank.startCombat(); // combat sounds now, if not baked yet
     });
   }
@@ -307,6 +314,16 @@ export class AudioDirector {
       if (this.lastPlantBeep >= interval) {
         this.lastPlantBeep = 0;
         this.ui('plant');
+      }
+    }
+    // The bomb's timer: beeps in its last seconds, faster as it runs out (only while a turn runs).
+    const left = this.sim && this.sim.phase === 'exec' && !this.sim.bomb.defused ? this.sim.timeLeft : Infinity;
+    if (left <= BOMB_BEEP.window && !paused) {
+      this.lastBombBeep += dt;
+      const k = left / BOMB_BEEP.window;
+      if (this.lastBombBeep >= BOMB_BEEP.fastest + k * (BOMB_BEEP.slowest - BOMB_BEEP.fastest)) {
+        this.lastBombBeep = 0;
+        this.ui('bombTick');
       }
     }
   }

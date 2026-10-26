@@ -181,6 +181,12 @@ export const UI_RECIPES = {
     fm(k, out, 0, 1975.5, { ratio: 1, index: 0.8, decay: 0.035, gain: 0.35, attack: 0.002 });
     return out;
   },
+  // The bomb's timer in its last seconds: a harder, lower beep than the defuse's.
+  bombTick: (k) => {
+    const out = k.buf(0.14);
+    fm(k, out, 0, 2349.3, { ratio: 1, index: 1.4, decay: 0.05, gain: 0.4, attack: 0.002 });
+    return out;
+  },
   planted: (k) => {
     const out = k.buf(1.1);
     for (let n = 0; n < 3; n++) fm(k, out, n * 0.11, 1975.5, { ratio: 1, index: 0.8, decay: 0.035, gain: 0.32 });

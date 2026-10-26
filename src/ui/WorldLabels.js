@@ -1,14 +1,18 @@
 // Small DOM tags floating over each operator (number, GO hold, defusing the bomb,
 // blinded) and under the planned waypoints that wait for a GO code or carry a
 // door entry ("A · FLASH"), positioned every frame through the camera projection.
+// A door still undecided gets a pulsing "?" on its point instead: tapping it
+// asks for that door (EV.REQUEST 'door_<unitId>_<index>': the entry picker).
+import { EV } from '../core/events.js';
 import { el, toggle, setStyle } from './dom.js';
 import { HEIGHTS } from '../config/render.js';
 import { HUD } from '../config/ui.js';
-import { teamUnits, holdCode } from '../sim/queries.js';
+import { teamUnits, holdCode, ASK_CODE } from '../sim/queries.js';
 import { T } from './texts.js';
 
 export class WorldLabels {
-  constructor(root) {
+  constructor(root, bus) {
+    this.bus = bus;
     this.node = el('div', 'labels');
     root.appendChild(this.node);
     this.tags = new Map();
@@ -61,7 +65,7 @@ export class WorldLabels {
       toggle(t.go, 'on', u.waitingGo);
       if (u.waitingGo && t.code !== u.waitCode) {
         t.code = u.waitCode;
-        t.go.textContent = u.waitCode ? `${T.tagGo} ${u.waitCode}` : T.tagGo;
+        t.go.textContent = u.waitCode === ASK_CODE ? T.tagAsk : u.waitCode ? `${T.tagGo} ${u.waitCode}` : T.tagGo;
       }
       toggle(t.bomb, 'on', u.defusing);
       toggle(t.blind, 'on', u.blind > 0);
@@ -75,10 +79,14 @@ export class WorldLabels {
     if (session.phase !== 'title' && this.team) {
       for (const u of teamUnits(sim, this.team)) {
         if (!u.alive) continue;
-        for (const p of u.route) {
-          if (!p.user || (!p.hold && !p.entry)) continue;
+        for (let i = 0; i < u.route.length; i++) {
+          const p = u.route[i];
+          if (!p.user || (!p.hold && !p.entry && !p.ask)) continue;
           const t = this.point(n++);
-          const text = p.hold && p.entry ? `${holdCode(p)} · ${T.entry.tags[p.entry]}` : p.hold ? holdCode(p) : T.entry.tags[p.entry];
+          const text = p.ask ? '?' : p.hold && p.entry ? `${holdCode(p)} · ${T.entry.tags[p.entry]}` : p.hold ? holdCode(p) : T.entry.tags[p.entry];
+          toggle(t.node, 'ask', p.ask);
+          t.node.dataset.action = p.ask ? `door_${u.id}_${i}` : '';
+          toggle(t.node, 'target', !!session.pointTarget && session.pointTarget.unitId === u.id && session.pointTarget.index === i);
           if (t.text !== text) {
             t.text = text;
             t.node.textContent = text;
@@ -99,6 +107,13 @@ export class WorldLabels {
     let t = this.points[i];
     if (!t) {
       t = { node: el('div', 'ptag'), text: '' };
+      t.node.addEventListener('pointerdown', (e) => {
+        const action = t.node.dataset.action;
+        if (!action) return;
+        e.stopPropagation();
+        e.preventDefault();
+        this.bus.emit(EV.REQUEST, { action });
+      });
       this.node.appendChild(t.node);
       this.points.push(t);
     }

@@ -95,14 +95,13 @@ export class Game {
     this.flow.onRoundStart();
     resetSessionPreviews(this.session);
     this.bus.emit(EV.ROUND_RESET, { sim: this.sim });
-    if (this.session.phase !== 'title') this.flow.setPhase('planning');
+    if (this.session.phase !== 'title') this.flow.syncPhase(true);
     this.planning.refresh();
   }
 
   // ------------------------------------------------------------ loop
 
   step(dt) {
-    this.flow.beforeStep(this.sim); // recorded orders due at this tick (retry / replay)
     this.sim.step(dt);
     this.flushEvents();
     this.flow.afterStep(this.sim, dt);
@@ -114,9 +113,9 @@ export class Game {
   }
 
   frame(dt, alpha) {
-    this.flow.update();
+    this.flow.update(dt);
     if (!this.loop.simulating) {
-      // Planning / paused: orders apply immediately so routes update live.
+      // Deciding (buy, preparation, planning): orders apply immediately so routes update live.
       this.sim.flushCommands();
       this.flushEvents();
     }

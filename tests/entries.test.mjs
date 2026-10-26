@@ -4,11 +4,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
 import { ENTRY, DOORS } from '../src/config/balance.js';
-import { isGoReady, codeWaiting } from '../src/sim/queries.js';
+import { isGoReady, codeWaiting, pendingDoors, ASK_CODE } from '../src/sim/queries.js';
 import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
 
 const MAP = MAPS[DEFAULT_MAP];
 // Ambos bandos por órdenes: los defensores se quedan quietos donde se los pone.
+// Las mecánicas se prueban sin fases (phases: false: GO en vivo); la ronda
+// completa del final se juega por turnos, con los GO dados durante cada turno.
 const STILL = { attackers: 'human', defenders: 'human' };
 const T = 'attackers';
 
@@ -17,7 +19,7 @@ const T = 'attackers';
  * (x = 10, el pasillo queda al este). Un defensor en el pasillo, el resto lejos.
  */
 function atTheDoor({ defender = [13, 12.7], facing = Math.PI } = {}) {
-  const sim = new Simulation(MAP, { seed: 11, site: 'A', controllers: STILL });
+  const sim = new Simulation(MAP, { seed: 11, site: 'A', controllers: STILL, phases: false });
   const [d0, ...others] = sim.teams.defenders;
   d0.x = defender[0];
   d0.y = defender[1];
@@ -188,9 +190,60 @@ test('órdenes de entrada imposibles se rechazan: sin puerta cerca o sin equipo'
   assert.equal(a.route.filter((p) => p.entry === 'flash').length, 1);
 });
 
-/** Una entrada completa: entreabrir con A, flash y patada por dos puertas con B. */
+test('una ruta a través de una puerta cerrada se detiene en un "?" antes de ella', () => {
+  const { sim, a, door } = atTheDoor({ defender: [36, 3] });
+  wp(sim, a, 12.5, 12.7);
+  sim.flushCommands();
+  const ask = a.route.find((p) => p.ask);
+  assert.ok(ask && ask.user, 'se marca la puerta');
+  assert.ok(Math.abs(ask.x - (10 - ENTRY.askDistance)) < 0.05, 'justo antes de la puerta');
+  assert.equal(pendingDoors(sim, T), 1);
+  runFor(sim, 3);
+  assert.ok(a.waitingGo && a.waitCode === ASK_CODE, 'espera la decisión');
+  assert.ok(!door.open && !door.cracked, 'la puerta sigue cerrada: nada pasa sin decidirlo');
+  cmd(sim, { type: 'go' });
+  runFor(sim, 1);
+  assert.ok(a.waitingGo, 'ningún GO lo suelta: solo la decisión');
+  // "Abrir, de inmediato": la decisión sobre el punto donde espera.
+  cmd(sim, { type: 'setEntry', unitId: a.id, mode: null, index: 0 });
+  runFor(sim, 3);
+  assert.equal(pendingDoors(sim, T), 0);
+  assert.ok(door.open && a.x > 10.5, 'abrió y pasó');
+  // De vuelta por la puerta ya abierta: no pregunta.
+  wp(sim, a, 8.2, 12.7);
+  sim.flushCommands();
+  assert.equal(pendingDoors(sim, T), 0);
+});
+
+test('en el "?" se decide cómo y cuándo: patada con el GO B', () => {
+  const { sim, a, door } = atTheDoor({ defender: [36, 3] });
+  wp(sim, a, 12.5, 12.7);
+  sim.flushCommands();
+  const i = a.route.findIndex((p) => p.ask);
+  cmd(sim, { type: 'setEntry', unitId: a.id, mode: 'kick', index: i });
+  cmd(sim, { type: 'setHold', unitId: a.id, code: 'B', index: i });
+  runFor(sim, 3);
+  assert.ok(a.waitingGo && a.waitCode === 'B' && a.entry?.mode === 'kick');
+  assert.ok(!door.open);
+  cmd(sim, { type: 'go', code: 'B' });
+  runFor(sim, 2);
+  assert.ok(door.open && a.x > 10.5, 'patada y adentro');
+});
+
+test('deshacer el tramo del "?" libera al que esperaba en él', () => {
+  const { sim, a } = atTheDoor({ defender: [36, 3] });
+  wp(sim, a, 12.5, 12.7);
+  runFor(sim, 3);
+  assert.equal(a.waitCode, ASK_CODE);
+  cmd(sim, { type: 'clearRoute', unitId: a.id });
+  sim.flushCommands();
+  assert.ok(!a.waitingGo && pendingDoors(sim, T) === 0);
+});
+
+/** Una entrada completa por turnos: entreabrir con A, flash y patada por dos puertas con B; el jugador da cada GO en el turno, cuando su grupo está en posición (B no antes de 1 s). */
 function playEntryRound(seed) {
   const sim = new Simulation(MAP, { seed, site: 'A', entry: 'principal' });
+  sim.skipToAssault();
   const [a, b, c] = sim.teams.attackers;
   const go = [];
   stack(sim, a, 11.75, 'A', 'slow', [12.5, 12.4]);
@@ -200,13 +253,23 @@ function playEntryRound(seed) {
   cmd(sim, { type: 'setEntry', unitId: c.id, mode: 'kick' });
   wp(sim, c, 12, 8);
   for (const u of [a, b]) wp(sim, u, 27.4, 12.7);
-  while (!sim.outcome && sim.tick < 60 * 150) {
-    if (!go.length && isGoReady(sim, T, 'A') && codeWaiting(sim, T, 'A')) go.push(sim.tick, cmd(sim, { type: 'go', code: 'A' }));
-    if (go.length === 2 && codeWaiting(sim, T, 'B') && isGoReady(sim, T, 'B')) go.push(sim.tick, cmd(sim, { type: 'go', code: 'B' }));
-    sim.step();
+  const called = new Set();
+  while (sim.phase === 'plan') {
+    sim.advancePhase();
+    while (sim.phase === 'exec') {
+      for (const code of ['A', 'B']) {
+        if (called.has(code) || !isGoReady(sim, 'attackers', code) || (code === 'B' && sim.round.execTick < 60)) continue;
+        called.add(code);
+        cmd(sim, { type: 'go', code, atTick: sim.round.execTick });
+      }
+      const before = sim.goCount;
+      sim.step();
+      if (sim.goCount > before) go.push(sim.tick);
+    }
   }
   return {
     tick: sim.tick,
+    turn: sim.turn,
     go,
     outcome: sim.outcome && { winner: sim.outcome.winner, reason: sim.outcome.reason },
     doors: sim.doors.map((d) => [d.open, d.cracked, d.destroyed, +d.angle.toFixed(9)]),
@@ -218,6 +281,6 @@ test('una ronda con entradas coordinadas es determinista', () => {
   const a = playEntryRound(4321);
   const b = playEntryRound(4321);
   assert.ok(a.outcome, 'la ronda debe terminar');
-  assert.ok(a.go.length === 4, 'se dieron los dos GO');
+  assert.equal(a.go.length, 2, 'se dieron los dos GO');
   assert.deepEqual(a, b);
 });
