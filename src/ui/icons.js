@@ -120,6 +120,42 @@ export const ICON = {
   ),
 };
 
+/** Door entry modes (ui/EntryPicker.js), 'none' = just open the door. currentColor fills. */
+export const ENTRY_ICON = {
+  none: svg(
+    '0 0 24 24',
+    `<path d="M5 21 V3 H15 V21" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+     <path d="M15 3 L19 5 V21 L15 21" fill="currentColor" opacity=".55"/><circle cx="12.5" cy="12" r="1.3" fill="currentColor"/>`,
+  ),
+  kick: svg(
+    '0 0 24 24',
+    `<path fill="currentColor" d="M6 2 H11 V11 L19 13.5 C21 14 22 15.5 22 17 V19 H5 Z"/><rect x="5" y="20" width="17" height="2" fill="currentColor"/>
+     <path d="M1.5 9 L4 10 M1 13 L3.8 13.3 M1.5 17 L4 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
+  ),
+  slow: svg(
+    '0 0 24 24',
+    `<path d="M4 21 V3 H12" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 3 L16 6 V20 L12 21 Z" fill="currentColor"/>
+     <path d="M17 12 C18.5 9.6 20.5 9.6 22 12 C20.5 14.4 18.5 14.4 17 12 Z" fill="none" stroke="currentColor" stroke-width="1.6"/>
+     <circle cx="19.5" cy="12" r="1" fill="currentColor"/>`,
+  ),
+  flash: svg(
+    '0 0 24 24',
+    `<path fill="currentColor" d="M12 1 L13.8 8.2 L20.5 4.5 L16.6 10.9 L23 12 L16.6 13.1 L20.5 19.5 L13.8 15.8 L12 23 L10.2 15.8
+     L3.5 19.5 L7.4 13.1 L1 12 L7.4 10.9 L3.5 4.5 L10.2 8.2 Z"/><circle cx="12" cy="12" r="3" fill="#111"/>`,
+  ),
+  frag: svg(
+    '0 0 24 24',
+    `<circle cx="11" cy="14" r="7.5" fill="currentColor"/><path d="M5 12h12M5 16h12M9 7c-1 4-1 10 0 14M13 7c1 4 1 10 0 14" stroke="#111"
+     stroke-width="1.2" fill="none"/><rect x="8.5" y="4" width="5" height="3.2" fill="currentColor"/><path d="M13 5 L17 2.5 L21 4" fill="none"
+     stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
+  ),
+  breach: svg(
+    '0 0 24 24',
+    `<rect x="3" y="8" width="18" height="10" rx="1.5" fill="currentColor"/><rect x="6" y="11" width="5" height="4" fill="#111"/>
+     <circle cx="16.5" cy="13" r="1.6" fill="#ff3020"/><path d="M12 8 C12 5 14 4 16 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/>`,
+  ),
+};
+
 export const CURSOR_SVG = svg(
   '0 0 48 48',
   `<circle cx="24" cy="24" r="13" fill="none" stroke="currentColor" stroke-width="3.2" stroke-dasharray="17 3.4" />

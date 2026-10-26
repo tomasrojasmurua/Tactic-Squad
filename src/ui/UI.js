@@ -7,6 +7,7 @@ import { Screens } from './Screens.js';
 import { WorldLabels } from './WorldLabels.js';
 import { Cursor } from './Cursor.js';
 import { TouchBar } from './TouchBar.js';
+import { EntryPicker } from './EntryPicker.js';
 import { HudOcclusion } from './HudOcclusion.js';
 import { GfxNotice } from './GfxNotice.js';
 import { el, toggle, setStyle } from './dom.js';
@@ -23,6 +24,7 @@ export class UI {
     this.screens = new Screens(root, bus);
     this.cursor = new Cursor(root, input);
     this.touchBar = new TouchBar(root, bus);
+    this.entryPicker = new EntryPicker(root, bus);
     this.rotate = el('div', 'rotate', `<div class="rotate-box"><div class="rotate-phone">${ICON.phone}</div><h2>${T.rotate.title}</h2><p>${T.rotate.text}</p></div>`);
     root.appendChild(this.rotate);
     // Plates that fade when a unit is under them (the touch column only dims: it stays usable).
@@ -46,6 +48,7 @@ export class UI {
     this.gfx.update(session);
     this.cursor.update(session);
     this.touchBar.update(sim, session);
+    this.entryPicker.update(sim, session);
     this.screens.setTouch(session.touch);
   }
 }

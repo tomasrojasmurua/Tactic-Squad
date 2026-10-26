@@ -9,7 +9,8 @@
 import { ROUND, COMBAT } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { canSee } from './vision.js';
-import { nearBomb, isAiControlled } from './queries.js';
+import { nearBomb, isAiControlled, peekEye } from './queries.js';
+import { ENTRY } from '../config/balance.js';
 import { alertAiUnit } from './ai.js';
 import { buildNotes } from './debrief.js';
 
@@ -39,11 +40,14 @@ export function updateObjectives(sim, dt) {
   if (sim.timeLeft <= 0) return endRound(sim, 'defenders', 'time');
 }
 
+const eye = { x: 0, y: 0, facing: 0 };
+
 function spotBomb(sim) {
   const bomb = sim.bomb;
   if (bomb.spotted) return;
   for (const u of sim.teams.attackers) {
-    if (u.alive && canSee(sim.world, u, bomb.x, bomb.y, u.vision)) {
+    const seen = u.alive && (canSee(sim.world, u, bomb.x, bomb.y, u.vision) || (peekEye(sim, u, eye) && canSee(sim.world, eye, bomb.x, bomb.y, { fov: ENTRY.slow.peekFov, range: u.vision.range })));
+    if (seen) {
       bomb.spotted = true;
       sim.emit(EV.BOMB_SPOTTED, { unitId: u.id, site: bomb.site, x: bomb.x, y: bomb.y });
       return;

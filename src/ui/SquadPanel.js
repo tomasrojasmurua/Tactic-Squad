@@ -84,13 +84,24 @@ function setStatus(node, u, sim) {
   } else if (u.defusing) {
     text = `${S.defusing} ${Math.round(sim.bomb.progress * 100)}%`;
     cls = 'plant';
+  } else if (u.blind > 0) {
+    text = S.blind;
+    cls = 'alert';
   } else if (u.target >= 0) {
     text = S.combat;
     cls = 'alert';
   } else if (u.reloadTimer > 0) {
     text = S.reloading;
+  } else if (u.entry && u.entry.phase === 'prep') {
+    text = u.entry.mode === 'breach' ? S.planting : S.cracking;
+  } else if (u.entry && u.entry.phase === 'act') {
+    text = u.entry.mode === 'breach' ? S.firing : S.throwing[u.entry.mode];
+    cls = 'plant';
   } else if (u.waitingGo) {
-    text = S.waitingGo;
+    text = u.waitCode ? S.waitingCode(u.waitCode) : S.waitingGo;
+    cls = 'go';
+  } else if (u.goDelay > 0) {
+    text = S.bang;
     cls = 'go';
   } else if (u.stun > 0) {
     text = S.breaching;

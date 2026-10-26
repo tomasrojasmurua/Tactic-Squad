@@ -6,6 +6,7 @@ export const KEYS = Object.freeze({
   execute: ['Enter', 'NumpadEnter'],
   go: ['KeyG'],
   hold: ['KeyH'],
+  entry: ['KeyE'], // cycles how he goes through the door next to the last waypoint
   undo: ['Backspace', 'KeyZ'],
   clear: ['KeyX', 'Delete'],
   restart: ['KeyR'], // retry: same plan, fresh round

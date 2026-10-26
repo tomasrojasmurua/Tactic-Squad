@@ -1,9 +1,9 @@
 // Who sees whom this tick, target acquisition and reaction times.
-import { VISION, COMBAT } from '../config/balance.js';
+import { VISION, COMBAT, ENTRY } from '../config/balance.js';
 import { angleDiff, angleTo } from '../core/math.js';
 import { canSee } from './vision.js';
 import { EV } from '../core/events.js';
-import { isAiControlled } from './queries.js';
+import { isAiControlled, peekEye } from './queries.js';
 
 export function updatePerception(sim) {
   const { units, world } = sim;
@@ -14,7 +14,7 @@ export function updatePerception(sim) {
   }
 
   for (const viewer of units) {
-    if (!viewer.alive) continue;
+    if (!viewer.alive || viewer.blind > 0) continue; // flashed: sees nothing
     const cfg = viewer.vision; // VISION[team], scaled by the role
     for (const other of units) {
       if (!other.alive || other.team === viewer.team) continue;
@@ -25,6 +25,16 @@ export function updatePerception(sim) {
     }
   }
 
+  // Peeking through a door cracked ajar: whoever is in view is revealed to his
+  // side (shown, spotted), but he does not target him — the door is still shut.
+  for (const viewer of units) {
+    if (viewer.blind > 0 || !peekEye(sim, viewer, eye)) continue;
+    peekCfg.range = viewer.vision.range;
+    for (const other of units) {
+      if (other.alive && other.team !== viewer.team && canSee(world, eye, other.x, other.y, peekCfg)) other.seenByEnemy = true;
+    }
+  }
+
   for (const u of units) {
     if (u.alive && u.seenByEnemy && !u.seenByEnemyPrev) {
       sim.emit(EV.SPOTTED, { unitId: u.id, team: u.team, x: u.x, y: u.y });
@@ -32,6 +42,9 @@ export function updatePerception(sim) {
     if (u.alive) selectTarget(sim, u);
   }
 }
+
+const eye = { x: 0, y: 0, facing: 0 };
+const peekCfg = { fov: ENTRY.slow.peekFov, range: 0 };
 
 function selectTarget(sim, u) {
   const current = u.target >= 0 ? sim.units[u.target] : null;

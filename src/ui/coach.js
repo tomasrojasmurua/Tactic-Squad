@@ -3,7 +3,7 @@
 // sim/session, returns {text, strong} or null (= the phase's default line).
 // Priority: guided tutorial step > why time stopped (smart pause) > GO
 // prompts > replay progress > planning steps.
-import { teamUnits, controllableUnit, anyWaitingGo, isGoReady } from '../sim/queries.js';
+import { teamUnits, controllableUnit, anyWaitingGo, isGoReady, nextGoCode } from '../sim/queries.js';
 import { T } from './texts.js';
 
 const hasUserPoint = (u) => u.route.some((p) => p.user);
@@ -25,7 +25,8 @@ export function coachHint(sim, session) {
   if (tut.active && tut.id && session.phase !== 'ended') return say(F.tutorial.prefix(tut.step + 1, tut.count) + F.tutorial[tut.id][dev], true);
   if (session.phase === 'paused' && F.pause[session.pauseReason]) return say(F.pause[session.pauseReason][dev], true);
   if (session.phase === 'running' || session.phase === 'paused') {
-    if (isGoReady(sim, team)) return say(C.goReady[dev], true);
+    const next = nextGoCode(sim, team);
+    if (next && isGoReady(sim, team, next)) return say(C.goReady[dev], true);
     if (anyWaitingGo(sim)) {
       const w = teamUnits(sim, team).find((u) => u.alive && u.waitingGo);
       if (w) return say(C.goWaiting[dev](w.name), false);

@@ -209,3 +209,67 @@ export function farPlane(k) {
   }
   return out;
 }
+
+/**
+ * Explosion (frag grenade, breach charge): a pressure thump sweeping down,
+ * a broadband blast darkening fast, then rubble crackle and a low rumble.
+ */
+export function explosion(k) {
+  const { sr, rng } = k;
+  const out = k.buf(1.8);
+  const blast = new SVF(sr);
+  const rumble = new SVF(sr).set(k.vary(70, 0.1), 0.7);
+  const crackle = grains(rng, sr, (t) => 900 * ad(t - 0.03, 0.02, 0.25));
+  const cf = new SVF(sr).set(k.vary(2400, 0.15), 0.9);
+  const f0 = k.vary(85, 0.08);
+  let ph = 0;
+  for (let i = 0; i < out.length; i++) {
+    const t = i / sr;
+    ph += (2 * Math.PI * expLerp(f0, 28, t / 0.35)) / sr;
+    let v = Math.sin(ph) * ad(t, 0.002, 0.18) * 1.4;
+    if ((i & 15) === 0) blast.set(expLerp(5000, 160, t / 0.5), 0.6);
+    blast.tick(white(rng));
+    v += blast.lp * ad(t, 0.0008, 0.22) * 1.6;
+    rumble.tick(white(rng));
+    v += rumble.bp * rumble.k * bell(t, 0.02, 1.7) * 0.9;
+    cf.tick(crackle(t));
+    v += cf.bp * 1.2;
+    out[i] = sat(v, 2.2);
+  }
+  return out;
+}
+
+/** Flashbang: an ear-splitting crack, a short metallic body ring and a thin thump. */
+export function flashbang(k) {
+  const { sr, rng } = k;
+  const out = k.buf(1.1);
+  const crack = new SVF(sr).set(k.vary(3200, 0.12), 0.8);
+  const body = new ModeBank(sr, [[k.vary(1450, 0.06), 0.25, 0.6], [k.vary(2650, 0.06), 0.18, 0.5], [k.vary(4100, 0.06), 0.12, 0.35]]);
+  const lp = new SVF(sr).set(260, 0.8);
+  for (let i = 0; i < out.length; i++) {
+    const t = i / sr;
+    const x = t < 0.0025 ? white(rng) : 0;
+    crack.tick(white(rng));
+    lp.tick(white(rng));
+    let v = crack.bp * ad(t, 0.0003, 0.03) * 2.2 + white(rng) * ad(t, 0.0002, 0.006) * 1.4;
+    v += body.tick(x) * 0.8 + lp.lp * ad(t, 0.001, 0.06) * 1.5;
+    out[i] = sat(v, 2.5);
+  }
+  return out;
+}
+
+/** Grenade throw: the pin comes out (a small metallic ping) and the spoon flips off. */
+export function grenadePin(k) {
+  const { sr, rng } = k;
+  const out = k.buf(0.4);
+  const pin = new ModeBank(sr, [[k.vary(3900, 0.05), 0.06, 1], [k.vary(6100, 0.05), 0.04, 0.6]]);
+  const spoon = new ModeBank(sr, [[k.vary(2300, 0.06), 0.05, 1], [k.vary(5200, 0.06), 0.03, 0.5]]);
+  const at = k.vary(0.16, 0.2);
+  for (let i = 0; i < out.length; i++) {
+    const t = i / sr;
+    const a = t < 0.0006 ? white(rng) : 0;
+    const b = t >= at && t < at + 0.0005 ? white(rng) : 0;
+    out[i] = pin.tick(a) * 0.7 + spoon.tick(b) * 0.9;
+  }
+  return out;
+}

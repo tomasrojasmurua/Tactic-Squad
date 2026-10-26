@@ -12,7 +12,8 @@
 import { EV } from '../core/events.js';
 import { POINTER, TOUCH } from '../config/input.js';
 import { NAV } from '../config/balance.js';
-import { routeTail, lastUserIndex, controllableUnit } from '../sim/queries.js';
+import { routeTail, lastUserIndex, controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR } from '../sim/queries.js';
+import { ENTRY } from '../config/balance.js';
 import { canEditRoutes } from '../session/Session.js';
 import { unitAt, waypointAt, nearTail, pickRadius } from './picking.js';
 import { RoutePreview } from './RoutePreview.js';
@@ -234,6 +235,53 @@ export class PlanningController {
   clear() {
     const u = this.selectedUnit();
     if (u && this.canEdit) this.command({ type: 'clearRoute', unitId: u.id });
+    return true;
+  }
+
+  /**
+   * How the selected operator goes through the door next to his last
+   * waypoint (null / 'none' = just open it). Choosing the mode already set
+   * clears it. An entry usually waits for a GO: a waypoint without a hold
+   * gets one (code A) so the team can be synchronized.
+   */
+  setEntry(mode) {
+    const u = this.selectedUnit();
+    if (!u || !this.canEdit) return true;
+    const i = lastUserIndex(u);
+    if (i < 0) return true;
+    const p = u.route[i];
+    const next = mode === 'none' || mode === p.entry ? null : mode;
+    this.command({ type: 'setEntry', unitId: u.id, mode: next, index: i });
+    if (next && !p.hold && entryModeFits(this.getSim(), entryDoorwayAt(this.getSim().world, p.x, p.y), next)) {
+      this.command({ type: 'setHold', unitId: u.id, code: ENTRY.goCodes[0], index: i });
+    }
+    return true;
+  }
+
+  /** Keyboard: next entry mode that fits (open -> kick -> crack -> flash -> grenade -> charge -> open). */
+  cycleEntry() {
+    const u = this.selectedUnit();
+    if (!u || !this.canEdit) return true;
+    const i = lastUserIndex(u);
+    if (i < 0) return true;
+    const sim = this.getSim();
+    const p = u.route[i];
+    const k = entryDoorwayAt(sim.world, p.x, p.y);
+    if (k < 0) {
+      this.command({ type: 'setEntry', unitId: u.id, mode: 'kick', index: i }); // rejected: tells why
+      return true;
+    }
+    const order = [null, ...ENTRY.modes];
+    let at = order.indexOf(p.entry || null);
+    for (let n = 0; n < order.length; n++) {
+      at = (at + 1) % order.length;
+      const m = order[at];
+      const item = m && ENTRY_GEAR[m];
+      if (m === null || (entryModeFits(sim, k, m) && (!item || gearLeft(u, item, i) > 0))) {
+        this.setEntry(m === null ? 'none' : m);
+        return true;
+      }
+    }
     return true;
   }
 

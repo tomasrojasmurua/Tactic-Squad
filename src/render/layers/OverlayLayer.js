@@ -1,5 +1,6 @@
 // Tactical overlay: planned routes, waypoints, facing arrows, GO holds,
-// FOV edges, selection rings, contact markers, defuse progress.
+// door entries, grenades in flight, flashed units, FOV edges, selection
+// rings, contact markers, defuse progress.
 // `drawGround` runs before walls/units (depth-tested rings & shadows),
 // `drawTop` runs last, over everything (routes must always be readable).
 // Rebuilt every frame (animated dashes/pulses), so it is written to avoid
@@ -7,7 +8,9 @@
 // scratch buffers. A pooled color is valid until 16 more are requested,
 // which is always enough because ShapeBatch consumes colors immediately.
 import { HEIGHTS, OVERLAY } from '../../config/render.js';
+import { ENTRY } from '../../config/balance.js';
 import { hexToRgb } from '../../core/math.js';
+import { grenadeAt } from '../../sim/queries.js';
 import { ShaderProgram } from '../gl/ShaderProgram.js';
 import { ShapeBatch } from '../gl/ShapeBatch.js';
 import { FLAT_VS, FLAT_FS } from '../shaders/flat.js';
@@ -27,7 +30,9 @@ export class OverlayLayer {
     this.colors = new Map();
     this.markers = new ContactMarkers();
     this.pose = { x: 0, y: 0, facing: 0 }; // scratch interpolated pose
+    this.gpos = { x: 0, y: 0, k: 0 }; // scratch grenade position
     this.routePts = []; // scratch flat polyline
+    this.linkPts = [0, 0, 0, 0]; // scratch entry link
     this.routeOrder = []; // own operators, selected last
     this.pings = new OverlayPings();
     this.lastSelected = -1;
@@ -111,9 +116,11 @@ export class OverlayLayer {
           g.ring(p.x, p.y, R.own, 2 * mpp, withAlpha(c, 0.7), 32);
         }
         if (session.hoverUnitId === u.id && u.id !== selected) g.ring(p.x, p.y, R.hover, 1.6 * mpp, WHITE(0.6), 32);
+        if (u.blind > 0) g.ring(p.x, p.y, R.blind, 3 * mpp, rgba(1, 0.96, 0.62, 0.55 + 0.4 * Math.sin(time * 18)), 32);
       } else {
         g.ring(p.x, p.y, R.enemy, 3.6 * mpp, BLACK(0.35), 32);
         g.ring(p.x, p.y, R.enemy, 2.4 * mpp, withAlpha(c, 0.9), 32);
+        if (u.blind > 0) g.ring(p.x, p.y, R.blind, 3 * mpp, rgba(1, 0.96, 0.62, 0.55 + 0.4 * Math.sin(time * 18)), 32);
         // facing tick: where the defender is looking
         const fx = Math.cos(p.facing);
         const fy = Math.sin(p.facing);
@@ -136,6 +143,7 @@ export class OverlayLayer {
     for (const u of sim.teams[own]) if (u.alive && u.id === selected) order.push(u);
     for (const u of order) this.route(t, u, unitLayer.poseInto(u, frame.alpha, this.pose), mpp, time, u.id === selected);
 
+    this.grenades(t, sim, frame, mpp);
     if (editable) this.planningPreview(t, sim, session, mpp);
     this.markers.contacts(t, sim, unitLayer, frame, mpp, own);
     this.markers.bomb(t, sim, unitLayer, frame, mpp);
@@ -180,6 +188,7 @@ export class OverlayLayer {
     for (let i = 0; i < u.route.length; i++) {
       const p = u.route[i];
       if (!p.user) continue;
+      if (p.entry) this.entryMarker(t, p.x, p.y, p.entry, p.entryDoor, selected, mpp);
       if (p.look !== null) this.lookMarker(t, p.x, p.y, p.look, c, selected ? 1 : 0.6, mpp, u.vision.fov);
       if (p.hold) {
         this.holdMarker(t, p.x, p.y, r * 1.6, c, mpp);
@@ -194,9 +203,52 @@ export class OverlayLayer {
     if (u.route.length === 0 && u.idleLook !== null && !u.waitingGo) {
       this.lookMarker(t, pos.x, pos.y, u.idleLook, c, selected ? 0.9 : 0.5, mpp, u.vision.fov);
     }
+    const e = u.entry;
+    if (e && e.phase !== 'act') this.entryMarker(t, pos.x, pos.y, e.mode, e.doorway, selected, mpp);
+    if (e && e.phase === 'prep') {
+      // Progress of the crack / the plant around the operator.
+      const total = e.mode === 'breach' ? ENTRY.breach.prepTime : ENTRY.slow.prepTime;
+      const k = 1 - Math.max(0, e.t) / total;
+      const ec = OVERLAY.entryColors[e.mode];
+      t.arc(pos.x, pos.y, OVERLAY.unitRing.prep, 3 * mpp, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2, rgba(ec[0], ec[1], ec[2], 0.95), 28);
+    }
     if (u.waitingGo) {
       const pulse = 0.5 + 0.5 * Math.sin(time * 5);
       t.ring(pos.x, pos.y, OVERLAY.unitRing.waitGo + pulse * OVERLAY.unitRing.waitGoPulse, 2.4 * mpp, WHITE(0.5 + 0.4 * pulse), 36);
+    }
+  }
+
+  /** Dashed link from a stack point to the doorway it enters, and a mode-colored diamond on the doorway. */
+  entryMarker(t, x, y, mode, doorway, selected, mpp) {
+    const d = this.sim.world.doorways[doorway];
+    if (!d) return;
+    const c = OVERLAY.entryColors[mode] || LOOK_PREVIEW_RGB;
+    const a = selected ? 0.95 : 0.6;
+    const pts = this.linkPts;
+    pts[0] = x;
+    pts[1] = y;
+    pts[2] = d.cx;
+    pts[3] = d.cy;
+    t.dashed(pts, 2 * mpp, 0.14, 0.1, 0, rgba(c[0], c[1], c[2], a * 0.8));
+    const r = OVERLAY.entryMarker;
+    const o = r + 2 * mpp;
+    t.quad(d.cx, d.cy - o, d.cx + o, d.cy, d.cx, d.cy + o, d.cx - o, d.cy, BLACK(0.7 * a));
+    t.quad(d.cx, d.cy - r, d.cx + r, d.cy, d.cx, d.cy + r, d.cx - r, d.cy, rgba(c[0], c[1], c[2], a));
+  }
+
+  /** Grenades in flight (an arc through the doorway) and rolling to a stop. */
+  grenades(t, sim, frame, mpp) {
+    for (const g of sim.grenades) {
+      const age = g.age + frame.alpha * sim.dt;
+      const p = grenadeAt(g, age, this.gpos);
+      const lift = p.k < 1 ? Math.sin(p.k * Math.PI) * 0.25 : 0; // reads as a lob: a bigger dot mid-flight
+      const r = OVERLAY.grenadeRadius * (1 + lift) + 1.5 * mpp;
+      const c = OVERLAY.entryColors[g.kind];
+      t.circle(p.x, p.y, r + 1.5 * mpp, BLACK(0.8), 12);
+      t.circle(p.x, p.y, r, rgba(c[0], c[1], c[2], 1), 12);
+      // Fuse: a ring shrinking to the bang.
+      const left = Math.max(0, 1 - age / g.fuse);
+      t.ring(p.x, p.y, 0.25 + left * 0.35, 1.6 * mpp, rgba(c[0], c[1], c[2], 0.35 + 0.5 * (1 - left)), 20);
     }
   }
 

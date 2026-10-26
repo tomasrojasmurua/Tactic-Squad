@@ -10,6 +10,7 @@ import { compileMap } from './mapCompiler.js';
 import { World } from './World.js';
 import { createUnit } from './units.js';
 import { createDoorState, updateDoors } from './doors.js';
+import { updateEntries } from './entries.js';
 import { applyCommand } from './orders.js';
 import { updatePerception } from './perception.js';
 import { updateAiUnit } from './ai.js';
@@ -47,6 +48,8 @@ export class Simulation {
     this.dt = 1 / SIM.tickRate;
     this.timeLeft = ROUND.timeLimit;
     this.goCount = 0;
+    this.grenades = []; // thrown, not yet detonated (sim/entries.js)
+    this.grenadeSeq = 0;
     this.outcome = null;
     this.commands = [];
     this.events = [];
@@ -132,6 +135,7 @@ export class Simulation {
     }
 
     updateDoors(this, dt);
+    updateEntries(this, dt);
     updatePerception(this);
     for (const u of this.units) {
       if (!u.alive) continue;

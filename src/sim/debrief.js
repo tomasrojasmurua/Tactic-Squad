@@ -4,7 +4,7 @@
 // explain a defeat by time or celebrate a clean win.
 //
 // victim.deathCause = {
-//   code: 'reloading' | 'outnumbered' | 'blindside' | 'preaimed' | 'moving' | 'duel',
+//   code: 'reloading' | 'outnumbered' | 'blindside' | 'preaimed' | 'moving' | 'duel' | 'explosive' | 'friendly',
 //   killerId, room, killerRoom, doorway (id or null), from: 'N'|'S'|'E'|'W' (killer's side), defusing
 // }
 // sim.outcome.notes = [{code, unitId?, room?, site?}]  codes: 'waitingGo' | 'noRoute' |
@@ -12,8 +12,8 @@
 import { DEBRIEF } from '../config/balance.js';
 import { roomAt, doorwayNear } from './queries.js';
 
-/** Called by combat.kill BEFORE the victim's state is cleared. */
-export function recordDeath(sim, victim, killer) {
+/** Called by combat.kill BEFORE the victim's state is cleared. `forced`: cause decided by the caller (explosions). */
+export function recordDeath(sim, victim, killer, forced = null) {
   const w = sim.world;
   const door = doorwayNear(w, victim.x, victim.y, DEBRIEF.doorwayRadius);
   const cause = {
@@ -25,7 +25,9 @@ export function recordDeath(sim, victim, killer) {
     from: killer ? compass(killer.x - victim.x, killer.y - victim.y) : null,
     defusing: victim.defusing,
   };
-  if (killer) {
+  if (forced) {
+    cause.code = killer && killer.team === victim.team ? 'friendly' : forced;
+  } else if (killer) {
     let shooters = 0;
     for (const e of sim.teams[killer.team]) if (e.alive && e.target === victim.id) shooters++;
     const sawKiller = victim.target === killer.id || victim.visibleEnemies.includes(killer.id);

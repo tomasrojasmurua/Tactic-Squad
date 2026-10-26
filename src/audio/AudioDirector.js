@@ -47,6 +47,11 @@ export class AudioDirector {
     on(EV.DEATH, (ev) => this.death(ev));
     on(EV.FOOTSTEP, (ev) => this.footstep(ev));
     on(EV.DOOR_OPEN, (ev) => this.door(ev));
+    on(EV.GRENADE_THROWN, (ev) => this.at('grenade.pin', ev.x, ev.y, L.grenadePin, 'foley'));
+    on(EV.GRENADE_DETONATE, (ev) => this.bang(ev.kind === 'flash' ? 'flashbang' : 'blast', ev.x, ev.y));
+    on(EV.CHARGE_BLAST, (ev) => this.bang('blast', ev.x, ev.y));
+    on(EV.CHARGE_READY, () => this.ui('hold', 0.7));
+    on(EV.CHARGE_FIRE, () => this.ui('plant', 1));
     on(EV.RELOAD, (ev) => this.reload(ev));
     on(EV.SPOTTED, (ev) => {
       if (ev.team !== enemyTeam(this.viewer.team)) return;
@@ -225,7 +230,19 @@ export class AudioDirector {
     if (ev.team === this.viewer.team && this.e.rng.chance(L.gear.chance * (0.5 + k))) this.at('gear', ev.x, ev.y, L.gear, 'step', { delay: L.gear.delay, gain });
   }
 
+  /** Grenade / charge going off: loud everywhere, ducks the music like close gunfire. */
+  bang(name, x, y) {
+    const lvl = name === 'flashbang' ? L.flashbang : L.blast;
+    this.at(name, x, y, lvl, 'gun', { always: true, minGain: lvl.minGain, sendMul: L.blast.farSendMul });
+    this.e.duckMusic(MUSIC.duckDb, MUSIC.duckRelease);
+    this.music.onEvent('shot', 1);
+  }
+
   door(ev) {
+    if (ev.mode === 'crack') {
+      this.at('door.crack', ev.x, ev.y, L.doorCrack, 'door');
+      return;
+    }
     this.music.onEvent(ev.mode === 'push' ? 'door' : 'kick');
     if (ev.mode === 'push') {
       // Pushed open: no boot, the hinge always speaks, the stop is softer.

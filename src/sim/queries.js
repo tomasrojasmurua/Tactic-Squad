@@ -4,7 +4,7 @@
 // the ONLY sim helpers that input/ui/render may import besides vision.js.
 import { pointInBox, pointAabbDistance, pointSegDist2 } from '../core/geom.js';
 import { angleDiff } from '../core/math.js';
-import { MOVE, ROUND } from '../config/balance.js';
+import { MOVE, ROUND, ENTRY, DOORS } from '../config/balance.js';
 import { PROP_SURFACE, SURFACE_PROBE, DOOR_SURFACE, FENCE_SURFACE } from '../config/materials.js';
 import { TEAMS } from '../config/squad.js';
 
@@ -49,6 +49,7 @@ export function propNear(sim, x, y) {
 export function struckSurface(sim, x, y) {
   const r2 = SURFACE_PROBE * SURFACE_PROBE;
   for (const d of sim.doors) {
+    if (d.destroyed) continue;
     const def = d.def;
     const a = def.closedAngle + d.angle;
     const ex = def.hingeX + Math.cos(a) * def.length;
@@ -181,16 +182,133 @@ export function holdsPending(sim, team = humanTeam(sim)) {
   return n;
 }
 
-/** Waiting for GO AND already turned to the angle set for that hold. */
-export const isInPosition = (u) =>
-  u.waitingGo && (u.lookOverride === null || Math.abs(angleDiff(u.facing, u.lookOverride)) <= MOVE.readyAngle);
+/**
+ * Waiting for GO, done preparing his entry (door cracked, charge planted)
+ * AND already turned to the angle set for that hold.
+ */
+export function isInPosition(u) {
+  if (!u.waitingGo || (u.entry && u.entry.phase !== 'armed')) return false;
+  const look = u.entry && u.entry.look !== null ? u.entry.look : u.lookOverride;
+  return look === null || Math.abs(angleDiff(u.facing, look)) <= MOVE.readyAngle;
+}
 
 /**
- * The synchronized entry is ready: someone waits for GO, nobody is still
- * walking to a hold, and every waiting operator already aims his angle.
+ * The synchronized entry is ready: someone waits for GO (with `code`, or
+ * any), nobody is still walking to a hold of that code, and every operator
+ * waiting for it is in position.
  */
-export function isGoReady(sim, team = humanTeam(sim)) {
-  if (!anyWaitingGo(sim) || holdsPending(sim, team) > 0) return false;
-  for (const u of sim.teams[team]) if (u.alive && u.waitingGo && !isInPosition(u)) return false;
+export function isGoReady(sim, team = humanTeam(sim), code = null) {
+  let waiting = false;
+  for (const u of sim.teams[team]) {
+    if (!u.alive) continue;
+    if (u.waitingGo) {
+      if (code && u.waitCode !== code) continue;
+      if (!isInPosition(u)) return false;
+      waiting = true;
+    } else if (holdAhead(u, code)) return false;
+  }
+  return waiting;
+}
+
+/** Does the unit still have a GO hold (with `code`, or any) ahead on its route? */
+function holdAhead(u, code) {
+  for (const p of u.route) if (p.hold && (!code || holdCode(p) === code)) return true;
+  return false;
+}
+
+/** GO code of a hold waypoint (old plans without one wait for the first code). */
+export const holdCode = (p) => p.code || ENTRY.goCodes[0];
+
+/** Is someone of the side waiting for this GO code? */
+export function codeWaiting(sim, team, code) {
+  for (const u of sim.teams[team]) if (u.alive && u.waitingGo && u.waitCode === code) return true;
+  return false;
+}
+
+/** Is this GO code in use by the side (someone waits for it or has a hold of it ahead)? */
+export function codeInUse(sim, team, code) {
+  for (const u of sim.teams[team]) if (u.alive && ((u.waitingGo && u.waitCode === code) || holdAhead(u, code))) return true;
+  return false;
+}
+
+/** The code a plain GO releases: the first one (A, B, C) someone of the side waits for, or null. */
+export function nextGoCode(sim, team = humanTeam(sim)) {
+  for (const c of ENTRY.goCodes) if (codeWaiting(sim, team, c)) return c;
+  return null;
+}
+
+// ------------------------------------------------------------ door entries (sim/entries.js)
+
+/** Which piece of gear an entry mode spends (config/operators.js gear), or null. */
+export const ENTRY_GEAR = Object.freeze({ kick: null, slow: null, flash: 'flash', frag: 'frag', breach: 'breach' });
+
+/** Index (world.doorways) of the doorway a waypoint at (x, y) can enter through, or -1. */
+export function entryDoorwayAt(world, x, y) {
+  let best = -1;
+  let bestD = ENTRY.doorRange * ENTRY.doorRange;
+  const ds = world.doorways;
+  for (let i = 0; i < ds.length; i++) {
+    const d2 = (ds[i].cx - x) ** 2 + (ds[i].cy - y) ** 2;
+    if (d2 < bestD) {
+      bestD = d2;
+      best = i;
+    }
+  }
+  return best;
+}
+
+/** May this mode be used through doorway k? Kick / slow / breach need a door still standing. */
+export function entryModeFits(sim, k, mode) {
+  if (k < 0 || !ENTRY.modes.includes(mode)) return false;
+  if (mode === 'flash' || mode === 'frag') return true;
+  const door = k < sim.doors.length ? sim.doors[k] : null;
+  return !!door && !door.destroyed && (mode === 'breach' || !door.open);
+}
+
+/**
+ * How many of a gear item the unit has left for NEW orders: what he carries
+ * minus what his route (except waypoint `skip`) and his pending entry will spend.
+ */
+export function gearLeft(u, item, skip = -1) {
+  let n = u.gear[item] || 0;
+  for (let i = 0; i < u.route.length; i++) if (i !== skip && u.route[i].entry && ENTRY_GEAR[u.route[i].entry] === item) n--;
+  if (u.entry && !u.entry.spent && ENTRY_GEAR[u.entry.mode] === item) n--;
+  return n;
+}
+
+/**
+ * The eye of an operator looking through a door he cracked ajar ("entreabrir"):
+ * on the doorway's center line just past the cracked slab, facing into the
+ * room (a head poked through the gap: a real 30° gap shows almost nothing). Writes {x, y, facing} into `out`;
+ * false when he is not peeking (door still swinging, opened, or no such entry).
+ */
+export function peekEye(sim, u, out) {
+  const e = u.entry;
+  if (!u.alive || !e || e.mode !== 'slow' || e.phase !== 'armed' || e.doorway >= sim.doors.length) return false;
+  const door = sim.doors[e.doorway];
+  if (!door.cracked || door.angle !== door.target) return false;
+  const d = sim.world.doorways[e.doorway];
+  const depth = (d.length / 2) * Math.tan(DOORS.crackAngle) + ENTRY.slow.peekDepth;
+  out.x = d.cx + d.normalX * e.side * depth;
+  out.y = d.cy + d.normalY * e.side * depth;
+  out.facing = Math.atan2(d.normalY * e.side, d.normalX * e.side);
   return true;
+}
+
+/** Position of a thrown grenade `age` seconds after the throw (2D; its height is presentation). */
+export function grenadeAt(g, age, out) {
+  const k = Math.min(1, age / g.flight);
+  const l1 = g.leg1;
+  const along = k * (l1 + g.leg2);
+  if (along <= l1) {
+    const f = l1 > 1e-6 ? along / l1 : 1;
+    out.x = g.fromX + (g.viaX - g.fromX) * f;
+    out.y = g.fromY + (g.viaY - g.fromY) * f;
+  } else {
+    const f = g.leg2 > 1e-6 ? (along - l1) / g.leg2 : 1;
+    out.x = g.viaX + (g.x - g.viaX) * f;
+    out.y = g.viaY + (g.y - g.viaY) * f;
+  }
+  out.k = k;
+  return out;
 }

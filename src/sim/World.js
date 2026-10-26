@@ -42,10 +42,11 @@ export class World {
     let o = this.staticSegmentCount;
     for (const d of doors) {
       const a = d.def.closedAngle + d.angle;
+      const len = d.destroyed ? 0 : d.def.length; // a blown door leaves a zero-length slab (never blocks)
       this.segments[o++] = d.def.hingeX;
       this.segments[o++] = d.def.hingeY;
-      this.segments[o++] = d.def.hingeX + Math.cos(a) * d.def.length;
-      this.segments[o++] = d.def.hingeY + Math.sin(a) * d.def.length;
+      this.segments[o++] = d.def.hingeX + Math.cos(a) * len;
+      this.segments[o++] = d.def.hingeY + Math.sin(a) * len;
     }
     this.segmentsVersion++;
   }

@@ -2,7 +2,8 @@
 // a right-hand column (execute/pause, GO, hold, undo, clear) and a bottom
 // row (contextual defuse, restart, see all, fullscreen, music, help). Emits EV.REQUEST.
 import { EV } from '../core/events.js';
-import { anyWaitingGo, anyGoHold, canOrderDefuse, isGoReady } from '../sim/queries.js';
+import { canOrderDefuse, isGoReady, codeInUse, nextGoCode, lastUserIndex, holdCode } from '../sim/queries.js';
+import { ENTRY } from '../config/balance.js';
 import { el, setText, toggle, setHidden } from './dom.js';
 import { ICON } from './icons.js';
 import { T } from './texts.js';
@@ -54,6 +55,8 @@ export class TouchBar {
     this.execLabel = this.exec.querySelector('.tl');
     this.execState = 'play';
     this.goLabel = this.go.querySelector('.tl');
+    this.goCode = this.go.querySelector('.ti b');
+    this.holdLabel = this.hold.querySelector('.tl');
     this.restartLabel = this.restart.querySelector('.tl');
     this.routeButtons = [this.hold, this.undo, this.clear];
   }
@@ -77,20 +80,27 @@ export class TouchBar {
     const canEdit = phase !== 'ended' && !session.helpOpen && sel && sel.alive;
     const disabled = !canEdit || !sel.route.length;
     for (const b of this.routeButtons) if (b.disabled !== disabled) b.disabled = disabled;
-    const waiting = anyWaitingGo(sim);
-    setHidden(this.go, !(waiting || anyGoHold(sim)) || phase === 'ended');
+    // GO releases the next code someone waits for (A, then B, then C): one big button, the thumb never hunts.
+    const team = session.team;
+    const used = ENTRY.goCodes.filter((c) => codeInUse(sim, team, c));
+    const next = nextGoCode(sim, team) || used[0] || null;
+    setHidden(this.go, !next || phase === 'ended');
     // GO only works while time runs: while planning it says so and is disabled.
     const goLater = phase === 'planning';
     if (this.go.disabled !== goLater) this.go.disabled = goLater;
     setText(this.goLabel, goLater ? T.flow.goLater : T.touch.go);
+    setText(this.goCode, next && used.length > 1 ? `GO ${next}` : 'GO');
+    const last = sel && sel.alive ? lastUserIndex(sel) : -1;
+    const p = last >= 0 ? sel.route[last] : null;
+    setText(this.holdLabel, p && p.hold ? `${T.touch.hold} ${holdCode(p)}` : T.touch.hold);
     setText(this.restartLabel, session.confirm.action === 'restart' ? T.flow.confirmRestart : T.touch.restart);
     // Smart pause: the resume button asks for attention (amber pulse: styles.css [data-attn]).
     const attn = phase === 'paused' && session.pauseReason === 'idle' ? '1' : '';
     if ((this.exec.dataset.attn || '') !== attn) this.exec.dataset.attn = attn;
     const armed = session.confirm.action === 'restart' ? '1' : '';
     if ((this.restart.dataset.armed || '') !== armed) this.restart.dataset.armed = armed;
-    toggle(this.go, 'ready', waiting);
-    toggle(this.go, 'all', isGoReady(sim)); // everyone in position: the moment to press it
+    toggle(this.go, 'ready', !!next && nextGoCode(sim, team) === next);
+    toggle(this.go, 'all', !!next && isGoReady(sim, team, next)); // everyone of that code in position: the moment to press it
     setHidden(this.defuse, !canOrderDefuse(sim));
     toggle(this.music, 'off', !session.musicOn);
   }

@@ -1,7 +1,8 @@
 // Turns simulation events into visual juice: tracers, muzzle flashes and
 // lights, smoke, casings, surface-aware impacts (plaster dust, wood
-// splinters, metal sparks), blood spray/decals, door breach dust, camera
-// shake, plus planning feedback pings (selection, waypoints, GO).
+// splinters, metal sparks), blood spray/decals, door breach dust, grenade
+// and breach-charge blasts, camera shake, plus planning feedback pings
+// (selection, waypoints, GO).
 // Cosmetic randomness uses Math.random on purpose (never feeds the sim).
 import { EV } from '../../core/events.js';
 import { FX, HEIGHTS, CHARACTER_SCALE, WEAPON_MODELS } from '../../config/render.js';
@@ -36,6 +37,8 @@ export class FxDirector {
     bus.on(EV.ROUTE_CHANGED, (e) => this.onRoute(e));
     bus.on(EV.GO_CODE, () => this.onGo());
     bus.on(EV.HOLD_REACHED, (e) => this.pingUnit(e.unitId, 'hold'));
+    bus.on(EV.GRENADE_DETONATE, (e) => (e.kind === 'flash' ? this.onFlash(e) : this.onBlast(e.x, e.y, 0, 0, FX.shake.frag)));
+    bus.on(EV.CHARGE_BLAST, (e) => this.onBreach(e));
   }
 
   /** True for a unit of the side this screen plays. */
@@ -258,6 +261,7 @@ export class FxDirector {
   }
 
   onDoor(e) {
+    if (e.mode === 'crack') return; // eased ajar: no dust, no shake
     const P = this.particles;
     // Dust ring pushed out of the doorway + a few wood splinters.
     for (let i = 0; i < 12; i++) {
@@ -277,6 +281,72 @@ export class FxDirector {
       });
     }
     this.camera.addShake(FX.shake.door);
+    this.overlay.ping(e.x, e.y, 'door', -1, this.realClock());
+  }
+
+  /** Flashbang: a white burst, a blinding light and a little smoke. */
+  onFlash(e) {
+    const P = this.particles;
+    P.spawn({ x: e.x, y: e.y, z: 0.4, size: [1.6, 1.6], grow: 2.5, color: [1, 1, 0.95, 1], life: 0.18, shape: SHAPE.puff, additive: true });
+    P.spawn({ x: e.x, y: e.y, z: 0.4, size: [0.7, 0.7], rot: rand(0, 6), color: [1, 1, 1, 1], life: 0.12, shape: SHAPE.star, additive: true });
+    for (let i = 0; i < 8; i++) {
+      const a = rand(0, Math.PI * 2);
+      P.spawn({
+        x: e.x, y: e.y, z: rand(0.1, 0.6), vx: Math.cos(a) * rand(0.3, 0.9), vy: Math.sin(a) * rand(0.3, 0.9), drag: 1.8, size: [0.2, 0.2],
+        grow: rand(0.8, 1.4), rot: rand(0, 6), spin: rand(-1, 1), color: [0.88, 0.88, 0.86, 0.3], life: rand(1.6, 2.6), shape: SHAPE.puff,
+      });
+    }
+    const L = FX.flashLight;
+    this.addLight(e.x, e.y, L.radius, L.intensity, L.color, L.life);
+    this.camera.addShake(FX.shake.flash);
+  }
+
+  /** Explosion (frag grenade, breach charge): fire, smoke, debris thrown along (dirX, dirY) if given, a scorch. */
+  onBlast(x, y, dirX, dirY, shake) {
+    const P = this.particles;
+    P.spawn({ x, y, z: 0.5, size: [1.1, 1.1], grow: 2.2, color: [1, 0.72, 0.32, 1], life: 0.16, shape: SHAPE.puff, additive: true });
+    for (let i = 0; i < 10; i++) {
+      const a = rand(0, Math.PI * 2);
+      const v = rand(1.5, 4);
+      P.spawn({
+        x, y, z: rand(0.2, 0.8), vx: Math.cos(a) * v + dirX * 2, vy: Math.sin(a) * v + dirY * 2, drag: 4, size: [0.3, 0.3], grow: rand(0.6, 1.2),
+        rot: rand(0, 6), color: [1, rand(0.45, 0.65), 0.2, 0.85], life: rand(0.18, 0.3), shape: SHAPE.puff, additive: true,
+      });
+    }
+    for (let i = 0; i < 14; i++) {
+      const a = rand(0, Math.PI * 2);
+      P.spawn({
+        x, y, z: rand(0.2, 1.2), vx: Math.cos(a) * rand(0.4, 1.4) + dirX, vy: Math.sin(a) * rand(0.4, 1.4) + dirY, drag: 1.4, size: [0.35, 0.35],
+        grow: rand(0.9, 1.6), rot: rand(0, 6), spin: rand(-0.8, 0.8), color: [0.22, 0.21, 0.2, 0.55], life: rand(2.2, 3.6), shape: SHAPE.puff,
+      });
+    }
+    for (let i = 0; i < 16; i++) {
+      const a = rand(0, Math.PI * 2);
+      const v = rand(2, 6);
+      P.spawn({
+        x, y, z: rand(0.2, 1.0), vx: Math.cos(a) * v + dirX * 3, vy: Math.sin(a) * v + dirY * 3, vz: rand(1, 3), gravity: 1, bounce: 0.25,
+        size: [rand(0.03, 0.07), 0.02], rot: a, spin: rand(-15, 15), color: [0.25, 0.23, 0.2, 1], life: FX.debrisLife, fade: false, fadeOutLast: 2,
+        shape: SHAPE.rect,
+      });
+    }
+    const L = FX.blastLight;
+    this.addLight(x, y, L.radius, L.intensity, L.color, L.life);
+    this.camera.addShake(shake);
+  }
+
+  /** Breach charge: the blast pushed into the room, plus the door's splinters. */
+  onBreach(e) {
+    this.onBlast(e.x, e.y, e.dirX, e.dirY, FX.shake.breach);
+    const P = this.particles;
+    for (let i = 0; i < 14; i++) {
+      const a = Math.atan2(e.dirY, e.dirX) + rand(-0.9, 0.9);
+      const v = rand(2.5, 6);
+      P.spawn({
+        x: e.x, y: e.y, z: rand(0.3, 1.8), vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: rand(0.5, 2), gravity: 1, bounce: 0.2,
+        size: [rand(0.08, 0.22), rand(0.02, 0.05)], rot: a, spin: rand(-12, 12), color: [0.55, 0.37, 0.2, 1], life: FX.debrisLife, fade: false,
+        fadeOutLast: 1.5, shape: SHAPE.rect,
+      });
+    }
     this.overlay.ping(e.x, e.y, 'door', -1, this.realClock());
   }
 

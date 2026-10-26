@@ -1,17 +1,23 @@
 // Hinged doors: opened by moving units, swing away from the opener and
 // stay open. Slab geometry feeds LOS/bullets through World.updateDoorSegments.
+// Entries (sim/entries.js) also crack a door ajar (still closed for bodies:
+// only sight gets through), kick it open, or blow it off its hinges.
 import { DOORS } from '../config/balance.js';
 import { EV } from '../core/events.js';
 
+/**
+ * open: bodies pass (the slab is pushed flat against the wall); cracked: ajar
+ * at DOORS.crackAngle, still blocking movement; destroyed: no slab at all.
+ */
 export function createDoorState(def) {
-  return { def, angle: 0, target: 0, open: false };
+  return { def, angle: 0, target: 0, speed: DOORS.swingSpeed, open: false, cracked: false, destroyed: false };
 }
 
 export function updateDoors(sim, dt) {
   let changed = false;
   for (const d of sim.doors) {
     if (d.angle === d.target) continue;
-    const step = DOORS.swingSpeed * dt;
+    const step = d.speed * dt;
     const diff = d.target - d.angle;
     d.angle = Math.abs(diff) <= step ? d.target : d.angle + Math.sign(diff) * step;
     changed = true;
@@ -67,15 +73,46 @@ export function segmentCrossesDoorway(ax, ay, bx, by, def) {
   return lateral <= def.length / 2 + DOORS.crossingSlack ? t : -1;
 }
 
-function openDoor(sim, door, unit) {
-  const { def } = door;
-  // Side of the opener relative to the wall plane; the free end swings to the other side.
+/** Sign of the swing that takes the free end away from the opener's side of the wall. */
+function swingAway(def, unit) {
   const side = Math.sign((unit.x - def.cx) * def.normalX + (unit.y - def.cy) * def.normalY) || 1;
   const tangentDotN = -Math.sin(def.closedAngle) * def.normalX + Math.cos(def.closedAngle) * def.normalY;
-  door.target = -side * Math.sign(tangentDotN) * DOORS.openAngle;
+  return -side * Math.sign(tangentDotN);
+}
+
+/**
+ * Opens a closed (or cracked) door away from the unit. mode: 'push' (he
+ * stops DOORS.kickPause to push it) | 'kick' (it bursts open, no pause).
+ */
+export function openDoor(sim, door, unit, mode = 'push') {
+  const { def } = door;
+  if (door.open) return;
+  // A cracked door keeps the swing it started; otherwise it swings away from the opener.
+  const sign = door.cracked ? Math.sign(door.target) || 1 : swingAway(def, unit);
+  door.target = sign * DOORS.openAngle;
+  door.speed = DOORS.swingSpeed;
   door.open = true;
-  unit.stun = Math.max(unit.stun, DOORS.kickPause);
-  sim.emit(EV.DOOR_OPEN, { doorId: def.id, unitId: unit.id, x: def.cx, y: def.cy, mode: DOORS.openMode[unit.team] });
+  door.cracked = false;
+  if (mode === 'push') unit.stun = Math.max(unit.stun, DOORS.kickPause);
+  sim.emit(EV.DOOR_OPEN, { doorId: def.id, unitId: unit.id, x: def.cx, y: def.cy, mode });
+}
+
+/** Cracks a closed door ajar (DOORS.crackAngle), slowly: light gets through, bodies do not. */
+export function crackDoor(sim, door, unit) {
+  if (door.open || door.cracked) return;
+  door.target = swingAway(door.def, unit) * DOORS.crackAngle;
+  door.speed = DOORS.crackSpeed;
+  door.cracked = true;
+  sim.emit(EV.DOOR_OPEN, { doorId: door.def.id, unitId: unit.id, x: door.def.cx, y: door.def.cy, mode: 'crack' });
+}
+
+/** Blown off its hinges (breach charge): nothing blocks the doorway any more. */
+export function destroyDoor(sim, door) {
+  door.open = true;
+  door.cracked = false;
+  door.destroyed = true;
+  door.angle = door.target = 0;
+  sim.world.updateDoorSegments(sim.doors);
 }
 
 /** Closed doors block movement (open ones are pushed flat against the wall). */
