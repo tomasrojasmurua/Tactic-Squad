@@ -53,4 +53,4 @@ El equipo de cada operador está en `config/operators.js` (`gear`) y todos los n
 
 ## Pruebas
 
-`tests/determinism.test.mjs` juega rondas completas sin pantalla dos veces con la misma semilla (una por sitio) y comprueba que el resultado es idéntico. `tests/round.test.mjs` cubre la desactivación, las condiciones de victoria y la coherencia de los datos del mapa. Algunos comentarios del código mencionan `docs/ARCHITECTURE.md`, `docs/BRIEF.md` y `tests/sim-plans.mjs`, que no venían en el zip original.
+`tests/determinism.test.mjs` juega rondas completas sin pantalla dos veces con la misma semilla (una por sitio) y comprueba que el resultado es idéntico. `tests/round.test.mjs` cubre la desactivación, las condiciones de victoria y la coherencia de los datos del mapa. `tests/entries.test.mjs` cubre los códigos GO y cada tipo de entrada, y repite una ronda con entradas coordinadas para comprobar el determinismo. Algunos comentarios del código mencionan `docs/ARCHITECTURE.md`, `docs/BRIEF.md` y `tests/sim-plans.mjs`, que no venían en el zip original.
