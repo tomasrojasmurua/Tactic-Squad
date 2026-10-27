@@ -4,7 +4,7 @@
 import { EV } from '../core/events.js';
 import { canOrderDefuse, isGoReady, codeInUse, codeWaiting, goStatus, lastUserIndex, holdCode } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
-import { isDecisionPhase, pilotsDrone } from '../session/Session.js';
+import { isDecisionPhase, pilotsDrone, showCameras } from '../session/Session.js';
 import { HUD, GO_GROUPS } from '../config/ui.js';
 import { el, setText, toggle, setHidden } from './dom.js';
 import { ICON } from './icons.js';
@@ -68,6 +68,7 @@ export class TouchBar {
     this.defuse = mk(this.row, 'plant', ICON.bomb, T.touch.defuse, 'defuse');
     this.restart = mk(this.row, 'restart', ICON.restart, T.touch.restart, 'restart'); // set apart from the utilities (CSS)
     this.overview = mk(this.row, 'overview', ICON.overview, T.flow.overview, 'overview');
+    this.cams = mk(this.row, 'cams', ICON.camera, T.touch.cameras, 'cameras');
     this.full = mk(this.row, '', ICON.fullscreen, T.touch.fullscreen, 'fullscreen');
     this.music = mk(this.row, 'music', ICON.music, T.touch.music, 'music');
     this.help = mk(this.row, '', ICON.help, T.touch.help, 'help');
@@ -126,6 +127,7 @@ export class TouchBar {
     const armed = session.confirm.action === 'restart' ? '1' : '';
     if ((this.restart.dataset.armed || '') !== armed) this.restart.dataset.armed = armed;
     setHidden(this.defuse, phase !== 'planning' || !canOrderDefuse(sim));
+    setHidden(this.cams, !showCameras(sim, session));
     toggle(this.music, 'off', !session.musicOn);
   }
 }

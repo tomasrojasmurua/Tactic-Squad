@@ -443,6 +443,9 @@ export class SessionController {
       case 'overview':
         if (phase !== 'title') this.framing.toggleOverview();
         return;
+      case 'cameras':
+        this.nextCamera();
+        return;
       case 'go':
       case 'go_A':
       case 'go_B':
@@ -578,6 +581,21 @@ export class SessionController {
     if (!u) return;
     this.select(u.id);
     this.session.pointTarget = { unitId: u.id, index: +index };
+    this.sound('select');
+  }
+
+  /**
+   * Defending, while deciding: the view jumps to the next of your working
+   * cameras (its cone and what it reported stay drawn: render/layers/OverlayLayer.js).
+   */
+  nextCamera() {
+    const s = this.session;
+    if (s.team !== 'defenders' || !isPlanningTime(s)) return;
+    const live = this.sim.cameras.filter((c) => c.alive);
+    if (!live.length) return this.notice('noCameras');
+    s.ui.camera = (s.ui.camera + 1) % live.length;
+    const c = live[s.ui.camera];
+    this.framing.centerOn(c.x, c.y);
     this.sound('select');
   }
 

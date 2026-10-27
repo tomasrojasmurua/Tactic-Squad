@@ -50,6 +50,7 @@ export const FLOW_TEXTS = Object.freeze({
     tutorialDone: '¡Tutorial completado! Termina la ronda: encuentra la bomba y desactívala',
     tutorialSkipped: 'Tutorial omitido (puedes repetirlo desde el menú)',
     tutorialFirst: 'Primero haz el paso del tutorial (recuadro de la izquierda)',
+    noCameras: { touch: 'No te queda ninguna cámara', desk: 'No te queda ninguna cámara' },
     tossAim: { touch: 'Toca donde quieres que caiga. Junto a una puerta, la abre y lanza adentro. × cancela', desk: 'Haz clic donde quieres que caiga. Junto a una puerta, la abre y lanza adentro. Esc cancela' },
     matchNoRetry: 'En una partida no se repiten rondas: SIGUIENTE RONDA',
     contactCut: '¡Contacto! El turno se cortó para que puedas reaccionar',

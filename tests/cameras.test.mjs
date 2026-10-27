@@ -77,3 +77,27 @@ test('con humo delante la cámara no ve nada', () => {
   spots = run(sim, 60).filter((e) => e.type === 'cameraSpot').length;
   assert.equal(spots, 0, 'el humo la ciega');
 });
+
+test('lo que ve la cámara lo ve el defensor: se muestra, se recuerda, es un contacto y corta el turno', () => {
+  // El humano defiende; un atacante (IA) queda parado en el pasillo, en el cono de la cámara.
+  const sim = new Simulation(MAP, { seed: 3, site: 'A', controllers: { attackers: 'ai', defenders: 'human' }, stopOnContact: true });
+  sim.skipToAssault();
+  sim.advancePhase();
+  const [a] = sim.teams.attackers;
+  a.x = a.prevX = 18;
+  a.y = a.prevY = 12.7;
+  a.facing = Math.PI / 2; // mirando a la pared: no la rompe
+  a.route.length = 0;
+  assert.equal(a.seenByEnemy, false);
+  let spot = null;
+  for (let i = 0; i < 60 && !spot && sim.phase === 'exec'; i++) {
+    sim.step();
+    spot = sim.drainEvents().find((e) => e.type === 'spotted' && e.byCamera);
+  }
+  assert.ok(spot, 'la cámara avisa al bando defensor');
+  assert.equal(spot.unitId, a.id);
+  assert.ok(a.seenByEnemy, 'el atacante se muestra en el mapa del defensor');
+  assert.ok(sim.memory.defenders.has(a.id), 'y queda en su memoria');
+  for (let i = 0; i < 60 && sim.phase === 'exec'; i++) sim.step();
+  assert.ok(sim.round.cut, 'el turno se corta como con un contacto propio');
+});

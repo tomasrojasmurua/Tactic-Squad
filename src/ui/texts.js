@@ -88,6 +88,7 @@ export const T = Object.freeze({
   ],
 
   actions: {
+    cameras: 'Cámaras',
     ready: 'Listo',
     recall: 'Retirar dron',
     resume: 'Reanudar',
@@ -297,6 +298,7 @@ export const T = Object.freeze({
     grenade: { flash: '¡Flash!', frag: '¡Granada!', smoke: '¡Humo!' },
     breach: 'Puerta reventada',
     droneContact: 'El dron vio a un defensor',
+    cameraContact: 'Tu cámara vio a un atacante',
     droneDown: 'Dron derribado',
     barricade: 'Barricada a la vista',
     barricadeBroken: 'Barricada rota',
@@ -348,6 +350,7 @@ export const T = Object.freeze({
   },
 
   touch: {
+    cameras: 'Cámaras',
     ready: 'Listo',
     recall: 'Retirar',
     resume: 'Seguir',

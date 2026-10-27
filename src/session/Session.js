@@ -59,6 +59,7 @@ export function createSession({ touch }) {
       holdMenu: false, // the touch ESPERAR chooser (GO colors) is open
       tossPick: null, // {unitId, index, item}: the next tap on the map is where that point throws it
       wheelAt: null, // {unitId, x, y}: a tap on a door stacked him there; the door wheel opens once the point is added
+      camera: -1, // defending: the last of your cameras the view jumped to (CÁMARAS / O)
       trapMode: false, // defender set-up: taps lay (or pick up) the selected Trampero's traps
     },
   };
@@ -66,7 +67,7 @@ export function createSession({ touch }) {
 
 /** Clears the transient planning previews (new round). */
 export function resetSessionPreviews(session) {
-  Object.assign(session.ui, { hoverPath: null, drawing: false, lookPreview: null, movePreview: null, holdMenu: false, tossPick: null, wheelAt: null, trapMode: false });
+  Object.assign(session.ui, { hoverPath: null, drawing: false, lookPreview: null, movePreview: null, holdMenu: false, tossPick: null, wheelAt: null, camera: -1, trapMode: false });
 }
 
 /** Phases where routes can be edited (orders are taken only while deciding: sim/orders.js). */
@@ -92,6 +93,9 @@ export const pilotsDrone = (session) => session.team === 'attackers';
 
 /** The defender's set-up: preparation phase, playing the defenders (place, watch orders, site, barricades). */
 export const isDefenderSetup = (session) => session.phase === 'prep' && session.team === 'defenders';
+
+/** The CÁMARAS button: defending, while deciding, with a camera still working. */
+export const showCameras = (sim, session) => session.team === 'defenders' && isPlanningTime(session) && sim.cameras.some((c) => c.alive);
 
 /** Phases where time is stopped and the player is planning. */
 export const isPlanningTime = (session) => session.phase === 'prep' || session.phase === 'planning';

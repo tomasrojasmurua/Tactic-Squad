@@ -38,6 +38,7 @@ export class ShortcutController {
     if (matches(KEYS.focus, code)) return this.request('focus');
     if (matches(KEYS.defuse, code)) return this.request('defuse');
     if (matches(KEYS.overview, code)) return this.request('overview');
+    if (matches(KEYS.cameras, code)) return this.request('cameras');
     return false;
   }
 }
