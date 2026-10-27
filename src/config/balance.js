@@ -231,8 +231,8 @@ export const NOISE = Object.freeze({
   jitter: 0.9, // ...and shifted up to this much (deterministic, from the seed)
   keepTurns: 3, // a pulse stays on the map this many turns, fading
   // Radius heard (m) by kind; the loudest kind of a cell names its pulse.
-  radius: Object.freeze({ sneak: 2, step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, flash: 18, frag: 22, breach: 22 }),
-  rank: Object.freeze(['sneak', 'step', 'crack', 'door', 'plant', 'defuse', 'kick', 'bash', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
+  radius: Object.freeze({ sneak: 2, step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, trap: 14, flash: 18, frag: 22, breach: 22 }),
+  rank: Object.freeze(['sneak', 'step', 'crack', 'door', 'plant', 'defuse', 'kick', 'bash', 'trap', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
 });
 
 /**
@@ -323,14 +323,36 @@ export const CAMERA = Object.freeze({
   shootDelayKnown: 0.2, // s when it was already known (the drone found it): he walks in aiming at it
 });
 
-/** Explorador (sim/abilities/scoutPulse.js): at each turn's end, defenders this close are detected through walls. */
+/** Explorador (sim/abilities/scoutPulse.js): at each turn's end, defenders this close (and traps) are detected through walls. */
 export const SCOUT = Object.freeze({ radius: 8 });
+
+/**
+ * Trampero's traps (sim/traps.js). An attacker who steps within `trigger` is
+ * caught: `stun` s without moving, `damage`, a loud snap, and the defenders
+ * learn where he is. Hard to see: an attacker notices one in sight within
+ * `spot` only while sneaking (the drone within `droneSpot`, the Explorador's
+ * pulse within SCOUT.radius); a known one in sight within `shootRange` he
+ * breaks with one shot after `shootDelay`.
+ */
+export const TRAP = Object.freeze({
+  perTrapper: 2,
+  trigger: 0.9, // m
+  stun: 2, // s
+  damage: 15,
+  spot: 3.5, // m
+  droneSpot: 4, // m
+  shootRange: 10, // m
+  shootDelay: 0.5, // s
+  minSpacing: 1.5, // m between two traps
+});
 
 /**
  * Match against the AI (session/Match.js): first to `toWin` rounds (best of 7).
  * Each operator carries his class, his money and — if he lived — his unused
  * gear into the next round, and earns per round: `win` or `loss` (+`lossBonus`
  * per round lost in a row, up to `lossBonusMax` rounds), `kill` per defender
- * he downed, `defuse` if he defused. Money is capped at `cap`.
+ * he downed, `defuse` if he defused. Money is capped at `cap`. The player
+ * attacks the first `switchAfter` rounds and then defends; the new attackers
+ * start over from the first round's money.
  */
-export const MATCH = Object.freeze({ toWin: 4, win: 600, loss: 300, lossBonus: 100, lossBonusMax: 3, kill: 100, defuse: 200, cap: 2000 });
+export const MATCH = Object.freeze({ toWin: 4, switchAfter: 3, win: 600, loss: 300, lossBonus: 100, lossBonusMax: 3, kill: 100, defuse: 200, cap: 2000 });

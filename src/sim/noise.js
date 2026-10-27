@@ -40,6 +40,8 @@ function kindOf(ev) {
       return 'defuse';
     case EV.BARRICADE_HIT:
       return 'bash';
+    case EV.TRAP_SPRUNG:
+      return 'trap';
     default:
       return null;
   }
@@ -55,7 +57,8 @@ export function collectNoise(sim, from) {
     const src = sim.units[ev.unitId];
     if (!src) continue;
     const listener = enemyTeam(src.team);
-    const r2 = NOISE.radius[kind] ** 2;
+    const r = NOISE.radius[kind] * (kind === 'step' ? src.mods.stepNoise : 1); // a Merodeador's steps carry less
+    const r2 = r * r;
     let heard = false;
     for (const u of sim.teams[listener]) {
       if (u.alive && (u.x - ev.x) ** 2 + (u.y - ev.y) ** 2 <= r2) {

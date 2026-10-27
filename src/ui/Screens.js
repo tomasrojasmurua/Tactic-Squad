@@ -128,13 +128,15 @@ export class Screens {
     this.result.classList.toggle('win', win);
     this.result.classList.toggle('lose', !win);
     this.result.classList.toggle('in-match', !!match);
-    setText(this.result.querySelector('h2'), match && match.over ? (match.over === team ? T.match.won : T.match.lost) : win ? T.result.win : T.result.lose);
+    setText(this.result.querySelector('h2'), match && match.over ? (match.over === 'player' ? T.match.won : T.match.lost) : win ? T.result.win : T.result.lose);
     // A match: the score, what each one earned, and the way forward (no retries).
     const last = match && match.history[match.history.length - 1];
-    setText(this.result.querySelector('.match-line'), match ? `${T.match.round(last.round)} · ${T.match.score(match.score.attackers, match.score.defenders)}` : '');
+    setText(this.result.querySelector('.match-line'), match ? `${T.match.round(last.round)} · ${T.match.score(match.score.player, match.score.ai)}` : '');
     const pay = this.result.querySelector('.match-pay');
-    pay.hidden = !match || !!match.over;
-    if (match && !match.over) setText(pay, `${T.match.payTitle}: ${teamUnits(sim, team).map((u, i) => T.match.pay(u.name, last.income[i])).join(' · ')}`);
+    // What the player's attackers earned, or the half-time switch (a defender earns nothing).
+    pay.hidden = !match || !!match.over || (team !== 'attackers' && !last.switched);
+    if (match && !match.over && last.switched) setText(pay, T.match.switchSides);
+    else if (match && !match.over && team === 'attackers') setText(pay, `${T.match.payTitle}: ${teamUnits(sim, team).map((u, i) => T.match.pay(u.name, last.income[i])).join(' · ')}`);
     setText(this.result.querySelector('.next-round'), match && match.over ? T.match.again : T.match.next);
     setText(this.result.querySelector('.reason'), (team === 'defenders' ? T.result.reasonDefend : T.result.reason)[o.reason]);
     const squad = teamUnits(sim, team);

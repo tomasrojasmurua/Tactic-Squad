@@ -147,6 +147,7 @@ canStep?  (en fases de decisión el tiempo no corre)
 | `entries.js` | Entradas a puerta estilo Door Kickers: `kick`, `slow` (entreabrir), `flash`, `frag`, `breach`, armadas en un punto de ruta y liberadas con un GO. Una puerta sin decidir se abre al pasar (`ENTRY.undecided = 'open'`). También el **lanzamiento libre** (`armToss`, modo `toss`): flash, granada o humo a un punto, cortado por `queries.tossLanding` |
 | `smoke.js` | Nubes de humo: crecen, duran y se disipan; `World.updateSmokeSegments` las convierte en polígonos que tapan la vista |
 | `cameras.js` | Cámaras del defensor (`aiCameras` del mapa, por sitio): ven atacantes y alertan a la IA, se descubren (operadores, dron) y se rompen de un tiro |
+| `traps.js` | Trampas del Trampero (`aiTraps` del mapa, orden `placeTrap`): atrapan al atacante que las pisa y lo delatan; se descubren con sigilo, dron o pulso del Explorador y se rompen de un tiro |
 | `barricades.js` | Barricadas: bloquean cuerpo, vista, balas y dron; romperlas a golpes o volarlas con carga. `sim.intel` = qué barricadas conocen los atacantes |
 | `drone.js` | Dron de reconocimiento del atacante (fase `drone`): se maneja en tiempo real con órdenes selladas por paso; pasa bajo las puertas, no por barricadas |
 | `prep.js` | Compra (dinero por operador), **clase** (`setRole`: reembolsa el equipo, aplica la clase, cobra su equipo) y preparación del defensor: elegir sitio, colocar, vigilancia, barricadas, cámaras del sitio. `applyLayout` aplica el rol de cada puesto (`role: 'anchor'`) |
@@ -176,7 +177,7 @@ es el trabajo pendiente para que el servidor online no mande lo que el jugador n
 | `Session.js` | Estado de "esta sesión de juego": fase de pantalla, selección, estado transitorio de UI. Las fases espejan las de la ronda y agregan `title`, `paused` y `ended` |
 | `SessionController.js` | El **único** lugar que decide qué significa cada petición del jugador en cada fase: cierra fases de decisión, corre el bucle solo mientras un turno se ejecuta, sella los GO y el mando del dron. Decide qué fases previas están **bloqueadas** para este jugador (`FLOW.unlockAfterRounds`, fijo por intento para que el reintento no se desincronice) y las salta con valores por defecto. Lleva el modo (`play` / `tutorial` / `match`) |
 | `PhaseClock.js` | Plazos de reloj de pared de las fases de decisión. La sim nunca ve este reloj; online, lo tendrá el servidor. Se detiene mientras el jugador no puede planificar (ayuda abierta, página oculta, celular en vertical, tutorial) |
-| `Match.js` | Partida al mejor de 7 contra la IA: reglas puras (`createMatch`, `matchLoadout`, `endMatchRound`). Marcador, ingresos (`MATCH`), y qué pasa a la ronda siguiente (clase, dinero, equipo de los vivos) como `opts.loadout` de la próxima `Simulation` |
+| `Match.js` | Partida al mejor de 7 contra la IA: reglas puras (`createMatch`, `matchLoadout`, `endMatchRound`). Marcador del jugador contra la IA, cambio de bando tras `MATCH.switchAfter` rondas (`match.team`, que el flujo copia a `session.team`), ingresos (`MATCH`), y qué pasa a la ronda siguiente (clase, dinero, equipo de los vivos) como `opts.loadout` de la próxima `Simulation` |
 | `PlanRecorder.js` | Todas las órdenes de un intento, agrupadas por fase. Es exactamente la lista de paquetes de turno We-Go: lo que mandaría una partida online y lo que necesita un replay. Sostiene el "reintentar" |
 | `Tutorial.js` | Tutorial guiado: una ronda real paso a paso (solo el asalto), y las tarjetas de presentación de compra, entrada y dron la primera vez que aparecen (`PHASE_INTROS`) |
 | `AutoPause.js` | Pausa de sistema cuando el jugador no puede seguir el turno (página oculta, foco perdido, contexto WebGL perdido). Nunca por contacto |
@@ -269,11 +270,13 @@ espera.
 
 `config/operators.js` define los ROLES como datos: etiqueta, arma, modificadores
 multiplicativos (`speed`, `turnRate`, `reaction`, `spread`, `visionRange`, `visionFov`,
-`breachPrep`, `bash`), vida, equipo de clase, el id de su habilidad, y para los
-atacantes `pick` / `unique` / `blurb` (lo que muestra la compra). Un rol nuevo es una
+`breachPrep`, `bash`, `stepNoise`), vida, equipo de clase, el id de su habilidad, para
+los atacantes `pick` / `unique` / `blurb` (lo que muestra la compra) y para los
+defensores `defPick` / `max` (panel de preparación, tope por bando). Un rol nuevo es una
 entrada ahí más, si tiene habilidad, un módulo en `sim/abilities/`. Hoy: `assault`
-(Asaltante), `entry` (Brecha), `scout` (Explorador, `scoutPulse`), `defender` y `anchor`
-(Ancla). `sim/units.js applyRole` cambia la clase de una unidad viva (compra).
+(Asaltante), `entry` (Brecha), `scout` (Explorador, `scoutPulse`), `defender`, `anchor`
+(Ancla), `roamer` (Merodeador) y `trapper` (Trampero, sus trampas en `sim/traps.js`).
+`sim/units.js applyRole` cambia la clase de una unidad viva (compra, `setDefenderRole`).
 
 Bloques nuevos en `balance.js`: `CAMERA`, `SCOUT`, `MATCH`, `ENTRY.smoke`,
 `ENTRY.tossItems` / `tossRange`, `MOVE.sneakFactor` / `sneakHearing` / `fileGap`,
@@ -295,11 +298,11 @@ el comportamiento de cada puesto y su `role`), `aiBarricades`, `aiEntries` (con 
 
 ## 9. Pruebas y empaquetado
 
-`npm test` corre `node --test tests/*.test.mjs`: 12 archivos y 81 pruebas que juegan
+`npm test` corre `node --test tests/*.test.mjs`: 14 archivos y 96 pruebas que juegan
 rondas sin pantalla (determinismo, fases y turnos, entradas a puerta, preparación y
 compra, dron y barricadas, jugabilidad, tutorial, IA contra IA, y los nuevos
 `control` — fila, editar rutas, sigilo, corte al contacto, clases —, `toss` — lanzar y
-humo —, `cameras` y `match`). La
+humo —, `cameras`, `match`, `defend` y `defenderClasses`). La
 simulación se puede instanciar sin DOM ni WebGL, que es justo lo que hace posible
 probarla así; una `Simulation` con `{phases: false}` corre sin fases y acepta órdenes en
 cualquier momento, para probar mecánicas sueltas.
@@ -338,10 +341,7 @@ El código ya está ordenado para la versión en red, aunque no haya nada de red
   `sim.cameras` / `sim.smokes` (filtrando por `known` para el atacante).
 - Un solo mapa, y la cantidad de operadores por bando la fija el mapa (hoy 3 atacantes
   contra 4 defensores), no una configuración de partida.
-- La partida al mejor de 7 es solo de atacante: el cambio de bando necesita el PR #10
-  (jugar de defensor). `Match.js` ya guarda el marcador por bando, así que el cambio es
-  invertir `session.team` y los `controllers` en la ronda 4.
-- Faltan las demás clases del diseño y la elección a ciegas del defensor.
+- Faltan las clases Escudo, Tirador, Granadero y Vigía.
 - Varios comentarios del código mencionan `docs/BRIEF.md` y `tests/sim-plans.mjs`, que
   no venían en el zip original y no existen en el repo.
 
@@ -373,20 +373,4 @@ Una revisión de jugabilidad en tres fases, cada una en sus commits.
 - Clases Asaltante / Brecha / Explorador / Ancla (`config/operators.js`, `setRole`, `abilities/scoutPulse.js`).
 - Partida al mejor de 7 con economía (`session/Match.js`, `MATCH`).
 
-**Paredes blandas destructibles — diseñadas, no implementadas.** Se dejaron fuera
-porque tocan el pathfinding y hacerlas apuradas rompería las rutas. El diseño
-propuesto:
-- **Datos.** En el mapa, `softWalls: [{id, a, b}]`: un tramo de pared que el compilador
-  recorta como un hueco (igual que una puerta) y registra como una "puerta" con
-  `soft: true`, siempre cerrada y atrancada, sin hoja que gire.
-- **Sim.** Bloquea cuerpo, vista y balas como una barricada. Se abre con una carga
-  (`breach`, la deja `destroyed`) o a golpes con `BARRICADE.breakTime × 2` (la Brecha,
-  ×0,6). El ruido es el de una barricada.
-- **Navegación.** Es lo delicado: hoy `NavGrid` trata todo hueco como transitable. Haría
-  falta un **costo** por celda (o excluirlas del A* salvo que el punto de ruta del
-  jugador esté al otro lado y la ruta lo pida explícitamente), para que la ruta corta
-  no las elija sola y el operador no se quede 6 s golpeando una pared que no eligió.
-- **Render.** Dibujarlas como pared (en la malla estática, con otro material o una
-  franja) mientras están en pie, y como escombro (calcomanía + partículas del
-  `CHARGE_BLAST`) cuando caen.
-- **IA.** `aiAttack.js` podría usarlas como entrada alternativa con carga.
+**Paredes blandas destructibles: descartadas.** Tomás decidió no implementarlas (27 oct 2026). No proponerlas como trabajo pendiente.

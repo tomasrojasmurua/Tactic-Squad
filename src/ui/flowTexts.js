@@ -1,6 +1,6 @@
 // Session flow texts (owner: gameplay): main menu, confirmations, smart pause,
 // retry, guided tutorial. Merged into ui/texts.js as T.flow.
-import { ROUND, BUY, BARRICADE, DRONE } from '../config/balance.js';
+import { ROUND, BUY, BARRICADE, DRONE, MATCH } from '../config/balance.js';
 
 const TURN = ROUND.turnSeconds;
 
@@ -19,7 +19,7 @@ export const FLOW_TEXTS = Object.freeze({
     defend: 'Defender',
     defendNote: `Contra la IA: esconde la bomba y aguanta ${ROUND.timeLimit} s`,
     match: 'Partida al mejor de 7',
-    matchNote: 'Ronda tras ronda contra la IA: el dinero y el equipo de los vivos pasan a la siguiente',
+    matchNote: `Contra la IA: atacas ${MATCH.switchAfter} rondas y después defiendes; el dinero y el equipo de los vivos pasan a la siguiente`,
     tutorial: 'Tutorial guiado',
     tutorialNote: 'Paso a paso, en una ronda más fácil',
     tutorialNew: 'Recomendado para empezar',

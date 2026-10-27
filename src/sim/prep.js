@@ -6,6 +6,8 @@
 //   prep  (defenders) pick the site (the bomb never moves once the
 //         preparation ends), place each operator in their half of the map,
 //         give each one a watch order and put up PREP.barricades barricades.
+//         Each defender has a class (Defensor / Ancla / Merodeador / Trampero,
+//         at most ROLES[id].max each); the Trampero lays his traps (sim/traps.js).
 //
 // Watch orders ({facing, sweep, react, fallback}) become the AI behaviors of
 // sim/ai.js, so they keep working on their own during the assault:
@@ -17,6 +19,7 @@
 // Everything here is deterministic and uses no sim.rng (the AI's barricade
 // pick hashes the seed), so a set-up cannot shift the rest of the round.
 import { placeCameras } from './cameras.js';
+import { layTraps, dropOrphanTraps, placeTrap as layTrap } from './traps.js';
 import { BUY, PREP, NAV } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { pointInBox } from '../core/geom.js';
@@ -97,6 +100,7 @@ export function chooseSite(sim, id) {
   sim.bomb = createBomb(site);
   applyLayout(sim, sim.compiled.defense[site.id]);
   placeCameras(sim);
+  layTraps(sim);
   sim.emit(EV.SITE_CHOSEN, { site: site.id });
   return null;
 }
@@ -129,6 +133,29 @@ export function placeDefender(sim, u, px, py, facing = u.facing) {
   moveTo(u, x, y, facing);
   sim.emit(EV.SETUP_CHANGED, { unitId: u.id, kind: 'place' });
   return null;
+}
+
+/**
+ * A defender changes class (preparation): stats and health of the new class;
+ * his weapon is his post's. At most ROLES[id].max of a class per side. A
+ * Trampero who stops being one takes his traps with him.
+ */
+export function setDefenderRole(sim, u, roleId) {
+  const role = ROLES[roleId];
+  if (u.team !== 'defenders' || !role || !role.defPick) return 'badRole';
+  if (u.role === roleId) return null;
+  if (sim.teams.defenders.filter((o) => o !== u && o.role === roleId).length >= role.max) return 'roleTaken';
+  const weaponId = u.weaponId;
+  applyRole(u, roleId);
+  if (weaponId !== u.weaponId) setWeapon(u, weaponId);
+  dropOrphanTraps(sim);
+  sim.emit(EV.ROLE_CHANGED, { unitId: u.id, role: roleId, money: 0 });
+  return null;
+}
+
+/** The Trampero lays a trap there, or picks his own up (sim/traps.js). Returns a REJECT code or null. */
+export function placeTrap(sim, u, x, y) {
+  return layTrap(sim, u, x, y, (px, py) => inDefenderHalf(sim, px, py));
 }
 
 /** A watch order (see the header) -> the unit's behavior. Returns a REJECT code or null. */

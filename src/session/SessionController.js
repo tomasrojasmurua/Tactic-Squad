@@ -527,10 +527,15 @@ export class SessionController {
   /**
    * The defender's set-up panel (ui/PhasePanel.js): site_<id> moves the bomb
    * (the set-up starts over from the map's for it), barricade_<doorId>
-   * toggles one, watch_<mode> changes the selected defender's watch order.
+   * toggles one, watch_<mode> changes the selected defender's watch order,
+   * defrole_<role> his class, trapmode switches taps to laying traps.
    */
   setup(action) {
     const sim = this.sim;
+    if (action === 'trapmode') {
+      this.session.ui.trapMode = !this.session.ui.trapMode;
+      return this.sound('select');
+    }
     const [kind, arg] = [action.slice(0, action.indexOf('_')), action.slice(action.indexOf('_') + 1)];
     if (kind === 'site') this.command({ type: 'chooseSite', site: arg });
     else if (kind === 'barricade') {
@@ -542,6 +547,10 @@ export class SessionController {
       if (!u) return this.notice('pickDefender');
       const w = watchOf(u);
       this.command({ type: 'setWatch', unitId: u.id, watch: watchOrder(arg, w.facing, w.fallback) });
+    } else if (kind === 'defrole') {
+      const u = controllableUnit(sim, this.session.selectedId, this.session.team);
+      if (!u) return this.notice('pickDefender');
+      this.command({ type: 'setDefenderRole', unitId: u.id, role: arg });
     } else return;
     sim.flushCommands();
     this.sound('select');
@@ -578,7 +587,7 @@ export class SessionController {
     this.session.mode = mode;
     this.session.team = mode === 'tutorial' ? PLAYER_TEAM : team;
     this.locks = null;
-    this.session.match = mode === 'match' ? createMatch() : null;
+    this.session.match = mode === 'match' ? createMatch(this.session.team) : null;
     // A match: every round its own scenario (site, spread...), a fresh series each match.
     this.matchSeed = mode === 'match' ? (Math.random() * 1e9) | 0 : 0;
     this.seed = mode === 'tutorial' ? TUTORIAL.seed : mode === 'match' ? this.matchSeed + 1 : SIM.seed;
@@ -601,6 +610,7 @@ export class SessionController {
       return;
     }
     this.locks = null;
+    this.session.team = m.team; // after MATCH.switchAfter rounds the player defends
     this.seed = this.matchSeed + m.round;
     this.recorder.beginAttempt([]);
     this.session.replay.attempt = 0;

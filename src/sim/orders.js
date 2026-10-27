@@ -49,6 +49,8 @@
 //   {type:'setWatch', unitId, watch}           preparation: a defender's watch order
 //                                              ({facing, sweep?: [from, to], react?, fallback?: {to: [x, y], look}})
 //   {type:'barricade', door, on}               preparation, defenders: puts up / takes down a barricade
+//   {type:'setDefenderRole', unitId, role}     preparation: a defender's class (config/operators.js DEF_PICK_ROLES)
+//   {type:'placeTrap', unitId, x, y}           preparation: the Trampero lays a trap there (or picks his own up)
 // Recon drone (sim/drone.js), during the drone phase, stamped like a GO:
 //   {type:'drone', dir, atTick}                the stick: one of DRONE.directions headings, -1 = stop
 //   {type:'droneRecall', atTick}               the drone is done (the first planning starts)
@@ -72,7 +74,7 @@ import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, ent
 import { segmentCrossesDoorway } from './doors.js';
 import { startDefuse } from './objectives.js';
 import { cancelEntry, releaseDelay } from './entries.js';
-import { buyItem, setRole, chooseSite, placeDefender, setWatch, setBarricade } from './prep.js';
+import { buyItem, setRole, chooseSite, placeDefender, setWatch, setBarricade, setDefenderRole, placeTrap } from './prep.js';
 import { steerDrone, endDrone } from './drone.js';
 import { routePoint } from './routePoint.js';
 import { startFollow, rebuildFollowers } from './follow.js';
@@ -101,6 +103,8 @@ export const REJECT = Object.freeze({
   badWatch: 'badWatch',
   badDoor: 'badDoor', // a barricade where the map allows none
   tooManyBarricades: 'tooManyBarricades', // PREP.barricades already up
+  notTrapper: 'notTrapper', // placeTrap for a defender who is not the Trampero
+  tooManyTraps: 'tooManyTraps', // TRAP.perTrapper already laid
   badFollow: 'badFollow', // follow: no such leader, himself, another side, or a leader who follows someone
 });
 
@@ -112,7 +116,7 @@ const OWN_ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'promoteLast', 'setLook'
 /** Orders each round phase takes (sim/round.js PHASE; literal keys: round.js imports this module). */
 const PHASE_ORDERS = Object.freeze({
   buy: ['buy', 'setRole'],
-  prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade'],
+  prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade', 'setDefenderRole', 'placeTrap'],
   drone: ['drone', 'droneRecall'],
   plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry'],
   exec: ['go'],
@@ -160,6 +164,11 @@ export function applyCommand(sim, cmd, by = 'human') {
     case 'setWatch':
       if (unit.team !== 'defenders') return;
       return refuse(sim, unit.id, setWatch(sim, unit, cmd.watch));
+    case 'setDefenderRole':
+      return refuse(sim, unit.id, setDefenderRole(sim, unit, cmd.role));
+    case 'placeTrap':
+      if (unit.team !== 'defenders') return;
+      return refuse(sim, unit.id, placeTrap(sim, unit, cmd.x, cmd.y));
     case 'addWaypoint':
       return addWaypoint(sim, unit, cmd);
     case 'promoteLast':

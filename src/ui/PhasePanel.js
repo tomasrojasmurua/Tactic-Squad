@@ -8,10 +8,10 @@
 //             him are map gestures: input/PlanningController.js)
 //   planning  first turn only, compact: the entry can still change
 // Emits EV.REQUEST {action: 'buy_<unitId>_<item>_<+|->' | 'role_<unitId>_<role>' | 'chooseEntry_<id>' |
-// 'site_<id>' | 'barricade_<doorId>' | 'watch_<mode>'}; LISTO is the usual button.
+// 'site_<id>' | 'barricade_<doorId>' | 'watch_<mode>' | 'defrole_<role>' | 'trapmode'}; LISTO is the usual button.
 import { EV } from '../core/events.js';
-import { ROLES, PICK_ROLES } from '../config/operators.js';
-import { BUY, PREP } from '../config/balance.js';
+import { ROLES, PICK_ROLES, DEF_PICK_ROLES } from '../config/operators.js';
+import { BUY, PREP, TRAP } from '../config/balance.js';
 import { controllableUnit } from '../sim/queries.js';
 import { watchOf, WATCH_MODES } from '../session/watch.js';
 import { el, setText, toggle } from './dom.js';
@@ -161,6 +161,10 @@ export class PhasePanel {
     this.barButtons = sim.compiled.barricadeSlots.map((id) => button(this.barRow, S.doors[id] ?? id, `barricade_${id}`, id));
     this.watchRow = row('', 'watch');
     this.watchButtons = WATCH_MODES.map((m) => button(this.watchRow, S.watch[m], `watch_${m}`, m));
+    this.roleRow = row('', 'roles');
+    this.roleButtons = DEF_PICK_ROLES.map((r) => button(this.roleRow, ROLES[r].label, `defrole_${r}`, r));
+    this.trapRow = row('', 'traps');
+    this.trapButton = button(this.trapRow, S.trapMode, 'trapmode', 'trap');
   }
 
   refreshSetup(sim, session) {
@@ -181,5 +185,23 @@ export class PhasePanel {
       toggle(b, 'on', b.dataset.key === mode);
       if (b.disabled !== !u) b.disabled = !u;
     }
+    // The selected defender's class (at most ROLES[id].max of each) and, for the Trampero, his traps.
+    setText(this.roleRow.children[0], u ? S.roleOf(u.name, ROLES[u.role].blurb) : S.pickRole);
+    for (const b of this.roleButtons) {
+      const r = b.dataset.key;
+      const taken = sim.teams.defenders.filter((o) => o !== u && o.role === r).length >= ROLES[r].max;
+      toggle(b, 'on', !!u && u.role === r);
+      toggle(b, 'off', taken);
+      if (b.disabled !== !u) b.disabled = !u;
+    }
+    const trapper = sim.teams.defenders.find((o) => o.role === 'trapper');
+    const laid = trapper ? sim.traps.filter((t) => t.alive && t.ownerId === trapper.id).length : 0;
+    this.trapRow.hidden = !trapper;
+    setText(this.trapRow.children[0], S.traps(laid, TRAP.perTrapper));
+    const placing = !!session.ui.trapMode && !!u && u.role === 'trapper';
+    toggle(this.trapButton, 'on', placing);
+    setText(this.trapButton, placing ? S.trapModeOn : S.trapMode);
+    const canPlace = !!u && u.role === 'trapper';
+    if (this.trapButton.disabled !== !canPlace) this.trapButton.disabled = !canPlace;
   }
 }
