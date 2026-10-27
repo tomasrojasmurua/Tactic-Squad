@@ -79,6 +79,9 @@ los atacantes.
     Patada, Carga, Granada, Flash, Entreabrir); × en el centro o Esc la cierra. Lo demás
     (cuándo, paso, lanzar) queda en un panel al lado. **Tocar una puerta directamente**
     apila al operador del lado por donde llega y abre la rueda: un toque y una elección.
+  - **Entreabrir** deja la puerta a 20° y el operador mira por la rendija: ve **una franja
+    de la sala** hacia el lado del pestillo, no la sala entera. Lo que ve se marca, pero no
+    dispara a través de la puerta; con el GO la abre y entra.
   - **Cuándo:** Ya, o un GO de color.
   - **Paso:** Normal o **Sigilo**. A la mitad de velocidad, se oye a 2 m en vez de 6.
   - **Lanzar:** flash, granada o humo. El siguiente toque elige dónde cae, a 9 m como

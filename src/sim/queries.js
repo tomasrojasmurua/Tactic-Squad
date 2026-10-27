@@ -315,9 +315,11 @@ export function gearLeft(u, item, skip = -1) {
 
 /**
  * The eye of an operator looking through a door he cracked ajar ("entreabrir"):
- * on the doorway's center line just past the cracked slab, facing into the
- * room (a head poked through the gap: a real 30° gap shows almost nothing). Writes {x, y, facing} into `out`;
- * false when he is not peeking (door still swinging, opened, or no such entry).
+ * his face at the gap, just outside the wall (ENTRY.slow.peekBack), looking
+ * through it. Lines of sight still go through the world, so the cracked slab
+ * and the jamb frame what he sees: a wedge of the room past the latch side,
+ * not the whole room. Writes {x, y, facing} into `out`; false when he is not
+ * peeking (door still swinging, opened, or no such entry).
  */
 export function peekEye(sim, u, out) {
   const e = u.entry;
@@ -325,10 +327,17 @@ export function peekEye(sim, u, out) {
   const door = sim.doors[e.doorway];
   if (!door.cracked || door.angle !== door.target) return false;
   const d = sim.world.doorways[e.doorway];
-  const depth = (d.length / 2) * Math.tan(DOORS.crackAngle) + ENTRY.slow.peekDepth;
-  out.x = d.cx + d.normalX * e.side * depth;
-  out.y = d.cy + d.normalY * e.side * depth;
-  out.facing = Math.atan2(d.normalY * e.side, d.normalX * e.side);
+  const { hingeX, hingeY, closedAngle, length } = door.def;
+  // The gap: between the latch jamb (where the closed door ends) and the slab's free end.
+  const a = closedAngle + door.angle;
+  const gx = hingeX + (Math.cos(closedAngle) + Math.cos(a)) * length * 0.5;
+  const gy = hingeY + (Math.sin(closedAngle) + Math.sin(a)) * length * 0.5;
+  // Its point on the wall plane, then back out on his side.
+  const across = (gx - d.cx) * d.normalX + (gy - d.cy) * d.normalY;
+  const back = across + ENTRY.slow.peekBack * e.side;
+  out.x = gx - d.normalX * back;
+  out.y = gy - d.normalY * back;
+  out.facing = Math.atan2(gy - out.y, gx - out.x);
   return true;
 }
 

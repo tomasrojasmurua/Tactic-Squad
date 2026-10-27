@@ -171,7 +171,7 @@ export const T = Object.freeze({
     hints: {
       none: 'Abre la puerta y pasa',
       kick: 'De golpe: sin pausa, aturde al de detrás. Ruidosa',
-      slow: 'Al llegar la entorna y mira; con el GO pasa',
+      slow: 'Al llegar la entorna y mira por la rendija (una franja de la sala); con el GO pasa',
       flash: 'Con el GO abre y lanza un flash; el resto espera el estallido',
       frag: 'Con el GO abre y lanza una granada; el resto espera el estallido',
       breach: 'Al llegar coloca la carga; el GO revienta la puerta',
