@@ -6,8 +6,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
 import { createSession } from '../src/session/Session.js';
-import { Tutorial, TUTORIAL_STEPS } from '../src/session/Tutorial.js';
-import { TUTORIAL } from '../src/config/ui.js';
+import { Tutorial } from '../src/session/Tutorial.js';
+import { LESSONS, lessonById, nextLesson } from '../src/config/lessons.js';
+
+const BASIC = lessonById('basic');
+const TUTORIAL = BASIC.scenario;
 import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
 
 const MAP = MAPS[DEFAULT_MAP];
@@ -19,7 +22,7 @@ function setup() {
   const session = createSession({ touch: false });
   session.phase = 'buy';
   const tut = new Tutorial(session);
-  tut.begin(sim);
+  tut.begin(sim, 'basic');
   const sync = () => (session.phase = PHASE[sim.phase]);
   const cmd = (c) => {
     sim.enqueue({ team: T, ...c });
@@ -79,7 +82,8 @@ test('el tutorial enseña el asalto: planificar, puerta, GO de color y el primer
   tut.ack();
   assert.equal(tut.update(sim), 'done');
   assert.ok(!t.active && t.done);
-  assert.equal(TUTORIAL_STEPS.length, t.count);
+  assert.equal(BASIC.steps.length, t.count);
+  assert.deepEqual(t.lessonsDone, ['basic'], 'la lección queda hecha');
 });
 
 test('compra, entrada y dron se presentan con una tarjeta la primera vez que llegan', () => {
@@ -121,4 +125,13 @@ test('volver al menú a mitad del tutorial no lo marca como hecho', () => {
   tut.stop();
   assert.ok(!session.tutorial.active);
   assert.ok(!session.tutorial.done);
+});
+
+test('las lecciones son datos: cada una con su escenario y sus pasos; la siguiente es la primera sin hacer', () => {
+  for (const l of LESSONS.filter((x) => x.ready)) {
+    assert.ok(l.scenario && l.steps.length > 0, l.id);
+    assert.ok(l.steps.every((s) => typeof s.id === 'string'));
+  }
+  assert.equal(nextLesson([]).id, 'basic');
+  assert.equal(nextLesson(['basic']), LESSONS.find((l) => l.ready && l.id !== 'basic') || null);
 });

@@ -70,20 +70,7 @@ export const FLOW = Object.freeze({
   framePaddingM: 1.0, // m of map kept around a framed rectangle ("see all", first shot)
   overviewTapMs: 320, // a two-finger tap (both fingers up within this, barely moving)...
   overviewTapPx: 14, // ...toggles the whole-map view
-  storageKeys: Object.freeze({ tutorialDone: 'ts.tutorialDone', introsSeen: 'ts.introsSeen', stopOnContact: 'ts.stopOnContact', lobby: 'ts.lobby' }),
+  storageKeys: Object.freeze({ tutorialDone: 'ts.tutorialDone', lessonsDone: 'ts.lessonsDone', introsSeen: 'ts.introsSeen', stopOnContact: 'ts.stopOnContact', lobby: 'ts.lobby' }),
   droneCameraHeight: 14, // m: the camera follows the recon drone from this height...
   droneFollow: 7, // ...catching up at this rate (1/s)
-});
-
-/**
- * The guided tutorial's round (session/Tutorial.js): always the same, and
- * easier than a normal one. Owner: gameplay.
- *   seed       fixed: the same defenders' set-up and barricades every time
- *   site       where the bomb is
- *   defenders  which slots of that site's `defense` layout are manned (data/maps/warehouse.js)
- */
-export const TUTORIAL = Object.freeze({
-  seed: 1,
-  site: 'B',
-  defenders: Object.freeze([0, 2]), // the site's anchor and the hall guard who rotates
 });

@@ -16,7 +16,8 @@
 import { EV } from '../core/events.js';
 import { SIM, ENTRY } from '../config/balance.js';
 import { PLAYER_TEAM } from '../config/squad.js';
-import { TUTORIAL, FLOW } from '../config/ui.js';
+import { FLOW } from '../config/ui.js';
+import { lessonById, nextLesson } from '../config/lessons.js';
 import { loadPref, savePref } from './storage.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
 import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors, lastUserIndex } from '../sim/queries.js';
@@ -153,11 +154,12 @@ export class SessionController {
 
   /**
    * Options of the next round's Simulation: the tutorial's easier round
-   * (config/ui.js TUTORIAL) and the player's "stop the turn on contact".
+   * (config/lessons.js scenario), the lobby's classes and the player's "stop the turn on contact".
    */
   roundOptions() {
     const s = this.session;
-    const tutorial = s.mode === 'tutorial' ? { site: TUTORIAL.site, defenders: TUTORIAL.defenders } : {};
+    const sc = this.lesson && this.lesson.scenario;
+    const tutorial = sc ? { site: sc.site, defenders: sc.defenders } : {};
     const loadout = s.mode === 'match' && s.match ? { loadout: matchLoadout(s.match) } : {};
     // The player's classes from the lobby (his side only: the AI keeps its own).
     const roles = s.mode === 'tutorial' ? {} : { roles: { [s.team]: s.lobby.roles[s.team] } };
@@ -178,7 +180,7 @@ export class SessionController {
    * A game from the lobby is played whole from its first round.
    */
   lockedPhases() {
-    return this.session.mode === 'tutorial' ? ['buy', 'prep', 'drone'] : [];
+    return this.lesson ? [...this.lesson.scenario.skip] : [];
   }
 
   /** Ends the current decision phase (LISTO, deadline, replay): the next phase or the turn's execution. */
@@ -351,7 +353,11 @@ export class SessionController {
     switch (action) {
       case 'start':
         // Enter / Space on the menu: its main button (JUGAR, CONTRA LA IA, LISTO).
-        if (phase === 'title') this.handleRequest({ main: 'play', play: 'vsAi', lobby: 'lobbyReady' }[session.lobby.view]);
+        if (phase !== 'title') return;
+        if (session.lobby.view === 'lessons') {
+          const next = nextLesson(session.tutorial.lessonsDone);
+          if (next) this.handleRequest(`lesson_${next.id}`);
+        } else this.handleRequest({ main: 'play', play: 'vsAi', lobby: 'lobbyReady' }[session.lobby.view]);
         return;
       case 'play':
       case 'vsAi':
@@ -364,7 +370,7 @@ export class SessionController {
         return;
       case 'back':
         if (phase !== 'title' || session.lobby.view === 'main') return;
-        session.lobby.view = session.lobby.view === 'lobby' ? 'play' : 'main';
+        session.lobby.view = session.lobby.view === 'lobby' ? 'play' : 'main'; // play and lessons go back to main
         this.sound('undo');
         return;
       case 'lobbyReady': {
@@ -377,11 +383,11 @@ export class SessionController {
         return;
       }
       case 'tutorial':
-        // The guided tutorial (always attacking).
+        // Main menu -> the list of lessons.
         if (phase !== 'title') return;
         this.audio.unlock();
-        if (session.touch) requestFullscreenLandscape();
-        this.beginMode('tutorial');
+        session.lobby.view = 'lessons';
+        this.sound('select');
         return;
       case 'nextRound':
         // Match result screen: the next round (or, when it is over, a new match).
@@ -515,6 +521,7 @@ export class SessionController {
         }
         else if (action.startsWith('door_')) this.targetDoor(action);
         else if (action.startsWith('lobby_') && phase === 'title') this.lobbySet(action.slice(6));
+        else if (action.startsWith('lesson_') && phase === 'title') this.beginLesson(action.slice(7));
         else if (action.startsWith('chooseEntry_') && (phase === 'prep' || phase === 'planning')) this.chooseEntry(action.slice(12));
         else if (action.startsWith('buy_') && phase === 'buy') this.buy(action);
         else if (action.startsWith('role_') && phase === 'buy') this.setRole(action);
@@ -602,18 +609,27 @@ export class SessionController {
     this.session.ui.tossPick = null;
   }
 
-  /** From the menu: a fresh round against the AI, or the guided tutorial's round (config/ui.js TUTORIAL). */
-  beginMode(mode, team = PLAYER_TEAM, bestOf = undefined) {
+  /** The lesson being taken (config/lessons.js), or null. */
+  get lesson() {
+    return this.session.mode === 'tutorial' ? lessonById(this.session.tutorial.lesson) : null;
+  }
+
+  /**
+   * From the menu: a fresh round against the AI or a series (the lobby's), or
+   * the round of a lesson (`lesson`: its id; config/lessons.js scenario).
+   */
+  beginMode(mode, team = PLAYER_TEAM, bestOf = undefined, lesson = null) {
     this.session.mode = mode;
-    this.session.team = mode === 'tutorial' ? PLAYER_TEAM : team;
+    if (mode === 'tutorial') this.session.tutorial.lesson = lesson;
+    this.session.team = mode === 'tutorial' ? this.lesson.scenario.team : team;
     this.session.match = mode === 'match' ? createMatch(this.session.team, bestOf) : null;
     // A match: every round its own scenario (site, spread...), a fresh series each match.
     this.matchSeed = mode === 'match' ? (Math.random() * 1e9) | 0 : 0;
-    this.seed = mode === 'tutorial' ? TUTORIAL.seed : mode === 'match' ? this.matchSeed + 1 : SIM.seed;
+    this.seed = mode === 'tutorial' ? this.lesson.scenario.seed : mode === 'match' ? this.matchSeed + 1 : SIM.seed;
     this.recorder.beginAttempt([]);
     this.session.replay.attempt = 0;
     this.restart(this.seed); // still on the menu: no phase yet
-    if (mode === 'tutorial') this.tutorial.begin(this.sim);
+    if (mode === 'tutorial') this.tutorial.begin(this.sim, lesson);
     else this.tutorial.stop();
     this.syncPhase(true);
     this.framing.frameStart();
@@ -637,6 +653,14 @@ export class SessionController {
     this.sound('select');
   }
 
+  /** A lesson from the TUTORIAL list (one not ready yet does nothing). */
+  beginLesson(id) {
+    const l = lessonById(id);
+    if (!l || !l.ready) return;
+    if (this.session.touch) requestFullscreenLandscape();
+    this.beginMode('tutorial', l.scenario.team, undefined, id);
+  }
+
   /** A lobby setting changed (session/Lobby.js lobbySet): kept on the device. */
   lobbySet(what) {
     const lobby = this.session.lobby;
@@ -648,10 +672,10 @@ export class SessionController {
   /** Back to the main menu: the round is dropped (a new one waits behind the menu). */
   toMenu() {
     this.tutorial.stop();
+    this.session.lobby.view = this.session.mode === 'tutorial' ? 'lessons' : 'main'; // out of a lesson: the list of lessons
     this.session.mode = 'play';
     this.session.team = PLAYER_TEAM;
     this.session.match = null;
-    this.session.lobby.view = 'main';
     this.session.lobby.ready = false;
     this.setPhase('title');
     this.seed = SIM.seed;

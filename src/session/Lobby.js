@@ -2,6 +2,7 @@
 // draws it, SessionController applies its requests):
 //
 //   main    JUGAR · TUTORIAL
+//   lessons the tutorial's lessons (config/lessons.js)
 //   play    CONTRA LA IA · MULTIJUGADOR (coming soon)
 //   lobby   the game's settings, then LISTO: it starts once everyone is ready
 //           (against the AI only the player; the AI always is)

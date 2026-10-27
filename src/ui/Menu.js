@@ -1,16 +1,19 @@
 // The menu inside the title screen (session/Lobby.js has its rules):
-//   main    JUGAR · TUTORIAL GUIADO (with the pitch and the how-to)
+//   main    JUGAR · TUTORIAL (with the pitch and the how-to)
+//   lessons the tutorial's lessons (config/lessons.js): done ✓, the next one
+//           recommended, the ones still to come disabled
 //   play    CONTRA LA IA · MULTIJUGADOR (coming soon) · VOLVER
 //   lobby   format (a single round, best of 3 / 5 / 7), starting side, map
 //           (more coming soon), the player's classes per slot for each side,
 //           who is in and ready; LISTO starts once everyone is
-// Emits EV.REQUEST {action: 'play' | 'vsAi' | 'tutorial' | 'back' | 'lobbyReady' |
+// Emits EV.REQUEST {action: 'play' | 'vsAi' | 'tutorial' | 'lesson_<id>' | 'back' | 'lobbyReady' |
 // 'lobby_bestOf_<n>' | 'lobby_side_<team>' | 'lobby_role_<team>_<i>_<roleId>'}.
 import { EV } from '../core/events.js';
 import { ROLES } from '../config/operators.js';
 import { SQUAD, DEFENDER_NAME } from '../config/squad.js';
 import { MAPS } from '../data/maps/index.js';
 import { BEST_OF, canPick, pickRoles } from '../session/Lobby.js';
+import { LESSONS, nextLesson } from '../config/lessons.js';
 import { el, setText, toggle } from './dom.js';
 import { T } from './texts.js';
 
@@ -33,6 +36,20 @@ export class Menu {
     this.tutorialBadge = el('span', 'mb-badge');
     this.tutorialBtn.appendChild(this.tutorialBadge);
     mainMenu.append(this.tutorialBtn);
+
+    // Tutorial: the lessons
+    const LS = T.flow.lessons;
+    this.lessons = el('div', 'menu-view lessons', `<h2 class="mv-title">${LS.title}</h2><div class="menu lesson-list"></div><div class="menu lesson-back"></div>`);
+    this.lessonButtons = LESSONS.map((l) => {
+      const b = button(`lesson lesson-${l.id}`, LS.items[l.id].title, LS.items[l.id].note, l.ready ? `lesson_${l.id}` : null);
+      const badge = el('span', 'mb-badge');
+      b.appendChild(badge);
+      b.appendChild(el('span', 'mb-min', LS.minutes(l.minutes)));
+      b.disabled = !l.ready;
+      this.lessons.querySelector('.lesson-list').appendChild(b);
+      return { l, b, badge };
+    });
+    this.lessons.querySelector('.lesson-back').append(button('back', M.back, null, 'back'));
 
     // Jugar
     this.play = el('div', 'menu-view play', `<h2 class="mv-title">${M.play}</h2><div class="menu"></div>`);
@@ -103,7 +120,7 @@ export class Menu {
     this.ready.addEventListener('click', () => this.request('lobbyReady'));
     actions.append(this.ready, button('back', M.back, null, 'back'));
 
-    box.append(this.main, this.play, this.lobby);
+    box.append(this.main, this.lessons, this.play, this.lobby);
   }
 
   request(action) {
@@ -115,11 +132,26 @@ export class Menu {
     const view = lobby.view;
     toggle(this.main, 'on', view === 'main');
     toggle(this.play, 'on', view === 'play');
+    toggle(this.lessons, 'on', view === 'lessons');
     toggle(this.lobby, 'on', view === 'lobby');
     if (view === 'main') {
-      const done = session.tutorial.done;
-      setText(this.tutorialBadge, done ? T.flow.menu.tutorialDone : T.flow.menu.tutorialNew);
-      toggle(this.tutorialBtn, 'done', done); // a first-timer sees it recommended (styles.css)
+      // A first-timer sees it recommended; then how many lessons are done (all: green, styles.css).
+      const n = session.tutorial.lessonsDone.length;
+      const all = !nextLesson(session.tutorial.lessonsDone);
+      setText(this.tutorialBadge, n ? T.flow.menu.lessonsDone(n, LESSONS.length) : T.flow.menu.tutorialNew);
+      toggle(this.tutorialBtn, 'done', n > 0 && all);
+      toggle(this.tutorialBtn, 'some', n > 0 && !all);
+    }
+    if (view === 'lessons') {
+      const done = session.tutorial.lessonsDone;
+      const next = nextLesson(done);
+      for (const { l, b, badge } of this.lessonButtons) {
+        const state = !l.ready ? 'soon' : done.includes(l.id) ? 'done' : l === next ? 'next' : '';
+        toggle(b, 'done', state === 'done');
+        toggle(b, 'next', state === 'next');
+        badge.hidden = !state;
+        setText(badge, state ? T.flow.lessons[state] : '');
+      }
     }
     if (view !== 'lobby') return;
     const L = T.flow.lobby;
