@@ -322,6 +322,21 @@ export class PlanningController {
     return true;
   }
 
+  /** Menu "Asomarse y volver" on the targeted point (or the way back of one): on <-> off. */
+  togglePeek() {
+    const u = this.selectedUnit();
+    if (!u || !this.canEdit) return true;
+    const i = targetIndex(this.session, u);
+    if (i < 0) return true;
+    let k = i;
+    if (u.route[i].back) for (k = i - 1; k >= 0 && !(u.route[k].user && !u.route[k].ask); k--);
+    const on = !(k >= 0 && u.route[k].pause > 0);
+    // The menu stays on the peek point (the way back is added after it).
+    this.session.pointTarget = { unitId: u.id, index: k >= 0 ? k : i };
+    this.command({ type: 'setPeek', unitId: u.id, on, index: i });
+    return true;
+  }
+
   /** Pace of the targeted leg: 'sneak' or null (normal). */
   setPace(pace) {
     const u = this.selectedUnit();

@@ -8,7 +8,9 @@
 //   pace      'sneak' on the leg ending here (MOVE.sneakFactor), null = normal
 //   toss      {item, x, y}: on arrival (or on the GO of the hold there) he throws a flash /
 //             grenade / smoke to that point (sim/entries.js armToss)
+//   pause     s he stands there (looking at `look`) before going on: "asomarse y volver"
+//   back      the point he goes back to after such a peek (orders.js setPeek)
 export function routePoint(x, y, over = null) {
-  const p = { x, y, user: false, look: null, hold: false, code: null, entry: null, entryDoor: -1, ask: false, door: -1, pace: null, toss: null };
+  const p = { x, y, user: false, look: null, hold: false, code: null, entry: null, entryDoor: -1, ask: false, door: -1, pace: null, toss: null, pause: 0, back: false };
   return over ? Object.assign(p, over) : p;
 }

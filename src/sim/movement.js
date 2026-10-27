@@ -68,7 +68,7 @@ function lookAheadPoint(sim, u, out) {
     travelled += len;
     ax = p.x;
     ay = p.y;
-    if (p.hold || (p.user && p.look !== null)) break; // he stops / turns there: don't look past it
+    if (p.hold || p.pause > 0 || (p.user && p.look !== null)) break; // he stops / turns there: don't look past it
   }
   if (travelled < MOVE.lookAhead * 0.25) return false;
   out.x = ax;
@@ -92,6 +92,10 @@ export function updateMovement(sim, u, dt) {
   if (u.stun > 0) {
     u.stun -= dt;
     return;
+  }
+  if (u.pause > 0) {
+    u.pause = Math.max(0, u.pause - dt); // peeking: he holds the look of the point, then walks on
+    return resetStuck(u);
   }
   if (u.waitingGo || u.entry || u.bash || u.goDelay > 0 || !u.route.length) return resetStuck(u);
 
@@ -267,6 +271,7 @@ function stopAtAsk(sim, u, p) {
 function arriveAt(sim, u, p) {
   if (!p.user) return;
   u.lookOverride = p.look;
+  if (p.pause > 0) u.pause = p.pause;
   if (p.hold) {
     u.waitingGo = true;
     u.waitCode = holdCode(p);

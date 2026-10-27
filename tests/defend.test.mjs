@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
 import { EV } from '../src/core/events.js';
 import { controllersFor } from '../src/config/squad.js';
-import { PREP } from '../src/config/balance.js';
+import { PREP, MOVE } from '../src/config/balance.js';
 import { watchOf, watchOrder } from '../src/session/watch.js';
 import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
 
@@ -110,4 +110,44 @@ test('una ronda completa de defensor contra la IA termina', () => {
   const sim = defending(9);
   playOut(sim);
   assert.ok(sim.outcome);
+});
+
+test('asomarse y volver: va al punto, mira ahí un momento y vuelve a su lugar mirando como antes', () => {
+  const sim = defending();
+  sim.advancePhase();
+  while (sim.phase === 'drone') sim.step();
+  for (const a of sim.teams.attackers) a.alive = false; // nadie que lo interrumpa (la ronda termina sola al final)
+  const d = sim.teams.defenders.find((u) => u.behavior && u.behavior.type !== 'hold');
+  const home = { x: d.x, y: d.y, facing: d.facing };
+  cmd(sim, { type: 'addWaypoint', unitId: d.id, x: 33, y: 12, user: true });
+  cmd(sim, { type: 'setLook', unitId: d.id, angle: Math.PI });
+  const peek = d.route.length - 1;
+  cmd(sim, { type: 'setPeek', unitId: d.id, on: true });
+  assert.equal(d.route[peek].pause, MOVE.peekTime);
+  const end = d.route[d.route.length - 1];
+  assert.ok(end.back && end.user);
+  assert.ok(Math.hypot(end.x - home.x, end.y - home.y) < 0.3, 'vuelve a donde estaba');
+
+  // Quitarlo deja la ruta como estaba.
+  cmd(sim, { type: 'setPeek', unitId: d.id, on: false });
+  assert.equal(d.route.length, peek + 1);
+  assert.equal(d.route[peek].pause, 0);
+  cmd(sim, { type: 'setPeek', unitId: d.id, on: true });
+
+  let still = 0;
+  let looked = false;
+  for (let i = 0; i < 60 * 12 && d.route.length; i++) {
+    if (sim.phase !== 'exec') sim.advancePhase();
+    sim.step();
+    if (Math.hypot(d.x - 33, d.y - 12) < 0.05) {
+      still += 1 / 60;
+      if (Math.abs(Math.cos(d.facing) + 1) < 0.01) looked = true;
+    }
+  }
+  assert.equal(d.route.length, 0, 'terminó el recorrido');
+  assert.ok(still >= MOVE.peekTime - 0.05, `se quedó ${still.toFixed(2)} s asomado`);
+  assert.ok(looked, 'mirando hacia donde se le dijo');
+  assert.ok(Math.hypot(d.x - home.x, d.y - home.y) < 0.3, 'volvió');
+  for (let i = 0; i < 60; i++) sim.step();
+  assert.ok(Math.abs(Math.atan2(Math.sin(d.facing - home.facing), Math.cos(d.facing - home.facing))) < 0.05, 'mirando como antes');
 });

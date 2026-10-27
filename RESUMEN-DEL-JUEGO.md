@@ -100,6 +100,9 @@ los atacantes.
     sigue su ruta. La línea punteada muestra dónde cae de verdad; en rojo si una granada
     lo alcanzaría a él. Mientras eliges dónde, el menú se reduce a "¿Dónde cae?" y ×
     (o Esc) cancela.
+  - **Asomarse y volver** (en el último punto): se queda 1,5 s mirando hacia donde
+    marcaste en ese punto y vuelve a donde estaba, mirando como antes. Sirve para
+    chequear un pasillo sin abandonar el puesto. Vuelve sosteniendo el ángulo, más lento.
 - **Puertas.** Si nadie decide, el operador **la abre y pasa**. El "?" sobre una puerta
   de la ruta es una invitación, no un freno.
 - **GO por colores.** ESPERAR en un punto lo asigna a un grupo de color. Durante el

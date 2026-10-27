@@ -433,6 +433,9 @@ export class SessionController {
       case 'pace':
         this.planning.togglePace();
         return;
+      case 'peek':
+        this.planning.togglePeek();
+        return;
       case 'pace_sneak':
       case 'pace_normal':
         this.planning.setPace(action === 'pace_sneak' ? 'sneak' : null);

@@ -147,6 +147,13 @@ export const T = Object.freeze({
   squad: { button: 'Escuadra', on: 'En fila' },
   /** Pace of a stretch of route (sim/movement.js): the waypoint menu. */
   pace: { title: 'Paso', normal: 'Normal', sneak: 'Sigilo' },
+  /** "Asomarse y volver" (sim/orders.js setPeek): the waypoint menu and the tag on the map. */
+  peek: {
+    off: 'Asomarse y volver',
+    on: '✓ Se asoma y vuelve',
+    hint: 'Se queda 1,5 s mirando hacia donde marques en el punto y vuelve a su lugar',
+    tag: 'ASOMA',
+  },
   defuse: 'DESACTIVANDO BOMBA',
   reloadTag: 'RECARGANDO',
   tagGo: 'GO',
