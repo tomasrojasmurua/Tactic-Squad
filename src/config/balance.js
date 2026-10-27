@@ -234,6 +234,7 @@ export const BARRICADE = Object.freeze({
  */
 export const DRONE = Object.freeze({
   seconds: 15,
+  launchDistance: 1.2, // m in front of the entry's door (outside), facing it
   speed: 2.4, // m/s
   turnRate: 540 * DEG, // rad/s (it faces where it goes)
   radius: 0.16, // m (collides with walls, furniture and barricades)

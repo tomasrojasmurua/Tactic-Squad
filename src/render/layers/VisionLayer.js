@@ -1,6 +1,7 @@
 // Fog of war mask, in map space: draw each living attacker's visibility fans
 // (FOV cone + close awareness circle) into a texture, blur it a little for
-// soft edges, and max-accumulate into the "explored" memory.
+// soft edges, and max-accumulate into the "explored" memory. The attackers'
+// recon drone adds its own cone while it flies (polygons id -1).
 //
 // The pass is skipped when its result could not change: same simulation,
 // same interpolated operator poses and same door slabs (world.segmentsVersion).
@@ -12,7 +13,7 @@ import { FOG } from '../../config/render.js';
 import { VISION } from '../../config/balance.js';
 import { visibilityPolygon } from '../../sim/vision.js';
 import { peekEye } from '../../sim/queries.js';
-import { ENTRY } from '../../config/balance.js';
+import { ENTRY, DRONE } from '../../config/balance.js';
 import { ShaderProgram } from '../gl/ShaderProgram.js';
 import { RenderTarget } from '../gl/RenderTarget.js';
 import { ShapeBatch } from '../gl/ShapeBatch.js';
@@ -72,7 +73,18 @@ export class VisionLayer {
       if (c.poses[i] !== u.id || c.poses[i + 1] !== x || c.poses[i + 2] !== y || c.poses[i + 3] !== f) return false;
       i += 4;
     }
+    const d = this.liveDrone(sim);
+    if (d) {
+      if (c.poses[i] !== -1 || c.poses[i + 1] !== lerp(d.prevX, d.x, alpha) || c.poses[i + 2] !== lerp(d.prevY, d.y, alpha) || c.poses[i + 3] !== lerpAngle(d.prevFacing, d.facing, alpha)) return false;
+      i += 4;
+    }
     return i === c.poses.length;
+  }
+
+  /** The drone, if this side's and flying. */
+  liveDrone(sim) {
+    const d = sim.drone;
+    return d && d.active && this.team === 'attackers' ? d : null;
   }
 
   remember(sim) {
@@ -87,6 +99,8 @@ export class VisionLayer {
       const p = this.polygons.get(u.id);
       c.poses.push(u.id, p.x, p.y, p.facing);
     }
+    const p = this.liveDrone(sim) && this.polygons.get(-1);
+    if (p) c.poses.push(-1, p.x, p.y, p.facing);
   }
 
   get visionTexture() {
@@ -104,7 +118,7 @@ export class VisionLayer {
     const gl = this.gl;
     const { raw, tmp, vision, explored } = this.targets;
     this.batch.reset();
-    for (const id of this.polygons.keys()) if (!sim.units[id] || !sim.units[id].alive) this.polygons.delete(id);
+    for (const id of this.polygons.keys()) if (id >= 0 && (!sim.units[id] || !sim.units[id].alive)) this.polygons.delete(id);
     for (const u of sim.teams[this.team]) {
       if (!u.alive) continue;
       const x = lerp(u.prevX, u.x, alpha);
@@ -128,6 +142,16 @@ export class VisionLayer {
         this.batch.fan(e.x, e.y, p.peek, WHITE, false);
       }
     }
+    const d = this.liveDrone(sim);
+    if (d) {
+      const p = this.polygonsOf(-1);
+      p.x = lerp(d.prevX, d.x, alpha);
+      p.y = lerp(d.prevY, d.y, alpha);
+      p.facing = lerpAngle(d.prevFacing, d.facing, alpha);
+      p.cone = visibilityPolygon(sim.world, p.x, p.y, p.facing, DRONE.fov, DRONE.range, p.coneBuf);
+      if (p.cone.buffer !== p.coneBuf.buffer) p.coneBuf = new Float32Array(p.cone.length * 2);
+      this.batch.fan(p.x, p.y, p.cone, WHITE, false);
+    } else this.polygons.delete(-1);
     this.batch.upload();
     this.remember(sim);
 

@@ -57,6 +57,7 @@ export const EV = Object.freeze({
   UI_SOUND: 'uiSound', // {name}
   MUTE_CHANGED: 'muteChanged', // {muted}
   MUSIC_CHANGED: 'musicChanged', // {on}
+  DRONE_STICK: 'droneStick', // {x, y}: the on-screen drone stick (ui/DroneStick.js -> input/DroneController.js)
   // {code, count}: a transient flow message for the player (session -> HUD toast, text in ui/texts.js T.notice)
   NOTICE: 'notice',
 });

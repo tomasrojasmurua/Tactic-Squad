@@ -21,17 +21,22 @@ import { alertAiUnit } from './ai.js';
 import { isAiControlled } from './queries.js';
 import { barricadeBoxes, spotBarricades } from './barricades.js';
 
-/** Launches the drone from the attackers' entry. False when nobody drives it (the attackers are not human). */
+/** Launches the drone in front of the attackers' entry door, facing it. False when nobody drives it (the attackers are not human). */
 export function launchDrone(sim) {
   if (sim.controllers.attackers !== 'human') return false;
+  const door = sim.compiled.doors.find((d) => d.id === sim.entry.door);
   const s = sim.entry.spawns[0];
+  const side = Math.sign((s.at[0] - door.cx) * door.normalX + (s.at[1] - door.cy) * door.normalY) || -1;
+  const x = door.cx + door.normalX * side * DRONE.launchDistance;
+  const y = door.cy + door.normalY * side * DRONE.launchDistance;
+  const facing = Math.atan2(-door.normalY * side, -door.normalX * side);
   sim.drone = {
-    x: s.at[0],
-    y: s.at[1],
-    prevX: s.at[0],
-    prevY: s.at[1],
-    facing: s.facing,
-    prevFacing: s.facing,
+    x,
+    y,
+    prevX: x,
+    prevY: y,
+    facing,
+    prevFacing: facing,
     dir: -1, // stick heading index, -1 = stopped
     moving: false,
     active: true,
@@ -40,7 +45,7 @@ export function launchDrone(sim) {
     shooterId: -1,
     watched: new Map(), // defender id -> s he has had it in sight
   };
-  sim.emit(EV.DRONE_LAUNCHED, { x: s.at[0], y: s.at[1], seconds: DRONE.seconds });
+  sim.emit(EV.DRONE_LAUNCHED, { x, y, seconds: DRONE.seconds });
   return true;
 }
 

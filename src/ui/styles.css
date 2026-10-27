@@ -700,3 +700,36 @@ body.touch .phase-panel .pp-body { flex-direction: row; flex-wrap: wrap; }
 body.touch .phase-panel .pp-row { grid-template-columns: 1fr; gap: 0; flex: 1 1 100px; font-size: 12px; }
 body.touch .phase-panel .pp-entry { flex: 1 1 90px; font-size: 12px; padding: 6px 8px; letter-spacing: 0.06em; }
 body.touch .phase-panel .pp-note { display: none; }
+/* Buy: money and one button per item (tap buys one more, − gives one back). */
+.phase-panel .pp-buy { grid-template-columns: 74px 1fr auto; row-gap: 4px; }
+.phase-panel .pp-money { color: var(--ok); font-weight: 700; font-variant-numeric: tabular-nums; }
+.phase-panel .pp-items { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+.phase-panel .pp-item { display: inline-flex; }
+.phase-panel .pp-buy-btn { min-height: 34px; padding: 4px 8px; font-size: 12px; letter-spacing: 0.04em; }
+.phase-panel .pp-buy-btn .n { font-weight: 800; color: var(--muted); }
+.phase-panel .pp-buy-btn.has .n { color: var(--text); }
+.phase-panel .pp-buy-btn .p { color: var(--muted); font-size: 11px; }
+.phase-panel .pp-buy-btn.off { opacity: 0.45; }
+.phase-panel .pp-sell { min-height: 34px; min-width: 30px; padding: 4px 6px; justify-content: center; }
+.phase-panel .pp-sell:disabled { opacity: 0.3; }
+body.touch .phase-panel .pp-buy { grid-template-columns: 1fr auto; flex: 1 1 100%; }
+body.touch .phase-panel .pp-buy .pp-role { display: none; }
+body.touch .phase-panel .pp-buy-btn, body.touch .phase-panel .pp-sell { min-height: 32px; }
+/* First planning: the entry, compact and out of the way. */
+.phase-panel.compact { width: auto; padding: 6px 10px 8px; }
+.phase-panel.compact .pp-body { flex-direction: row; gap: 6px; margin-top: 4px; }
+.phase-panel.compact .pp-entry { min-height: 34px; font-size: 12px; padding: 4px 10px; }
+.phase-panel.compact .pp-title { font-size: 12px; }
+.phase-panel.compact .pp-note { margin-top: 4px; }
+body.touch .phase-panel.compact { width: auto; }
+/* Recon drone: the stick (any pointer) and its key hint. */
+.drone-stick {
+  position: absolute; left: 50%; margin-left: -66px; bottom: calc(24px + var(--sab)); width: 132px; height: 132px; border-radius: 50%;
+  background: rgba(5, 6, 8, 0.55); border: 1px solid var(--line-strong); pointer-events: auto; touch-action: none; z-index: 6; display: none;
+}
+.drone-stick.on { display: block; }
+.drone-stick .knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: var(--cyan-deep); border: 2px solid var(--cyan); }
+.drone-stick .lbl { position: absolute; left: 0; right: 0; top: -20px; text-align: center; font-family: var(--font-display); font-weight: 800; letter-spacing: 0.2em; font-size: 12px; color: var(--cyan); }
+body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom: calc(18px + var(--sab)); width: 120px; height: 120px; }
+.banner.drone::before { background: var(--ok); }
+.banner.drone .phase { color: var(--ok); }

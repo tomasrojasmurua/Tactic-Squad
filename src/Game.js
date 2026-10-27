@@ -24,6 +24,7 @@ import { CameraFraming } from './input/CameraFraming.js';
 import { MouseKeyController } from './input/MouseKeyController.js';
 import { ShortcutController } from './input/ShortcutController.js';
 import { TouchController } from './input/TouchController.js';
+import { DroneController } from './input/DroneController.js';
 import { UI } from './ui/UI.js';
 
 export class Game {
@@ -69,6 +70,7 @@ export class Game {
       restart: (seed) => this.newRound(seed),
     });
     this.bus.on(EV.COMMAND, (cmd) => this.sim.enqueue(cmd));
+    this.drone = new DroneController({ input: this.input, bus: this.bus, session: this.session, steer: (dir) => this.flow.steerDrone(dir) });
 
     this.ui = new UI(uiRoot, this.bus, this.input, this.session);
     this.unlockAudioOnFirstGesture();
@@ -102,6 +104,7 @@ export class Game {
   // ------------------------------------------------------------ loop
 
   step(dt) {
+    this.drone.update(); // the drone's stick, stamped with the step about to run
     this.sim.step(dt);
     this.flushEvents();
     this.flow.afterStep(this.sim, dt);
@@ -119,8 +122,10 @@ export class Game {
       this.sim.flushCommands();
       this.flushEvents();
     }
-    this.cameraCtl.enabled = !this.session.helpOpen;
+    const droning = this.session.phase === 'drone';
+    this.cameraCtl.enabled = !this.session.helpOpen && !droning; // WASD drive the drone
     this.cameraCtl.update(dt);
+    if (droning) this.framing.followDrone(this.sim, dt);
     this.planning.update(dt); // edge pan while drawing (inside the game loop, no own rAF)
     this.renderer.render(this.sim, this.session, dt, alpha, this.loop.simulating);
     this.audioDirector.update(dt, this.session.phase === 'paused');

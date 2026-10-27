@@ -73,6 +73,7 @@ export const REJECT = Object.freeze({
   goBeforeStart: 'goBeforeStart', // emitted by the session: GO pressed while still planning
   notNow: 'notNow', // this order is not taken in the current round phase (e.g. during an execution turn)
   badEntry: 'badEntry', // chooseEntry with an entry the map does not have
+  entryLocked: 'entryLocked', // chooseEntry after the first turn ran (the squad already left)
   // Buy and set-up (sim/prep.js)
   noMoney: 'noMoney',
   gearFull: 'gearFull', // he already carries BUY.max of it
@@ -399,7 +400,7 @@ function chooseEntry(sim, cmd) {
   if (team !== 'attackers' || sim.controllers.attackers !== 'human') return;
   // In the planning only before the first turn ran (the squad has not moved yet).
   if (sim.round.enabled && sim.round.phase === 'plan' && (sim.round.turn !== 1 || sim.round.execTotal > 0)) {
-    sim.emit(EV.ORDER_REJECTED, { unitId: -1, reason: REJECT.notNow });
+    sim.emit(EV.ORDER_REJECTED, { unitId: -1, reason: REJECT.entryLocked });
     return;
   }
   if (!sim.compiled.entries.some((e) => e.id === cmd.entry)) {

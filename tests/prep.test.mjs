@@ -307,6 +307,6 @@ test('la entrada se puede cambiar en la primera planificación, no después del 
   while (sim.phase === 'exec') sim.step();
   cmd(sim, ATK, { type: 'chooseEntry', entry: 'norte' });
   sim.flushCommands();
-  assert.deepEqual(rejects(sim), ['notNow']);
+  assert.deepEqual(rejects(sim), ['entryLocked']);
   assert.equal(sim.entry.id, 'sur');
 });

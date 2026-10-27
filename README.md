@@ -32,19 +32,20 @@ Para agregar una clase de operador: una entrada en `config/operators.js` (`ROLES
 
 ## Objetivo de la ronda
 
-Los Defensores dejan la bomba en el sitio A o en el B (por ahora lo decide la semilla de la ronda; un reintento conserva el sitio). Los Atacantes no saben en cuál está hasta verla. Para ganar la desactivan, 7 s quietos junto a ella sin disparar (moverse o morir pierde el progreso), o eliminan a todos los Defensores. Los Defensores ganan si se acaba el tiempo o eliminan a todos los Atacantes.
+Los Defensores dejan la bomba en el sitio A o en el B (la IA lo decide con la semilla de la ronda, así que un reintento conserva el sitio; un defensor humano lo elige en la preparación). Los Atacantes no saben en cuál está hasta verla. Para ganar la desactivan, 7 s quietos junto a ella sin disparar (moverse o morir pierde el progreso), o eliminan a todos los Defensores. Los Defensores ganan si se acaba el tiempo o eliminan a todos los Atacantes.
 
-Cada mapa declara como datos (`src/data/maps/warehouse.js`): `sites` (rectángulo y punto de la bomba), `entries` (puerta y posiciones de inicio de cada entrada atacante), `deployment` (línea de despliegue y mitad de cada bando), puertas con `barricade: true` (huecos aptos para barricadas) y `defense` (la disposición de los Defensores para cada sitio, hasta que llegue la fase de preparación).
+Cada mapa declara como datos (`src/data/maps/warehouse.js`): `sites` (rectángulo y punto de la bomba), `entries` (puerta y posiciones de inicio de cada entrada atacante), `deployment` (línea de despliegue y mitad de cada bando), puertas con `barricade: true` (huecos aptos para barricadas; cuentan solo los que tocan la mitad defensora), `defense` (la disposición de la IA defensora en cada sitio, y el punto de partida de un defensor humano) y `aiBarricades` (entre qué puertas elige la IA sus 2 barricadas en cada sitio).
 
 ## Fases de la ronda y turnos We-Go
 
-La ronda vive en la simulación (`sim/round.js`): **compra → preparación → planificación ⇄ ejecución → fin**.
+La ronda vive en la simulación (`sim/round.js`): **compra → preparación → dron → planificación ⇄ ejecución → fin**.
 
 | Fase | Plazo | Qué se hace |
 | --- | --- | --- |
-| Compra | sin límite | Por ahora solo muestra el equipo de cada rol (la compra llega en el hito 3). |
-| Preparación | sin límite | El atacante elige entrada (el defensor no la ve) y puede adelantar rutas. El defensor sigue saliendo de los datos del mapa. |
-| Planificación | sin límite | El tiempo no corre. Se trazan o cambian rutas, miradas, esperas en grupos GO (A, B, C) y entradas por puerta. No se ve lo que planea el rival. |
+| Compra | sin límite | Cada atacante compra su utilidad con su propio dinero (ver abajo). |
+| Preparación | sin límite | A ciegas y a la vez. El atacante elige entrada (el defensor no la ve) y puede adelantar rutas. El defensor elige sitio, coloca a los suyos, les da órdenes de vigilancia y pone 2 barricadas (la IA lo hace al empezar la fase). |
+| Dron | 15 s | El atacante maneja el dron en tiempo real (ver abajo). El tiempo de la bomba no corre. LISTO lo retira antes. |
+| Planificación | sin límite | El tiempo no corre. Se trazan o cambian rutas, miradas, esperas en grupos GO (A, B, C) y entradas por puerta. No se ve lo que planea el rival. En la primera, antes de ejecutar, todavía se puede cambiar la entrada (borra las rutas). |
 | Ejecución | 8 s | Todo se ejecuta a la vez, sin pausa. La única orden son los GO: el jugador dice "¡ahora!" y ese grupo actúa junto. Luego se vuelve a planificar (las rutas sin terminar siguen). |
 
 **Temporizador de la bomba.** La bomba explota tras 3 minutos de ejecución (`ROUND.timeLimit`); solo corre durante los turnos, así que planificar es gratis pero cada turno la acerca. En 0 explota aunque alguien esté a mitad de la desactivación, y ganan los Defensores. En los últimos 30 s pita cada vez más rápido.
@@ -58,6 +59,25 @@ La ronda vive en la simulación (`sim/round.js`): **compra → preparación → 
 **Vista por bando.** `sim/view.js` `teamView(sim, bando)` devuelve lo que ese bando puede saber: sus unidades, los enemigos que ve ahora, dónde vio por última vez a los demás, los pulsos que oyó y la bomba si sabe dónde está. Es el filtro que usará el servidor online; los pulsos ya se dibujan desde ahí, el resto del render todavía lee la sim entera.
 
 **Reintentar** (R al final de la ronda) repite la ronda con la misma semilla: cada fase de decisión vuelve a dar sus órdenes grabadas y se cierra sola. Cambiar algo en una fase repetida toma el control desde ahí. Durante la ronda, R la empieza de nuevo sin plan (con confirmación).
+
+## Preparación de ambos bandos (hito 3)
+
+**Compra** (`sim/prep.js`, `BUY` en `config/balance.js`). Cada atacante tiene $800 por ronda y empieza con el equipo de su rol ya pagado (el Asaltante lleva flash y granada y le quedan $300; el de Entrada lleva además la carga y le queda $0). En el panel, tocar un objeto compra otro y − lo devuelve. Precios: flash $200, granada $300, carga $300; como máximo 2 flash, 1 granada y 2 cargas. La economía entre rondas llega con la partida al mejor de 7.
+
+**Defensor.** Órdenes de la preparación (`sim/orders.js`): `chooseSite` (la bomba va a ese sitio y el despliegue vuelve al del mapa para él), `placeUnit` (solo en la mitad defensora, en suelo transitable y a 0,7 m o más de un compañero), `setWatch` y `barricade` (hasta 2, solo en las puertas de `barricadeSlots`). Las órdenes de vigilancia se vuelven los comportamientos de la IA (`sim/ai.js`), así que funcionan solas en el asalto:
+
+| Orden | Datos | Comportamiento |
+| --- | --- | --- |
+| Ángulo fijo | `{facing}` | Mantiene el ángulo y no se gira por ruidos. |
+| Barrer | `{facing, sweep: [desde, hasta]}` | Barre entre dos ángulos (`PREP.sweepPeriod`). |
+| Reaccionar a ruido | `{facing, react: true}` | Mantiene el ángulo y se gira hacia lo que oye. |
+| Replegarse | `{facing, react: true, fallback: {to, look}}` | Con el primer tiroteo que oye va a ese punto (de su mitad) y mira hacia `look`. |
+
+La IA defensora se prepara al empezar la preparación: el sitio que sale de la semilla, la disposición del mapa para ese sitio y 2 barricadas elegidas entre las `aiBarricades` del sitio con un hash de la semilla (no usa el azar de la ronda). Por ahora el jugador solo juega de atacante: la pantalla para preparar al defensor llega con la elección de bando (hito 4).
+
+**Barricadas** (`sim/barricades.js`, `BARRICADE`). Una puerta atrancada no se abre, no se entreabre ni se patea: bloquea el paso, la vista, las balas y el dron. El atacante que intenta abrirla (de cualquier forma) se pone a romperla: 3 s quieto dando golpes que se oyen a 14 m (la IA cercana se gira y rota como con un tiroteo); si aparece un enemigo, pelea y luego sigue. Después el hueco queda libre. Una carga la vuela al instante. Los atacantes solo la ven cuando uno de ellos o el dron la tiene a la vista (`sim.intel.barricades`, en `teamView`); entonces se dibuja una barra naranja sobre la puerta.
+
+**Dron** (`sim/drone.js`, `DRONE`). Sale frente a la puerta de la entrada elegida. Se maneja con WASD o las flechas en escritorio y con el mando en pantalla en el celular; la dirección va en 16 rumbos y se manda solo cuando cambia, como orden `{type:'drone', dir, atTick}` sellada con el paso de la fase (igual que un GO), así que el reintento repite el mismo recorrido. Rueda bajo las puertas cerradas pero no atraviesa barricadas, paredes ni muebles. Lo que ve su cono (100°, 14 m) lo aprenden los atacantes: los defensores quedan marcados donde estaban (última posición conocida), las barricadas quedan a la vista y, si ve la bomba, revela el sitio. Los defensores no se mueven durante el dron: solo giran (sus órdenes de vigilancia, y la IA lo oye a 3 m), y el que lo tiene a la vista 0,6 s lo derriba. Termina a los 15 s, al ser derribado o con LISTO (`droneRecall`).
 
 Una `Simulation` creada con `{ phases: false }` no tiene fases: corre siempre y acepta órdenes en cualquier momento (pruebas de mecánicas sueltas).
 
@@ -80,4 +100,4 @@ El equipo de cada operador está en `config/operators.js` (`gear`) y todos los n
 
 ## Pruebas
 
-`tests/determinism.test.mjs` juega rondas completas por turnos sin pantalla dos veces con la misma semilla (una por sitio) y comprueba que el resultado es idéntico. `tests/turns.test.mjs` cubre las fases, los turnos de 8 s, la explosión de la bomba, la desactivación entre turnos, los GO en vivo (incluido el que llega tarde), la elección de entrada, el ruido y la vista de cada bando. `tests/round.test.mjs` cubre la desactivación, las condiciones de victoria y la coherencia de los datos del mapa. `tests/entries.test.mjs` cubre los códigos GO y cada tipo de entrada, y repite una ronda con entradas coordinadas para comprobar el determinismo. Algunos comentarios del código mencionan `docs/ARCHITECTURE.md`, `docs/BRIEF.md` y `tests/sim-plans.mjs`, que no venían en el zip original.
+`tests/determinism.test.mjs` juega rondas completas por turnos sin pantalla dos veces con la misma semilla (una por sitio) y comprueba que el resultado es idéntico. `tests/turns.test.mjs` cubre las fases, los turnos de 8 s, la explosión de la bomba, la desactivación entre turnos, los GO en vivo (incluido el que llega tarde), la elección de entrada, el ruido y la vista de cada bando. `tests/round.test.mjs` cubre la desactivación, las condiciones de victoria y la coherencia de los datos del mapa. `tests/entries.test.mjs` cubre los códigos GO y cada tipo de entrada, y repite una ronda con entradas coordinadas para comprobar el determinismo. `tests/prep.test.mjs` cubre la compra, la preparación del defensor (sitio, posiciones, vigilancia, barricadas), la de la IA, romper y volar barricadas, el dron (puertas, barricadas, lo que marca, derribo, tiempo, determinismo) y el cambio de entrada en la primera planificación. Algunos comentarios del código mencionan `docs/ARCHITECTURE.md`, `docs/BRIEF.md` y `tests/sim-plans.mjs`, que no venían en el zip original.

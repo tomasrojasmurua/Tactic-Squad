@@ -9,9 +9,9 @@
 // scratch buffers. A pooled color is valid until 16 more are requested,
 // which is always enough because ShapeBatch consumes colors immediately.
 import { HEIGHTS, OVERLAY } from '../../config/render.js';
-import { ENTRY, MOVE, ROUND, NOISE } from '../../config/balance.js';
+import { ENTRY, MOVE, ROUND, NOISE, DRONE } from '../../config/balance.js';
 import { teamView } from '../../sim/view.js';
-import { hexToRgb } from '../../core/math.js';
+import { hexToRgb, lerp, lerpAngle } from '../../core/math.js';
 import { grenadeAt } from '../../sim/queries.js';
 import { ShaderProgram } from '../gl/ShaderProgram.js';
 import { ShapeBatch } from '../gl/ShapeBatch.js';
@@ -21,6 +21,8 @@ import { ContactMarkers } from './ContactMarkers.js';
 import { rgba, BLACK, WHITE, withAlpha } from './overlayColors.js';
 
 const LOOK_PREVIEW_RGB = [1, 1, 1];
+const DRONE_RGB = hexToRgb('#8fe36b');
+const BARRICADE_RGBA = [1, 0.69, 0.18, 0.95];
 const SIDES = [-1, 1];
 
 export class OverlayLayer {
@@ -147,6 +149,8 @@ export class OverlayLayer {
     for (const u of order) this.route(t, u, unitLayer.poseInto(u, frame.alpha, this.pose), mpp, time, u.id === selected);
 
     this.grenades(t, sim, frame, mpp);
+    if (own === 'attackers') this.drone(t, g, sim, vision, frame, mpp, time);
+    this.barricades(t, sim, own, mpp);
     if (session.phase !== 'title') this.noise(g, teamView(sim, own), sim.turn, mpp, time);
     if (editable) this.planningPreview(t, sim, session, mpp);
     this.markers.contacts(t, sim, unitLayer, frame, mpp, own);
@@ -155,6 +159,58 @@ export class OverlayLayer {
 
     g.upload();
     t.upload();
+  }
+
+  /** The attackers' recon drone (drone phase): body, spinning rotors, its cone; a red cross where it was shot down. */
+  drone(t, g, sim, vision, frame, mpp, time) {
+    const d = sim.drone;
+    if (!d) return;
+    if (!d.active) {
+      if (d.end === 'destroyed' && sim.turn <= 1) {
+        const k = 0.16;
+        t.line(d.x - k, d.y - k, d.x + k, d.y + k, 3 * mpp, rgba(1, 0.25, 0.2, 0.85));
+        t.line(d.x - k, d.y + k, d.x + k, d.y - k, 3 * mpp, rgba(1, 0.25, 0.2, 0.85));
+      }
+      return;
+    }
+    const x = lerp(d.prevX, d.x, frame.alpha);
+    const y = lerp(d.prevY, d.y, frame.alpha);
+    const f = lerpAngle(d.prevFacing, d.facing, frame.alpha);
+    const poly = vision.polygons.get(-1);
+    if (poly) this.coneEdges(t, poly, DRONE_RGB, true, DRONE.fov);
+    g.circle(x + 0.05, y + 0.07, 0.3, BLACK(0.35), 16, BLACK(0));
+    const r = DRONE.radius;
+    for (let i = 0; i < 4; i++) {
+      const a = f + Math.PI / 4 + (i * Math.PI) / 2;
+      const rx = x + Math.cos(a) * r * 1.25;
+      const ry = y + Math.sin(a) * r * 1.25;
+      t.circle(rx, ry, r * 0.55, BLACK(0.55), 12);
+      const spin = time * 40 + i;
+      t.line(rx - Math.cos(spin) * r * 0.5, ry - Math.sin(spin) * r * 0.5, rx + Math.cos(spin) * r * 0.5, ry + Math.sin(spin) * r * 0.5, 1.6 * mpp, withAlpha(DRONE_RGB, 0.8));
+    }
+    t.circle(x, y, r * 0.75, rgba(0.08, 0.1, 0.12, 0.95), 16);
+    t.ring(x, y, r * 0.75, 2 * mpp, withAlpha(DRONE_RGB, 1), 20);
+    t.line(x, y, x + Math.cos(f) * r * 1.6, y + Math.sin(f) * r * 1.6, 2.4 * mpp, withAlpha(DRONE_RGB, 1));
+  }
+
+  /** Barricades the viewer's side knows of: a hatched bar across the doorway. */
+  barricades(t, sim, own, mpp) {
+    for (const door of sim.doors) {
+      if (!door.barricaded || (own === 'attackers' && !sim.intel.barricades.has(door.def.index))) continue;
+      const d = door.def;
+      const tx = d.normalY; // along the wall
+      const ty = -d.normalX;
+      const h = d.length / 2 + 0.08;
+      const nx = d.normalX * 0.2;
+      const ny = d.normalY * 0.2;
+      t.line(d.cx - tx * h, d.cy - ty * h, d.cx + tx * h, d.cy + ty * h, 7 * mpp, BLACK(0.6));
+      t.line(d.cx - tx * h, d.cy - ty * h, d.cx + tx * h, d.cy + ty * h, 4 * mpp, BARRICADE_RGBA);
+      for (let k = -1; k <= 1; k++) {
+        const cx = d.cx + tx * h * 0.6 * k;
+        const cy = d.cy + ty * h * 0.6 * k;
+        t.line(cx - nx - tx * 0.12, cy - ny - ty * 0.12, cx + nx + tx * 0.12, cy + ny + ty * 0.12, 3 * mpp, BARRICADE_RGBA);
+      }
+    }
   }
 
   coneEdges(t, poly, c, selected, fov) {

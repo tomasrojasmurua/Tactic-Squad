@@ -6,7 +6,7 @@ import { FLOW } from '../config/ui.js';
 import { isArmed } from './Session.js';
 
 /** Requests that need a confirming repeat, and the phases where they do. */
-const IN_ROUND = ['buy', 'prep', 'planning', 'running', 'paused'];
+const IN_ROUND = ['buy', 'prep', 'drone', 'planning', 'running', 'paused'];
 const DESTRUCTIVE = Object.freeze({ restart: IN_ROUND, newPlan: IN_ROUND, ready: ['prep', 'planning'] });
 
 /** 'go' (act now) | 'armed' (wait for the repeat). */

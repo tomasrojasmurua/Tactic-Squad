@@ -39,6 +39,7 @@ export class FxDirector {
     bus.on(EV.HOLD_REACHED, (e) => this.pingUnit(e.unitId, 'hold'));
     bus.on(EV.GRENADE_DETONATE, (e) => (e.kind === 'flash' ? this.onFlash(e) : this.onBlast(e.x, e.y, 0, 0, FX.shake.frag)));
     bus.on(EV.CHARGE_BLAST, (e) => this.onBreach(e));
+    bus.on(EV.BARRICADE_BROKEN, (e) => e.how === 'bash' && this.onDoor({ ...e, mode: 'kick' }));
   }
 
   /** True for a unit of the side this screen plays. */

@@ -17,6 +17,7 @@ export const FLOW_TEXTS = Object.freeze({
     confirm_newPlan: { touch: 'Repite para empezar un plan nuevo (se borra el actual)', desk: 'Pulsa N otra vez para empezar un plan nuevo' },
     replayDiverged: (n) => `Plan cambiado: ${n === 1 ? 'esta fase ya no se repite' : `estas ${n} fases ya no se repiten`}; sigues tú`,
     noPause: 'Un turno no se pausa: dura 8 s y luego vuelves a planificar',
+    droneReplay: 'Reintento: el dron repite su recorrido grabado',
     goInTurn: 'Los GO se dan durante el turno: pulsa LISTO y luego A, B o C cuando quieras',
     goReplay: 'Este turno es la repetición de tu plan: tomas el control en la próxima planificación',
     planFirst: 'Las órdenes se dan al planificar: espera al fin del turno',
