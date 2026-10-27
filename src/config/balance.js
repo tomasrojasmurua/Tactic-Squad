@@ -324,3 +324,12 @@ export const CAMERA = Object.freeze({
 
 /** Explorador (sim/abilities/scoutPulse.js): at each turn's end, defenders this close are detected through walls. */
 export const SCOUT = Object.freeze({ radius: 8 });
+
+/**
+ * Match against the AI (session/Match.js): first to `toWin` rounds (best of 7).
+ * Each operator carries his class, his money and — if he lived — his unused
+ * gear into the next round, and earns per round: `win` or `loss` (+`lossBonus`
+ * per round lost in a row, up to `lossBonusMax` rounds), `kill` per defender
+ * he downed, `defuse` if he defused. Money is capped at `cap`.
+ */
+export const MATCH = Object.freeze({ toWin: 4, win: 600, loss: 300, lossBonus: 100, lossBonusMax: 3, kill: 100, defuse: 200, cap: 2000 });

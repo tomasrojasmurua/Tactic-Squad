@@ -9,7 +9,7 @@ import { DEFAULT_DEFENDER_ROLE } from '../config/operators.js';
 import { initAbilities, updateAbilities } from './abilities/index.js';
 import { compileMap } from './mapCompiler.js';
 import { World } from './World.js';
-import { createUnit } from './units.js';
+import { createUnit, applyRole, roleGear } from './units.js';
 import { createDoorState, updateDoors } from './doors.js';
 import { updateEntries } from './entries.js';
 import { updateSmokes } from './smoke.js';
@@ -93,9 +93,21 @@ export class Simulation {
     this.bomb = createBomb(this.site);
     this.cameras = [];
     placeCameras(this); // sim/cameras.js: the defenders' cameras on this site
-    if (phases) initMoney(this); // the buy phase: each attacker's money after his role's gear
+    if (loadout) this.applyLoadout(loadout); // a match: class, money and gear carried over
+    else if (phases) initMoney(this); // the buy phase: each attacker's money after his role's gear
     initAbilities(this);
     this.attackAi = createAttackAi(this); // sim/aiAttack.js: the commander of an AI attacking side
+  }
+
+  /** Per attacker slot {role?, money, gear?} (session/Match.js): who he is and what he brings. */
+  applyLoadout(loadout) {
+    this.teams.attackers.forEach((u, i) => {
+      const l = loadout[i];
+      if (!l) return;
+      if (l.role && l.role !== u.role) applyRole(u, l.role);
+      u.gear = { ...roleGear(u.role), ...(l.gear || {}) };
+      u.money = l.money;
+    });
   }
 
   spawnUnits() {

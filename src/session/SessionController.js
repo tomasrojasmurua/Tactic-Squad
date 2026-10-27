@@ -27,6 +27,8 @@ import { PhaseClock } from './PhaseClock.js';
 import { AutoPause } from './AutoPause.js';
 import { Tutorial } from './Tutorial.js';
 
+import { createMatch, matchLoadout, endMatchRound } from './Match.js';
+
 export class SessionController {
   /**
    * @param deps.loop       FixedLoop (setSimulating)
@@ -112,7 +114,10 @@ export class SessionController {
       sim.advancePhase();
     }
     if (sim.phase === 'end') {
-      if (this.session.phase !== 'ended') this.countRound();
+      if (this.session.phase !== 'ended') {
+        this.countRound();
+        if (this.session.mode === 'match' && this.session.match) endMatchRound(this.session.match, sim); // score and pay, once
+      }
       this.postRoundTimer = SIM.postRoundSeconds;
       this.setPhase('ended');
       return;
@@ -143,7 +148,8 @@ export class SessionController {
   roundOptions() {
     const s = this.session;
     const tutorial = s.mode === 'tutorial' ? { site: TUTORIAL.site, defenders: TUTORIAL.defenders } : {};
-    return { ...tutorial, stopOnContact: s.mode === 'tutorial' || s.progress.stopOnContact };
+    const loadout = s.mode === 'match' && s.match ? { loadout: matchLoadout(s.match) } : {};
+    return { ...tutorial, ...loadout, stopOnContact: s.mode === 'tutorial' || s.progress.stopOnContact };
   }
 
   /** Help option: the turn ends when the squad sees a new enemy (from the next round / attempt on). */
@@ -167,6 +173,7 @@ export class SessionController {
   computeLocks() {
     const s = this.session;
     if (s.mode === 'tutorial') return ['buy', 'prep', 'drone'];
+    if (s.mode === 'match') return []; // a match is played whole: its money is spent in the buy phase
     if (s.progress.fullRound) return [];
     const n = s.progress.roundsDone;
     return Object.keys(FLOW.unlockAfterRounds).filter((p) => n < FLOW.unlockAfterRounds[p]);
@@ -174,7 +181,7 @@ export class SessionController {
 
   /** A round of the play mode finished: one more toward unlocking the phases before the assault. */
   countRound() {
-    if (this.session.mode !== 'play') return;
+    if (this.session.mode !== 'play' && this.session.mode !== 'match') return;
     const p = this.session.progress;
     p.roundsDone++;
     savePref(FLOW.storageKeys.roundsDone, p.roundsDone);
@@ -349,14 +356,24 @@ export class SessionController {
     const session = this.session;
     const key = action === 'toggle' || action === 'execute' ? 'ready' : action; // LISTO's other names
     if (session.confirm.action && session.confirm.action !== key) session.confirm.action = null;
+    // A match is played forward: no retries of a round (its result counts).
+    if (session.mode === 'match' && (action === 'restart' || action === 'newPlan' || action === 'reroll')) {
+      if (phase === 'ended') this.notice('matchNoRetry');
+      return;
+    }
     switch (action) {
       case 'start':
       case 'tutorial':
-        // Main menu: "Jugar contra la IA" (start) or "Tutorial guiado".
+      case 'match':
+        // Main menu: "Jugar contra la IA" (start), "Partida al mejor de 7" (match) or "Tutorial guiado".
         if (phase !== 'title') return;
         this.audio.unlock();
         if (session.touch) requestFullscreenLandscape();
-        this.beginMode(action === 'tutorial' ? 'tutorial' : 'play');
+        this.beginMode(action === 'start' ? 'play' : action);
+        return;
+      case 'nextRound':
+        // Match result screen: the next round (or, when it is over, a new match).
+        if (phase === 'ended' && session.mode === 'match') this.nextMatchRound();
         return;
       case 'menu':
         // Back to the main menu (during the round, only after a confirming second press).
@@ -528,7 +545,10 @@ export class SessionController {
   beginMode(mode) {
     this.session.mode = mode;
     this.locks = null;
-    this.seed = mode === 'tutorial' ? TUTORIAL.seed : SIM.seed;
+    this.session.match = mode === 'match' ? createMatch() : null;
+    // A match: every round its own scenario (site, spread...), a fresh series each match.
+    this.matchSeed = mode === 'match' ? (Math.random() * 1e9) | 0 : 0;
+    this.seed = mode === 'tutorial' ? TUTORIAL.seed : mode === 'match' ? this.matchSeed + 1 : SIM.seed;
     this.recorder.beginAttempt([]);
     this.session.replay.attempt = 0;
     this.restart(this.seed); // still on the menu: no phase yet
@@ -539,10 +559,28 @@ export class SessionController {
     this.sound('select');
   }
 
+  /** Match: the next round with what everyone carries over (a new match when this one is decided). */
+  nextMatchRound() {
+    const m = this.session.match;
+    if (m.over) {
+      this.setPhase('title');
+      this.beginMode('match');
+      return;
+    }
+    this.locks = null;
+    this.seed = this.matchSeed + m.round;
+    this.recorder.beginAttempt([]);
+    this.session.replay.attempt = 0;
+    this.restart(this.seed); // Game.newRound: puts the screen in the new round's first phase
+    this.framing.frameStart();
+    this.sound('select');
+  }
+
   /** Back to the main menu: the round is dropped (a new one waits behind the menu). */
   toMenu() {
     this.tutorial.stop();
     this.session.mode = 'play';
+    this.session.match = null;
     this.locks = null;
     this.setPhase('title');
     this.seed = SIM.seed;

@@ -865,3 +865,11 @@ body.touch .phase-panel .pp-buy-btn { padding: 2px 5px; font-size: 10.5px; lette
 body.touch .phase-panel .pp-buy-btn .p { font-size: 9.5px; }
 body.touch .phase-panel .pp-sell { min-width: 24px; padding: 2px 4px; }
 body.touch .phase-panel .pp-class { min-height: 26px; padding: 1px 6px; font-size: 9.5px; letter-spacing: 0.03em; }
+
+/* Match (best of 7): score line over the result, the pay, and only NEXT ROUND / MENU (no retries). */
+.result .match-line { font-size: 13px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cyan); margin-bottom: 4px; }
+.result .match-line:empty { display: none; }
+.result .match-pay { margin-top: 8px; font-size: 12.5px; color: var(--ok); }
+.result .next-round { display: none; }
+.result.in-match .next-round { display: inline-flex; }
+.result.in-match .retry-plan, .result.in-match .new-plan, .result.in-match .reroll { display: none; }

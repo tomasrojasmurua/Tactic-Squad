@@ -16,6 +16,8 @@ export const FLOW_TEXTS = Object.freeze({
   menu: {
     play: 'Jugar contra la IA',
     playNote: 'Asalto por turnos; compra, entrada y dron se suman a medida que juegas',
+    match: 'Partida al mejor de 7',
+    matchNote: 'Ronda tras ronda contra la IA: el dinero y el equipo de los vivos pasan a la siguiente',
     tutorial: 'Tutorial guiado',
     tutorialNote: 'Paso a paso, en una ronda más fácil',
     tutorialNew: 'Recomendado para empezar',
@@ -45,6 +47,7 @@ export const FLOW_TEXTS = Object.freeze({
     tutorialSkipped: 'Tutorial omitido (puedes repetirlo desde el menú)',
     tutorialFirst: 'Primero haz el paso del tutorial (recuadro de la izquierda)',
     tossAim: { touch: 'Toca el mapa donde quieres que caiga (máx. 9 m, se corta en las paredes)', desk: 'Haz clic donde quieres que caiga (máx. 9 m, se corta en las paredes)' },
+    matchNoRetry: 'En una partida no se repiten rondas: SIGUIENTE RONDA',
     contactCut: '¡Contacto! El turno se cortó para que puedas reaccionar',
     contactOn: 'El turno se cortará al ver un enemigo (desde el próximo plan)',
     contactOff: 'Los turnos duran siempre 5 s (desde el próximo plan)',

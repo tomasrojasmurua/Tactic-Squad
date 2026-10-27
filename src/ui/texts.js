@@ -111,6 +111,18 @@ export const T = Object.freeze({
     bombUnknown: 'Bomba: ¿A o B?',
     bombAt: (site) => `Bomba: sitio ${site}`,
     bombDefused: 'Bomba: desactivada',
+    match: (round, a, d) => `Ronda ${round} · ${a}–${d}`,
+  },
+  match: {
+    next: 'SIGUIENTE RONDA',
+    again: 'NUEVA PARTIDA',
+    score: (a, d) => `Atacantes ${a} – ${d} Defensores`,
+    round: (n) => `Ronda ${n}`,
+    won: '¡PARTIDA GANADA!',
+    lost: 'PARTIDA PERDIDA',
+    toWin: (n) => `Gana el primero en llegar a ${n}`,
+    pay: (name, n) => `${name} +$${n}`,
+    payTitle: 'Cobran para la próxima',
   },
 
   /** Squad route (sim/follow.js): the squad panel's button. */

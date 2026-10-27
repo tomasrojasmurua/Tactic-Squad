@@ -44,6 +44,7 @@ export function createSession({ touch }) {
     tutorial: { active: false, step: 0, id: null, info: false, card: false, count: 0, done: false }, // session/Tutorial.js
     // Per-device progress (session/storage.js): finished rounds unlock the phases before the assault.
     progress: { roundsDone: 0, fullRound: false, stopOnContact: true },
+    match: null, // a best-of-7 against the AI (session/Match.js), mode 'match'
     locked: [], // round phases skipped in this attempt ('buy' | 'prep' | 'drone'), set by SessionController
     hoverUnitId: -1,
     helpOpen: false,

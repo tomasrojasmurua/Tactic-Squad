@@ -5,6 +5,7 @@ import { teamUnits } from '../sim/queries.js';
 import { el, setText, toggle, formatTime } from './dom.js';
 import { T } from './texts.js';
 import { buildDebrief } from './debriefText.js';
+import { MATCH } from '../config/balance.js';
 
 export class Screens {
   constructor(root, bus) {
@@ -20,6 +21,7 @@ export class Screens {
         <p class="pitch">${M.pitch}</p>
         <div class="menu">
           <button class="btn primary menu-btn start"><span class="mb-l">${M.play}</span><span class="mb-n">${M.playNote}</span></button>
+          <button class="btn menu-btn match"><span class="mb-l">${M.match}</span><span class="mb-n">${M.matchNote}</span></button>
           <button class="btn menu-btn tutorial"><span class="mb-l">${M.tutorial}</span><span class="mb-n">${M.tutorialNote}</span><span class="mb-badge"></span></button>
         </div>
         <ol class="howto desk-only">${T.howTo.desk.map(([n, v]) => `<li><b>${n}</b>${v}</li>`).join('')}</ol>
@@ -27,6 +29,7 @@ export class Screens {
       </div>`;
     this.title.querySelector('.start').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'start' }));
     this.title.querySelector('.tutorial').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'tutorial' }));
+    this.title.querySelector('.match').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'match' }));
     this.title.addEventListener('pointerdown', (e) => e.stopPropagation());
     this.tutorialBadge = this.title.querySelector('.mb-badge');
     this.tutorialBtn = this.title.querySelector('.tutorial');
@@ -34,6 +37,7 @@ export class Screens {
     this.result = el('div', 'screen result hidden');
     this.result.innerHTML = `
       <div class="result-box">
+        <div class="match-line"></div>
         <h2></h2>
         <div class="reason"></div>
         <div class="stats">
@@ -43,7 +47,9 @@ export class Screens {
           <div>${T.result.stats.accuracy}<b class="st-acc"></b></div>
         </div>
         <div class="why"><div class="why-title">${T.result.whyLost}</div><ul class="why-list"></ul><div class="tip"></div></div>
+        <div class="match-pay"></div>
         <div class="result-actions">
+          <button class="btn primary next-round"></button>
           <button class="btn primary retry-plan">${T.result.retryButton}</button>
           <button class="btn new-plan">${T.result.newPlanButton}</button>
           <button class="btn reroll">${T.flow.rerollButton}</button>
@@ -58,6 +64,7 @@ export class Screens {
     actions.style.pointerEvents = 'auto';
     actions.style.display = 'none'; // shown only with the result (update): never steals touches
     actions.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.result.querySelector('.next-round').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'nextRound' }));
     this.result.querySelector('.retry-plan').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'restart' }));
     this.result.querySelector('.new-plan').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'newPlan' }));
     this.result.querySelector('.reroll').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'reroll' }));
@@ -108,17 +115,25 @@ export class Screens {
     }
     const showResult = session.phase === 'ended' && sim.outcome;
     toggle(this.result, 'hidden', !showResult);
-    if (showResult && !this.resultShown) this.fillResult(sim, session.team);
+    if (showResult && !this.resultShown) this.fillResult(sim, session.team, session.mode === 'match' ? session.match : null);
     if (!!showResult !== this.resultShown) this.resultActions.style.display = showResult ? '' : 'none';
     this.resultShown = !!showResult;
   }
 
-  fillResult(sim, team) {
+  fillResult(sim, team, match) {
     const o = sim.outcome;
     const win = o.winner === team;
     this.result.classList.toggle('win', win);
     this.result.classList.toggle('lose', !win);
-    setText(this.result.querySelector('h2'), win ? T.result.win : T.result.lose);
+    this.result.classList.toggle('in-match', !!match);
+    setText(this.result.querySelector('h2'), match && match.over ? (match.over === team ? T.match.won : T.match.lost) : win ? T.result.win : T.result.lose);
+    // A match: the score, what each one earned, and the way forward (no retries).
+    const last = match && match.history[match.history.length - 1];
+    setText(this.result.querySelector('.match-line'), match ? `${T.match.round(last.round)} · ${T.match.score(match.score.attackers, match.score.defenders)}` : '');
+    const pay = this.result.querySelector('.match-pay');
+    pay.hidden = !match || !!match.over;
+    if (match && !match.over) setText(pay, `${T.match.payTitle}: ${teamUnits(sim, team).map((u, i) => T.match.pay(u.name, last.income[i])).join(' · ')}`);
+    setText(this.result.querySelector('.next-round'), match && match.over ? T.match.again : T.match.next);
     setText(this.result.querySelector('.reason'), T.result.reason[o.reason]);
     const squad = teamUnits(sim, team);
     const kills = squad.reduce((s, u) => s + u.stats.kills, 0);
@@ -129,7 +144,7 @@ export class Screens {
     setText(this.result.querySelector('.st-losses'), squad.filter((u) => !u.alive).length);
     setText(this.result.querySelector('.st-acc'), shots ? `${Math.round((hits / shots) * 100)}%` : '—');
 
-    setText(this.result.querySelector('.retry'), this.touch ? T.result.retryTouch : T.result.retry);
+    setText(this.result.querySelector('.retry'), match ? T.match.toWin(MATCH.toWin) : this.touch ? T.result.retryTouch : T.result.retry);
 
     // Why: one line per fallen operator / outcome note, plus the tip that matters most.
     const { lines, tip } = buildDebrief(sim, team);
