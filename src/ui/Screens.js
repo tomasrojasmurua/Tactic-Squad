@@ -61,8 +61,10 @@ export class Screens {
     this.help.innerHTML = `
       <div class="help-box">
         <h3>${T.help.title}</h3>
-        <table class="desk-only">${T.help.rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
-        <table class="touch-only">${T.touch.rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
+        <div class="help-scroll">
+          <table class="desk-only">${T.help.rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
+          <table class="touch-only">${T.touch.rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
+        </div>
         <div class="help-options"><button class="btn stop-contact"></button></div>
         <div class="help-actions"><button class="btn primary close">${T.help.close}</button><button class="btn to-menu">${T.flow.menu.button}</button></div>
       </div>`;

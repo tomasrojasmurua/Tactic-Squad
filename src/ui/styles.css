@@ -352,7 +352,8 @@ body.touch .help-box { max-height: calc(100dvh - 66px - var(--sat)); overflow: a
 .help-box .btn { margin-top: 16px; }
 /* Options + Cerrar share the last row and stay pinned at the bottom when the table scrolls (phones). */
 .help-box { display: grid; grid-template-columns: 1fr auto; column-gap: 8px; align-items: end; }
-.help-box > h3, .help-box > table { grid-column: 1 / -1; }
+.help-box > h3, .help-box > .help-scroll { grid-column: 1 / -1; }
+.help-box .help-scroll table { width: 100%; }
 .help-box .help-options, .help-box .btn.close { position: sticky; bottom: 0; }
 .help-box .help-options { background: rgba(6, 7, 9, 0.98); box-shadow: 0 -10px 12px rgba(6, 7, 9, 0.95); }
 .help-box .btn.close { min-height: 44px; justify-content: center; }
@@ -979,3 +980,86 @@ body.touch .phase-panel .pp-class { min-height: 26px; padding: 1px 6px; font-siz
 .result .next-round { display: none; }
 .result.in-match .next-round { display: inline-flex; }
 .result.in-match .retry-plan, .result.in-match .new-plan, .result.in-match .reroll { display: none; }
+
+/* ------------------------------------------------------------ phone pass (landscape, height <= 520 px)
+ * Nothing cut off, finger-size targets (>= 36 px, 44 px for the main ones), and scroll where a panel
+ * can be taller than the screen. After the rules above so these win. */
+@media (max-height: 520px) {
+  /* Scroll containers: the page itself never scrolls (body: touch-action none), these do. */
+  .title .title-box, .help-box .help-scroll, .phase-panel, .tut-card.info .tc-text {
+    touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  }
+
+  /* Menu: every view fits or scrolls inside the screen, clear of the hazard stripes. */
+  .title { padding-top: 12px; padding-bottom: 12px; }
+  .title .title-box { max-height: calc(100dvh - 24px); overflow-y: auto; padding: 4px 10px 4px 0; }
+  .title-box .menu-btn { min-height: 64px; }
+  .title-box .menu-btn.back { min-height: 48px; padding: 10px 22px; }
+  .title-box .lessons .menu-btn.lesson { padding-bottom: 20px; }
+  .title-box .lessons .mb-min { bottom: 4px; }
+  .title-box .lobby .btn.lb-opt { min-height: 38px; }
+  .title-box .lobby .lb-slot .btn.lb-opt { min-height: 38px; padding: 3px 8px; }
+  .title-box .lobby .lb-ready { min-height: 48px; }
+  .title-box .lobby .lb-actions { padding-bottom: 4px; }
+
+  /* Phase banner: between the squad row (3 chips + ESCUADRA) and the utility row, wrapping instead of overlapping. */
+  .banner { left: calc(220px + var(--sal)); right: calc(318px + var(--sar)); padding: 3px 10px 4px; }
+  .banner .phase { font-size: 13px; letter-spacing: 0.12em; }
+  .banner .sub { font-size: 11px; line-height: 1.2; }
+  body.touch .banner .clock { font-size: 12px; }
+
+  /* Buy: a wide plate between the squad and the touch column, under the selected chip's name; scrolls if it must. */
+  body.touch .phase-panel:has(.pp-buy) {
+    left: calc(8px + var(--sal)); right: calc(96px + var(--sar)); top: calc(86px + var(--sat)); width: auto; transform: none;
+    max-height: calc(100dvh - 124px - var(--sat) - var(--sab)); overflow-y: auto;
+  }
+  body.touch .phase-panel .pp-items { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  body.touch .phase-panel .pp-item { min-width: 0; }
+  body.touch .phase-panel .pp-buy-btn { flex: 1 1 auto; min-width: 0; min-height: 38px; justify-content: center; overflow: hidden; white-space: nowrap; }
+  body.touch .phase-panel .pp-sell { flex: none; min-width: 34px; min-height: 38px; }
+  body.touch .phase-panel .pp-class { min-height: 34px; padding: 2px 8px; font-size: 10.5px; }
+
+  /* Defender set-up: a little wider, real targets, scrolls between the squad row and the objective line. */
+  body.touch .phase-panel.side { width: 246px; max-height: calc(100dvh - 120px - var(--sat) - var(--sab)); }
+  body.touch .phase-panel .pp-opt { min-height: 38px; font-size: 11px; }
+  /* First planning (entry): touch-size choices. */
+  body.touch .phase-panel.compact .pp-entry { min-height: 40px; }
+
+  /* Help: the table scrolls; options and the buttons stay below it, clear of the touch column. */
+  body.touch .help { padding: calc(var(--safe-phone-top) + var(--sat)) calc(96px + var(--sar)) calc(8px + var(--sab)) calc(8px + var(--sal)); }
+  body.touch .help-box {
+    display: flex; flex-direction: column; align-items: stretch; width: 100%; max-width: 680px; max-height: 100%; overflow: hidden; padding: 10px 14px 12px;
+  }
+  .help-box .help-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  .help-box .help-options, .help-box .help-actions { flex: none; position: static; box-shadow: none; }
+  .help-box .help-actions .btn { flex: 1 1 0; justify-content: center; }
+
+  /* Tutorial: an info card always shows its button; its text scrolls if it must. */
+  /* Centred with insets + margin auto (not top: 50% + translate, which caps an absolute box at half the screen). */
+  body.touch .tut-card.info {
+    display: flex; flex-direction: column; overflow: hidden; transform: none;
+    left: 0; right: 0; top: calc(8px + var(--sat)); bottom: calc(8px + var(--sab)); margin: auto; height: fit-content;
+    width: min(560px, calc(100vw - 2 * (96px + var(--sar)))); max-height: calc(100dvh - 16px - var(--sat) - var(--sab));
+  }
+  body.touch .tut-card.info.pop { animation: tutPopPhone 0.3s ease-out; }
+  body.touch .tut-card.info.hidden { display: none; }
+  body.touch .tut-card.info .tc-text { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  body.touch .tut-card.info .tc-ok { flex: none; align-self: flex-start; min-height: 44px; }
+  body.touch .tut-card .tc-skip { min-height: 36px; padding: 6px 2px 6px 10px; }
+
+  /* Waypoint menu: finger-size close and timing buttons. */
+  body.touch .entry-picker .ep-x { min-width: 36px; min-height: 34px; }
+  body.touch .wbtn { min-height: 36px; }
+
+  /* Result: its buttons are the way on. */
+  .result-box .result-actions { flex-wrap: wrap; }
+  .result-box .result-actions .btn { min-height: 44px; }
+}
+/* Narrow phones (iPhone SE / mini, small Android): slimmer utility icons so the banner keeps its room. */
+@media (max-height: 520px) and (max-width: 760px) {
+  .tbar-row { gap: 4px; }
+  .tbar-row .tbtn { min-width: 40px; width: 40px; min-height: 40px; height: 40px; }
+  .tbar-row .tbtn.restart { margin-right: 6px; }
+  .banner { right: calc(280px + var(--sar)); }
+}
+@keyframes tutPopPhone { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
