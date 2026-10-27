@@ -16,7 +16,7 @@
 //                    on the first firefight heard, falls back there and holds `look`
 // Everything here is deterministic and uses no sim.rng (the AI's barricade
 // pick hashes the seed), so a set-up cannot shift the rest of the round.
-import { BUY, PREP } from '../config/balance.js';
+import { BUY, PREP, NAV } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { pointInBox } from '../core/geom.js';
 import { WEAPONS } from '../config/weapons.js';
@@ -89,10 +89,17 @@ export function applyLayout(sim, layout) {
   });
 }
 
-/** Places a defender (in their half, on walkable ground, not on top of a teammate). Returns a REJECT code or null. */
-export function placeDefender(sim, u, x, y, facing = u.facing) {
+/**
+ * Places a defender (in their half, on walkable ground, not on top of a
+ * teammate). A point on furniture or against a wall slides to the nearest
+ * walkable spot (NAV.snapRadius), like a route point. Returns a REJECT code or null.
+ */
+export function placeDefender(sim, u, px, py, facing = u.facing) {
+  const nav = sim.world.nav;
+  const p = nav.walkable(px, py) ? { x: px, y: py } : nav.nearestWalkable(px, py, NAV.snapRadius);
+  if (!p) return 'unreachable';
+  const { x, y } = p;
   if (!inDefenderHalf(sim, x, y)) return 'outsideHalf';
-  if (!sim.world.nav.walkable(x, y)) return 'unreachable';
   const min2 = PREP.minSpacing * PREP.minSpacing;
   for (const o of sim.teams.defenders) if (o !== u && (o.x - x) ** 2 + (o.y - y) ** 2 < min2) return 'tooClose';
   moveTo(u, x, y, facing);

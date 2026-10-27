@@ -10,7 +10,7 @@ export class Screens {
   constructor(root, bus) {
     this.bus = bus;
 
-    // Main menu: play a round against the AI, or the guided tutorial (session/Tutorial.js).
+    // Main menu: a round against the AI on either side, or the guided tutorial (session/Tutorial.js).
     const M = T.flow.menu;
     this.title = el('div', 'screen title');
     this.title.innerHTML = `
@@ -20,12 +20,14 @@ export class Screens {
         <p class="pitch">${M.pitch}</p>
         <div class="menu">
           <button class="btn primary menu-btn start"><span class="mb-l">${M.play}</span><span class="mb-n">${M.playNote}</span></button>
+          <button class="btn primary menu-btn defend"><span class="mb-l">${M.defend}</span><span class="mb-n">${M.defendNote}</span></button>
           <button class="btn menu-btn tutorial"><span class="mb-l">${M.tutorial}</span><span class="mb-n">${M.tutorialNote}</span><span class="mb-badge"></span></button>
         </div>
         <ol class="howto desk-only">${T.howTo.desk.map(([n, v]) => `<li><b>${n}</b>${v}</li>`).join('')}</ol>
         <div class="hint desk-only">${T.startHint}</div>
       </div>`;
     this.title.querySelector('.start').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'start' }));
+    this.title.querySelector('.defend').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'defend' }));
     this.title.querySelector('.tutorial').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'tutorial' }));
     this.title.addEventListener('pointerdown', (e) => e.stopPropagation());
     this.tutorialBadge = this.title.querySelector('.mb-badge');
@@ -106,7 +108,7 @@ export class Screens {
     this.result.classList.toggle('win', win);
     this.result.classList.toggle('lose', !win);
     setText(this.result.querySelector('h2'), win ? T.result.win : T.result.lose);
-    setText(this.result.querySelector('.reason'), T.result.reason[o.reason]);
+    setText(this.result.querySelector('.reason'), (team === 'defenders' ? T.result.reasonDefend : T.result.reason)[o.reason]);
     const squad = teamUnits(sim, team);
     const kills = squad.reduce((s, u) => s + u.stats.kills, 0);
     const shots = squad.reduce((s, u) => s + u.stats.shots, 0);

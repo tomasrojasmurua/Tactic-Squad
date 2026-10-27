@@ -10,9 +10,10 @@ import { EV } from './core/events.js';
 import { FixedLoop } from './core/FixedLoop.js';
 import { SIM } from './config/balance.js';
 import { TUTORIAL } from './config/ui.js';
+import { controllersFor } from './config/squad.js';
 import { MAPS, DEFAULT_MAP } from './data/maps/index.js';
 import { Simulation } from './sim/Simulation.js';
-import { createSession, resetSessionPreviews } from './session/Session.js';
+import { createSession, resetSessionPreviews, pilotsDrone } from './session/Session.js';
 import { SessionController } from './session/SessionController.js';
 import { Renderer } from './render/Renderer.js';
 import { AudioEngine } from './audio/AudioEngine.js';
@@ -93,11 +94,12 @@ export class Game {
 
   /**
    * Fresh simulation (same map; the session picks the seed: a retry keeps it); listeners reset on EV.ROUND_RESET.
-   * The guided tutorial's round is easier: its site and fewer defenders (config/ui.js TUTORIAL).
+   * The player's side (session.team) decides who the AI plays. The guided
+   * tutorial's round is easier: its site and fewer defenders (config/ui.js TUTORIAL).
    */
   newRound(seed = SIM.seed) {
     const tutorial = this.session.mode === 'tutorial' ? { site: TUTORIAL.site, defenders: TUTORIAL.defenders } : {};
-    this.sim = new Simulation(this.mapDef, { seed, ...tutorial });
+    this.sim = new Simulation(this.mapDef, { seed, controllers: controllersFor(this.session.team), ...tutorial });
     this.attempt++;
     this.flow.onRoundStart();
     resetSessionPreviews(this.session);
@@ -127,7 +129,7 @@ export class Game {
       this.sim.flushCommands();
       this.flushEvents();
     }
-    const droning = this.session.phase === 'drone';
+    const droning = this.session.phase === 'drone' && pilotsDrone(this.session);
     this.cameraCtl.enabled = !this.session.helpOpen && !droning; // WASD drive the drone
     this.cameraCtl.update(dt);
     if (droning) this.framing.followDrone(this.sim, dt);

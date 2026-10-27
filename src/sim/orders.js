@@ -182,6 +182,7 @@ function changed(sim, unit, kind) {
 
 function addWaypoint(sim, unit, { x, y, user = true, quiet = false }) {
   if (unit.route.length >= NAV.maxRoutePoints) return quiet ? undefined : reject(sim, unit, REJECT.routeTooLong);
+  if (unit.team === 'defenders') holdOnArrival(unit);
   const from = routeTail(unit);
   const p = snapToDoorway(sim.world, x, y);
   const path = sim.world.nav.findPath(from.x, from.y, p.x, p.y, NAV.snapRadius);
@@ -192,6 +193,18 @@ function addWaypoint(sim, unit, { x, y, user = true, quiet = false }) {
   });
   markDoors(sim, unit, start);
   changed(sim, unit, 'add');
+}
+
+/**
+ * A defender sent somewhere by his player gives up his watch order's
+ * movement (patrol, sweep, fallback): from then on he holds where he ends
+ * up, facing the look set there, and still turns to noise if he did.
+ */
+function holdOnArrival(unit) {
+  const b = unit.behavior;
+  if (!b || (b.type === 'hold' && !b.rotate)) return;
+  unit.behavior = { type: 'hold', reactsToNoise: b.reactsToNoise !== false };
+  unit.ai.rotating = null;
 }
 
 /**

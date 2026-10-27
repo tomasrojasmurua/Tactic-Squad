@@ -13,10 +13,12 @@ export const enemyTeam = (team) => (team === TEAMS[0] ? TEAMS[1] : TEAMS[0]);
 
 /**
  * Is this unit run by the sim's unit AI (sim/ai.js: watch behaviors, ears,
- * reflexes)? Only the defenders of an AI side: an AI attacking side is a
- * commander (sim/aiAttack.js) that gives its operators a player's orders.
+ * reflexes)? Every defender, whoever set him up: his watch order keeps
+ * working on its own during the assault (sim/prep.js). The attackers never:
+ * an AI attacking side is a commander (sim/aiAttack.js) that gives its
+ * operators a player's orders.
  */
-export const isAiControlled = (sim, u) => u.team === 'defenders' && sim.controllers.defenders === 'ai';
+export const isAiControlled = (sim, u) => u.team === 'defenders';
 
 /** First side whose orders come from a human (default for the GO / HUD questions), or null. */
 export function humanTeam(sim) {

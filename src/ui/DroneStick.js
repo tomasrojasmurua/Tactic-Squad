@@ -4,6 +4,7 @@
 import { EV } from '../core/events.js';
 import { el, toggle, setStyle } from './dom.js';
 import { T } from './texts.js';
+import { pilotsDrone } from '../session/Session.js';
 
 export class DroneStick {
   constructor(root, bus) {
@@ -48,7 +49,7 @@ export class DroneStick {
   }
 
   update(session) {
-    const on = session.phase === 'drone' && !session.replay.exec && !session.helpOpen;
+    const on = session.phase === 'drone' && pilotsDrone(session) && !session.replay.exec && !session.helpOpen;
     toggle(this.node, 'on', on);
     if (!on && this.pointer >= 0) {
       this.pointer = -1;

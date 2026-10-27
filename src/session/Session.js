@@ -30,7 +30,7 @@ export function createSession({ touch }) {
   return {
     phase: 'title',
     mode: 'play', // 'play' (against the AI) | 'tutorial' (the guided round: config/ui.js TUTORIAL)
-    team: PLAYER_TEAM, // the side this player commands (orders are stamped with it)
+    team: PLAYER_TEAM, // the side this player commands (orders are stamped with it); the menu picks it, the AI plays the other
     selectedId: -1, // unit id of the player's side, -1 = none
     // The waypoint the entry picker edits when it is not the last one: a "?" door point the
     // player tapped ({unitId, index}), null = the selected operator's last waypoint.
@@ -77,6 +77,12 @@ export function targetIndex(session, u) {
   const ask = u.route.findIndex((p) => p.ask);
   return ask >= 0 ? ask : lastUserIndex(u);
 }
+
+/** Does this player drive the recon drone (the attackers' side)? A defender only watches it come. */
+export const pilotsDrone = (session) => session.team === 'attackers';
+
+/** The defender's set-up: preparation phase, playing the defenders (place, watch orders, site, barricades). */
+export const isDefenderSetup = (session) => session.phase === 'prep' && session.team === 'defenders';
 
 /** Phases where time is stopped and the player is planning. */
 export const isPlanningTime = (session) => session.phase === 'prep' || session.phase === 'planning';

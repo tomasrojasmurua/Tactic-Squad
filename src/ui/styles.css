@@ -556,7 +556,7 @@ body.touch .weapon-plate { left: var(--sal); }
   .title-box .howto li b { width: 18px; height: 18px; font-size: 11px; transform: translateY(3px); }
   .title-box .pitch { font-size: 13px; margin-top: 10px; max-width: 440px; line-height: 1.4; }
   .title-box .menu { margin-top: 14px; gap: 10px; }
-  .title-box .menu-btn { width: 250px; min-height: 64px; padding: 10px 16px; }
+  .title-box .menu-btn { width: 200px; min-height: 60px; padding: 8px 14px; }
   .title-box .menu-btn .mb-l { font-size: 16px; }
   .title-box .menu-btn .mb-n { font-size: 11px; }
   .title-box .hint { font-size: 11px; margin-top: 6px; }
@@ -709,6 +709,19 @@ body.touch .phase-panel .pp-buy { grid-template-columns: 1fr auto; flex: 1 1 100
 body.touch .phase-panel .pp-buy .pp-role { display: none; }
 body.touch .phase-panel .pp-buy-btn, body.touch .phase-panel .pp-sell { min-height: 32px; }
 /* First planning: the entry, compact and out of the way. */
+/* The defender's set-up: docked on the right, clear of the building. */
+.phase-panel.side { left: auto; right: 16px; transform: none; width: 264px; padding: 8px 12px 10px; }
+.phase-panel .pp-setup { display: flex; flex-direction: column; gap: 4px; }
+.phase-panel .pp-label { font-size: 12px; color: #cfd6db; }
+.phase-panel .pp-opts { display: flex; flex-wrap: wrap; gap: 4px; }
+.phase-panel .pp-opt { min-height: 32px; padding: 4px 8px; font-size: 11px; letter-spacing: 0.04em; flex: 1 1 auto; justify-content: center; }
+.phase-panel .pp-opt.on { border-color: var(--cyan); background: var(--cyan-deep); }
+.phase-panel .pp-opt.off { opacity: 0.4; }
+.phase-panel .pp-opt:disabled { opacity: 0.3; }
+/* Phone: over the yard on the left (the attackers' side: nothing of the defender's there), under the squad row. */
+body.touch .phase-panel.side { top: calc(84px + var(--sat)); left: calc(8px + var(--sal)); right: auto; width: 220px; max-height: calc(100vh - 100px); overflow-y: auto; padding: 6px 8px 8px; }
+body.touch .phase-panel .pp-setup { flex: 1 1 100%; }
+body.touch .phase-panel .pp-opt { min-height: 30px; padding: 3px 6px; font-size: 10px; }
 .phase-panel.compact { width: auto; padding: 6px 10px 8px; }
 .phase-panel.compact .pp-body { flex-direction: row; gap: 6px; margin-top: 4px; }
 .phase-panel.compact .pp-entry { min-height: 34px; font-size: 12px; padding: 4px 10px; }
@@ -731,7 +744,7 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
 .title-box .pitch { margin: 18px 0 0; font-size: 17px; line-height: 1.5; color: #d7dde2; max-width: 520px; }
 .title-box .menu { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 26px; }
 .title-box .menu-btn {
-  position: relative; width: 300px; min-height: 84px; margin: 0; padding: 14px 22px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px;
+  position: relative; width: 260px; min-height: 84px; margin: 0; padding: 14px 22px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px;
   text-align: left; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
 }
 .title-box .menu-btn .mb-l { font-family: var(--font-display); font-size: 21px; letter-spacing: 0.14em; }
@@ -785,6 +798,12 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
   body.touch .tut-card.info .tc-text { font-size: 13px; line-height: 1.4; }
   body.touch .tut-card .tc-ok { margin-top: 8px; }
   body.touch .tut-card .tc-ok .key { display: none; }
+  /* Main menu on a phone: the three choices in one row (after the base .menu-btn rules, so they win). */
+  .title-box .menu-btn { width: 200px; min-height: 60px; padding: 8px 14px; }
+  .title-box .menu-btn .mb-l { font-size: 15px; letter-spacing: 0.1em; white-space: nowrap; }
+  .title-box .menu-btn .mb-n { font-size: 11px; }
+  .title-box .menu-btn .mb-badge { font-size: 9px; padding: 1px 6px; }
+  .title-box .menu-btn.tutorial { padding-top: 16px; }
 }
 
 /* Help: close, and the way back to the main menu (the phone's top row has no room for it). */

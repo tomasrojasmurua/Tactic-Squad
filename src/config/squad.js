@@ -12,8 +12,11 @@ export const TEAMS = Object.freeze(['attackers', 'defenders']);
  */
 export const CONTROLLERS = Object.freeze({ attackers: 'human', defenders: 'ai' });
 
-/** The side this device's player commands (session.team): input and HUD use it, never a literal. */
+/** The side this device's player commands by default (session.team): input and HUD use it, never a literal. */
 export const PLAYER_TEAM = 'attackers';
+
+/** Controllers for a round against the AI where the player takes `team` (the menu's side choice). */
+export const controllersFor = (team) => (team === 'defenders' ? Object.freeze({ attackers: 'ai', defenders: 'human' }) : CONTROLLERS);
 
 export const TEAM_LABEL = Object.freeze({
   attackers: 'Atacantes',

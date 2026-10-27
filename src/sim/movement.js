@@ -270,7 +270,8 @@ function arriveAt(sim, u, p) {
   if (p.entry) armEntry(sim, u, p);
   if (!u.route.length) {
     // End of the plan: hold the angle set there, or keep facing the way he came.
-    u.idleLook = p.look !== null ? p.look : isAiControlled(sim, u) ? null : u.heading;
+    // (A defender on patrol goes back to his watch's facing: sim/ai.js.)
+    u.idleLook = p.look !== null ? p.look : isAiControlled(sim, u) && u.behavior && u.behavior.type === 'patrol' ? null : u.heading;
     u.lookOverride = null;
   }
 }

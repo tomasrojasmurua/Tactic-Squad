@@ -1,7 +1,7 @@
 // Every user-facing string (Spanish). Keep UI copy here, not in components.
 
 import { FLOW_TEXTS } from './flowTexts.js';
-import { ROUND, DRONE } from '../config/balance.js';
+import { ROUND, DRONE, PREP } from '../config/balance.js';
 
 const TURN = ROUND.turnSeconds;
 
@@ -11,7 +11,7 @@ export const T = Object.freeze({
   briefing:
     `Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. Antes del asalto compras equipo, eliges entrada y tienes ${DRONE.seconds} s de dron para mirar adentro. El asalto va por turnos: planificas sin ver al rival, con todo el tiempo que quieras, y todo se ejecuta a la vez durante ${TURN} s, sin pausa; durante el turno lanzas los grupos GO A·B·C. La bomba estalla tras ${ROUND.timeLimit} s de ejecución: encuéntrala y desactívala (${ROUND.defuseTime} s quieto, sin disparar) o elimina a los Defensores antes.`,
   start: 'COMENZAR',
-  startHint: 'Intro: jugar contra la IA',
+  startHint: 'Intro: atacar contra la IA',
 
   phase: {
     buy: 'COMPRA',
@@ -30,6 +30,20 @@ export const T = Object.freeze({
     paused: 'ESPACIO para reanudar',
     running: 'Todo se ejecuta a la vez: el plan sigue al terminar el turno',
     ended: 'R: reintentar',
+  },
+
+  /** Sub line of the banner playing the defenders (replaces phaseSub / phaseSubTouch where it has the phase). */
+  phaseSubDefend: {
+    desk: {
+      prep: 'Elige el sitio, coloca a cada defensor, oriéntalo y pon 2 barricadas · ESPACIO: listo',
+      drone: 'El dron enemigo explora: si un defensor lo ve, lo derriba',
+      planning: 'Puedes mover defensores (su vigilancia pasa a fija) · ESPACIO: listo',
+    },
+    touch: {
+      prep: 'Sitio, posiciones, vigilancia y 2 barricadas · LISTO',
+      drone: 'El dron enemigo explora: si un defensor lo ve, lo derriba',
+      planning: 'Mueve defensores si quieres · LISTO',
+    },
   },
 
   phaseSubTouch: {
@@ -105,6 +119,8 @@ export const T = Object.freeze({
     timer: 'La bomba explota cuando llega a 0 (solo corre en la ejecución)',
     kills: (n, total) => `Defensores abatidos: ${n}/${total}`,
     bombUnknown: 'Bomba: ¿A o B?',
+    defendText: `Defender la bomba hasta que explote, o eliminar a los Atacantes`,
+    killsDefend: (n, total) => `Atacantes abatidos: ${n}/${total}`,
     bombAt: (site) => `Bomba: sitio ${site}`,
     bombDefused: 'Bomba: desactivada',
   },
@@ -145,6 +161,12 @@ export const T = Object.freeze({
       elimination: 'Todos los Defensores abatidos',
       wiped: 'Escuadrón abatido',
       time: 'La bomba explotó',
+    },
+    reasonDefend: {
+      defused: 'Los Atacantes desactivaron la bomba',
+      elimination: 'Todos tus Defensores abatidos',
+      wiped: 'Todos los Atacantes abatidos',
+      time: 'La bomba explotó: aguantaste',
     },
     retry: 'R: reintentar el mismo plan · N: plan nuevo',
     retryTouch: 'Mismo plan, nueva tirada: corrige lo que falló.',
@@ -209,6 +231,18 @@ export const T = Object.freeze({
       explosive: 'Un flash o una granada antes de entrar cambia el duelo: úsalos en las salas vigiladas.',
       friendly: 'Que nadie espere frente a la puerta donde cae la granada: apílate al costado.',
       time: 'La bomba no espera: su temporizador corre mientras ejecutas. Planificar es gratis.',
+    },
+    /** Tips told to the defenders (same codes, of the defender who fell first). */
+    tipDefend: {
+      blindside: 'Cubre las espaldas: que cada puerta de tu sitio la vigile alguien.',
+      preaimed: 'El atacante también apunta antes de entrar: no esperes de frente a una puerta que pueden flashear.',
+      outnumbered: 'Un defensor solo cae: pon a dos cubriendo la misma entrada desde ángulos distintos.',
+      reloading: 'Recargar en plena pelea te deja expuesto: mejor un ángulo que no te obligue a girar.',
+      moving: 'Quieto disparas mejor: deja que el atacante cruce tu ángulo.',
+      duel: 'Prueba un ángulo fijo hacia la puerta: quien ya mira el ángulo dispara primero.',
+      explosive: 'No te pegues a una puerta: un flash o una granada la limpian. Retrocede un par de metros.',
+      friendly: 'No te pegues a una puerta: un flash o una granada la limpian. Retrocede un par de metros.',
+      time: '',
     },
     note: {
       waitingGo: (d) => `${d.name} se quedó esperando el código GO en ${d.place}.`,
@@ -317,6 +351,18 @@ export const T = Object.freeze({
   },
   /** First planning: the entry can still change (ui/PhasePanel.js, compact). */
   entryLate: { title: 'Entrada', note: 'Cambiarla ahora borra las rutas.' },
+  /** The defender's set-up panel (ui/PhasePanel.js 'setup', session/watch.js). */
+  setup: {
+    title: 'Tu defensa',
+    note: 'Toca a un defensor y luego el suelo para moverlo (solo en tu mitad). Clic derecho y arrastra (en el celular, mantén pulsado y arrastra) para orientarlo. El atacante no ve nada de esto.',
+    site: 'Bomba',
+    siteName: (id) => `Sitio ${id}`,
+    barricades: (n, max) => `Barricadas ${n}/${max}`,
+    doors: { cocina: 'Cocina–pasillo', 'ofi-cocina': 'Oficina–cocina', 'banio-sala': 'Baño–sala', sala: 'Pasillo–sala', 'sitio-pasillo': 'Pasillo–nave', 'sitio-sala': 'Sala–nave' },
+    watchOf: (n) => `Vigilancia de ${n}`,
+    pickOne: 'Vigilancia: toca a un defensor',
+    watch: { fixed: 'Ángulo fijo', sweep: 'Barrer', alert: 'Atento' },
+  },
   /** Drone phase (ui/DroneStick.js). */
   drone: { stick: 'DRON', keys: 'WASD' },
 
@@ -329,6 +375,10 @@ export const T = Object.freeze({
     ready: { touch: 'Pulsa LISTO · ESPERAR marca un grupo GO que lanzas en el turno', desk: 'ESPACIO: listo · H marca un grupo GO que lanzas en el turno' },
     goNow: { touch: (c) => `Grupo ${c} en posición: toca GO ${c} cuando quieras`, desk: (c) => `Grupo ${c} en posición: pulsa GO ${c} (o G) cuando quieras` },
     goWaiting: { touch: (n) => `${n} espera el GO`, desk: (n) => `${n} espera el GO` },
+    /** Playing the defenders. */
+    defSelect: { touch: 'Toca a un defensor para colocarlo y darle su vigilancia', desk: 'Selecciona un defensor (clic o 1·2·3·4)' },
+    defPlace: { touch: (n) => `Toca el suelo para mover a ${n}; mantén y arrastra para orientarlo`, desk: (n) => `Clic en el suelo: mueve a ${n} · clic derecho y arrastra: hacia dónde mira` },
+    defBarricades: (n) => `Te ${n === 1 ? 'queda 1 barricada' : `quedan ${n} barricadas`}: elígelas en el panel`,
     askWaiting: (n) => `${n} está parado en una puerta sin decidir (?): decídela al planificar`,
     doors: {
       touch: (n) => `${n === 1 ? 'Una puerta' : `${n} puertas`} sin decidir: toca el ? para elegir cómo y cuándo`,

@@ -9,7 +9,7 @@ import { pointInBox } from '../src/core/geom.js';
 import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
 
 const MAP = MAPS[DEFAULT_MAP];
-// Ambos bandos por órdenes: los defensores se quedan quietos donde se los pone.
+// Ambos bandos por órdenes: los defensores, sin orden de vigilancia, se quedan donde se los pone.
 // Sin fases (phases: false): la sim corre siempre y acepta órdenes en cualquier
 // momento; las fases y los turnos se prueban en turns.test.mjs.
 const STILL = { attackers: 'human', defenders: 'human' };
@@ -20,6 +20,7 @@ function atTheBomb(site) {
   sim.teams.defenders.forEach((d, i) => {
     d.x = 11.5 + i * 0.8;
     d.y = 9.5;
+    d.behavior = null; // no watch order: nobody rotates to the noise of the defuse
   });
   const u = sim.teams.attackers[0];
   u.x = sim.bomb.x + 0.5;

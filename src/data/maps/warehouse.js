@@ -273,6 +273,7 @@ export default {
     B: { norte: 2, principal: 1 },
   },
 
-  // frame: [x, y, w, h] the first shot fits inside the HUD-free area (squad, yard door, corridor).
-  camera: { start: [13.5, 13.4], height: 21, frame: [2.5, 8.5, 24, 9.5] },
+  // frame: [x, y, w, h] the first shot fits inside the HUD-free area (squad, yard door, corridor);
+  // defendFrame: the defender's first shot (their half of the building, both sites).
+  camera: { start: [13.5, 13.4], height: 21, frame: [2.5, 8.5, 24, 9.5], defendFrame: [15.5, 2.5, 23.5, 23] },
 };

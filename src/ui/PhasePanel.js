@@ -2,16 +2,23 @@
 //   buy       each operator's money and utility: tap an item to buy one, − to
 //             give one back (sim/prep.js, BUY in config/balance.js)
 //   prep      which entry the squad starts from (hidden from the defenders)
+//   setup     prep, playing the defenders: the bomb's site, the barricades
+//             and the selected defender's watch order (placing and aiming
+//             him are map gestures: input/PlanningController.js)
 //   planning  first turn only, compact: the entry can still change
-// Emits EV.REQUEST {action: 'buy_<unitId>_<item>_<+|->' | 'chooseEntry_<id>'}; LISTO is the usual button.
+// Emits EV.REQUEST {action: 'buy_<unitId>_<item>_<+|->' | 'chooseEntry_<id>' |
+// 'site_<id>' | 'barricade_<doorId>' | 'watch_<mode>'}; LISTO is the usual button.
 import { EV } from '../core/events.js';
 import { ROLES } from '../config/operators.js';
-import { BUY } from '../config/balance.js';
+import { BUY, PREP } from '../config/balance.js';
+import { controllableUnit } from '../sim/queries.js';
+import { watchOf, WATCH_MODES } from '../session/watch.js';
 import { el, setText, toggle } from './dom.js';
 import { T } from './texts.js';
 
 /** Which panel the session shows now, or null. */
 function panelFor(sim, session) {
+  if (session.phase === 'prep' && session.team === 'defenders') return 'setup';
   if (session.phase === 'buy' || session.phase === 'prep') return session.phase;
   // Before the first turn ran the attackers may still change their entry.
   if (session.phase === 'planning' && !session.tutorial.active && session.team === 'attackers' && sim.turn === 1 && sim.round.execTotal === 0 && sim.controllers.attackers === 'human') return 'entry';
@@ -40,6 +47,7 @@ export class PhasePanel {
     const panel = panelFor(sim, session);
     toggle(this.node, 'hidden', !panel || session.helpOpen);
     toggle(this.node, 'compact', panel === 'entry');
+    toggle(this.node, 'side', panel === 'setup');
     if (!panel) {
       this.shown = null;
       return;
@@ -48,9 +56,11 @@ export class PhasePanel {
       this.shown = panel;
       this.sim = sim;
       if (panel === 'buy') this.buildBuy(sim, session.team);
+      else if (panel === 'setup') this.buildSetup(sim);
       else this.buildEntries(sim, panel);
     }
     if (panel === 'buy') this.refreshBuy();
+    else if (panel === 'setup') this.refreshSetup(sim, session);
     else for (const b of this.body.children) toggle(b, 'on', b.dataset.entry === sim.entry.id);
   }
 
@@ -102,6 +112,53 @@ export class PhasePanel {
       setText(b, T.prep.entries[e.id] ?? e.id);
       b.addEventListener('click', () => this.request(`chooseEntry_${e.id}`));
       this.body.appendChild(b);
+    }
+  }
+
+  buildSetup(sim) {
+    const S = T.setup;
+    setText(this.title, S.title);
+    setText(this.note, S.note);
+    this.body.innerHTML = '';
+    const row = (label, cls) => {
+      const r = el('div', `pp-setup ${cls}`, `<span class="pp-label"></span><div class="pp-opts"></div>`);
+      setText(r.children[0], label);
+      this.body.appendChild(r);
+      return r;
+    };
+    const button = (r, text, action, data) => {
+      const b = el('button', 'btn pp-opt');
+      setText(b, text);
+      b.dataset.key = data;
+      b.addEventListener('click', () => this.request(action));
+      r.children[1].appendChild(b);
+      return b;
+    };
+    const sites = row(S.site, 'sites');
+    this.siteButtons = sim.compiled.sites.map((s) => button(sites, S.siteName(s.id), `site_${s.id}`, s.id));
+    this.barRow = row('', 'bars');
+    this.barButtons = sim.compiled.barricadeSlots.map((id) => button(this.barRow, S.doors[id] ?? id, `barricade_${id}`, id));
+    this.watchRow = row('', 'watch');
+    this.watchButtons = WATCH_MODES.map((m) => button(this.watchRow, S.watch[m], `watch_${m}`, m));
+  }
+
+  refreshSetup(sim, session) {
+    const S = T.setup;
+    for (const b of this.siteButtons) toggle(b, 'on', b.dataset.key === sim.site.id);
+    let up = 0;
+    for (const b of this.barButtons) {
+      const on = sim.doors.find((d) => d.def.id === b.dataset.key).barricaded;
+      if (on) up++;
+      toggle(b, 'on', on);
+    }
+    for (const b of this.barButtons) toggle(b, 'off', up >= PREP.barricades && !b.classList.contains('on'));
+    setText(this.barRow.children[0], S.barricades(up, PREP.barricades));
+    const u = controllableUnit(sim, session.selectedId, session.team);
+    setText(this.watchRow.children[0], u ? S.watchOf(u.name) : S.pickOne);
+    const mode = u ? watchOf(u).mode : null;
+    for (const b of this.watchButtons) {
+      toggle(b, 'on', b.dataset.key === mode);
+      if (b.disabled !== !u) b.disabled = !u;
     }
   }
 }
