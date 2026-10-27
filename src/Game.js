@@ -9,7 +9,6 @@ import { EventBus } from './core/EventBus.js';
 import { EV } from './core/events.js';
 import { FixedLoop } from './core/FixedLoop.js';
 import { SIM } from './config/balance.js';
-import { TUTORIAL } from './config/ui.js';
 import { MAPS, DEFAULT_MAP } from './data/maps/index.js';
 import { Simulation } from './sim/Simulation.js';
 import { createSession, resetSessionPreviews } from './session/Session.js';
@@ -56,7 +55,7 @@ export class Game {
     this.framing = new CameraFraming({ camera: this.camera, session: this.session, mapDef: this.mapDef });
     this.input.use(new ShortcutController(this.bus, this.session));
     this.input.use(this.cameraCtl);
-    this.input.use(new MouseKeyController(this.planning));
+    this.input.use(new MouseKeyController(this.planning, this.camera));
     this.input.use(new TouchController({ planning: this.planning, camera: this.camera, framing: this.framing, session: this.session }));
 
     // Session flow + simulation commands.
@@ -93,11 +92,10 @@ export class Game {
 
   /**
    * Fresh simulation (same map; the session picks the seed: a retry keeps it); listeners reset on EV.ROUND_RESET.
-   * The guided tutorial's round is easier: its site and fewer defenders (config/ui.js TUTORIAL).
+   * Its options (tutorial round, stop on contact, a match's loadout) come from the session flow.
    */
   newRound(seed = SIM.seed) {
-    const tutorial = this.session.mode === 'tutorial' ? { site: TUTORIAL.site, defenders: TUTORIAL.defenders } : {};
-    this.sim = new Simulation(this.mapDef, { seed, ...tutorial });
+    this.sim = new Simulation(this.mapDef, { seed, ...this.flow.roundOptions() });
     this.attempt++;
     this.flow.onRoundStart();
     resetSessionPreviews(this.session);

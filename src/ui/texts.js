@@ -2,14 +2,17 @@
 
 import { FLOW_TEXTS } from './flowTexts.js';
 import { ROUND, DRONE } from '../config/balance.js';
+import { GO_GROUPS } from '../config/ui.js';
 
 const TURN = ROUND.turnSeconds;
+/** "GO VIOLETA": a GO group as the player sees it (never its letter: A / B are the bomb sites). */
+const goName = (c) => `GO ${GO_GROUPS[c] ? GO_GROUPS[c].name.toUpperCase() : c}`;
 
 export const T = Object.freeze({
   gameTitle: 'TACTIC SQUAD',
   subtitle: 'Prototipo táctico · Operación Almacén',
   briefing:
-    `Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. Antes del asalto compras equipo, eliges entrada y tienes ${DRONE.seconds} s de dron para mirar adentro. El asalto va por turnos: planificas sin ver al rival, con todo el tiempo que quieras, y todo se ejecuta a la vez durante ${TURN} s, sin pausa; durante el turno lanzas los grupos GO A·B·C. La bomba estalla tras ${ROUND.timeLimit} s de ejecución: encuéntrala y desactívala (${ROUND.defuseTime} s quieto, sin disparar) o elimina a los Defensores antes.`,
+    `Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. Antes del asalto compras equipo, eliges entrada y tienes ${DRONE.seconds} s de dron para mirar adentro. El asalto va por turnos: planificas sin ver al rival, con todo el tiempo que quieras, y todo se ejecuta a la vez durante ${TURN} s, sin pausa; durante el turno lanzas los grupos GO (violeta, rosa, blanco). La bomba estalla tras ${ROUND.timeLimit} s de ejecución: encuéntrala y desactívala (${ROUND.defuseTime} s quieto, sin disparar) o elimina a los Defensores antes.`,
   start: 'COMENZAR',
   startHint: 'Intro: jugar contra la IA',
 
@@ -49,14 +52,14 @@ export const T = Object.freeze({
   /** Title screen: how to play in three steps (touch / desktop). */
   howTo: {
     touch: [
-      ['1', 'Toca un operador y arrastra el dedo para dibujar su ruta.'],
+      ['1', 'Toca un operador y arrastra el dedo desde él para dibujar su ruta (ESCUADRA: los demás lo siguen).'],
       ['2', 'Mantén pulsado un punto para elegir hacia dónde mira.'],
       ['3', `LISTO: el turno corre ${TURN} s. Luego corriges el plan con lo que pasó.`],
     ],
     desk: [
-      ['1', 'Selecciona un operador (1·2·3) y haz clic o arrastra su ruta.'],
+      ['1', 'Selecciona un operador (1·2·3) y haz clic o arrastra su ruta (Q: los demás lo siguen en fila).'],
       ['2', 'Clic derecho y arrastra en un punto: hacia dónde mira.'],
-      ['3', `ESPACIO: listo, el turno corre ${TURN} s. H marca un grupo GO; en el turno, A·B·C lo lanzan.`],
+      ['3', `ESPACIO: listo, el turno corre ${TURN} s. H marca un grupo GO de color; en el turno, Z·X·C lo lanzan.`],
     ],
   },
 
@@ -64,7 +67,7 @@ export const T = Object.freeze({
     ['Clic', 'punto de ruta'],
     ['Arrastrar', 'dibujar ruta'],
     ['Clic der.', 'mirar hacia'],
-    ['H', 'grupo GO A·B·C'],
+    ['H', 'grupo GO'],
     ['E', 'cómo entrar'],
     ['Retroceso', 'deshacer'],
     ['X', 'borrar ruta'],
@@ -83,10 +86,10 @@ export const T = Object.freeze({
   status: {
     dead: 'Abatido',
     waitingGo: 'Esperando GO',
-    waitingCode: (c) => `Esperando GO ${c}`,
+    waitingCode: (c) => `Esperando ${goName(c)}`,
     cracking: 'Entreabriendo',
     planting: 'Colocando carga',
-    throwing: { flash: 'Lanzando flash', frag: 'Lanzando granada' },
+    throwing: { flash: 'Lanzando flash', frag: 'Lanzando granada', smoke: 'Lanzando humo' },
     firing: 'Detonando',
     bang: 'Espera el estallido',
     blind: 'Cegado',
@@ -96,6 +99,7 @@ export const T = Object.freeze({
     moving: 'Avanzando',
     breaching: 'Abriendo',
     planned: 'Ruta lista',
+    following: (n) => `Sigue a ${n}`,
     idle: 'En posición',
   },
 
@@ -107,22 +111,45 @@ export const T = Object.freeze({
     bombUnknown: 'Bomba: ¿A o B?',
     bombAt: (site) => `Bomba: sitio ${site}`,
     bombDefused: 'Bomba: desactivada',
+    match: (round, a, d) => `Ronda ${round} · ${a}–${d}`,
+  },
+  match: {
+    next: 'SIGUIENTE RONDA',
+    again: 'NUEVA PARTIDA',
+    score: (a, d) => `Atacantes ${a} – ${d} Defensores`,
+    round: (n) => `Ronda ${n}`,
+    won: '¡PARTIDA GANADA!',
+    lost: 'PARTIDA PERDIDA',
+    toWin: (n) => `Gana el primero en llegar a ${n}`,
+    pay: (name, n) => `${name} +$${n}`,
+    payTitle: 'Cobran para la próxima',
   },
 
+  /** Squad route (sim/follow.js): the squad panel's button. */
+  squad: { button: 'Escuadra', on: 'En fila' },
+  /** Pace of a stretch of route (sim/movement.js): the waypoint menu. */
+  pace: { title: 'Paso', normal: 'Normal', sneak: 'Sigilo' },
   defuse: 'DESACTIVANDO BOMBA',
   reloadTag: 'RECARGANDO',
   tagGo: 'GO',
   tagAsk: 'PUERTA ?',
+  goName,
+  /** Short GO group label for tags and chips: its shape and color name. */
+  goShort: (c) => (GO_GROUPS[c] ? `${GO_GROUPS[c].glyph} ${GO_GROUPS[c].name.toUpperCase()}` : c),
   tagBomb: 'BOMBA',
   tagBlind: 'CIEGO',
 
   /** Door entries (sim/entries.js): picker labels, short tags on the map and the help line. */
   entry: {
-    title: 'Entrada',
-    askTitle: 'Puerta sin decidir',
-    askHint: 'Elige cómo abrirla y cuándo: hasta entonces se detiene aquí',
+    title: 'Puerta',
+    point: 'Punto de ruta',
+    askTitle: 'Puerta: se abre al pasar',
+    askHint: 'Por defecto la abre y pasa; elige otra entrada si quieres',
     when: 'Cuándo',
-    now: 'De inmediato',
+    now: 'Ya',
+    more: 'Más',
+    less: 'Menos',
+    close: 'Cerrar',
     none: 'Abrir',
     modes: { kick: 'Patada', slow: 'Entreabrir', flash: 'Flash', frag: 'Granada', breach: 'Carga' },
     tags: { kick: 'PATADA', slow: 'ENTREABRIR', flash: 'FLASH', frag: 'GRANADA', breach: 'CARGA' },
@@ -135,6 +162,9 @@ export const T = Object.freeze({
       breach: 'Al llegar coloca la carga; el GO revienta la puerta',
     },
     left: (n) => `×${n}`,
+    toss: 'Lanzar',
+    tossItems: { flash: 'Flash', frag: 'Granada', smoke: 'Humo' },
+    tossAim: 'Toca dónde',
   },
 
   result: {
@@ -228,34 +258,45 @@ export const T = Object.freeze({
     defusing: (n) => `${n} desactiva la bomba`,
     defuseAborted: 'Desactivación interrumpida',
     defused: 'Bomba desactivada',
-    goCode: (c) => `Código GO ${c}`,
+    goCode: (c) => goName(c),
     flashed: (n) => `${n} cegado`,
-    grenade: { flash: '¡Flash!', frag: '¡Granada!' },
+    grenade: { flash: '¡Flash!', frag: '¡Granada!', smoke: '¡Humo!' },
     breach: 'Puerta reventada',
     droneContact: 'El dron vio a un defensor',
     droneDown: 'Dron derribado',
     barricade: 'Barricada a la vista',
     barricadeBroken: 'Barricada rota',
     barricadeBlown: 'Barricada volada',
+    cameraFound: 'Cámara enemiga a la vista',
+    cameraFoundDrone: 'El dron encontró una cámara',
+    cameraSpot: '¡Una cámara te vio! Saben por dónde vienes',
+    cameraDown: (n) => `${n} rompió la cámara`,
+    scout: (n, k) => (k ? `${n} detecta ${k === 1 ? 'un defensor' : `${k} defensores`} cerca` : `${n}: nadie cerca`),
   },
 
   help: {
     title: 'CONTROLES',
     rows: [
       ['1 · 2 · 3 / Tab', 'Seleccionar operador'],
+      ['Q (o botón ESCUADRA)', 'Los demás siguen al seleccionado en fila: una ruta para todos (otra vez: cada uno por su lado)'],
+      ['Mayús + clic en un operador', 'Se suma a la fila del seleccionado (o sale de ella)'],
       ['WASD / flechas (dron)', 'Mover el dron de reconocimiento; ESPACIO lo retira'],
-      ['Clic izquierdo', 'Añadir punto de ruta (con pathfinding)'],
-      ['Arrastrar', 'Dibujar ruta a mano alzada'],
+      ['Clic en el suelo', 'Añadir punto de ruta (con pathfinding)'],
+      ['Arrastrar desde el operador o el final de su ruta', 'Dibujar ruta a mano alzada'],
+      ['Arrastrar un punto · un tramo', 'Mover ese punto · crear uno nuevo en el tramo'],
+      ['Clic en un punto, una etiqueta o un ?', 'Menú del punto: cómo entra por la puerta, cuándo (GO), a qué paso y qué lanza (flash, granada, humo)'],
+      ['Arrastrar el suelo · botón central', 'Mover cámara'],
       ['Clic derecho (arrastrar)', 'Fijar dirección de mirada del último punto'],
-      ['H', 'El último punto espera a un grupo GO (A → B → C → sin espera)'],
-      ['E', 'Cómo entra por la puerta junto al último punto: patada, entreabrir, flash, granada, carga'],
-      ['A · B · C (o G)', 'Durante el turno: ¡ahora! Ese grupo actúa a la vez (los que aún no llegan, siguen de largo)'],
-      ['Retroceso / Z', 'Deshacer último punto'],
-      ['X / Supr', 'Borrar ruta'],
+      ['H', 'El último punto espera a un grupo GO (violeta → rosa → blanco → sin espera)'],
+      ['T', 'Paso sigiloso en el último tramo (lento y casi sin ruido); otra vez: normal'],
+      ['E', 'Cómo entra por la puerta junto al último punto: abrir, patada, entreabrir, flash, granada, carga'],
+      ['Z · X · C (o G)', 'Durante el turno: ¡ahora! GO violeta · rosa · blanco (G: el primero listo). Los que aún no llegan, siguen de largo'],
+      ['Retroceso / Z', 'Deshacer último punto (al planificar)'],
+      ['X / Supr', 'Borrar ruta (al planificar)'],
       ['Espacio / Intro', `Listo: termina la fase y ejecuta el turno (${TURN} s, sin pausa)`],
       ['WASD · flechas · bordes', 'Mover cámara'],
       ['Rueda · + / −', 'Zoom'],
-      ['Botón central (arrastrar)', 'Mover cámara'],
+      ['V', 'Ver todo el mapa (otra vez: volver)'],
       ['F', 'Centrar en el operador'],
       ['R', 'Reintentar con el mismo plan (durante la ronda: empezarla de nuevo)'],
       ['N', 'Plan nuevo (borra todas las rutas)'],
@@ -274,6 +315,7 @@ export const T = Object.freeze({
     resume: 'Seguir',
     go: 'GO',
     hold: 'Esperar',
+    noHold: 'Sin espera',
     undo: 'Deshacer',
     clear: 'Borrar',
     defuse: 'Desactivar',
@@ -283,17 +325,19 @@ export const T = Object.freeze({
     music: 'Música',
     rows: [
       ['Tocar operador / tarjeta', 'Seleccionar'],
+      ['ESCUADRA (junto a las tarjetas)', 'Los demás siguen al seleccionado en fila: una ruta para todos'],
       ['Mando DRON', 'Mover el dron de reconocimiento; RETIRAR lo termina'],
       ['Tocar el suelo', 'Añadir punto de ruta'],
-      ['Arrastrar un dedo', 'Dibujar ruta (desde el operador o el punto tocado)'],
+      ['Arrastrar desde el operador o el final de su ruta', 'Dibujar ruta'],
+      ['Arrastrar un punto · un tramo', 'Mover ese punto · crear uno nuevo en el tramo'],
+      ['Tocar un punto, una etiqueta o un ?', 'Menú del punto: cómo entra por la puerta, cuándo (GO) y a qué paso (sigilo)'],
+      ['Arrastrar el suelo', 'Mover cámara'],
       ['Mantener pulsado un punto', 'Arrastrar para fijar la mirada'],
       ['Mantener pulsado el suelo', 'El último punto mira hacia ahí'],
-      ['Arrastrar desde el último punto', 'Continuar la ruta'],
       ['Dos dedos', 'Mover cámara · pellizcar para zoom'],
       ['Dedo en el borde al dibujar', 'La cámara te sigue'],
-      ['Esperar', 'El último punto espera a un grupo GO (cada toque: A, B, C, sin espera)'],
-      ['Entrada (junto a una puerta)', 'Patada, entreabrir, flash, granada o carga'],
-      ['GO A · B · C', 'Durante el turno: ¡ahora! Ese grupo actúa a la vez'],
+      ['Esperar', 'Elige el color del grupo GO del último punto (o sin espera)'],
+      ['GO de color', 'Durante el turno: ¡ahora! Ese grupo actúa a la vez'],
       ['Listo', `Termina la fase; el turno corre ${TURN} s sin pausa`],
     ],
     startHint: 'Toca para comenzar',
@@ -303,8 +347,8 @@ export const T = Object.freeze({
   /** Buy and preparation panels (ui/PhasePanel.js). */
   buy: {
     title: 'Compra',
-    note: 'Cada operador paga con su dinero ($800 por ronda; su equipo de rol ya está pagado). Toca un objeto para comprar otro, − para devolverlo.',
-    gear: { flash: 'flash', frag: 'granada', breach: 'carga' },
+    note: 'Elige la clase de cada uno (Brecha y Explorador, uno solo). Cada operador paga con su dinero ($800 por ronda; el equipo de su clase ya está pagado). Toca un objeto para comprar otro, − para devolverlo.',
+    gear: { flash: 'flash', frag: 'granada', smoke: 'humo', breach: 'carga' },
     price: (n) => `$${n}`,
     money: (n) => `$${n}`,
     sell: '−',
@@ -325,14 +369,24 @@ export const T = Object.freeze({
     select: { touch: 'Toca a un operador para darle órdenes', desk: 'Selecciona un operador (clic o 1·2·3)' },
     route: { touch: (n) => `Arrastra desde ${n} para dibujar su ruta`, desk: (n) => `Clic o arrastra para trazar la ruta de ${n}` },
     look: { touch: 'Mantén pulsado un punto y arrastra: hacia dónde mira', desk: 'Clic derecho y arrastra: hacia dónde mira' },
-    next: { touch: (n) => `Bien. Ahora ${n}: tócalo y traza su ruta`, desk: (n) => `Bien. Ahora ${n} (tecla o clic)` },
+    next: {
+      touch: (n) => `Bien. Ahora ${n}: tócalo y traza su ruta · o ESCUADRA: todos siguen esta ruta en fila`,
+      desk: (n) => `Bien. Ahora ${n} (tecla o clic) · o Q: todos siguen esta ruta en fila`,
+    },
     ready: { touch: 'Pulsa LISTO · ESPERAR marca un grupo GO que lanzas en el turno', desk: 'ESPACIO: listo · H marca un grupo GO que lanzas en el turno' },
-    goNow: { touch: (c) => `Grupo ${c} en posición: toca GO ${c} cuando quieras`, desk: (c) => `Grupo ${c} en posición: pulsa GO ${c} (o G) cuando quieras` },
+    goNow: {
+      touch: (c) => `Grupo ${GO_GROUPS[c].name.toLowerCase()} en posición: toca ${goName(c)} cuando quieras`,
+      desk: (c) => `Grupo ${GO_GROUPS[c].name.toLowerCase()} en posición: pulsa ${GO_GROUPS[c].key} (${goName(c)}) cuando quieras`,
+    },
     goWaiting: { touch: (n) => `${n} espera el GO`, desk: (n) => `${n} espera el GO` },
     askWaiting: (n) => `${n} está parado en una puerta sin decidir (?): decídela al planificar`,
-    doors: {
+    doorsStrict: {
       touch: (n) => `${n === 1 ? 'Una puerta' : `${n} puertas`} sin decidir: toca el ? para elegir cómo y cuándo`,
       desk: (n) => `${n === 1 ? 'Una puerta' : `${n} puertas`} sin decidir: haz clic en el ? para elegir cómo y cuándo`,
+    },
+    doors: {
+      touch: 'Las puertas (?) se abren solas al pasar · toca el ? para entrar con flash, patada o carga',
+      desk: 'Las puertas (?) se abren solas al pasar · clic en el ? para entrar con flash, patada o carga',
     },
   },
 
@@ -358,6 +412,7 @@ export const T = Object.freeze({
     tooClose: 'Demasiado cerca de un compañero',
     badWatch: 'Orden de vigilancia incompleta',
     badDoor: 'Esa puerta no se puede atrancar',
+    badFollow: 'No puede seguir a ese operador',
     tooManyBarricades: 'Ya hay 2 barricadas',
   },
   webgl: 'Tu navegador no soporta WebGL2, necesario para Tactic Squad. Prueba con una versión reciente de Chrome, Edge o Firefox.',

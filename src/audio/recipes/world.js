@@ -258,6 +258,23 @@ export function flashbang(k) {
   return out;
 }
 
+/** Smoke grenade: a dull pop, then a long hiss that swells and fades (the can venting). */
+export function smokeHiss(k) {
+  const { sr, rng } = k;
+  const out = k.buf(2.6);
+  const pop = new SVF(sr).set(k.vary(420, 0.1), 0.9);
+  const hiss = new SVF(sr).set(k.vary(5200, 0.1), 0.6);
+  for (let i = 0; i < out.length; i++) {
+    const t = i / sr;
+    pop.tick(white(rng));
+    hiss.tick(white(rng));
+    const swell = Math.min(1, t / 0.25) * Math.max(0, 1 - (t - 0.25) / 2.3);
+    const flutter = 0.8 + 0.2 * Math.sin(t * 37 + Math.sin(t * 11) * 2);
+    out[i] = pop.bp * ad(t, 0.001, 0.06) * 1.6 + hiss.bp * swell * flutter * 0.55;
+  }
+  return out;
+}
+
 /** Grenade throw: the pin comes out (a small metallic ping) and the spoon flips off. */
 export function grenadePin(k) {
   const { sr, rng } = k;

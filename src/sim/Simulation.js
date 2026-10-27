@@ -2,15 +2,18 @@
 // no wall-clock time: it only advances through step(dt) with a fixed dt and
 // a seeded RNG, and reports what happened as queued events.
 import { Rng } from '../core/rng.js';
+import { EV } from '../core/events.js';
 import { SIM, ROUND } from '../config/balance.js';
 import { SQUAD, DEFENDER_NAME, DEFENDER_COLOR, TEAMS, CONTROLLERS } from '../config/squad.js';
 import { DEFAULT_DEFENDER_ROLE } from '../config/operators.js';
 import { initAbilities, updateAbilities } from './abilities/index.js';
 import { compileMap } from './mapCompiler.js';
 import { World } from './World.js';
-import { createUnit } from './units.js';
+import { createUnit, applyRole, roleGear } from './units.js';
 import { createDoorState, updateDoors } from './doors.js';
 import { updateEntries } from './entries.js';
+import { updateSmokes } from './smoke.js';
+import { placeCameras, updateCameras } from './cameras.js';
 import { applyCommand } from './orders.js';
 import { updatePerception } from './perception.js';
 import { updateAiUnit } from './ai.js';
@@ -38,9 +41,15 @@ export class Simulation {
    *                    Fewer defenders = an easier round (the guided tutorial: config/ui.js TUTORIAL).
    * @param opts.phases true: the round goes through its phases (sim/round.js, starts at 'buy');
    *                    false: no phases, it always runs and takes orders (mechanics tests).
+   * @param opts.stopOnContact the execution turn ends early (ROUND.minContactSeconds at the earliest)
+   *                    when the attackers see a new enemy: the player gets to react (against the AI).
+   * @param opts.loadout per attacker slot {money, gear?, role?} carried over from the last round of a
+   *                    match (session/Match.js); omitted: BUY.startMoney and the role's gear.
    */
-  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, defenders = null, phases = true } = {}) {
+  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, defenders = null, phases = true, stopOnContact = false, loadout = null } = {}) {
     this.seed = seed;
+    this.stopOnContact = stopOnContact;
+    this.loadout = loadout;
     this.controllers = controllers;
     this.rng = new Rng(seed);
     this.compiled = compileMap(mapDef);
@@ -64,6 +73,8 @@ export class Simulation {
     this.timeLeft = ROUND.timeLimit;
     this.goCount = 0;
     this.grenades = []; // thrown, not yet detonated (sim/entries.js)
+    this.smokes = []; // smoke clouds standing (sim/smoke.js)
+    this.smokeDirty = false;
     this.grenadeSeq = 0;
     this.outcome = null;
     this.commands = [];
@@ -80,9 +91,23 @@ export class Simulation {
     this.teams = {};
     for (const t of TEAMS) this.teams[t] = this.units.filter((u) => u.team === t);
     this.bomb = createBomb(this.site);
-    if (phases) initMoney(this); // the buy phase: each attacker's money after his role's gear
+    this.cameras = [];
+    placeCameras(this); // sim/cameras.js: the defenders' cameras on this site
+    if (loadout) this.applyLoadout(loadout); // a match: class, money and gear carried over
+    else if (phases) initMoney(this); // the buy phase: each attacker's money after his role's gear
     initAbilities(this);
     this.attackAi = createAttackAi(this); // sim/aiAttack.js: the commander of an AI attacking side
+  }
+
+  /** Per attacker slot {role?, money, gear?} (session/Match.js): who he is and what he brings. */
+  applyLoadout(loadout) {
+    this.teams.attackers.forEach((u, i) => {
+      const l = loadout[i];
+      if (!l) return;
+      if (l.role && l.role !== u.role) applyRole(u, l.role);
+      u.gear = { ...roleGear(u.role), ...(l.gear || {}) };
+      u.money = l.money;
+    });
   }
 
   spawnUnits() {
@@ -216,7 +241,13 @@ export class Simulation {
     updateDoors(this, dt);
     for (const u of this.units) if (u.alive && u.bash) updateBash(this, u, dt);
     updateEntries(this, dt);
+    updateSmokes(this, dt);
     updatePerception(this);
+    updateCameras(this, dt);
+    if (this.stopOnContact) for (let i = firstEvent; i < this.events.length; i++) {
+      const e = this.events[i];
+      if (e.type === EV.SPOTTED && e.team === 'defenders' && !e.byDrone) this.round.contact = true;
+    }
     updateMemory(this);
     for (const u of this.teams.attackers) if (u.alive && u.blind <= 0) spotBarricades(this, u, u.vision.fov);
     for (const u of this.units) {

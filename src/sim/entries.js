@@ -22,15 +22,29 @@ import { ENTRY, COMBAT } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { angleTo } from '../core/math.js';
 import { rayCast } from '../core/geom.js';
-import { lineOfSight } from './vision.js';
+import { solidLineOfSight } from './vision.js';
+import { spawnSmoke } from './smoke.js';
 import { openDoor, crackDoor, destroyDoor } from './doors.js';
 import { alertAiUnit } from './ai.js';
 import { applyBlast } from './combat.js';
-import { isAiControlled, ENTRY_GEAR } from './queries.js';
+import { isAiControlled, ENTRY_GEAR, tossLanding } from './queries.js';
+
+const LAND = { x: 0, y: 0, reach: 0 };
 import { startBash, breakBarricade } from './barricades.js';
 
 /** Seconds each mode works on arrival before it is armed (0 = armed at once). */
 const PREP = Object.freeze({ slow: ENTRY.slow.prepTime, breach: ENTRY.breach.prepTime });
+
+/**
+ * Called when a unit reaches a waypoint with a throw (waypoint.toss: {item,
+ * x, y}): he turns to the target and, on the release (right away, or the GO
+ * of the hold there), throws it there — a flash, a grenade or smoke.
+ */
+export function armToss(sim, u, p) {
+  const t = p.toss;
+  const look = angleTo(u.x, u.y, t.x, t.y);
+  u.entry = { mode: 'toss', item: t.item, tx: t.x, ty: t.y, doorway: -1, side: 1, look, phase: 'armed', t: 0, spent: false, step: null, grenade: null };
+}
 
 /** Called when a unit reaches a waypoint carrying an entry (sim/movement.js arriveAt). */
 export function armEntry(sim, u, p) {
@@ -48,7 +62,7 @@ export function armEntry(sim, u, p) {
     ay = door.def.hingeY + Math.sin(door.def.closedAngle) * door.def.length * 0.85;
   }
   const look = p.look !== null ? p.look : angleTo(u.x, u.y, ax + d.normalX * side * ENTRY.lookPast, ay + d.normalY * side * ENTRY.lookPast);
-  const prep = PREP[p.entry] || 0;
+  const prep = (PREP[p.entry] || 0) * (p.entry === 'breach' ? u.mods.breachPrep : 1);
   u.entry = { mode: p.entry, doorway: k, side, look, phase: prep > 0 ? 'prep' : 'armed', t: prep, spent: false, step: null, grenade: null };
   if (p.entry === 'slow' && door) {
     crackDoor(sim, door, u);
@@ -74,10 +88,11 @@ export function releaseDelay(sim, u) {
   // A charge still being planted: the others wait for the plant AND the blast.
   if (e.mode === 'breach') return (e.phase === 'prep' ? e.t : 0) + ENTRY.breach.fuse + ENTRY.followGap;
   if (e.phase !== 'armed') return 0;
-  if (e.mode !== 'flash' && e.mode !== 'frag') return 0;
-  if ((u.gear[ENTRY_GEAR[e.mode]] || 0) <= 0) return 0;
+  const item = thrownItem(e);
+  if (!item) return 0;
+  if ((u.gear[item] || 0) <= 0) return 0;
   const g = throwPath(sim, u, e);
-  return ENTRY.throwDelay + g.flight + ENTRY[e.mode].fuse + ENTRY.followGap;
+  return ENTRY.throwDelay + g.flight + ENTRY[item].fuse + ENTRY.followGap;
 }
 
 /** Blindness / daze recovery, the entry state machines, grenades in flight. Once per tick, before movement. */
@@ -126,6 +141,12 @@ function release(sim, u, e) {
     case 'slow':
       u.entry = null; // the door is ajar: his route through it pushes it open
       return;
+    case 'toss':
+      if ((u.gear[e.item] || 0) <= 0) return reject(sim, u, e);
+      e.phase = 'act';
+      e.step = 'throw';
+      e.t = ENTRY.throwDelay;
+      return;
     case 'flash':
     case 'frag':
       if ((u.gear[e.mode] || 0) <= 0) return reject(sim, u, e);
@@ -154,7 +175,7 @@ function act(sim, u, e) {
   if (e.step === 'throw') {
     throwGrenade(sim, u, e);
     e.step = 'wait';
-    e.t = e.grenade.flight + ENTRY[e.mode].fuse + ENTRY.followGap;
+    e.t = e.grenade.flight + ENTRY[thrownItem(e)].fuse + ENTRY.followGap;
     return;
   }
   if (e.step === 'fire') detonateBreach(sim, u, e);
@@ -195,7 +216,12 @@ function farSide(d, u, next) {
  * release and at the throw.
  */
 const path = { fromX: 0, fromY: 0, viaX: 0, viaY: 0, x: 0, y: 0, leg1: 0, leg2: 0, flight: 0 };
+
+/** The item an entry throws: its mode for a door flash / grenade, the chosen one for a toss, else null. */
+const thrownItem = (e) => (e.mode === 'toss' ? e.item : e.mode === 'flash' || e.mode === 'frag' ? e.mode : null);
+
 function throwPath(sim, u, e) {
+  if (e.mode === 'toss') return tossPath(sim, u, e);
   const d = sim.world.doorways[e.doorway];
   const nx = d.normalX * e.side;
   const ny = d.normalY * e.side;
@@ -203,7 +229,7 @@ function throwPath(sim, u, e) {
   const ox = d.cx + nx * start;
   const oy = d.cy + ny * start;
   const w = sim.world;
-  const hit = rayCast(w.segments, w.segmentCount, ox, oy, nx, ny, ENTRY.throwDistance + ENTRY.wallMargin);
+  const hit = rayCast(w.segments, w.solidCount, ox, oy, nx, ny, ENTRY.throwDistance + ENTRY.wallMargin);
   const reach = Math.max(0, Math.min(ENTRY.throwDistance, hit - ENTRY.wallMargin));
   path.fromX = u.x;
   path.fromY = u.y;
@@ -217,15 +243,35 @@ function throwPath(sim, u, e) {
   return path;
 }
 
+/**
+ * A toss to the point the player picked: straight from the thrower, at most
+ * ENTRY.tossRange away and short of the first wall on the way (ENTRY.wallMargin).
+ */
+function tossPath(sim, u, e) {
+  const land = tossLanding(sim.world, u.x, u.y, e.tx, e.ty, LAND);
+  const reach = land.reach;
+  path.fromX = u.x;
+  path.fromY = u.y;
+  path.x = land.x;
+  path.y = land.y;
+  path.viaX = (u.x + path.x) / 2;
+  path.viaY = (u.y + path.y) / 2;
+  path.leg1 = reach / 2;
+  path.leg2 = reach / 2;
+  path.flight = reach / ENTRY.throwSpeed;
+  return path;
+}
+
 // ------------------------------------------------------------ grenades
 
 function throwGrenade(sim, u, e) {
   const p = throwPath(sim, u, e);
-  u.gear[e.mode]--;
+  const item = thrownItem(e);
+  u.gear[item]--;
   e.spent = true;
   const g = {
     id: sim.grenadeSeq++,
-    kind: e.mode,
+    kind: item,
     ownerId: u.id,
     team: u.team,
     fromX: p.fromX,
@@ -237,7 +283,7 @@ function throwGrenade(sim, u, e) {
     leg1: p.leg1,
     leg2: p.leg2,
     flight: p.flight,
-    fuse: p.flight + ENTRY[e.mode].fuse, // from the throw
+    fuse: p.flight + ENTRY[item].fuse, // from the throw
     age: 0,
   };
   e.grenade = g;
@@ -261,6 +307,7 @@ function detonate(sim, g) {
   const owner = sim.units[g.ownerId];
   sim.emit(EV.GRENADE_DETONATE, { id: g.id, kind: g.kind, unitId: g.ownerId, x: g.x, y: g.y });
   if (g.kind === 'flash') flashAt(sim, g);
+  else if (g.kind === 'smoke') spawnSmoke(sim, g.x, g.y);
   else blastAt(sim, g.x, g.y, ENTRY.frag.radius, ENTRY.frag.damage, ENTRY.frag.minDamage, 0, owner, null);
   alertNear(sim, owner, g.x, g.y, ENTRY[g.kind].hearing, true);
 }
@@ -279,7 +326,7 @@ function flashAt(sim, g) {
     if (!o.alive) continue;
     if (o.id === g.ownerId || (o.team === g.team && o.goDelay > 0)) continue;
     const dist = Math.hypot(o.x - x, o.y - y);
-    if (dist > F.radius || !lineOfSight(sim.world, x, y, o.x, o.y)) continue;
+    if (dist > F.radius || !solidLineOfSight(sim.world, x, y, o.x, o.y)) continue;
     const toward = Math.cos(angleTo(o.x, o.y, x, y) - o.facing); // 1 = staring at it
     const look = F.awayFactor + (1 - F.awayFactor) * Math.max(0, toward);
     const seconds = F.blind * look * (0.4 + 0.6 * (1 - dist / F.radius));
@@ -299,7 +346,7 @@ function blastAt(sim, x, y, radius, damage, minDamage, blindSeconds, owner, plan
     const dist = Math.hypot(o.x - x, o.y - y);
     if (dist > radius) continue;
     if (plane && across(plane.d, o.x, o.y) * plane.side <= 0) continue;
-    if (!lineOfSight(sim.world, x, y, o.x, o.y)) continue;
+    if (!solidLineOfSight(sim.world, x, y, o.x, o.y)) continue;
     const k = 1 - dist / radius;
     if (blindSeconds > 0) blind(sim, o, blindSeconds * (0.5 + 0.5 * k), 'blast', x, y);
     const dmg = damage * k;

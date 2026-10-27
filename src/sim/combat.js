@@ -61,7 +61,7 @@ function lineOfFire(world, u, t) {
   const px = (-dy / len) * VISION.probeOffset;
   const py = (dx / len) * VISION.probeOffset;
   const segs = world.segments;
-  const c = world.segmentCount;
+  const c = world.solidCount; // smoke hides, it does not stop bullets
   for (let i = 0; i < FIRE_PROBES.length; i += 2) {
     const so = FIRE_PROBES[i];
     const st = FIRE_PROBES[i + 1];
@@ -113,7 +113,7 @@ function fire(sim, u) {
   const dx = Math.cos(angle);
   const dy = Math.sin(angle);
 
-  const wallT = rayCast(sim.world.segments, sim.world.segmentCount, ox, oy, dx, dy, COMBAT.bulletRange);
+  const wallT = rayCast(sim.world.segments, sim.world.solidCount, ox, oy, dx, dy, COMBAT.bulletRange);
   let victim = null;
   let hitT = wallT;
   for (const o of sim.units) {

@@ -215,3 +215,8 @@ export function canSee(world, viewer, tx, ty, cfg) {
 export function lineOfSight(world, ax, ay, bx, by) {
   return !segmentBlocked(world.segments, world.segmentCount, ax, ay, bx, by);
 }
+
+/** Line of sight through walls, props and doors only (smoke ignored): blasts and flashes reach through a cloud. */
+export function solidLineOfSight(world, ax, ay, bx, by) {
+  return !segmentBlocked(world.segments, world.solidCount, ax, ay, bx, by);
+}

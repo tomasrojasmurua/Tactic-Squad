@@ -28,44 +28,18 @@ function setup() {
   return { sim, session, tut, sync, cmd };
 }
 
-test('el tutorial recorre compra, preparación, dron y el primer turno en orden', () => {
+test('el tutorial enseña el asalto: planificar, puerta, GO de color y el primer turno', () => {
   const { sim, session, tut, sync, cmd } = setup();
   const t = session.tutorial;
   const [a] = sim.teams.attackers;
+  // El tutorial salta compra, entrada y dron (SessionController lockedPhases): empieza planificando.
+  sim.skipToAssault();
+  sync();
 
   assert.equal(tut.update(sim), 'card', 'la bienvenida sale como tarjeta');
   assert.equal(t.id, 'welcome');
   assert.ok(tut.blocksReady(), 'LISTO no sirve con la tarjeta (la cierra)');
   assert.ok(tut.ack());
-  tut.update(sim);
-  assert.equal(t.id, 'buy');
-  assert.ok(tut.blocksReady(), 'en el paso de comprar, LISTO espera');
-  cmd({ type: 'buy', unitId: a.id, item: 'breach', count: 1 });
-  tut.update(sim);
-  assert.equal(t.id, 'buyReady');
-  assert.ok(!tut.blocksReady());
-
-  sim.advancePhase();
-  sync();
-  assert.equal(tut.update(sim), 'card');
-  assert.equal(t.id, 'prep');
-  tut.ack();
-  tut.update(sim);
-  assert.equal(t.id, 'entry');
-  cmd({ type: 'chooseEntry', entry: 'sur' });
-  tut.noteEntry();
-  tut.update(sim);
-  assert.equal(t.id, 'prepReady');
-
-  sim.advancePhase();
-  sync();
-  assert.equal(session.phase, 'drone');
-  assert.equal(tut.update(sim), 'card', 'la tarjeta del dron sale antes de manejarlo');
-  tut.ack();
-  tut.update(sim);
-  assert.equal(t.id, 'droneFly');
-  sim.advancePhase(); // retirarlo
-  sync();
   assert.equal(tut.update(sim), 'card');
   assert.equal(t.id, 'plan');
   tut.ack();
@@ -78,7 +52,7 @@ test('el tutorial recorre compra, preparación, dron y el primer turno en orden'
   assert.equal(t.id, 'route');
   cmd({ type: 'addWaypoint', unitId: a.id, x: 13.5, y: 21.5, user: true }); // por la puerta del baño
   tut.update(sim);
-  assert.equal(t.id, 'door', 'la ruta cruza una puerta: hay que decidirla');
+  assert.equal(t.id, 'door', 'la ruta cruza una puerta: se enseña a decidirla');
   const i = a.route.findIndex((p) => p.ask);
   cmd({ type: 'setEntry', unitId: a.id, mode: 'flash', index: i });
   tut.update(sim);
@@ -106,6 +80,27 @@ test('el tutorial recorre compra, preparación, dron y el primer turno en orden'
   assert.equal(tut.update(sim), 'done');
   assert.ok(!t.active && t.done);
   assert.equal(TUTORIAL_STEPS.length, t.count);
+});
+
+test('compra, entrada y dron se presentan con una tarjeta la primera vez que llegan', () => {
+  const { sim, session, tut, sync } = setup();
+  tut.finish();
+  sync();
+  assert.equal(session.phase, 'buy');
+  assert.equal(tut.update(sim, false), 'card', 'la compra se presenta');
+  assert.equal(session.tutorial.tip, 'introBuy');
+  tut.ack();
+  assert.equal(tut.update(sim, false), null, 'una sola vez');
+  sim.advancePhase();
+  sync();
+  assert.equal(tut.update(sim, false), 'card');
+  assert.equal(session.tutorial.tip, 'introPrep');
+  tut.ack();
+  sim.advancePhase();
+  sync();
+  assert.equal(session.phase, 'drone');
+  assert.equal(tut.update(sim, false), 'card');
+  assert.equal(session.tutorial.tip, 'introDrone');
 });
 
 test('los consejos salen una vez, al planificar, solo en la ronda del tutorial', () => {

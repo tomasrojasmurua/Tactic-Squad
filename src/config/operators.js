@@ -6,9 +6,9 @@
 // in sim/abilities/ registered by its id. Modifiers multiply the global
 // numbers of config/balance.js; 1 = unchanged.
 //
-// Planned classes (NOT implemented yet, see docs/BRIEF.md "Clases de operador"):
-// attackers asaltante / brecha / explorador, defenders ancla / merodeador /
-// trampero — each one = an entry here + a module in sim/abilities/.
+// Classes: attackers Asaltante / Brecha / Explorador (chosen in the buy phase,
+// order setRole; Brecha and Explorador one each), defenders Defensor / Ancla
+// (the map layout says who anchors). Still planned: merodeador, trampero.
 
 /** Neutral modifiers: every role starts from these. */
 export const BASE_MODIFIERS = Object.freeze({
@@ -18,6 +18,8 @@ export const BASE_MODIFIERS = Object.freeze({
   spread: 1, // weapon spread (accuracy)
   visionRange: 1, // VISION[team].range
   visionFov: 1, // VISION[team].fov
+  breachPrep: 1, // ENTRY.breach.prepTime (planting a charge)
+  bash: 1, // BARRICADE.breakTime (breaking a barricade by hand)
 });
 
 /**
@@ -27,11 +29,26 @@ export const BASE_MODIFIERS = Object.freeze({
  * {flash, frag, breach} counts, sim/entries.js; the round economy will buy it later).
  */
 export const ROLES = Object.freeze({
-  // Player squad (attackers).
-  assault: { label: 'Asaltante', weapon: 'rifle', ability: null, modifiers: {}, gear: { flash: 1, frag: 1 } },
-  entry: { label: 'Entrada', weapon: 'smg', ability: null, modifiers: {}, gear: { flash: 1, frag: 1, breach: 1 } },
+  // Player squad (attackers). `pick`: offered in the buy phase; `unique`: one per squad.
+  assault: {
+    label: 'Asaltante', pick: true, unique: false, weapon: 'rifle', ability: null, modifiers: {}, gear: { flash: 1, frag: 1 },
+    blurb: 'Rifle, flash y granada. El que gana los duelos.',
+  },
+  entry: {
+    label: 'Brecha', pick: true, unique: true, weapon: 'smg', ability: null, modifiers: { breachPrep: 0.5, bash: 0.6 }, gear: { flash: 1, breach: 2 },
+    blurb: 'Dos cargas, las planta en la mitad de tiempo y rompe barricadas rápido.',
+  },
+  scout: {
+    label: 'Explorador', pick: true, unique: true, weapon: 'rifle', ability: 'scoutPulse', modifiers: { speed: 1.08, visionRange: 1.1 }, gear: { flash: 1, smoke: 1 },
+    blurb: 'Al final de cada turno detecta a los defensores cerca (8 m), aun tras las paredes.',
+  },
   // AI defenders (their weapon comes from each map spawn).
   defender: { label: 'Defensor', weapon: 'rifle', ability: null, modifiers: {} },
+  // Site anchor: holds his angle; tougher and quicker to shoot first.
+  anchor: { label: 'Ancla', weapon: 'rifle', ability: null, modifiers: { reaction: 0.85 }, maxHp: 120 },
 });
+
+/** The attacker classes offered in the buy phase, in panel order. */
+export const PICK_ROLES = Object.freeze(Object.keys(ROLES).filter((id) => ROLES[id].pick));
 
 export const DEFAULT_DEFENDER_ROLE = 'defender';

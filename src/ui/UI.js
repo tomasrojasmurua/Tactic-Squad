@@ -54,7 +54,7 @@ export class UI {
     this.gfx.update(session);
     this.cursor.update(session);
     this.touchBar.update(sim, session);
-    this.entryPicker.update(sim, session);
+    this.entryPicker.update(sim, session, camera);
     this.phasePanel.update(sim, session);
     this.droneStick.update(session);
     this.tutorialCard.update(session);

@@ -5,7 +5,7 @@ import { EV } from '../core/events.js';
 import { canOrderDefuse, isGoReady, codeInUse, codeWaiting, goStatus, lastUserIndex, holdCode } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
 import { isDecisionPhase } from '../session/Session.js';
-import { HUD } from '../config/ui.js';
+import { HUD, GO_GROUPS } from '../config/ui.js';
 import { el, setText, toggle, setHidden } from './dom.js';
 import { ICON } from './icons.js';
 import { T } from './texts.js';
@@ -42,10 +42,26 @@ export class TouchBar {
     this.exec = mk(this.column, 'primary big', ICON.play, T.touch.ready, 'ready');
     // One button per GO group in use, pressed during the turn ("now!").
     this.goButtons = ENTRY.goCodes.map((code) => {
-      const b = mk(this.column, 'go', `<b>GO ${code}</b>`, '', `go_${code}`);
+      const g = GO_GROUPS[code];
+      const b = mk(this.column, 'go grp', `<b>GO <i class="gdot">${g.glyph}</i></b>`, '', `go_${code}`);
+      b.style.setProperty('--g', g.color);
       return { code, b, label: b.querySelector('.tl') };
     });
-    this.hold = mk(this.column, '', ICON.hold, T.touch.hold, 'hold');
+    // ESPERAR opens the GO colors next to the column (ui.holdMenu): the group is chosen, not cycled.
+    this.hold = mk(this.column, '', ICON.hold, T.touch.hold, 'holdMenu');
+    this.holdMenu = el('div', 'hold-menu');
+    for (const code of [...ENTRY.goCodes, 'now']) {
+      const g = GO_GROUPS[code];
+      const b = el('button', 'tbtn hm', g ? `<span class="ti"><i class="gdot">${g.glyph}</i></span><span class="tl">${g.name}</span>` : `<span class="ti">✕</span><span class="tl">${T.touch.noHold}</span>`);
+      if (g) b.style.setProperty('--g', g.color);
+      b.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        this.bus.emit(EV.REQUEST, { action: `when_${code}` });
+      });
+      this.holdMenu.appendChild(b);
+    }
+    root.appendChild(this.holdMenu);
     this.undo = mk(this.column, '', ICON.undo, T.touch.undo, 'undo');
     this.clear = mk(this.column, '', ICON.trash, T.touch.clear, 'clear');
 
@@ -97,7 +113,12 @@ export class TouchBar {
     }
     const last = sel && sel.alive ? lastUserIndex(sel) : -1;
     const p = last >= 0 ? sel.route[last] : null;
-    setText(this.holdLabel, p && p.hold ? `${T.touch.hold} ${holdCode(p)}` : T.touch.hold);
+    const g = p && p.hold ? GO_GROUPS[holdCode(p)] : null;
+    setText(this.holdLabel, g ? g.name : T.touch.hold);
+    toggle(this.hold, 'grp', !!g);
+    if (g) this.hold.style.setProperty('--g', g.color);
+    toggle(this.holdMenu, 'on', show && session.ui.holdMenu && !disabled);
+    toggle(this.hold, 'active', session.ui.holdMenu);
     setText(this.restartLabel, session.confirm.action === 'restart' ? T.flow.confirmRestart : T.touch.restart);
     // The planning clock is running out: LISTO asks for attention (amber pulse: styles.css [data-attn]).
     const attn = deciding && !session.clock.unlimited && session.clock.left <= HUD.clockWarnSeconds ? '1' : '';

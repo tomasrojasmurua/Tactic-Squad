@@ -44,3 +44,38 @@ export function nearTail(camera, unit, wx, wy, pickPx) {
   const tail = routeTail(unit);
   return Math.hypot(tail.x - wx, tail.y - wy) <= pickRadius(camera, 0, pickPx);
 }
+
+/** Squared distance from a point to segment a-b. */
+function segDist2(px, py, ax, ay, bx, by) {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const l2 = dx * dx + dy * dy;
+  let t = l2 > 0 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0;
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  const x = ax + dx * t - px;
+  const y = ay + dy * t - py;
+  return x * x + y * y;
+}
+
+/**
+ * Index of the route point that ends the leg nearest to a world point, if
+ * that leg passes within `radius` m (the leg from the unit to route[0] is
+ * index 0), or -1. Used to drag a stretch of route into a new waypoint.
+ */
+export function segmentAt(unit, wx, wy, radius) {
+  const r = unit.route;
+  let best = -1;
+  let bestD = radius * radius;
+  let ax = unit.x;
+  let ay = unit.y;
+  for (let i = 0; i < r.length; i++) {
+    const d = segDist2(wx, wy, ax, ay, r[i].x, r[i].y);
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
+    ax = r[i].x;
+    ay = r[i].y;
+  }
+  return best;
+}

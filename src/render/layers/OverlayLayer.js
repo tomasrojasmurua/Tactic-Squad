@@ -9,10 +9,12 @@
 // scratch buffers. A pooled color is valid until 16 more are requested,
 // which is always enough because ShapeBatch consumes colors immediately.
 import { HEIGHTS, OVERLAY } from '../../config/render.js';
+import { GO_GROUPS } from '../../config/ui.js';
 import { ENTRY, MOVE, ROUND, NOISE, DRONE } from '../../config/balance.js';
 import { teamView } from '../../sim/view.js';
+import { visibilityPolygon } from '../../sim/vision.js';
 import { hexToRgb, lerp, lerpAngle } from '../../core/math.js';
-import { grenadeAt } from '../../sim/queries.js';
+import { grenadeAt, tossLanding } from '../../sim/queries.js';
 import { ShaderProgram } from '../gl/ShaderProgram.js';
 import { ShapeBatch } from '../gl/ShapeBatch.js';
 import { FLAT_VS, FLAT_FS } from '../shaders/flat.js';
@@ -32,9 +34,12 @@ export class OverlayLayer {
     this.ground = new ShapeBatch(gl);
     this.top = new ShapeBatch(gl);
     this.colors = new Map();
+    this.goColors = new Map(); // GO group code -> rgb
     this.markers = new ContactMarkers();
     this.pose = { x: 0, y: 0, facing: 0 }; // scratch interpolated pose
     this.gpos = { x: 0, y: 0, k: 0 }; // scratch grenade position
+    this.land = { x: 0, y: 0, reach: 0 }; // scratch throw landing (tossMarker)
+    this.camPoly = null; // scratch camera field of view (cameras)
     this.routePts = []; // scratch flat polyline
     this.linkPts = [0, 0, 0, 0]; // scratch entry link
     this.routeOrder = []; // own operators, selected last
@@ -148,6 +153,8 @@ export class OverlayLayer {
     for (const u of sim.teams[own]) if (u.alive && u.id === selected) order.push(u);
     for (const u of order) this.route(t, u, unitLayer.poseInto(u, frame.alpha, this.pose), mpp, time, u.id === selected);
 
+    this.cameras(t, g, sim, own, mpp, time);
+    this.smokes(t, sim, frame);
     this.grenades(t, sim, frame, mpp);
     if (own === 'attackers') this.drone(t, g, sim, vision, frame, mpp, time);
     this.barricades(t, sim, own, mpp);
@@ -239,7 +246,17 @@ export class OverlayLayer {
         const size = OVERLAY.chevronSizePx * mpp;
         t.chevrons(pts, OVERLAY.chevronSpacing, -time * OVERLAY.dashSpeed, size, w * 0.6, BLACK(0.75));
       } else {
-        t.polyline(pts, w, withAlpha(c, 0.7));
+        t.polyline(pts, w, withAlpha(c, u.follow ? 0.45 : 0.7)); // a follower's route is the leader's: quieter
+      }
+      // Quiet legs (pace 'sneak'): dark stripes across the line, like footprints.
+      const seg = this.linkPts;
+      for (let i = 0; i < u.route.length; i++) {
+        if (u.route[i].pace !== 'sneak') continue;
+        seg[0] = pts[i * 2];
+        seg[1] = pts[i * 2 + 1];
+        seg[2] = pts[i * 2 + 2];
+        seg[3] = pts[i * 2 + 3];
+        t.dashed(seg, w * 1.5, 0.08, 0.16, 0, BLACK(0.6));
       }
     }
     const r = OVERLAY.waypointRadiusPx * mpp * (selected ? 1 : 0.78);
@@ -249,9 +266,10 @@ export class OverlayLayer {
       const p = u.route[i];
       if (!p.user) continue;
       if (p.entry) this.entryMarker(t, p.x, p.y, p.entry, p.entryDoor, selected, mpp);
+      if (p.toss) this.tossMarker(t, p.x, p.y, p.toss.x, p.toss.y, p.toss.item, selected ? 1 : 0.55, mpp);
       if (p.look !== null) this.lookMarker(t, p.x, p.y, p.look, c, selected ? 1 : 0.6, mpp, u.vision.fov);
       if (p.hold) {
-        this.holdMarker(t, p.x, p.y, r * 1.6, c, mpp);
+        this.holdMarker(t, p.x, p.y, r * 1.6, c, mpp, this.goRgb(p.code));
       } else {
         const end = i === lastUser;
         const rr = end ? r * 1.25 : r;
@@ -265,10 +283,11 @@ export class OverlayLayer {
       this.lookMarker(t, pos.x, pos.y, u.idleLook, c, selected ? 0.9 : 0.5, mpp, u.vision.fov);
     }
     const e = u.entry;
-    if (e && e.phase !== 'act') this.entryMarker(t, pos.x, pos.y, e.mode, e.doorway, selected, mpp);
+    if (e && e.phase !== 'act' && e.mode === 'toss') this.tossMarker(t, pos.x, pos.y, e.tx, e.ty, e.item, selected ? 1 : 0.55, mpp);
+    else if (e && e.phase !== 'act') this.entryMarker(t, pos.x, pos.y, e.mode, e.doorway, selected, mpp);
     if (e && e.phase === 'prep') {
       // Progress of the crack / the plant around the operator.
-      const total = e.mode === 'breach' ? ENTRY.breach.prepTime : ENTRY.slow.prepTime;
+      const total = e.mode === 'breach' ? ENTRY.breach.prepTime * u.mods.breachPrep : ENTRY.slow.prepTime;
       const k = 1 - Math.max(0, e.t) / total;
       const ec = OVERLAY.entryColors[e.mode];
       t.arc(pos.x, pos.y, OVERLAY.unitRing.prep, 3 * mpp, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2, rgba(ec[0], ec[1], ec[2], 0.95), 28);
@@ -297,7 +316,7 @@ export class OverlayLayer {
       const time = len / speed;
       if (time < left) {
         left -= time;
-        if (u.route[i].hold || u.route[i].ask) return; // he will wait there
+        if (u.route[i].hold || (u.route[i].ask && ENTRY.undecided === 'stop')) return; // he will wait there
         continue;
       }
       const k = len > 1e-6 ? (left * speed) / len : 0;
@@ -350,6 +369,69 @@ export class OverlayLayer {
     t.quad(d.cx, d.cy - r, d.cx + r, d.cy, d.cx, d.cy + r, d.cx - r, d.cy, rgba(c[0], c[1], c[2], a));
   }
 
+  /** A planned throw: a dashed line from the point to where it lands (sim/queries.js tossLanding) and a ring there. */
+  tossMarker(t, x, y, tx, ty, item, alpha, mpp) {
+    const c = OVERLAY.entryColors[item] || LOOK_PREVIEW_RGB;
+    const land = tossLanding(this.sim.world, x, y, tx, ty, this.land);
+    const ex = land.x;
+    const ey = land.y;
+    const pts = this.linkPts;
+    pts[0] = x;
+    pts[1] = y;
+    pts[2] = ex;
+    pts[3] = ey;
+    t.dashed(pts, 3.6 * mpp, 0.12, 0.12, 0, BLACK(0.55 * alpha));
+    t.dashed(pts, 2 * mpp, 0.12, 0.12, 0, rgba(c[0], c[1], c[2], 0.95 * alpha));
+    const r = item === 'smoke' ? ENTRY.smoke.radius : item === 'frag' ? ENTRY.frag.radius : 0.45;
+    t.ring(ex, ey, r, 3.4 * mpp, BLACK(0.35 * alpha), 32);
+    t.ring(ex, ey, r, 2 * mpp, rgba(c[0], c[1], c[2], 0.8 * alpha), 32);
+    t.circle(ex, ey, 0.12, rgba(c[0], c[1], c[2], alpha), 12);
+  }
+
+  /**
+   * Defender cameras (sim/cameras.js): the attackers see the ones they know of
+   * — a small red box with its field of view on the floor, pulsing while it
+   * reports someone; a broken one is a dark box with a cross.
+   */
+  cameras(t, g, sim, own, mpp, time) {
+    const C = OVERLAY.camera;
+    const c = C.color;
+    for (const cam of sim.cameras) {
+      if (own === 'attackers' && !cam.known) continue;
+      const s = C.size;
+      if (cam.alive) {
+        const hot = sim.time - cam.lastAlert < C.spotPulse;
+        const a = hot ? 0.18 + 0.12 * Math.sin(time * 14) : C.coneAlpha;
+        // What it sees, cut by walls, doors and smoke (a fan from the lens).
+        const poly = (this.camPoly = visibilityPolygon(sim.world, cam.x, cam.y, cam.facing, cam.fov, cam.range, this.camPoly));
+        const col = rgba(c[0], c[1], c[2], a);
+        for (let i = 0; i + 3 < poly.length; i += 2) g.tri(cam.x, cam.y, poly[i], poly[i + 1], poly[i + 2], poly[i + 3], col);
+        t.circle(cam.x, cam.y, s + 2 * mpp, BLACK(0.85), 12);
+        t.circle(cam.x, cam.y, s, rgba(c[0], c[1], c[2], 1), 12);
+        const lx = cam.x + Math.cos(cam.facing) * s * 0.9;
+        const ly = cam.y + Math.sin(cam.facing) * s * 0.9;
+        t.circle(lx, ly, s * 0.45, BLACK(0.9), 10);
+        t.circle(lx, ly, s * 0.22, hot ? WHITE(1) : rgba(1, 0.85, 0.85, 0.8), 8);
+      } else {
+        t.circle(cam.x, cam.y, s + 2 * mpp, BLACK(0.85), 12);
+        t.circle(cam.x, cam.y, s, rgba(0.25, 0.25, 0.27, 1), 12);
+        t.line(cam.x - s, cam.y - s, cam.x + s, cam.y + s, 2.4 * mpp, rgba(c[0], c[1], c[2], 0.9));
+        t.line(cam.x - s, cam.y + s, cam.x + s, cam.y - s, 2.4 * mpp, rgba(c[0], c[1], c[2], 0.9));
+      }
+    }
+  }
+
+  /** Smoke clouds (sim/smoke.js): a soft gray disc, denser in the middle; it fills the sight cone's gap. */
+  smokes(t, sim, frame) {
+    const c = OVERLAY.smokeColor;
+    for (const s of sim.smokes) {
+      if (s.r <= 0) continue;
+      const wob = 0.04 * Math.sin(frame.time * 1.3 + s.x);
+      t.circle(s.x, s.y, s.r * (1.05 + wob), rgba(c[0], c[1], c[2], 0.7), 28, rgba(c[0], c[1], c[2], 0.42));
+      t.circle(s.x + 0.3, s.y - 0.2, s.r * 0.6, rgba(c[0] + 0.08, c[1] + 0.08, c[2] + 0.08, 0.35), 20, rgba(c[0], c[1], c[2], 0));
+    }
+  }
+
   /** Grenades in flight (an arc through the doorway) and rolling to a stop. */
   grenades(t, sim, frame, mpp) {
     for (const g of sim.grenades) {
@@ -376,10 +458,19 @@ export class OverlayLayer {
     t.arrow(x, y, x2, y2, 2.6 * mpp, 0.26, withAlpha(c, alpha));
   }
 
-  holdMarker(t, x, y, r, c, mpp) {
+  /** RGB of a GO group's color (config/ui.js GO_GROUPS; old plans without a code: the first group). */
+  goRgb(code) {
+    const id = code || ENTRY.goCodes[0];
+    let c = this.goColors.get(id);
+    if (!c) this.goColors.set(id, (c = hexToRgb((GO_GROUPS[id] || GO_GROUPS.A).color)));
+    return c;
+  }
+
+  /** A GO hold: a diamond in its group's color, with the operator's color as the two bars. */
+  holdMarker(t, x, y, r, c, mpp, g) {
     const o = r + 1.6 * mpp;
     t.quad(x, y - o, x + o, y, x, y + o, x - o, y, BLACK(0.75));
-    t.quad(x, y - r, x + r, y, x, y + r, x - r, y, WHITE(1));
+    t.quad(x, y - r, x + r, y, x, y + r, x - r, y, withAlpha(g, 1));
     const bw = r * 0.22;
     const bh = r * 0.5;
     for (const s of SIDES) {
@@ -401,6 +492,44 @@ export class OverlayLayer {
     if (ui.lookPreview) {
       const lp = ui.lookPreview;
       this.lookMarker(t, lp.x, lp.y, lp.angle, LOOK_PREVIEW_RGB, 0.95, mpp, u.vision.fov);
+    }
+    // A waypoint being dragged (or a new one pulled out of a stretch of route): a ghost and its legs.
+    const mp = ui.movePreview;
+    if (mp && mp.unitId === u.id) {
+      const r = u.route;
+      const at = Math.min(mp.index, r.length - 1);
+      let prev = u;
+      for (let j = at - 1; j >= 0; j--) if (r[j].user && !r[j].ask) { prev = r[j]; break; }
+      let next = null;
+      for (let j = mp.insert ? at : at + 1; j < r.length; j++) if (r[j].user && !r[j].ask) { next = r[j]; break; }
+      const pts = this.linkPts;
+      pts[0] = prev.x;
+      pts[1] = prev.y;
+      pts[2] = mp.x;
+      pts[3] = mp.y;
+      t.dashed(pts, 2.4 * mpp, 0.2, 0.14, 0, withAlpha(c, 0.8));
+      if (next) {
+        pts[0] = mp.x;
+        pts[1] = mp.y;
+        pts[2] = next.x;
+        pts[3] = next.y;
+        t.dashed(pts, 2.4 * mpp, 0.2, 0.14, 0, withAlpha(c, 0.8));
+      }
+      const rr = OVERLAY.waypointRadiusPx * mpp * 1.3;
+      t.circle(mp.x, mp.y, rr + 2 * mpp, BLACK(0.7), 16);
+      t.circle(mp.x, mp.y, rr, WHITE(0.95), 16);
+    }
+    // Aiming a throw (menu "Lanzar", then a tap): from the point to the cursor.
+    const tp = ui.tossPick;
+    if (tp && tp.unitId === u.id && tp.index < u.route.length && ui.cursorWorld) {
+      const p = u.route[tp.index];
+      this.tossMarker(t, p.x, p.y, ui.cursorWorld.x, ui.cursorWorld.y, tp.item, 0.8, mpp);
+    }
+    // The waypoint the player tapped (door picker, ESPERAR, sigilo act on it): a white ring.
+    const tg = session.pointTarget;
+    if (tg && tg.unitId === u.id && tg.index < u.route.length) {
+      const p = u.route[tg.index];
+      t.ring(p.x, p.y, OVERLAY.waypointRadiusPx * mpp * 2.1, 2.2 * mpp, WHITE(0.9), 24);
     }
   }
 

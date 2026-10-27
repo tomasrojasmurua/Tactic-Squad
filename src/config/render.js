@@ -70,6 +70,8 @@ export const ANIMATION = Object.freeze({
 export const ROLE_GEAR = Object.freeze({
   assault: { head: 'helmet', pack: 'large', extra: null },
   entry: { head: 'heavy', pack: 'none', extra: 'charges' },
+  scout: { head: 'cap', pack: 'small', extra: null },
+  anchor: { head: 'heavy', pack: 'none', extra: null },
   defender: { head: 'cap', pack: 'small', extra: null },
   // Planned classes (BRIEF, not implemented yet) — reserved looks:
   breacher: { head: 'heavy', pack: 'small', extra: 'charges' },
@@ -199,7 +201,9 @@ export const OVERLAY = Object.freeze({
     prep: 0.47, // progress arc of an entry being prepared (cracking a door, planting a charge)
   }),
   // Door entries: dashed link waypoint -> doorway and a marker on the doorway, per mode (rgb).
-  entryColors: Object.freeze({ kick: [1, 1, 1], slow: [0.6, 0.85, 1], flash: [1, 0.96, 0.62], frag: [0.72, 0.85, 0.45], breach: [1, 0.69, 0.18] }),
+  entryColors: Object.freeze({ kick: [1, 1, 1], slow: [0.6, 0.85, 1], flash: [1, 0.96, 0.62], frag: [0.72, 0.85, 0.45], breach: [1, 0.69, 0.18], smoke: [0.78, 0.8, 0.82] }),
+  smokeColor: [0.72, 0.74, 0.76], // a smoke cloud (sim/smoke.js)
+  camera: Object.freeze({ size: 0.2, color: [1, 0.33, 0.3], coneAlpha: 0.1, spotPulse: 1.2 }), // defender cameras (sim/cameras.js)
   entryMarker: 0.2, // m, half-size of the doorway marker
   grenadeRadius: 0.09, // m, a grenade in flight / on the floor
 });
@@ -214,6 +218,7 @@ export const PINGS = Object.freeze({
   go: { life: 0.7, r0: 0.4, r1: 2.0, widthPx: 4, color: [0.56, 0.89, 0.42], follow: true },
   door: { life: 0.35, r0: 0.3, r1: 1.5, widthPx: 3, color: [1, 1, 1] },
   kill: { life: 0.8, r0: 0.3, r1: 0.9, widthPx: 3, color: [1, 0.25, 0.2] },
+  scout: { life: 1.6, r0: 0.5, r1: 8, widthPx: 3, color: [0.6, 0.88, 0.36] }, // SCOUT.radius
 });
 
 export const FX = Object.freeze({

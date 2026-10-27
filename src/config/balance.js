@@ -38,6 +38,13 @@ export const MOVE = Object.freeze({
   queueDoorMaxWidth: 1.4, // m: wider openings (arches) let two through side by side
   stackDoorRange: 2.4, // m: resting allies this close to a doorway space out along its wall
   collisionPasses: 2, // hard separation + wall push-out iterations per tick
+  // Pace per stretch of route (waypoint.pace): 'sneak' trades speed for silence (Door Kickers' slow
+  // move, Counter-Strike's walk). Footsteps are heard only sneakHearing m away (noise and the AI's ears).
+  sneakFactor: 0.5,
+  sneakHearing: 1.6,
+  // Squad route (sim/follow.js): followers walk the leader's route in file, this far behind each other,
+  // and stack behind him at his GO holds.
+  fileGap: 0.85,
   // "Slicing the pie": while walking, look at a point this far ahead along the
   // route, so the operator turns into corners and doorways BEFORE reaching them.
   lookAhead: 2.2, // m
@@ -165,6 +172,9 @@ export const ENTRY = Object.freeze({
   // A route drawn through a closed door stops this far before it, on a "?" point: how and when to go
   // through is the player's call (sim/orders.js markDoors). Closer than DOORS.triggerDistance would open it.
   askDistance: 0.75,
+  // What an operator does at a "?" door nobody decided: 'open' (default, as in Door Kickers: he opens it
+  // and goes through — the "?" only offers a better entry) or 'stop' (strict: he waits for a decision).
+  undecided: 'open',
   lookPast: 1.6, // m past the doorway a stacked operator aims (through the crack / at the room)
   followGap: 0.12, // s after the grenade / charge goes off before the rest of the code moves in
   // De golpe: the door bursts open (no breach pause), loud, and whoever stands right behind it reels.
@@ -183,6 +193,12 @@ export const ENTRY = Object.freeze({
   frag: { fuse: 1.1, radius: 4.2, damage: 160, minDamage: 8, hearing: 22 },
   // Carga de brecha: planted on arrival (prepTime), fired by the release. The door is destroyed.
   breach: { prepTime: 1.8, fuse: 0.35, radius: 3.0, damage: 75, blind: 1.8, hearing: 22, depth: 0.25 },
+  // Thrown from any waypoint to a point the player picks (waypoint.toss; not only through a door).
+  tossItems: Object.freeze(['flash', 'frag', 'smoke']),
+  tossRange: 9, // m at most from the thrower (short of the first wall on the way)
+  // Humo: a cloud that blocks sight (not bullets) for `seconds`, growing to `radius` in `grow` s,
+  // thinning out over the last `fade` s. Up to `max` clouds at once (the oldest clears first).
+  smoke: { fuse: 0.6, hearing: 6, radius: 2.6, grow: 1.4, seconds: 14, fade: 2, sides: 8, max: 4 },
 });
 
 export const ROUND = Object.freeze({
@@ -199,6 +215,9 @@ export const ROUND = Object.freeze({
   defuseTime: 7.0, // s standing still next to the bomb
   defuseRadius: 1.1, // m from the bomb an attacker can work on it
   goStallHint: 3, // s with every planned operator waiting for GO before the HUD insists
+  // Option (Simulation `stopOnContact`, against the AI): the turn ends early when the attackers see a
+  // new enemy, so the player can react (the tutorial plays with it). Never before minContactSeconds.
+  minContactSeconds: 0.5,
 });
 
 /**
@@ -212,8 +231,8 @@ export const NOISE = Object.freeze({
   jitter: 0.9, // ...and shifted up to this much (deterministic, from the seed)
   keepTurns: 3, // a pulse stays on the map this many turns, fading
   // Radius heard (m) by kind; the loudest kind of a cell names its pulse.
-  radius: Object.freeze({ step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, flash: 18, frag: 22, breach: 22 }),
-  rank: Object.freeze(['step', 'crack', 'door', 'plant', 'defuse', 'kick', 'bash', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
+  radius: Object.freeze({ sneak: 2, step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, flash: 18, frag: 22, breach: 22 }),
+  rank: Object.freeze(['sneak', 'step', 'crack', 'door', 'plant', 'defuse', 'kick', 'bash', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
 });
 
 /**
@@ -223,9 +242,9 @@ export const NOISE = Object.freeze({
  */
 export const BUY = Object.freeze({
   startMoney: 800, // $ per operator
-  prices: Object.freeze({ flash: 200, frag: 300, breach: 300 }),
-  max: Object.freeze({ flash: 2, frag: 1, breach: 2 }), // carried at most
-  items: Object.freeze(['flash', 'frag', 'breach']), // order of the buy panel
+  prices: Object.freeze({ flash: 200, frag: 300, smoke: 300, breach: 300 }),
+  max: Object.freeze({ flash: 2, frag: 1, smoke: 1, breach: 2 }), // carried at most
+  items: Object.freeze(['flash', 'frag', 'smoke', 'breach']), // order of the buy panel
 });
 
 /** Defender preparation (sim/prep.js): set-up rules and the watch orders. */
@@ -283,3 +302,34 @@ export const MAP_FORMAT = Object.freeze({
   onWallTolerance: 0.05, // m, a door/opening this close to a wall line cuts it
   minWallSpan: 0.01, // m, shorter leftover wall pieces are dropped
 });
+
+/**
+ * Defender cameras (sim/cameras.js, map `aiCameras[site]`): a fixed eye on a
+ * wall. While it keeps an attacker in sight for `detect` s every AI defender
+ * is told where he is (as if they heard him, COMBAT.alertDuration). The
+ * attackers see it like an enemy (their cones, the drone) and whoever has it
+ * in sight within `shootRange` and nothing else to shoot breaks it in
+ * `shootDelay` s (one loud shot).
+ */
+export const CAMERA = Object.freeze({
+  fov: (80 * Math.PI) / 180,
+  range: 15, // m
+  detect: 0.5, // s in sight before it reports
+  realert: 2, // s between two reports while it keeps seeing someone
+  alertSeconds: 6, // s the defenders watch the reported spot
+  shootRange: 16, // m (beyond its range: a camera you know of, you break before it sees you)
+  shootDelay: 0.7, // s the attacker spends finding and aiming at it
+  shootDelayKnown: 0.2, // s when it was already known (the drone found it): he walks in aiming at it
+});
+
+/** Explorador (sim/abilities/scoutPulse.js): at each turn's end, defenders this close are detected through walls. */
+export const SCOUT = Object.freeze({ radius: 8 });
+
+/**
+ * Match against the AI (session/Match.js): first to `toWin` rounds (best of 7).
+ * Each operator carries his class, his money and — if he lived — his unused
+ * gear into the next round, and earns per round: `win` or `loss` (+`lossBonus`
+ * per round lost in a row, up to `lossBonusMax` rounds), `kill` per defender
+ * he downed, `defuse` if he defused. Money is capped at `cap`.
+ */
+export const MATCH = Object.freeze({ toWin: 4, win: 600, loss: 300, lossBonus: 100, lossBonusMax: 3, kill: 100, defuse: 200, cap: 2000 });

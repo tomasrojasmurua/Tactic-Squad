@@ -17,6 +17,7 @@ import { EV } from '../core/events.js';
 import { TAU, approachAngle, angleTo } from '../core/math.js';
 import { circleAabbPush } from '../core/geom.js';
 import { canSee } from './vision.js';
+import { droneSeesCameras } from './cameras.js';
 import { alertAiUnit } from './ai.js';
 import { isAiControlled } from './queries.js';
 import { barricadeBoxes, spotBarricades } from './barricades.js';
@@ -135,6 +136,7 @@ function look(sim, d) {
     if (!u.seenByEnemyPrev) sim.emit(EV.SPOTTED, { unitId: u.id, team: u.team, x: u.x, y: u.y, byDrone: true });
   }
   spotBarricades(sim, d, DRONE.fov);
+  droneSeesCameras(sim, d, eyeCfg);
   const bomb = sim.bomb;
   if (!bomb.spotted && canSee(sim.world, d, bomb.x, bomb.y, eyeCfg)) {
     bomb.spotted = true;

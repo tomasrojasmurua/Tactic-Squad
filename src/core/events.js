@@ -16,6 +16,8 @@ export const EV = Object.freeze({
   GO_CODE: 'goCode', // {released, code}
   ENTRY_CHOSEN: 'entryChosen', // {entry}: the attackers start from another entry (preparation)
   // Buy and defender set-up (sim/prep.js)
+  ROLE_CHANGED: 'roleChanged', // {unitId, role, money}: an attacker changed class in the buy phase
+  SCOUT_PULSE: 'scoutPulse', // {unitId, x, y, radius, found}: an Explorador's turn-end sweep (found: defenders detected)
   GEAR_CHANGED: 'gearChanged', // {unitId, item, count, money}: bought or sold in the buy phase
   SITE_CHOSEN: 'siteChosen', // {site}: the defenders moved the bomb (and reset their set-up to that site's)
   SETUP_CHANGED: 'setupChanged', // {unitId, kind:'place'|'watch'}: a defender placed or given a watch order
@@ -36,6 +38,9 @@ export const EV = Object.freeze({
   GRENADE_THROWN: 'grenadeThrown', // {id, kind:'flash'|'frag', unitId, x, y, viaX, viaY, toX, toY, flight}
   GRENADE_DETONATE: 'grenadeDetonate', // {id, kind, unitId, x, y}
   BLINDED: 'blinded', // {unitId, team, seconds, cause:'flash'|'blast'|'kick', x, y}
+  CAMERA_FOUND: 'cameraFound', // {cameraId, x, y, byDrone}: the attackers know where a defender camera is
+  CAMERA_SPOT: 'cameraSpot', // {cameraId, unitId, x, y}: a camera saw an attacker and told the defenders
+  CAMERA_DESTROYED: 'cameraDestroyed', // {cameraId, unitId, x, y}: an attacker shot it
   BOMB_SPOTTED: 'bombSpotted', // {unitId, site, x, y}: the attackers found the bomb
   DEFUSE_START: 'defuseStart', // {unitId, x, y}
   DEFUSE_ABORT: 'defuseAbort', // {unitId}

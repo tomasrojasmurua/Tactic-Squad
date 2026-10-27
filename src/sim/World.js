@@ -2,7 +2,7 @@
 // simulation needs: collision boxes, a flat segment list for LOS/bullets
 // and a navigation grid.
 import { pushBoxEdges } from '../core/geom.js';
-import { NAV, COVER } from '../config/balance.js';
+import { NAV, COVER, ENTRY } from '../config/balance.js';
 import { NavGrid } from './NavGrid.js';
 
 export class World {
@@ -28,9 +28,12 @@ export class World {
     pushBoxEdges(segs, { minX: 0, minY: 0, maxX: this.width, maxY: this.height });
     this.staticSegmentCount = segs.length;
 
-    this.segments = new Float64Array(segs.length + compiled.doors.length * 4);
+    // Then the smoke clouds (sim/smoke.js): they block sight but not bullets or blasts, so the
+    // solid part (walls, props, doors: solidCount) is what bullets and explosions test.
+    this.solidCount = segs.length + compiled.doors.length * 4;
+    this.segments = new Float64Array(this.solidCount + ENTRY.smoke.max * ENTRY.smoke.sides * 4);
     this.segments.set(segs);
-    this.segmentCount = this.segments.length;
+    this.segmentCount = this.solidCount;
     /** Bumped whenever a door slab moves: lets observers cache LOS-derived data. */
     this.segmentsVersion = 0;
 
@@ -48,6 +51,25 @@ export class World {
       this.segments[o++] = d.def.hingeX + Math.cos(a) * len;
       this.segments[o++] = d.def.hingeY + Math.sin(a) * len;
     }
+    this.segmentsVersion++;
+  }
+
+  /** Writes the smoke clouds ({x, y, r}) as polygons after the solid segments (sight only). */
+  updateSmokeSegments(clouds) {
+    const n = ENTRY.smoke.sides;
+    let o = this.solidCount;
+    for (const c of clouds) {
+      if (c.r <= 0.05) continue;
+      for (let i = 0; i < n; i++) {
+        const a0 = (i / n) * Math.PI * 2;
+        const a1 = ((i + 1) / n) * Math.PI * 2;
+        this.segments[o++] = c.x + Math.cos(a0) * c.r;
+        this.segments[o++] = c.y + Math.sin(a0) * c.r;
+        this.segments[o++] = c.x + Math.cos(a1) * c.r;
+        this.segments[o++] = c.y + Math.sin(a1) * c.r;
+      }
+    }
+    this.segmentCount = o;
     this.segmentsVersion++;
   }
 }

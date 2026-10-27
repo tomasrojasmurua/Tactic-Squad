@@ -1,5 +1,6 @@
 // Left squad panel: one card per operator (portrait, weapon, ammo, HP,
 // live status). Clicking a card selects the operator.
+import { ROLES } from '../config/operators.js';
 import { EV } from '../core/events.js';
 import { teamUnits } from '../sim/queries.js';
 import { el, setText, toggle, setStyle, setClassName } from './dom.js';
@@ -53,13 +54,22 @@ export class SquadPanel {
         status: root.querySelector('.card-status'),
       });
     });
+    // Squad route: the others follow the selected operator in file (one route for all; again: each on his own).
+    this.squadBtn = el('button', 'card squad-all clickable', `<div class="sq-ic">${ICON.squad}</div><div class="sq-l">${T.squad.button}</div>`);
+    this.squadBtn.addEventListener('pointerdown', (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+      this.bus.emit(EV.REQUEST, { action: 'squad' });
+    });
+    this.squadLabel = this.squadBtn.querySelector('.sq-l');
+    this.node.appendChild(this.squadBtn);
   }
 
   update(sim, session) {
     for (const [id, c] of this.cards) {
       const u = sim.units[id];
       setText(c.name, u.name);
-      setText(c.weapon, u.weapon.name);
+      setText(c.weapon, `${ROLES[u.role]?.label ?? ''} · ${u.weapon.name}`);
       setText(c.ammo, u.alive ? `${u.mag}/${u.reserve}` : '—');
       const hp = `${Math.max(0, (u.hp / u.maxHp) * 100)}%`;
       setStyle(c.hp, 'width', hp);
@@ -69,6 +79,17 @@ export class SquadPanel {
       toggle(c.root, 'dead', !u.alive);
       toggle(c.root, 'has-bomb', u.defusing);
       setStatus(c.status, u, sim);
+    }
+    // The squad button: shown while planning with two or more alive; lit when the others follow the selected one.
+    if (this.squadBtn) {
+      const sel = sim.units[session.selectedId];
+      const team = teamUnits(sim, session.team);
+      const others = team.filter((o) => o.alive && o !== sel);
+      const planning = session.phase === 'planning' || session.phase === 'prep';
+      setStyle(this.squadBtn, 'display', planning && sel && sel.alive && others.length ? '' : 'none');
+      const on = !!sel && others.length > 0 && others.every((o) => o.follow && o.follow.leader === sel.id);
+      toggle(this.squadBtn, 'on', on);
+      setText(this.squadLabel, on ? T.squad.on : T.squad.button);
     }
   }
 }
@@ -107,6 +128,8 @@ function setStatus(node, u, sim) {
     text = S.breaching;
   } else if (u.moving) {
     text = S.moving;
+  } else if (u.follow) {
+    text = S.following(sim.units[u.follow.leader].name);
   } else if (u.route.length) {
     text = S.planned;
   }

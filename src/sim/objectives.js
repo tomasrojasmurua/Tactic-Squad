@@ -82,6 +82,7 @@ function updateDefuse(sim, dt) {
   bomb.progress = Math.min(1, bomb.progress + dt / ROUND.defuseTime);
   if (bomb.progress >= 1) {
     bomb.defused = true;
+    bomb.defusedBy = defuser.id; // the match economy pays him (session/Match.js)
     defuser.defusing = false;
     bomb.defuserId = -1;
     sim.emit(EV.BOMB_DEFUSED, { unitId: defuser.id, x: bomb.x, y: bomb.y });

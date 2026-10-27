@@ -2,8 +2,8 @@
 // objective/timer (bottom-right), action buttons, hints, defuse bar,
 // kill feed, toasts and the red damage vignette.
 import { EV } from '../core/events.js';
-import { HUD, VIGNETTE } from '../config/ui.js';
-import { teamUnits, enemyTeam, isGoReady, bombKnownTo, codeInUse, codeWaiting, nextGoCode, goStatus } from '../sim/queries.js';
+import { HUD, VIGNETTE, GO_GROUPS } from '../config/ui.js';
+import { teamUnits, enemyTeam, isGoReady, bombKnownTo, codeInUse, codeWaiting, goStatus } from '../sim/queries.js';
 import { TURN_TICKS } from '../sim/round.js';
 import { ENTRY, ROUND, SIM, DRONE } from '../config/balance.js';
 import { isDecisionPhase } from '../session/Session.js';
@@ -65,10 +65,12 @@ export class Hud {
       return b;
     };
     this.btnExecute = button('primary', `<span class="ico">${ICON.play}</span><span class="lbl">${T.actions.ready}</span><span class="key">ESPACIO</span>`, 'ready');
-    // One GO button per group in use (A, B, C), pressed during the turn: "now!" — that group
-    // acts together. It shows how many of the group are in position; G calls the first one.
+    // One GO button per group in use (a color: config/ui.js GO_GROUPS), pressed during the turn:
+    // "now!" — that group acts together. It shows how many of the group are in position.
     this.goButtons = ENTRY.goCodes.map((code) => {
-      const b = button('go', `<span>${T.actions.go} <span class="code">${code}</span><span class="when"></span></span><span class="key">G</span>`, `go_${code}`);
+      const g = GO_GROUPS[code];
+      const b = button('go grp', `<span>${T.actions.go} <span class="code"><i class="gdot">${g.glyph}</i>${g.name.toUpperCase()}</span><span class="when"></span></span><span class="key">${g.key}</span>`, `go_${code}`);
+      b.style.setProperty('--g', g.color);
       return { code, b, when: b.querySelector('.when'), key: b.querySelector('.key') };
     });
     this.btnRestart = button('', `<span>${T.actions.restart}</span><span class="key">R</span>`, 'restart');
@@ -113,7 +115,7 @@ export class Hud {
       this.sim = sim;
       this.rounds++;
       // Desktop: after the first round the shortcut list and the objective's long text retire (the player knows them).
-      toggle(this.hints, 'retired', this.rounds > 1);
+      toggle(this.hints, 'retired', true); // one channel for "what now": the banner's coach line (keys: help)
       toggle(this.objective, 'brief', this.rounds > 1);
       this.feed.innerHTML = '';
       this.vignetteLevel = 0;
@@ -140,9 +142,6 @@ export class Hud {
     bus.on(EV.DRONE_DESTROYED, () => this.viewer.team === 'attackers' && this.pushInfo(T.feed.droneDown));
     bus.on(EV.BARRICADE_SPOTTED, () => this.viewer.team === 'attackers' && this.pushInfo(T.feed.barricade));
     bus.on(EV.BARRICADE_BROKEN, (e) => this.pushInfo(e.how === 'breach' ? T.feed.barricadeBlown : T.feed.barricadeBroken));
-    bus.on(EV.GO_CODE, (e) => {
-      if (e.released > 0 || e.late > 0) this.pushInfo(e.code ? T.feed.goCode(e.code) : T.feed.go);
-    });
     bus.on(EV.GRENADE_THROWN, (e) => {
       const u = this.sim && this.sim.units[e.unitId];
       if (u && u.team === this.viewer.team) this.pushInfo(T.feed.grenade[e.kind]);
@@ -154,6 +153,14 @@ export class Hud {
       if (u && e.cause === 'flash' && e.seconds > 1) this.pushInfo(T.feed.flashed(u.name));
     });
     bus.on(EV.BOMB_SPOTTED, (e) => this.pushInfo(T.feed.bombSpotted(e.site)));
+    bus.on(EV.SCOUT_PULSE, (e) => {
+      const u = this.sim && this.sim.units[e.unitId];
+      if (u && u.team === this.viewer.team) this.pushInfo(T.feed.scout(u.name, e.found));
+    });
+    // Defender cameras (sim/cameras.js), told to the attackers.
+    bus.on(EV.CAMERA_FOUND, (e) => this.viewer.team === 'attackers' && this.pushInfo(e.byDrone ? T.feed.cameraFoundDrone : T.feed.cameraFound));
+    bus.on(EV.CAMERA_SPOT, () => this.viewer.team === 'attackers' && this.pushInfo(T.feed.cameraSpot));
+    bus.on(EV.CAMERA_DESTROYED, (e) => this.pushInfo(T.feed.cameraDown(this.sim.units[e.unitId].name)));
     bus.on(EV.DEFUSE_START, (e) => this.pushInfo(T.feed.defusing(this.sim.units[e.unitId].name)));
     bus.on(EV.DEFUSE_ABORT, () => this.pushInfo(T.feed.defuseAborted));
     bus.on(EV.BOMB_DEFUSED, () => this.pushInfo(T.feed.defused));
@@ -251,7 +258,9 @@ export class Hud {
     const enemies = teamUnits(sim, enemyTeam(session.team));
     let dead = 0;
     for (const d of enemies) if (!d.alive) dead++;
-    setText(this.kills, T.objective.kills(dead, enemies.length));
+    const m = session.mode === 'match' && session.match;
+    const shownRound = m && session.phase === 'ended' && !m.over ? m.round - 1 : m && m.round; // the result still talks about the round played
+    setText(this.kills, m ? `${T.objective.match(shownRound, m.score.attackers, m.score.defenders)} · ${T.objective.kills(dead, enemies.length)}` : T.objective.kills(dead, enemies.length));
     const b = sim.bomb;
     setText(this.bombText, b.defused ? T.objective.bombDefused : bombKnownTo(sim, session.team) ? T.objective.bombAt(b.site) : T.objective.bombUnknown);
     setText(this.timer, formatTime(sim.timeLeft));
@@ -266,8 +275,6 @@ export class Hud {
     // GO buttons: the groups in use; they can be pressed only while the turn runs (or is paused).
     const team = session.team;
     const live = (running || phase === 'paused') && !session.replay.exec;
-    const next = nextGoCode(sim, team);
-    let first = true;
     for (const g of this.goButtons) {
       const used = codeInUse(sim, team, g.code) && phase !== 'ended';
       setHidden(g.b, !used);
@@ -277,9 +284,7 @@ export class Hud {
       toggle(g.b, 'ready', live && codeWaiting(sim, team, g.code));
       toggle(g.b, 'all', live && isGoReady(sim, team, g.code));
       setText(g.when, ` · ${T.flow.goReady(st.ready, st.total)}`);
-      // The G key calls the first group someone waits for, else the first in use.
-      setStyle(g.key, 'display', live && (next ? g.code === next : first) ? '' : 'none');
-      first = false;
+      setStyle(g.key, 'display', live ? '' : 'none');
     }
     const armed = session.confirm.action === 'restart';
     setText(this.restartLabel, armed ? T.flow.confirmRestart : T.actions.restart);

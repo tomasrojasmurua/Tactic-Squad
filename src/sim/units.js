@@ -68,7 +68,7 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     waitCode: null, // GO code he waits for (ENTRY.goCodes)
     goDelay: 0, // s released but still holding: a teammate's grenade / charge goes off first
     entry: null, // door entry in progress (sim/entries.js)
-    gear: { flash: 0, frag: 0, breach: 0, ...r.role.gear }, // utility left (spent by entries)
+    gear: { flash: 0, frag: 0, smoke: 0, breach: 0, ...r.role.gear }, // utility left (spent by entries / throws)
     money: 0, // $ left to buy with (attackers, buy phase: sim/prep.js)
     bash: null, // breaking a barricade: {door, t, next} (sim/barricades.js)
     blind: 0, // s flashed / stunned: sees nothing, does not shoot
@@ -76,6 +76,8 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     idleLook: null, // angle to face once the route is done
     stun: 0, // seconds frozen (door breach beat)
     moving: false,
+    sneaking: false, // walked a 'sneak' leg this tick (quiet footsteps: MOVE.sneakHearing)
+    follow: null, // squad route (sim/follow.js): {leader, rank} while he walks another's route
     wasMoving: false, // moving on the previous tick (followers read it)
     heading: facing, // direction of the last step taken
     speedFraction: 0, // current walking speed / MOVE.speed (scales the moving spread)
@@ -106,4 +108,31 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     deathCause: null, // {code, killerId, room, ...} filled by sim/debrief.js at death
     stats: { kills: 0, shots: 0, hits: 0 },
   };
+}
+
+/**
+ * Changes an operator's class (buy phase, sim/prep.js setRole): stats,
+ * vision, ability, health and the class's weapon (full) — the gear is the
+ * caller's business (it is bought).
+ */
+export function applyRole(u, roleId) {
+  const r = resolveRole(roleId, u.team);
+  u.role = roleId;
+  u.mods = r.mods;
+  u.vision = r.vision;
+  u.ability = r.role.ability;
+  u.abilityState = null;
+  u.maxHp = r.maxHp;
+  u.hp = r.maxHp;
+  const weapon = WEAPONS[r.role.weapon];
+  u.weaponId = r.role.weapon;
+  u.weapon = weapon;
+  u.mag = weapon.magazine;
+  u.reserve = weapon.reserve;
+  u.burstLeft = weapon.burst[0];
+}
+
+/** The gear a class starts with (counts per item). */
+export function roleGear(roleId) {
+  return { flash: 0, frag: 0, smoke: 0, breach: 0, ...ROLES[roleId].gear };
 }

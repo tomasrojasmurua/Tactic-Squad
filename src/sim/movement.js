@@ -6,12 +6,13 @@
 // side is revealed inside his cone, not behind his back. A doorway coming up
 // on the route is aimed THROUGH (MOVE.doorPeek past it). When the route ends
 // he keeps facing the way he arrived (or the look the player set there).
-import { MOVE, NAV } from '../config/balance.js';
+import { MOVE, NAV, ENTRY } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { angleDiff, angleTo, approachAngle } from '../core/math.js';
 import { tryOpenDoors, segmentCrossesDoorway } from './doors.js';
-import { armEntry } from './entries.js';
+import { armEntry, armToss } from './entries.js';
 import { isAiControlled, holdCode, ASK_CODE } from './queries.js';
+import { routePoint } from './routePoint.js';
 
 const carrot = { x: 0, y: 0 };
 
@@ -99,6 +100,8 @@ export function updateMovement(sim, u, dt) {
   const p0 = u.route[0];
   const moveDir = angleTo(u.x, u.y, p0.x, p0.y);
   if (Math.abs(angleDiff(u.facing, moveDir)) > MOVE.strafeAngle) speed *= MOVE.strafeFactor;
+  const sneaking = p0.pace === 'sneak';
+  if (sneaking) speed *= MOVE.sneakFactor; // the leg he walks is a quiet one
   speed *= followFactor(sim, u, Math.cos(moveDir), Math.sin(moveDir));
   if (speed > 0 && doorwayBusy(sim, u)) speed = 0; // queue: an ally is still in the doorway ahead
 
@@ -121,11 +124,12 @@ export function updateMovement(sim, u, dt) {
         budget -= d;
         moved += d;
       } else budget = 0;
-      if (p.ask) {
-        // A door nobody decided: stop on the "?" point (kept: the decision is made on it).
+      if (p.ask && ENTRY.undecided === 'stop') {
+        // Strict mode: a door nobody decided stops him on the "?" point (kept: the decision is made on it).
         stopAtAsk(sim, u, p);
         break;
       }
+      // Default: an undecided door is just opened on the way (tryOpenDoors), as in Door Kickers.
       arriveAt(sim, u, u.route.shift());
     } else {
       u.x += (dx / d) * budget;
@@ -136,13 +140,14 @@ export function updateMovement(sim, u, dt) {
   }
 
   unstick(sim, u, dt, moved);
+  u.sneaking = moved > 0 && sneaking;
   if (moved > 0) {
     u.moving = true;
     u.distanceWalked += moved;
     u.stepAccum += moved;
     if (u.stepAccum >= MOVE.footstepStride) {
       u.stepAccum -= MOVE.footstepStride;
-      sim.emit(EV.FOOTSTEP, { unitId: u.id, team: u.team, x: u.x, y: u.y, speed: u.speedFraction * MOVE.speed });
+      sim.emit(EV.FOOTSTEP, { unitId: u.id, team: u.team, x: u.x, y: u.y, speed: u.speedFraction * MOVE.speed, sneak: sneaking });
     }
     tryOpenDoors(sim, u);
   }
@@ -231,7 +236,7 @@ function unstick(sim, u, dt, moved) {
   const path = sim.world.nav.findPath(u.x, u.y, p.x, p.y, NAV.snapRadius);
   if (!path || path.length < 2) return;
   path.pop(); // the point itself stays as it is (user, hold, entry...)
-  const corners = path.map((q) => ({ x: q.x, y: q.y, user: false, look: null, hold: false, code: null, entry: null, entryDoor: -1, ask: false, door: -1 }));
+  const corners = path.map((q) => routePoint(q.x, q.y, { pace: p.pace || null }));
   u.route.unshift(...corners);
 }
 
@@ -268,6 +273,7 @@ function arriveAt(sim, u, p) {
     sim.emit(EV.HOLD_REACHED, { unitId: u.id, code: u.waitCode });
   }
   if (p.entry) armEntry(sim, u, p);
+  else if (p.toss) armToss(sim, u, p);
   if (!u.route.length) {
     // End of the plan: hold the angle set there, or keep facing the way he came.
     u.idleLook = p.look !== null ? p.look : isAiControlled(sim, u) ? null : u.heading;

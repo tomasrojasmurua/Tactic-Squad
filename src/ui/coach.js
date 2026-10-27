@@ -37,9 +37,9 @@ export function coachHint(sim, session) {
     return w.waitCode === ASK_CODE ? say(C.askWaiting(w.name), true) : say(C.goWaiting[dev](w.name), false);
   }
   if (session.phase !== 'planning' && session.phase !== 'prep') return null;
-  // A door nobody decided: its operator will stop there.
+  // Strict mode only (ENTRY.undecided 'stop'): a door nobody decided stops its operator there.
   const doors = pendingDoors(sim, team);
-  if (doors > 0) return say(C.doors[dev](doors), true);
+  if (doors > 0 && ENTRY.undecided === 'stop') return say(C.doorsStrict[dev](doors), true);
   if (session.phase !== 'planning') return null;
   if (sim.turn > 1) return null; // the first planning teaches the steps; later ones are the player's
   const squad = teamUnits(sim, team);
@@ -47,6 +47,8 @@ export function coachHint(sim, session) {
   if (!sel) return say(C.select[dev], true);
   if (!hasUserPoint(sel)) return say(C.route[dev](sel.name), true);
   if (!squad.some(hasLook)) return say(C.look[dev], true);
+  // Doors open by themselves; the first time a route crosses one, say a better entry is one tap away.
+  if (doors > 0 && !squad.some((u) => u.route.some((p) => p.entry))) return say(C.doors[dev], false);
   const idle = squad.find((u) => u.alive && !hasUserPoint(u));
   if (idle) return say(C.next[dev](idle.name), false);
   return say(C.ready[dev], false);

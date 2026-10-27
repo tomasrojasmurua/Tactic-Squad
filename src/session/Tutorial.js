@@ -1,6 +1,8 @@
 // Guided tutorial (menu "Tutorial guiado"): a whole round on the real map,
 // easier than a normal one (config/ui.js TUTORIAL: fixed seed, site B, two
-// defenders), that walks through every phase in order. Two kinds of step:
+// defenders), that teaches the assault: planning, doors, GO groups, the turn.
+// Buy, entry and drone are skipped there; each gets an intro card the first
+// time a later round reaches it (PHASE_INTROS). Two kinds of step:
 //   info  a card that explains (ui/TutorialCard.js); ENTENDIDO / LISTO / Enter
 //         closes it. One shown during a live phase (the drone) pauses it.
 //   do    asks for one gesture and advances by itself once it is done.
@@ -19,14 +21,7 @@ import { loadPref, savePref } from './storage.js';
  * ready: LISTO is allowed (it is what the step asks for, or the lesson is past that point).
  */
 export const TUTORIAL_STEPS = Object.freeze([
-  { id: 'welcome', info: true, phase: 'buy' },
-  { id: 'buy', phase: 'buy' },
-  { id: 'buyReady', ready: true },
-  { id: 'prep', info: true, phase: 'prep' },
-  { id: 'entry', phase: 'prep' },
-  { id: 'prepReady', ready: true },
-  { id: 'drone', info: true, phase: 'drone' },
-  { id: 'droneFly', ready: true },
+  { id: 'welcome', info: true, phase: 'planning' },
   { id: 'plan', info: true, phase: 'planning' },
   { id: 'select', phase: 'planning' },
   { id: 'route', phase: 'planning' },
@@ -37,6 +32,13 @@ export const TUTORIAL_STEPS = Object.freeze([
   { id: 'go', ready: true },
   { id: 'turnEnd', info: true, phase: 'planning', ready: true },
 ]);
+
+/**
+ * The phases before the assault are not in the guided round: each one is
+ * explained by a card the first time a round on this device reaches it
+ * (they unlock as the player finishes rounds: SessionController lockedPhases).
+ */
+export const PHASE_INTROS = Object.freeze({ buy: 'introBuy', prep: 'introPrep', drone: 'introDrone' });
 
 /** One-off tips after the guided part (each shown once, at a planning, when it first applies). */
 export const TUTORIAL_TIPS = Object.freeze(['barricade', 'defuse']);
@@ -49,16 +51,6 @@ function stepDone(id, sim, session, t) {
   const squad = teamUnits(sim, session.team);
   const sel = controllableUnit(sim, session.selectedId, session.team);
   switch (id) {
-    case 'buy':
-      return moneyOf(sim, session.team) < t.money;
-    case 'buyReady':
-      return session.phase !== 'buy';
-    case 'entry':
-      return t.entryChosen;
-    case 'prepReady':
-      return session.phase !== 'prep';
-    case 'droneFly':
-      return session.phase !== 'drone' && session.phase !== 'paused'; // the drone's card pauses it
     case 'select':
       return !!sel;
     case 'route':
@@ -104,6 +96,7 @@ export class Tutorial {
       entryChosen: false,
       tips: [], // tips already shown
       tip: null, // the tip on screen
+      introsSeen: loadPref(FLOW.storageKeys.introsSeen, []) || [], // PHASE_INTROS already shown on this device
     };
   }
 
@@ -175,7 +168,16 @@ export class Tutorial {
     const t = this.session.tutorial;
     const phase = this.session.phase;
     if (!t.active) {
-      if (!tips || t.card || phase === 'ended') return null;
+      if (t.card || phase === 'ended') return null;
+      // A phase before the assault, reached for the first time on this device: its intro card.
+      const intro = PHASE_INTROS[phase];
+      if (intro && !t.introsSeen.includes(intro)) {
+        t.introsSeen.push(intro);
+        savePref(FLOW.storageKeys.introsSeen, t.introsSeen);
+        Object.assign(t, { tip: intro, card: true });
+        return 'card';
+      }
+      if (!tips) return null;
       const tip = TUTORIAL_TIPS.find((id) => !t.tips.includes(id) && tipApplies(id, sim, this.session));
       if (!tip) return null;
       t.tips.push(tip);

@@ -60,6 +60,13 @@ export function compileMap(def) {
     for (const id of Object.keys(weights)) if (!def.entries.some((e) => e.id === id)) throw new Error(`aiEntries ${site}: entrada desconocida ${id}`);
   }
 
+  // Defender cameras per site (sim/cameras.js): {at, facing, fov?, range?}.
+  const cameras = def.aiCameras || {};
+  for (const [site, list] of Object.entries(cameras)) {
+    if (!def.sites.some((s) => s.id === site)) throw new Error(`aiCameras: sitio desconocido ${site}`);
+    for (const c of list) if (!Array.isArray(c.at) || !Number.isFinite(c.facing)) throw new Error(`aiCameras ${site}: cámara sin at / facing`);
+  }
+
   return {
     id: def.id,
     name: def.name,
@@ -81,6 +88,7 @@ export function compileMap(def) {
     barricadeSlots,
     aiBarricades,
     aiEntries,
+    cameras,
     camera: def.camera,
   };
 }

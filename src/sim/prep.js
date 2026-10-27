@@ -16,10 +16,13 @@
 //                    on the first firefight heard, falls back there and holds `look`
 // Everything here is deterministic and uses no sim.rng (the AI's barricade
 // pick hashes the seed), so a set-up cannot shift the rest of the round.
+import { placeCameras } from './cameras.js';
 import { BUY, PREP } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { pointInBox } from '../core/geom.js';
 import { WEAPONS } from '../config/weapons.js';
+import { ROLES, DEFAULT_DEFENDER_ROLE } from '../config/operators.js';
+import { applyRole, roleGear } from './units.js';
 import { createBomb } from './objectives.js';
 
 // ------------------------------------------------------------ buy
@@ -55,6 +58,24 @@ export function buyItem(sim, u, item, count) {
   return null;
 }
 
+/**
+ * An attacker changes class (buy phase): his gear goes back for its price,
+ * he takes the new class's stats, weapon and gear and pays for that gear
+ * (whatever is left; never below 0). Brecha and Explorador: one per squad.
+ */
+export function setRole(sim, u, roleId) {
+  const role = ROLES[roleId];
+  if (u.team !== 'attackers' || !role || !role.pick) return 'badRole';
+  if (u.role === roleId) return null;
+  if (role.unique && sim.teams.attackers.some((o) => o !== u && o.role === roleId)) return 'roleTaken';
+  const refund = gearCost(u.gear);
+  applyRole(u, roleId);
+  u.gear = roleGear(roleId);
+  u.money = Math.max(0, u.money + refund - gearCost(u.gear));
+  sim.emit(EV.ROLE_CHANGED, { unitId: u.id, role: roleId, money: u.money });
+  return null;
+}
+
 // ------------------------------------------------------------ defender set-up
 
 /** Is the point inside the defenders' half (map `deployment.defenders`)? */
@@ -75,6 +96,7 @@ export function chooseSite(sim, id) {
   sim.site = site;
   sim.bomb = createBomb(site);
   applyLayout(sim, sim.compiled.defense[site.id]);
+  placeCameras(sim);
   sim.emit(EV.SITE_CHOSEN, { site: site.id });
   return null;
 }
@@ -84,6 +106,8 @@ export function applyLayout(sim, layout) {
   sim.teams.defenders.forEach((u, i) => {
     const s = layout[(sim.defenderSlots ? sim.defenderSlots[i] : i) % layout.length];
     moveTo(u, s.at[0], s.at[1], s.facing);
+    const role = s.role || DEFAULT_DEFENDER_ROLE;
+    if (role !== u.role) applyRole(u, role); // an anchor slot makes him an Ancla (config/operators.js)
     if (s.weapon && s.weapon !== u.weaponId) setWeapon(u, s.weapon);
     setBehavior(u, s.behavior || null);
   });

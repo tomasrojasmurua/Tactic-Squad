@@ -1,9 +1,9 @@
 // Touch gestures (phones/tablets, landscape):
-//   tap            select operator (generous radius) / add waypoint
-//   1-finger drag  draw route: from the operator, from the route's end, or from
-//                  the touch point (the route is extended to it); with nothing
-//                  selected it pans the camera. Near the screen edge the camera
-//                  follows the finger.
+//   tap            select operator (generous radius) / door picker on a waypoint / add waypoint
+//   1-finger drag  from an operator or his route's end: draw the route (near the
+//                  screen edge the camera follows the finger); from a waypoint:
+//                  move it; from a stretch of route: a new waypoint there;
+//                  from anywhere else: pan the camera
 //   long press     on a waypoint: drag to aim the facing there; anywhere else:
 //                  aim the facing of the route's last point (or the operator)
 //   2 fingers      pan (centroid) + pinch zoom. A second finger that lands
@@ -51,6 +51,7 @@ export class TouchController {
         if (performance.now() - this.drawStart < TOUCH.strokeCancelMs || pl.draw.added === 0) pl.cancelDraw();
         else pl.endDraw(this.last.x, this.last.y);
       } else {
+        // A waypoint being dragged (or a look being aimed) is dropped: the second finger means pan / zoom.
         pl.cancel();
       }
       this.mode = 'pinch';
@@ -77,6 +78,9 @@ export class TouchController {
         this.last.x = e.x;
         this.last.y = e.y;
         pl.drawTo(e.x, e.y);
+        break;
+      case 'move':
+        pl.moveTo(e.x, e.y);
         break;
       case 'look':
         // The finger moved before the long-press time (the timer just ran
@@ -123,6 +127,8 @@ export class TouchController {
       pl.tap(e.x, e.y, true);
     } else if (this.mode === 'draw') {
       pl.endDraw(e.x, e.y);
+    } else if (this.mode === 'move') {
+      pl.endMove(e.x, e.y);
     } else if (this.mode === 'look') {
       pl.endLook();
     } else if (this.mode === 'pinch' && this.pointers.size === 1) {
@@ -134,22 +140,35 @@ export class TouchController {
     return true;
   }
 
+  /**
+   * The finger moved: what it started on decides (PlanningController.grab).
+   * An operator: he is selected and his route drawn from its end. His
+   * waypoint: it is moved. A stretch of his route: a new waypoint there.
+   * Anything else (the floor): the camera pans — one finger is enough.
+   */
   beginDrag(e) {
     const pl = this.planning;
     const s = this.start;
-    const hit = pl.unitAt(s.x, s.y, true);
-    if (hit && hit.id !== this.session.selectedId) pl.select(hit.id);
-    if (!pl.selectedUnit() || !pl.canEdit) {
-      this.mode = 'pan1';
-      this.onTouchMove({ id: e.id, x: e.x, y: e.y });
+    let grab = pl.canEdit ? pl.grab(s.x, s.y, true) : { kind: 'ground' };
+    if (grab.kind === 'other') {
+      pl.select(grab.unit.id);
+      grab = { kind: 'unit', unit: grab.unit };
+    }
+    if ((grab.kind === 'unit' || grab.kind === 'tail') && pl.beginDraw(s.x, s.y, true)) {
+      this.mode = 'draw';
+      this.drawStart = performance.now();
+      this.last.x = e.x;
+      this.last.y = e.y;
+      pl.drawTo(e.x, e.y);
       return;
     }
-    if (!pl.beginDraw(s.x, s.y, true)) return;
-    this.mode = 'draw';
-    this.drawStart = performance.now();
-    this.last.x = e.x;
-    this.last.y = e.y;
-    pl.drawTo(e.x, e.y);
+    if ((grab.kind === 'waypoint' || grab.kind === 'segment') && pl.beginMove(grab, s.x, s.y)) {
+      this.mode = 'move';
+      pl.moveTo(e.x, e.y);
+      return;
+    }
+    this.mode = 'pan1';
+    this.onTouchMove({ id: e.id, x: e.x, y: e.y });
   }
 
   longPress() {

@@ -30,7 +30,7 @@ export function barricadeBoxes(sim, out) {
 /** u ran into a barricade (opening, kicking, cracking it): he starts breaking it. */
 export function startBash(sim, door, u) {
   if (u.team === 'defenders' || u.bash) return;
-  u.bash = { door: door.def.index, t: BARRICADE.breakTime, next: 0 };
+  u.bash = { door: door.def.index, t: BARRICADE.breakTime * u.mods.bash, next: 0 };
   learn(sim, door);
 }
 
