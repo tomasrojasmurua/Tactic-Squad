@@ -200,7 +200,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 - Todas las fases desde la primera ronda, con tarjeta de presentación.
 - Reintentar con el plan grabado (fuera de partida).
 - **Partidas al mejor de 3, 5 o 7 con economía**, marcador y equipo que se conserva.
-- Menú con lobby (formato, bando, mapa, clases), tutorial en lecciones (la 1, Básico, sobre una ronda real más fácil; las otras cuatro en camino), pantalla de "por qué".
+- Menú con lobby (formato, bando, mapa, clases), tutorial en lecciones (1. Básico, sobre una ronda real más fácil; 5. Ronda completa, con tarjeta en cada fase; las otras tres en camino), pantalla de "por qué".
 
 **Atacante**
 - Clases elegibles en la compra, compra por operador con dinero propio.

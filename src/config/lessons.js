@@ -39,7 +39,20 @@ export const LESSONS = Object.freeze([
   { id: 'doors', minutes: 4, ready: false },
   { id: 'squad', minutes: 3, ready: false },
   { id: 'defend', minutes: 4, ready: false },
-  { id: 'round', minutes: 5, ready: false },
+  {
+    // A whole round against the AI, every phase with its card: buy, entry, drone, then the assault.
+    id: 'round',
+    minutes: 5,
+    ready: true,
+    scenario: Object.freeze({ seed: 5, site: 'A', team: 'attackers', defenders: null, skip: Object.freeze([]) }),
+    steps: Object.freeze([
+      { id: 'roundWelcome', info: true, phase: 'buy' },
+      { id: 'introBuy', info: true, phase: 'buy' },
+      { id: 'introPrep', info: true, phase: 'prep', ready: true },
+      { id: 'introDrone', info: true, phase: 'drone', ready: true },
+      { id: 'roundPlan', info: true, phase: 'planning', ready: true },
+    ]),
+  },
 ]);
 
 export const lessonById = (id) => LESSONS.find((l) => l.id === id) || null;

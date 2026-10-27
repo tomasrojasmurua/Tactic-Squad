@@ -201,6 +201,11 @@ export class Tutorial {
       if (s.info) {
         if (t.card) break;
         t.card = true;
+        // A lesson's card that is a phase's intro counts as seen (no second one in a later round).
+        if (Object.values(PHASE_INTROS).includes(s.id) && !t.introsSeen.includes(s.id)) {
+          t.introsSeen.push(s.id);
+          savePref(FLOW.storageKeys.introsSeen, t.introsSeen);
+        }
         return 'card';
       }
       if (!stepDone(s.id, sim, this.session, t)) break;

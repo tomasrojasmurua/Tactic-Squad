@@ -135,3 +135,31 @@ test('las lecciones son datos: cada una con su escenario y sus pasos; la siguien
   assert.equal(nextLesson([]).id, 'basic');
   assert.equal(nextLesson(['basic']), LESSONS.find((l) => l.ready && l.id !== 'basic') || null);
 });
+
+test('lección 5, ronda completa: cada fase con su tarjeta, de la compra al asalto', () => {
+  const sc = lessonById('round').scenario;
+  const sim = new Simulation(MAP, { seed: sc.seed, site: sc.site });
+  const session = createSession({ touch: false });
+  const tut = new Tutorial(session);
+  const sync = () => (session.phase = PHASE[sim.phase]);
+  sync();
+  tut.begin(sim, 'round');
+  const t = session.tutorial;
+  const seen = [];
+  for (let guard = 0; t.active && guard < 4000; guard++) {
+    const r = tut.update(sim, true);
+    if (r === 'card') {
+      seen.push(t.id);
+      assert.ok(tut.ack());
+      continue;
+    }
+    if (!t.active) break;
+    assert.ok(!tut.blocksReady(), `LISTO sirve tras ${t.id}`);
+    if (sim.phase === 'drone' || sim.phase === 'exec') sim.step();
+    else sim.advancePhase();
+    sync();
+  }
+  assert.deepEqual(seen, ['roundWelcome', 'introBuy', 'introPrep', 'introDrone', 'roundPlan']);
+  assert.ok(t.lessonsDone.includes('round'));
+  assert.equal(sim.phase, 'plan', 'termina al planificar el primer turno');
+});

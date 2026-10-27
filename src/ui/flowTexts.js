@@ -114,7 +114,7 @@ export const FLOW_TEXTS = Object.freeze({
     tip: 'Consejo',
     welcome: {
       title: 'Bienvenido',
-      text: `Los Defensores escondieron una bomba en el sitio A o en el B. Tu escuadrón de 3 debe encontrarla y desactivarla antes de que explote, o eliminar a todos los Defensores. Aquí aprendes el asalto, con solo 2 defensores. La compra, la elección de entrada y el dron se suman en las rondas siguientes, de a uno.`,
+      text: `Los Defensores escondieron una bomba en el sitio A o en el B. Tu escuadrón de 3 debe encontrarla y desactivarla antes de que explote, o eliminar a todos los Defensores. Aquí aprendes el asalto, con solo 2 defensores. La compra, la entrada y el dron están en la lección 5 y en cualquier partida.`,
     },
     plan: {
       title: 'Asalto por turnos',
@@ -159,6 +159,14 @@ export const FLOW_TEXTS = Object.freeze({
         touch: 'Cuando ÁGUILA llegue a la puerta, toca GO VIOLETA a la derecha: ¡ahora! Si el turno se acaba antes, pulsa LISTO y sigue en el próximo.',
         desk: 'Cuando ÁGUILA llegue a la puerta, pulsa GO VIOLETA (o Z): ¡ahora! Si el turno se acaba antes, pulsa Espacio y sigue en el próximo.',
       },
+    },
+    roundWelcome: {
+      title: 'Una ronda completa',
+      text: 'Ahora sí, todo: compras, eliges por dónde entrar, reconoces con el dron y asaltas. Contra 3 defensores de la IA que también se prepararon a ciegas. Cada fase se explica al llegar.',
+    },
+    roundPlan: {
+      title: 'Al asalto',
+      text: 'Lo que vio el dron sigue marcado. Las cámaras (punto rojo con su cono) avisan a los defensores: rómpelas de un tiro o ciégalas con humo. Gana encontrando la bomba y desactivándola, o eliminando a los defensores.',
     },
     turnEnd: {
       title: 'Fin del turno',
