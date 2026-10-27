@@ -4,6 +4,8 @@ Juego web táctico de escuadra en vista cenital. JavaScript puro (módulos ES, s
 
 ## Cómo correrlo
 
+Se juega en línea en **https://tomasrojasmurua.github.io/Tactic-Squad/**. Cada push a `main` lo vuelve a publicar si pasan las pruebas (`.github/workflows/pages.yml`).
+
 El juego no necesita build: basta servir la carpeta.
 
 ```sh
