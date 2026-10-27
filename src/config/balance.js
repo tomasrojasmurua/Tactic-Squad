@@ -252,6 +252,7 @@ export const PREP = Object.freeze({
   barricades: 2, // per round (free for now)
   barricadeReach: 0.5, // m: a door counts as in the defenders' half this close to it
   sweepPeriod: 6, // s of a full sweep (watch order "barrer")
+  sweepArc: 70 * DEG, // the sweep a player gives covers this much, centred on the facing he set
   minSpacing: 0.7, // m between two defenders placed in the set-up
 });
 

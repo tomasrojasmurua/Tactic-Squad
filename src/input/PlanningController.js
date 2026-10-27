@@ -5,6 +5,10 @@
 // bus, stamped with the player's side (session.team); never mutates the
 // simulation directly (it only *reads* it for previews and picking).
 //
+// In the defender's set-up (preparation, playing the defenders) the same
+// gestures place instead of drawing: a tap or a drag puts the selected
+// defender there (placeUnit) and the facing gesture turns his watch order.
+//
 // A freehand drag is one "stroke": beginStroke / endStroke commands bracket
 // it, so the sim straightens it on release (no wobble) and a gesture that
 // turns out to be a pinch can remove it whole (cancelStroke).
@@ -14,7 +18,8 @@ import { POINTER, TOUCH } from '../config/input.js';
 import { NAV } from '../config/balance.js';
 import { routeTail, lastUserIndex, controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, teamUnits } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
-import { canEditRoutes, targetIndex } from '../session/Session.js';
+import { canEditRoutes, targetIndex, isDefenderSetup } from '../session/Session.js';
+import { watchOf, watchOrder } from '../session/watch.js';
 import { unitAt, waypointAt, nearTail, pickRadius, segmentAt } from './picking.js';
 import { RoutePreview } from './RoutePreview.js';
 
@@ -133,6 +138,7 @@ export class PlanningController {
     }
     const u = this.selectedUnit();
     if (!u) return false;
+    if (isDefenderSetup(this.session)) return this.place(u, px, py);
     if (g.kind === 'unit') return true; // tapping the selected operator again changes nothing
     // A second tap on the last point (double tap, shaky finger) adds nothing.
     if (u.route.length && this.nearTail(px, py, touch ? TOUCH.duplicatePointPx : POINTER.duplicatePointPx)) return true;
@@ -148,6 +154,7 @@ export class PlanningController {
   beginDraw(px, py, touch = false) {
     const u = this.selectedUnit();
     if (!u || !this.canEdit) return false;
+    if (isDefenderSetup(this.session)) return this.place(u, px, py);
     this.command({ type: 'beginStroke', unitId: u.id });
     // From the operator (no route yet) or from the end of his route: a drag elsewhere pans the camera.
     const start = routeTail(u);
@@ -330,8 +337,20 @@ export class PlanningController {
   endLook() {
     if (!this.look) return;
     const lp = this.session.ui.lookPreview;
-    if (lp && lp.valid) this.command({ type: 'setLook', unitId: this.look.unitId, angle: lp.angle, index: this.look.index });
+    if (lp && lp.valid && isDefenderSetup(this.session)) {
+      // Set-up: the facing of his watch order (same mode, centred on the new angle).
+      const u = this.getSim().units[this.look.unitId];
+      const w = watchOf(u);
+      this.command({ type: 'setWatch', unitId: u.id, watch: watchOrder(w.mode === 'patrol' ? 'alert' : w.mode, lp.angle, w.fallback) });
+    } else if (lp && lp.valid) this.command({ type: 'setLook', unitId: this.look.unitId, angle: lp.angle, index: this.look.index });
     this.cancel();
+  }
+
+  /** Set-up: the selected defender stands at the point (his facing and watch order stay). */
+  place(u, px, py) {
+    const w = this.world(px, py);
+    this.command({ type: 'placeUnit', unitId: u.id, x: w.x, y: w.y });
+    return true;
   }
 
   cancel() {
@@ -368,7 +387,7 @@ export class PlanningController {
 
   /** Dashed preview of the leg a click would add (desktop hover). */
   updateHoverPath(world, overUnit) {
-    this.preview.update(this.getSim(), this.canEdit ? this.selectedUnit() : null, world, overUnit);
+    this.preview.update(this.getSim(), this.canEdit && !isDefenderSetup(this.session) ? this.selectedUnit() : null, world, overUnit);
   }
 
   /** Invalidate the cached preview (route changed, selection changed, phase...). */
