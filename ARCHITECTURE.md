@@ -354,7 +354,7 @@ Una revisión de jugabilidad en tres fases, cada una en sus commits.
 **Fase 1 — claridad**
 - GO por **colores** (`config/ui.js GO_GROUPS`): violeta, rosa, blanco; teclas Z / X / C. Internamente siguen siendo `'A' / 'B' / 'C'`.
 - Puertas **abiertas por defecto** (`ENTRY.undecided = 'open'`; `'stop'` restaura el freno anterior).
-- Menú del punto como popover anclado (`ui/EntryPicker.js`): puerta (3 + "Más"), cuándo, paso y lanzar.
+- Menú del punto (`ui/EntryPicker.js`): en una puerta, rueda con las seis entradas alrededor del punto y un panel al lado (cuándo, paso, lanzar); lejos de puertas, popover anclado. Tocar una puerta apila al operador junto a ella y abre la rueda (`PlanningController.stackAt`, `config/input.js` `DOOR_TAP`).
 - ESPERAR (táctil) abre los colores (`session.ui.holdMenu`).
 - Primera partida directo a planificar; compra, entrada y dron se desbloquean (`FLOW.unlockAfterRounds`), con tarjeta la primera vez.
 - Un solo canal de "qué hago ahora" (el banner): se quitaron la línea de GO del feed y la barra de pistas duplicada.

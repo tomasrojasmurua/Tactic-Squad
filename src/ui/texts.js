@@ -164,8 +164,6 @@ export const T = Object.freeze({
     askHint: 'Por defecto la abre y pasa; elige otra entrada si quieres',
     when: 'Cuándo',
     now: 'Ya',
-    more: 'Más',
-    less: 'Menos',
     close: 'Cerrar',
     none: 'Abrir',
     modes: { kick: 'Patada', slow: 'Entreabrir', flash: 'Flash', frag: 'Granada', breach: 'Carga' },

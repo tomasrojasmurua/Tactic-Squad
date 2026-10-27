@@ -433,6 +433,7 @@ function setEntry(sim, unit, mode, index) {
   if (mode === null) {
     p.entry = null;
     p.entryDoor = -1;
+    p.toss = null; // "just open it" also replaces a throw from here
     settleAsk(unit, i); // "just open it and go" is a decision too
     return changed(sim, unit, 'entry');
   }

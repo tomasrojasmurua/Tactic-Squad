@@ -591,13 +591,14 @@ body.touch .weapon-plate { left: var(--sal); }
   .help-box .help-options .btn { font-size: 11px; letter-spacing: 0.03em; flex-basis: 160px; }
 }
 
-/* ------------------------------------------------------------ door picker (ui/EntryPicker.js): a popover on the door point */
-.entry-picker {
-  position: absolute; left: 0; top: 0; display: none; flex-direction: column; gap: 4px; will-change: transform;
+/* ------------------------------------------------------------ waypoint menu (ui/EntryPicker.js): a popover on the point; at a door, a wheel around it */
+.entry-picker { position: absolute; left: 0; top: 0; width: 0; height: 0; display: none; pointer-events: none; z-index: 5; }
+.entry-picker.on { display: block; }
+.entry-picker .ep-panel {
+  position: absolute; left: 0; top: 0; display: flex; flex-direction: column; gap: 4px; will-change: transform;
   padding: 5px 6px 6px; background: var(--plate-strong); border: 1px solid var(--line-strong); border-top: 2px solid var(--cyan);
-  pointer-events: none; z-index: 5; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
 }
-.entry-picker.on { display: flex; }
 .entry-picker .ep-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; letter-spacing: 0.12em; white-space: nowrap; }
 .entry-picker .ep-title { font-weight: 800; text-transform: uppercase; color: var(--cyan); }
 .entry-picker .ep-x {
@@ -605,34 +606,43 @@ body.touch .weapon-plate { left: var(--sal); }
   color: var(--muted); background: none; border: 0; cursor: pointer;
 }
 .entry-picker .ep-x:hover { color: #fff; }
-.entry-picker .ep-row { display: flex; gap: 4px; }
-.entry-picker .ep-more { display: none; }
-.entry-picker:not(.door) .ep-main { display: none; }
+.entry-picker.door:not(.aiming) .ep-x { display: none; } /* the wheel's hub closes it */
 .entry-picker .ep-pace { display: flex; align-items: center; gap: 4px; }
-.entry-picker.more .ep-more { display: flex; }
-.entry-picker.aiming > :not(.ep-head) { display: none; } /* aiming a throw: just "where?" and × */
-.entry-picker.aiming { border-top-color: var(--amber); }
+.entry-picker.aiming .ep-panel > :not(.ep-head) { display: none; } /* aiming a throw: just "where?" and × */
+.entry-picker.aiming .ep-panel { border-top-color: var(--amber); }
 .entry-picker.aiming .ep-title { color: var(--amber); }
+/* The door wheel: six entries around the point, × in the hub. */
+.entry-picker .ep-ring { position: absolute; left: 0; top: 0; display: none; will-change: transform; border-radius: 50%; }
+.entry-picker.door:not(.aiming) .ep-ring { display: block; }
+.entry-picker .ep-ring::before {
+  content: ''; position: absolute; inset: 14px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(8, 9, 11, 0.15) 0 22%, rgba(8, 9, 11, 0.62) 23% 100%); border: 1px solid rgba(47, 215, 255, 0.35);
+}
+.entry-picker .ep-ring .ebtn { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; min-width: 0; width: 60px; height: 60px; padding: 0; }
+.entry-picker .ep-ring .ebtn:active { transform: translate(-50%, -50%) scale(0.95); }
+.entry-picker .ep-ring .ebtn .en { top: 4px; right: 8px; }
+.entry-picker .ep-hub {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%;
+  pointer-events: auto; touch-action: manipulation; cursor: pointer; font-size: 20px; line-height: 1; color: #cfd6db;
+  background: rgba(8, 9, 11, 0.85); border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.entry-picker .ep-hub:hover { color: #fff; border-color: rgba(255, 255, 255, 0.6); }
 .ebtn {
   pointer-events: auto; touch-action: manipulation; min-width: 58px; min-height: 46px; padding: 4px 6px; position: relative;
   font-family: var(--font); color: #fff; background: rgba(20, 23, 27, 0.95); border: 1px solid rgba(255, 255, 255, 0.18);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer;
 }
 .ebtn:hover { border-color: rgba(255, 255, 255, 0.45); }
-.ebtn:active { transform: scale(0.95); }
 .ebtn .ei { width: 20px; height: 20px; display: grid; place-items: center; font-size: 18px; font-weight: 900; line-height: 1; }
 .ebtn .ei svg { width: 100%; height: 100%; }
-.ebtn .el { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.ebtn .el { font-size: 9px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
 .ebtn .en { position: absolute; top: 2px; right: 4px; font-size: 9.5px; font-weight: 800; color: var(--amber); }
 .ebtn.active { background: var(--cyan-deep); border-color: var(--cyan); box-shadow: 0 0 0 1px rgba(47, 215, 255, 0.35); }
 .ebtn[disabled] { opacity: 0.32; cursor: default; }
-.ebtn-more { background: transparent; color: #cfd6db; }
 .ebtn-flash .ei { color: #fff6c4; }
 .ebtn-frag .ei { color: #b9d38a; }
 .ebtn-breach .ei { color: var(--amber); }
-body.touch .entry-picker { padding: 4px 5px 5px; }
-body.touch .ebtn { min-width: 50px; padding: 3px 4px; }
-@media (max-width: 700px) { body.touch .ebtn .el { font-size: 8.5px; letter-spacing: 0.04em; } body.touch .ebtn { min-width: 46px; } }
+body.touch .entry-picker .ep-panel { padding: 4px 5px 5px; }
 
 /* GO buttons per code (desktop): the code letter rides on the button. */
 .actions .btn.go .code { font-weight: 900; }

@@ -106,6 +106,7 @@ export class MouseKeyController {
     }
     if (matches(KEYS.deselect, e.code)) {
       if (this.p.session.ui.tossPick) this.p.cancelToss();
+      else if (this.p.session.pointTarget && !this.p.busy) this.p.request('pickerClose'); // the waypoint menu / door wheel
       else if (this.p.draw) this.p.cancelDraw();
       else this.p.cancel();
       this.press = null;
