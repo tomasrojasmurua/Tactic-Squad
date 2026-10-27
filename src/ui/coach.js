@@ -26,6 +26,7 @@ export function coachHint(sim, session) {
   if (tut.active && tut.id && session.phase !== 'ended') return say(F.tutorial.prefix(tut.step + 1, tut.count) + F.tutorial[tut.id][dev], true);
   if (session.phase === 'paused' && F.pause[session.pauseReason]) return say(F.pause[session.pauseReason][dev], true);
   if (session.replay.pending > 0 && session.phase !== 'ended') return say(F.replaying(session.replay.pending), false);
+  if (session.phase === 'drone' || (session.phase === 'paused' && session.resumePhase === 'drone')) return null;
   if (session.phase === 'running' || session.phase === 'paused') {
     // A whole group in position: it is the player's call ("now!").
     const ready = ENTRY.goCodes.find((c) => isGoReady(sim, team, c));

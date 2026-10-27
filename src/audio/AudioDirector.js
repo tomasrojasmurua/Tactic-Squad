@@ -48,6 +48,10 @@ export class AudioDirector {
     on(EV.DEATH, (ev) => this.death(ev));
     on(EV.FOOTSTEP, (ev) => this.footstep(ev));
     on(EV.DOOR_OPEN, (ev) => this.door(ev));
+    // Breaking a barricade: each blow is a kick that does not open it (the slam is the last one).
+    on(EV.BARRICADE_HIT, (ev) => this.at('door.kick', ev.x, ev.y, L.doorKick, 'door'));
+    on(EV.BARRICADE_BROKEN, (ev) => ev.how === 'bash' && this.at('door.slam', ev.x, ev.y, L.doorSlam, 'door'));
+    on(EV.DRONE_DESTROYED, () => this.ui('undo'));
     on(EV.GRENADE_THROWN, (ev) => this.at('grenade.pin', ev.x, ev.y, L.grenadePin, 'foley'));
     on(EV.GRENADE_DETONATE, (ev) => this.bang(ev.kind === 'flash' ? 'flashbang' : 'blast', ev.x, ev.y));
     on(EV.CHARGE_BLAST, (ev) => this.bang('blast', ev.x, ev.y));
@@ -81,7 +85,8 @@ export class AudioDirector {
       if (ev.phase === 'running') this.assault = true;
       else if (ev.phase === 'title' || ev.phase === 'buy') this.assault = false;
       const turnPause = this.assault && (ev.phase === 'planning' || ev.phase === 'paused');
-      this.music.setPhase(turnPause ? 'running' : ev.phase === 'buy' || ev.phase === 'prep' ? 'planning' : ev.phase);
+      const calm = ev.phase === 'buy' || ev.phase === 'prep' || ev.phase === 'drone' || (ev.phase === 'paused' && !this.assault);
+      this.music.setPhase(turnPause ? 'running' : calm ? 'planning' : ev.phase);
       if (ev.phase === 'running') this.e.bank.startCombat(); // combat sounds now, if not baked yet
     });
   }

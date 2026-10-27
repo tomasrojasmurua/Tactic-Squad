@@ -85,6 +85,24 @@ export class CameraFraming {
     if (!this.inFreeArea(x, y)) this.centerOn(x, y);
   }
 
+  /** Drone phase: keeps the drone in the middle of the free area (snap: at once). The zoom stays the player's. */
+  followDrone(sim, dt, snap = false) {
+    const d = sim.drone;
+    if (!d) return;
+    const cam = this.camera;
+    if (snap) {
+      this.saved = null;
+      this.placeAt(d.x, d.y, FLOW.droneCameraHeight);
+      return;
+    }
+    const m = this.insets();
+    const mpp = (2 * cam.tanHalf * cam.height) / cam.heightPx;
+    const tx = d.x - ((m.left - m.right) / 2) * mpp;
+    const ty = d.y - ((m.top - m.bottom) / 2) * mpp;
+    const k = 1 - Math.exp(-FLOW.droneFollow * dt);
+    cam.pan((tx - cam.x) * k, (ty - cam.y) * k);
+  }
+
   centerOn(x, y) {
     this.saved = null;
     this.placeAt(x, y, this.camera.targetHeight);

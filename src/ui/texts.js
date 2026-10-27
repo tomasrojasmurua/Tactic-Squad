@@ -6,21 +6,23 @@ export const T = Object.freeze({
   gameTitle: 'TACTIC SQUAD',
   subtitle: 'Prototipo táctico · Operación Almacén',
   briefing:
-    'Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. El asalto va por turnos: planificas sin ver al rival, con todo el tiempo que quieras, y todo se ejecuta a la vez durante 8 s, sin pausa; durante el turno lanzas los grupos GO A·B·C. La bomba estalla tras 3 minutos de ejecución: encuéntrala y desactívala (7 s quieto, sin disparar) o elimina a los Defensores antes.',
+    'Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. Antes del asalto compras equipo, eliges entrada y tienes 15 s de dron para mirar adentro. El asalto va por turnos: planificas sin ver al rival, con todo el tiempo que quieras, y todo se ejecuta a la vez durante 8 s, sin pausa; durante el turno lanzas los grupos GO A·B·C. La bomba estalla tras 3 minutos de ejecución: encuéntrala y desactívala (7 s quieto, sin disparar) o elimina a los Defensores antes.',
   start: 'COMENZAR',
   startHint: 'Clic o Intro',
 
   phase: {
     buy: 'COMPRA',
     prep: 'PREPARACIÓN',
+    drone: 'DRON',
     planning: 'PLANIFICACIÓN',
     paused: 'PAUSA',
     running: 'EJECUCIÓN',
     ended: 'FIN DE RONDA',
   },
   phaseSub: {
-    buy: 'Revisa el equipo · ESPACIO: listo',
+    buy: 'Compra el equipo de cada operador · ESPACIO: listo',
     prep: 'Elige por dónde entrar y adelanta rutas · ESPACIO: listo',
+    drone: 'WASD o flechas: mueve el dron · pasa bajo las puertas · ESPACIO: retirarlo',
     planning: 'Traza o cambia rutas · ESPACIO: listo',
     paused: 'ESPACIO para reanudar',
     running: 'Todo se ejecuta a la vez: el plan sigue al terminar el turno',
@@ -28,8 +30,9 @@ export const T = Object.freeze({
   },
 
   phaseSubTouch: {
-    buy: 'Revisa el equipo · LISTO para seguir',
+    buy: 'Compra el equipo · LISTO para seguir',
     prep: 'Elige la entrada y adelanta rutas · LISTO',
+    drone: 'Mueve el dron con el mando · pasa bajo las puertas',
     planning: 'Dibuja o cambia rutas · LISTO para ejecutar',
     paused: 'SEGUIR para reanudar',
     running: 'Todo se ejecuta a la vez: el plan sigue al terminar el turno',
@@ -66,6 +69,7 @@ export const T = Object.freeze({
 
   actions: {
     ready: 'Listo',
+    recall: 'Retirar dron',
     resume: 'Reanudar',
     go: 'GO',
     restart: 'Reiniciar',
@@ -225,12 +229,18 @@ export const T = Object.freeze({
     flashed: (n) => `${n} cegado`,
     grenade: { flash: '¡Flash!', frag: '¡Granada!' },
     breach: 'Puerta reventada',
+    droneContact: 'El dron vio a un defensor',
+    droneDown: 'Dron derribado',
+    barricade: 'Barricada a la vista',
+    barricadeBroken: 'Barricada rota',
+    barricadeBlown: 'Barricada volada',
   },
 
   help: {
     title: 'CONTROLES',
     rows: [
       ['1 · 2 · 3 / Tab', 'Seleccionar operador'],
+      ['WASD / flechas (dron)', 'Mover el dron de reconocimiento; ESPACIO lo retira'],
       ['Clic izquierdo', 'Añadir punto de ruta (con pathfinding)'],
       ['Arrastrar', 'Dibujar ruta a mano alzada'],
       ['Clic derecho (arrastrar)', 'Fijar dirección de mirada del último punto'],
@@ -257,6 +267,7 @@ export const T = Object.freeze({
 
   touch: {
     ready: 'Listo',
+    recall: 'Retirar',
     resume: 'Seguir',
     go: 'GO',
     hold: 'Esperar',
@@ -269,6 +280,7 @@ export const T = Object.freeze({
     music: 'Música',
     rows: [
       ['Tocar operador / tarjeta', 'Seleccionar'],
+      ['Mando DRON', 'Mover el dron de reconocimiento; RETIRAR lo termina'],
       ['Tocar el suelo', 'Añadir punto de ruta'],
       ['Arrastrar un dedo', 'Dibujar ruta (desde el operador o el punto tocado)'],
       ['Mantener pulsado un punto', 'Arrastrar para fijar la mirada'],
@@ -287,16 +299,23 @@ export const T = Object.freeze({
   gfxLost: { title: 'Restaurando gráficos…', text: 'El sistema liberó la pantalla del juego. El turno está en pausa y tu plan sigue intacto.' },
   /** Buy and preparation panels (ui/PhasePanel.js). */
   buy: {
-    title: 'Equipo de la ronda',
-    note: 'La compra llega en el próximo hito: por ahora cada operador lleva el equipo de su rol.',
+    title: 'Compra',
+    note: 'Cada operador paga con su dinero ($800 por ronda; su equipo de rol ya está pagado). Toca un objeto para comprar otro, − para devolverlo.',
     gear: { flash: 'flash', frag: 'granada', breach: 'carga' },
+    price: (n) => `$${n}`,
+    money: (n) => `$${n}`,
+    sell: '−',
     none: 'sin utilidad',
   },
   prep: {
     title: 'Entrada del escuadrón',
-    note: 'El defensor no sabe por dónde entras. Puedes adelantar rutas para el primer turno.',
+    note: 'El defensor no sabe por dónde entras. Después de la preparación tienes 15 s de dron para ver el interior; la entrada se puede cambiar hasta el primer turno.',
     entries: { norte: 'Norte · oficina', principal: 'Principal · pasillo', sur: 'Sur · baño' },
   },
+  /** First planning: the entry can still change (ui/PhasePanel.js, compact). */
+  entryLate: { title: 'Entrada', note: 'Cambiarla ahora borra las rutas.' },
+  /** Drone phase (ui/DroneStick.js). */
+  drone: { stick: 'DRON', keys: 'WASD' },
 
   /** Onboarding: the banner's sub line tells a new player the next step. */
   coach: {
@@ -326,6 +345,16 @@ export const T = Object.freeze({
     goBeforeStart: 'El GO se da durante el turno: pulsa LISTO primero',
     notNow: 'Durante la ejecución solo se dan los GO: espera a planificar',
     badEntry: 'Esa entrada no existe en el mapa',
+    entryLocked: 'La entrada ya no se cambia: el escuadrón ya salió',
+    noMoney: 'No le alcanza el dinero',
+    gearFull: 'Ya lleva el máximo de eso',
+    badItem: 'Ese objeto no se compra',
+    badSite: 'Ese sitio no existe',
+    outsideHalf: 'Fuera de la mitad defensora',
+    tooClose: 'Demasiado cerca de un compañero',
+    badWatch: 'Orden de vigilancia incompleta',
+    badDoor: 'Esa puerta no se puede atrancar',
+    tooManyBarricades: 'Ya hay 2 barricadas',
   },
   webgl: 'Tu navegador no soporta WebGL2, necesario para Tactic Squad. Prueba con una versión reciente de Chrome, Edge o Firefox.',
   fatal: 'Se produjo un error al iniciar el juego.',

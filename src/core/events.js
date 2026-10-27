@@ -15,6 +15,19 @@ export const EV = Object.freeze({
   HOLD_REACHED: 'holdReached', // {unitId, code}
   GO_CODE: 'goCode', // {released, code}
   ENTRY_CHOSEN: 'entryChosen', // {entry}: the attackers start from another entry (preparation)
+  // Buy and defender set-up (sim/prep.js)
+  GEAR_CHANGED: 'gearChanged', // {unitId, item, count, money}: bought or sold in the buy phase
+  SITE_CHOSEN: 'siteChosen', // {site}: the defenders moved the bomb (and reset their set-up to that site's)
+  SETUP_CHANGED: 'setupChanged', // {unitId, kind:'place'|'watch'}: a defender placed or given a watch order
+  BARRICADE_SET: 'barricadeSet', // {doorId, on}
+  // Barricades in the assault (sim/barricades.js)
+  BARRICADE_SPOTTED: 'barricadeSpotted', // {doorId, x, y}: the attackers found one
+  BARRICADE_HIT: 'barricadeHit', // {unitId, doorId, x, y}: a blow while breaking it
+  BARRICADE_BROKEN: 'barricadeBroken', // {unitId, doorId, x, y, how:'bash'|'breach'}
+  // Recon drone (sim/drone.js)
+  DRONE_LAUNCHED: 'droneLaunched', // {x, y, seconds}
+  DRONE_DESTROYED: 'droneDestroyed', // {x, y, shooterId}
+  DRONE_ENDED: 'droneEnded', // {reason:'time'|'recalled'|'destroyed'}
   // Door entries (sim/entries.js)
   CHARGE_PLANT: 'chargePlant', // {unitId, doorId, x, y, time}: starts planting a breach charge
   CHARGE_READY: 'chargeReady', // {unitId, doorId}
@@ -44,6 +57,7 @@ export const EV = Object.freeze({
   UI_SOUND: 'uiSound', // {name}
   MUTE_CHANGED: 'muteChanged', // {muted}
   MUSIC_CHANGED: 'musicChanged', // {on}
+  DRONE_STICK: 'droneStick', // {x, y}: the on-screen drone stick (ui/DroneStick.js -> input/DroneController.js)
   // {code, count}: a transient flow message for the player (session -> HUD toast, text in ui/texts.js T.notice)
   NOTICE: 'notice',
 });

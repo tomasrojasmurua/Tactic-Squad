@@ -9,6 +9,7 @@ import { Cursor } from './Cursor.js';
 import { TouchBar } from './TouchBar.js';
 import { EntryPicker } from './EntryPicker.js';
 import { PhasePanel } from './PhasePanel.js';
+import { DroneStick } from './DroneStick.js';
 import { HudOcclusion } from './HudOcclusion.js';
 import { GfxNotice } from './GfxNotice.js';
 import { el, toggle, setStyle } from './dom.js';
@@ -27,6 +28,7 @@ export class UI {
     this.touchBar = new TouchBar(root, bus);
     this.entryPicker = new EntryPicker(root, bus);
     this.phasePanel = new PhasePanel(root, bus);
+    this.droneStick = new DroneStick(root, bus);
     this.rotate = el('div', 'rotate', `<div class="rotate-box"><div class="rotate-phone">${ICON.phone}</div><h2>${T.rotate.title}</h2><p>${T.rotate.text}</p></div>`);
     root.appendChild(this.rotate);
     // Plates that fade when a unit is under them (the touch column only dims: it stays usable).
@@ -52,6 +54,7 @@ export class UI {
     this.touchBar.update(sim, session);
     this.entryPicker.update(sim, session);
     this.phasePanel.update(sim, session);
+    this.droneStick.update(session);
     this.screens.setTouch(session.touch);
   }
 }

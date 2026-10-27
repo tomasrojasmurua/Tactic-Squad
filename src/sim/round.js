@@ -1,11 +1,19 @@
 // Round phases, inside the simulation (they decide which orders are valid,
 // so they are part of the authoritative state, not of the screen):
 //
-//   buy -> prep -> plan <-> exec -> end
+//   buy -> prep -> drone -> plan <-> exec -> end
 //
-//   buy   choose equipment (shell for now: the role's gear)
-//   prep  attackers pick their entry; defenders set up (shell: map data)
-//   plan  both sides edit their orders blind; time does not run
+//   buy   each attacker buys his utility (sim/prep.js)
+//   prep  both sides set up blind: the attackers pick their entry and may
+//         sketch routes; the defenders pick the site, place their operators,
+//         give them watch orders and put up barricades (sim/prep.js; an AI
+//         side does it on entering the phase)
+//   drone the attackers drive their recon drone in real time (sim/drone.js,
+//         DRONE.seconds); only the drone and the defenders' eyes run, the
+//         bomb's timer does not. It ends when the time is up, the drone is
+//         shot down or recalled. Skipped when the attackers are not human.
+//   plan  both sides edit their orders blind; time does not run (in the
+//         first one the attackers may still change their entry)
 //   exec  every order runs at once for ROUND.turnSeconds (turnTicks steps);
 //         nobody can pause it. The only order taken is a GO code (A, B, C):
 //         the player calls "now!" and that group acts together. Then back
@@ -19,15 +27,18 @@
 //
 // A GO is live input, so it is stamped with the step it was given at
 // ({type:'go', code, atTick}: Simulation.enqueue). A replay or the server
-// applies it at that same step and the turn plays out the same.
+// applies it at that same step and the turn plays out the same. The drone's
+// stick and its recall are stamped the same way (steps of the drone phase).
 //
 // A Simulation built with {phases: false} has none of this: it always runs
 // and takes orders at any time (unit tests of single mechanics).
 import { ROUND, SIM } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { summarizeNoise } from './noise.js';
+import { launchDrone, droneOver, endDrone } from './drone.js';
+import { aiPrepare } from './prep.js';
 
-export const PHASE = Object.freeze({ buy: 'buy', prep: 'prep', plan: 'plan', exec: 'exec', end: 'end' });
+export const PHASE = Object.freeze({ buy: 'buy', prep: 'prep', drone: 'drone', plan: 'plan', exec: 'exec', end: 'end' });
 
 /** Phases where the sides decide (time stopped). */
 export const DECISION_PHASES = Object.freeze([PHASE.buy, PHASE.prep, PHASE.plan]);
@@ -42,18 +53,37 @@ export function createRound(phases) {
     turn: 0, // 1, 2 ... once the assault starts (as many as the bomb's timer lasts)
     execTick: 0, // steps run in the current execution turn
     execTotal: 0, // steps run in every turn so far (the bomb's timer)
+    droneTick: 0, // steps run in the drone phase
   };
 }
 
-/** Ends the current decision phase: buy -> prep -> plan (turn 1); plan -> exec. */
+/** Step of the current live phase that stamped orders (atTick) count in: the turn's or the drone's. */
+export function phaseTick(sim) {
+  const r = sim.round;
+  return r.phase === PHASE.drone ? r.droneTick : r.execTick;
+}
+
+/** Is the round in a live phase (time runs: a turn's execution or the drone)? */
+export const isLive = (sim) => sim.round.phase === PHASE.exec || sim.round.phase === PHASE.drone;
+
+/**
+ * Ends the current decision phase: buy -> prep -> drone (or plan, turn 1);
+ * plan -> exec. During the drone phase it recalls the drone (-> plan).
+ */
 export function advancePhase(sim) {
   const r = sim.round;
   if (!r.enabled) return;
   const from = r.phase;
-  if (from === PHASE.buy) r.phase = PHASE.prep;
-  else if (from === PHASE.prep) {
-    r.phase = PHASE.plan;
-    r.turn = 1;
+  if (from === PHASE.buy) {
+    r.phase = PHASE.prep;
+    aiPrepare(sim);
+  } else if (from === PHASE.prep) {
+    r.droneTick = 0;
+    if (launchDrone(sim)) r.phase = PHASE.drone;
+    else return toFirstPlan(sim, from);
+  } else if (from === PHASE.drone) {
+    endDrone(sim, 'recalled');
+    return toFirstPlan(sim, from);
   } else if (from === PHASE.plan) {
     r.phase = PHASE.exec;
     r.execTick = 0;
@@ -61,12 +91,24 @@ export function advancePhase(sim) {
   sim.emit(EV.ROUND_PHASE, { phase: r.phase, previous: from, turn: r.turn });
 }
 
+function toFirstPlan(sim, from) {
+  const r = sim.round;
+  r.phase = PHASE.plan;
+  r.turn = 1;
+  sim.emit(EV.ROUND_PHASE, { phase: r.phase, previous: from, turn: r.turn });
+}
+
 /** May the sim step now? (decision phases are frozen) */
-export const canStep = (sim) => sim.round.phase === PHASE.exec || sim.round.phase === PHASE.end;
+export const canStep = (sim) => isLive(sim) || sim.round.phase === PHASE.end;
 
 /** After the tick's systems: the bomb's timer and the turn; at its end, back to planning (or the bomb goes off). */
 export function afterTick(sim, endRound) {
   const r = sim.round;
+  if (r.enabled && r.phase === PHASE.drone) {
+    r.droneTick++;
+    if (droneOver(sim)) toFirstPlan(sim, PHASE.drone);
+    return;
+  }
   if (!r.enabled || r.phase !== PHASE.exec) return;
   if (sim.outcome) return toEnd(sim);
   r.execTick++;

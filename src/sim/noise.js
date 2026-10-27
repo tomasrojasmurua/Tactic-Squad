@@ -38,6 +38,8 @@ function kindOf(ev) {
       return ev.kind === 'flash' ? 'flash' : 'frag';
     case EV.DEFUSE_START:
       return 'defuse';
+    case EV.BARRICADE_HIT:
+      return 'bash';
     default:
       return null;
   }

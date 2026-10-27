@@ -59,4 +59,6 @@ export const FLOW = Object.freeze({
   overviewTapMs: 320, // a two-finger tap (both fingers up within this, barely moving)...
   overviewTapPx: 14, // ...toggles the whole-map view
   storageKeys: Object.freeze({ tutorialDone: 'ts.tutorialDone' }),
+  droneCameraHeight: 14, // m: the camera follows the recon drone from this height...
+  droneFollow: 7, // ...catching up at this rate (1/s)
 });

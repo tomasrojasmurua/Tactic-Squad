@@ -5,7 +5,7 @@ import { EV } from '../core/events.js';
 import { HUD, VIGNETTE } from '../config/ui.js';
 import { teamUnits, enemyTeam, isGoReady, bombKnownTo, codeInUse, codeWaiting, nextGoCode, goStatus } from '../sim/queries.js';
 import { TURN_TICKS } from '../sim/round.js';
-import { ENTRY, ROUND, SIM } from '../config/balance.js';
+import { ENTRY, ROUND, SIM, DRONE } from '../config/balance.js';
 import { isDecisionPhase } from '../session/Session.js';
 import { coachHint } from './coach.js';
 import { el, setText, toggle, formatTime, setStyle, setClassName, setHidden } from './dom.js';
@@ -140,8 +140,11 @@ export class Hud {
       this.pushKill(killer, victim);
     });
     bus.on(EV.SPOTTED, (e) => {
-      if (e.team === enemyTeam(this.viewer.team)) this.pushInfo(T.feed.contact);
+      if (e.team === enemyTeam(this.viewer.team)) this.pushInfo(e.byDrone ? T.feed.droneContact : T.feed.contact);
     });
+    bus.on(EV.DRONE_DESTROYED, () => this.viewer.team === 'attackers' && this.pushInfo(T.feed.droneDown));
+    bus.on(EV.BARRICADE_SPOTTED, () => this.viewer.team === 'attackers' && this.pushInfo(T.feed.barricade));
+    bus.on(EV.BARRICADE_BROKEN, (e) => this.pushInfo(e.how === 'breach' ? T.feed.barricadeBlown : T.feed.barricadeBroken));
     bus.on(EV.GO_CODE, (e) => {
       if (e.released > 0 || e.late > 0) this.pushInfo(e.code ? T.feed.goCode(e.code) : T.feed.go);
     });
@@ -213,6 +216,10 @@ export class Hud {
     if (isDecisionPhase(session)) {
       clock = c.unlimited ? T.clockUnlimited : formatTime(c.left);
       fill = c.unlimited || !c.total ? 1 : c.left / c.total;
+    } else if (phase === 'drone' || (phase === 'paused' && session.resumePhase === 'drone')) {
+      const left = sim.drone && sim.drone.active ? sim.drone.left : 0;
+      clock = T.execLeft(Math.ceil(left));
+      fill = left / DRONE.seconds;
     } else if (phase === 'running' || phase === 'paused') {
       const left = (TURN_TICKS - sim.round.execTick) / SIM.tickRate;
       clock = T.execLeft(Math.ceil(left));
@@ -261,8 +268,9 @@ export class Hud {
     // Actions: LISTO ends a decision phase; a running turn has no button (it cannot be paused).
     const running = phase === 'running';
     const deciding = isDecisionPhase(session);
-    setText(this.executeLabel, !deciding ? T.actions.resume : session.confirm.action === 'ready' ? T.flow.confirmReady : T.actions.ready);
-    setHidden(this.btnExecute, !deciding && phase !== 'paused');
+    const label = phase === 'drone' ? T.actions.recall : !deciding ? T.actions.resume : session.confirm.action === 'ready' ? T.flow.confirmReady : T.actions.ready;
+    setText(this.executeLabel, label);
+    setHidden(this.btnExecute, !deciding && phase !== 'paused' && phase !== 'drone');
     // GO buttons: the groups in use; they can be pressed only while the turn runs (or is paused).
     const team = session.team;
     const live = (running || phase === 'paused') && !session.replay.exec;
@@ -286,7 +294,7 @@ export class Hud {
     if ((this.btnRestart.dataset.armed || '') !== (armed ? '1' : '')) this.btnRestart.dataset.armed = armed ? '1' : '';
     setStyle(this.tutSkip, 'display', session.tutorial.active ? '' : 'none');
     toggle(this.btnMusic, 'off', !session.musicOn);
-    toggle(this.hints, 'hidden', running || phase === 'ended' || phase === 'buy');
+    toggle(this.hints, 'hidden', running || phase === 'ended' || phase === 'buy' || phase === 'drone');
 
     // Defuse progress
     const defusing = b.defuserId >= 0 && !b.defused;

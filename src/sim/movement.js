@@ -92,7 +92,7 @@ export function updateMovement(sim, u, dt) {
     u.stun -= dt;
     return;
   }
-  if (u.waitingGo || u.entry || u.goDelay > 0 || !u.route.length) return;
+  if (u.waitingGo || u.entry || u.bash || u.goDelay > 0 || !u.route.length) return;
 
   let speed = (u.behavior && u.behavior.type === 'patrol' ? MOVE.patrolSpeed : MOVE.speed) * u.mods.speed;
   if (u.target >= 0) speed *= MOVE.engageFactor;

@@ -6,7 +6,9 @@
 // The round's phases live in the sim (sim/round.js); this mirrors them on
 // screen (session.phase), ends the decision phases (LISTO, or the deadline:
 // PhaseClock) and runs the fixed-step loop only while a turn executes. During
-// a turn the only order is a GO group ("now!"), stamped with its step.
+// a turn the only order is a GO group ("now!"), stamped with its step. The
+// drone phase also runs live: the stick (input/DroneController.js) and the
+// recall (LISTO) are stamped with the step of the drone phase the same way.
 //
 // Helpers: PhaseClock (deadlines), PlanRecorder (orders per phase, honest
 // retry), AutoPause (system pause), Tutorial (guided first round),
@@ -15,7 +17,8 @@ import { EV } from '../core/events.js';
 import { SIM } from '../config/balance.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
 import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors } from '../sim/queries.js';
-import { SESSION_PHASE, isDecisionPhase, isPlanningTime } from './Session.js';
+import { phaseTick } from '../sim/round.js';
+import { SESSION_PHASE, isDecisionPhase, isPlanningTime, isLivePhase } from './Session.js';
 import { armOrConfirm } from './confirm.js';
 import { PlanRecorder } from './PlanRecorder.js';
 import { PhaseClock } from './PhaseClock.js';
@@ -83,7 +86,7 @@ export class SessionController {
     if (phase !== 'paused') this.helpPaused = false;
     this.planning.cancel();
     this.planning.refresh();
-    this.loop.setSimulating(phase === 'running' || (phase === 'ended' && this.postRoundTimer > 0));
+    this.loop.setSimulating(isLivePhase(phase) || (phase === 'ended' && this.postRoundTimer > 0));
     this.bus.emit(EV.PHASE, { phase, previous, reason: this.session.pauseReason, turn: this.sim.turn });
   }
 
@@ -103,10 +106,11 @@ export class SessionController {
     const phase = SESSION_PHASE[sim.phase];
     if (phase === this.session.phase && !fresh) return;
     this.setPhase(phase);
-    if (phase === 'running') {
+    if (isLivePhase(phase)) {
       this.session.replay.exec = this.recorder.inReplay;
       this.recorder.enterPhase((cmd) => this.bus.emit(EV.COMMAND, cmd));
       this.session.replay.pending = this.recorder.pending;
+      if (phase === 'drone') this.framing.followDrone(this.sim, 0, true);
       return;
     }
     this.session.replay.exec = false;
@@ -127,17 +131,25 @@ export class SessionController {
     this.syncPhase();
   }
 
-  /** Stops a running turn (system reasons, help); a decision phase only stops its clock (PhaseClock). Never resumes. */
+  /** Stops a running turn or the drone (system reasons, help); a decision phase only stops its clock (PhaseClock). Never resumes. */
   pause(reason) {
-    if (this.session.phase !== 'running') return;
+    if (!isLivePhase(this.session.phase)) return;
+    this.session.resumePhase = this.session.phase;
     this.setPhase('paused', reason);
     this.sound('pause');
   }
 
-  /** Orders are recorded per phase (a turn only takes GOs). A new one in a replayed decision phase takes over. */
+  /** Back to the turn (or the drone) a pause stopped. */
+  resume() {
+    this.setPhase(this.session.resumePhase);
+    this.sound('resume');
+  }
+
+  /** Orders are recorded per phase (a turn only takes GOs; the drone its stick and recall). A new one in a replayed decision phase takes over. */
   record(cmd) {
-    const live = this.session.phase === 'running' || this.session.phase === 'paused';
-    if (!isDecisionPhase(this.session) && !(live && cmd.type === 'go')) return;
+    const live = isLivePhase(this.session.phase) || this.session.phase === 'paused';
+    const liveOrder = cmd.type === 'go' || cmd.type === 'drone' || cmd.type === 'droneRecall';
+    if (!isDecisionPhase(this.session) && !(live && liveOrder)) return;
     const dropped = this.recorder.record(cmd);
     this.session.replay.pending = this.recorder.pending;
     if (dropped) {
@@ -152,6 +164,10 @@ export class SessionController {
     if (phase === 'running' && sim.phase !== 'exec') {
       if (sim.phase !== 'end') this.recorder.advance(); // the turn's GOs are one segment
       this.syncPhase();
+    } else if (phase === 'drone' && sim.phase !== 'drone') {
+      this.recorder.advance(); // the drone's stick is one segment
+      this.syncPhase();
+      this.framing.frameStart(); // back to the squad
     }
     else if (phase === 'ended') {
       this.postRoundTimer -= dt;
@@ -199,9 +215,14 @@ export class SessionController {
     return r !== 'armed';
   }
 
-  /** LISTO / SPACE: ends a decision phase; resumes a paused turn; a running turn cannot be stopped. */
+  /** LISTO / SPACE: ends a decision phase; recalls the drone; resumes a paused turn; a running turn cannot be stopped. */
   ready() {
     const phase = this.session.phase;
+    if (phase === 'drone') {
+      if (this.session.replay.exec) this.notice('droneReplay');
+      else this.command({ type: 'droneRecall', atTick: phaseTick(this.sim) });
+      return;
+    }
     if (phase === 'planning' && this.tutorial.blocksExecute()) {
       this.notice('tutorialFirst');
       return;
@@ -216,10 +237,14 @@ export class SessionController {
       }
       return this.advance();
     }
-    if (phase === 'paused') {
-      this.setPhase('running');
-      this.sound('resume');
-    } else if (phase === 'running') this.notice('noPause');
+    if (phase === 'paused') this.resume();
+    else if (phase === 'running') this.notice('noPause');
+  }
+
+  /** The drone's stick changed (input/DroneController.js): a heading index or -1, stamped with the drone phase's step. */
+  steerDrone(dir) {
+    if (this.session.phase !== 'drone' || this.session.replay.exec) return;
+    this.command({ type: 'drone', dir, atTick: phaseTick(this.sim) });
   }
 
   /** A GO group during the turn ("now!"; no code: the first one someone waits for). */
@@ -244,8 +269,12 @@ export class SessionController {
         if (session.touch) requestFullscreenLandscape();
         if (action === 'tutorial' || !session.tutorial.done) this.tutorial.begin();
         this.syncPhase();
-        // The guided round starts at the planning: buy and preparation have nothing to teach yet.
-        if (session.tutorial.active) while (session.phase === 'buy' || session.phase === 'prep') this.advance();
+        // The guided round starts at the planning: buy, preparation and drone have nothing to teach yet
+        // (the drone is recalled on its first step: a recorded order, so a retry does the same).
+        if (session.tutorial.active) {
+          while (session.phase === 'buy' || session.phase === 'prep') this.advance();
+          if (session.phase === 'drone') this.command({ type: 'droneRecall', atTick: 0 });
+        }
         this.framing.frameStart();
         this.sound('select');
         return;
@@ -333,8 +362,17 @@ export class SessionController {
         if (action.startsWith('entry_')) this.planning.setEntry(action.slice(6));
         else if (action.startsWith('when_')) this.planning.setWhen(action === 'when_now' ? null : action.slice(5));
         else if (action.startsWith('door_')) this.targetDoor(action);
-        else if (action.startsWith('chooseEntry_') && phase === 'prep') this.chooseEntry(action.slice(12));
+        else if (action.startsWith('chooseEntry_') && (phase === 'prep' || phase === 'planning')) this.chooseEntry(action.slice(12));
+        else if (action.startsWith('buy_') && phase === 'buy') this.buy(action);
     }
+  }
+
+  /** Buy panel: buy_<unitId>_<item>_<+|-> (one item bought or sold back). */
+  buy(action) {
+    const [, id, item, sign] = action.split('_');
+    this.command({ type: 'buy', unitId: +id, item, count: sign === '-' ? -1 : 1 });
+    this.sim.flushCommands();
+    this.sound(sign === '-' ? 'undo' : 'select');
   }
 
   /** A tapped "?" door point (door_<unitId>_<index>): its operator is selected and the picker edits that point. */
@@ -348,7 +386,7 @@ export class SessionController {
     this.sound('select');
   }
 
-  /** Preparation: the squad starts from another entry (the camera follows). */
+  /** Preparation (or the first planning): the squad starts from another entry (the camera follows). */
   chooseEntry(id) {
     this.command({ type: 'chooseEntry', entry: id });
     this.sim.flushCommands();
@@ -364,13 +402,11 @@ export class SessionController {
       session.helpOpen = false;
       const resume = this.helpPaused && session.phase === 'paused' && session.pauseReason === 'help';
       this.helpPaused = false;
-      if (resume) {
-        this.setPhase('running');
-        this.sound('resume');
-      }
+      if (resume) this.resume();
       return;
     }
-    if (session.phase === 'running') {
+    if (isLivePhase(session.phase)) {
+      session.resumePhase = session.phase;
       this.setPhase('paused', 'help');
       this.helpPaused = true;
     }

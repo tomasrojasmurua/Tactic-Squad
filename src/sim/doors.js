@@ -2,15 +2,19 @@
 // stay open. Slab geometry feeds LOS/bullets through World.updateDoorSegments.
 // Entries (sim/entries.js) also crack a door ajar (still closed for bodies:
 // only sight gets through), kick it open, or blow it off its hinges.
+// A barricaded door (sim/barricades.js) does none of that: whoever tries
+// to open it starts breaking the barricade instead.
 import { DOORS } from '../config/balance.js';
 import { EV } from '../core/events.js';
+import { startBash } from './barricades.js';
 
 /**
  * open: bodies pass (the slab is pushed flat against the wall); cracked: ajar
- * at DOORS.crackAngle, still blocking movement; destroyed: no slab at all.
+ * at DOORS.crackAngle, still blocking movement; destroyed: no slab at all;
+ * barricaded: shut for good until the barricade is broken.
  */
 export function createDoorState(def) {
-  return { def, angle: 0, target: 0, speed: DOORS.swingSpeed, open: false, cracked: false, destroyed: false };
+  return { def, angle: 0, target: 0, speed: DOORS.swingSpeed, open: false, cracked: false, destroyed: false, barricaded: false };
 }
 
 export function updateDoors(sim, dt) {
@@ -39,17 +43,18 @@ export function tryOpenDoors(sim, unit) {
 
 /**
  * Does the next stretch of the unit's route pass through this doorway?
- * Stops at a GO hold or a "?" point: an operator stacked on a door waits with it CLOSED.
+ * Stops at a GO hold or a "?" point: an operator stacked on a door waits with it CLOSED
+ * (and one doing an entry leaves the door to it).
  */
 function routeCrossesDoor(unit, def) {
-  if (unit.waitingGo) return false;
+  if (unit.waitingGo || unit.entry) return false; // stacked, or working the door through his entry
   let ax = unit.x;
   let ay = unit.y;
   const n = Math.min(unit.route.length, DOORS.routeLookahead);
   for (let i = 0; i < n; i++) {
     const p = unit.route[i];
     if (segmentCrossesDoorway(ax, ay, p.x, p.y, def) >= 0) return true;
-    if (p.hold || p.ask) return false;
+    if (p.hold || p.ask || p.entry) return false; // he stops there first (the entry decides how the door opens)
     ax = p.x;
     ay = p.y;
   }
@@ -87,6 +92,7 @@ function swingAway(def, unit) {
 export function openDoor(sim, door, unit, mode = 'push') {
   const { def } = door;
   if (door.open) return;
+  if (door.barricaded) return startBash(sim, door, unit);
   // A cracked door keeps the swing it started; otherwise it swings away from the opener.
   const sign = door.cracked ? Math.sign(door.target) || 1 : swingAway(def, unit);
   door.target = sign * DOORS.openAngle;
@@ -99,7 +105,7 @@ export function openDoor(sim, door, unit, mode = 'push') {
 
 /** Cracks a closed door ajar (DOORS.crackAngle), slowly: light gets through, bodies do not. */
 export function crackDoor(sim, door, unit) {
-  if (door.open || door.cracked) return;
+  if (door.open || door.cracked || door.barricaded) return;
   door.target = swingAway(door.def, unit) * DOORS.crackAngle;
   door.speed = DOORS.crackSpeed;
   door.cracked = true;

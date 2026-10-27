@@ -71,14 +71,17 @@ export class TouchBar {
     const phase = session.phase;
     const deciding = isDecisionPhase(session);
     // LISTO ends a decision phase; a running turn cannot be paused (no button), a system pause resumes here.
-    setText(this.execLabel, !deciding ? T.touch.resume : session.confirm.action === 'ready' ? T.flow.confirmReady : T.touch.ready);
-    setHidden(this.exec, !deciding && phase !== 'paused');
+    setText(this.execLabel, phase === 'drone' ? T.touch.recall : !deciding ? T.touch.resume : session.confirm.action === 'ready' ? T.flow.confirmReady : T.touch.ready);
+    setHidden(this.exec, !deciding && phase !== 'paused' && phase !== 'drone');
 
     const sel = sim.units[session.selectedId];
     const canPlan = phase === 'planning' || phase === 'prep';
     const canEdit = canPlan && !session.helpOpen && sel && sel.alive;
     const disabled = !canEdit || !sel.route.length;
-    for (const b of this.routeButtons) if (b.disabled !== disabled) b.disabled = disabled;
+    for (const b of this.routeButtons) {
+      if (b.disabled !== disabled) b.disabled = disabled;
+      setHidden(b, phase === 'drone' || phase === 'buy'); // nothing to draw while flying the drone or buying
+    }
     // GO groups in use: live only while the turn runs (or is paused); the label says how many are in position.
     const team = session.team;
     const live = (phase === 'running' || phase === 'paused') && !session.replay.exec;

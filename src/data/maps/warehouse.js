@@ -7,7 +7,8 @@
 // of the `sites` (A or B) and set up with that site's `defense`; the
 // attackers come in through one of the `entries` and must defuse it.
 // `deployment` is each side's half (defenders set up east of the line) and
-// doors with `barricade: true` are the gaps defenders may block.
+// doors with `barricade: true` are the gaps defenders may block (only those
+// touching their half count: sim/mapCompiler.js barricadeSlots).
 //
 // Walls are axis-aligned center lines; doors/openings cut gaps automatically.
 // Door `at` is the center of the opening; `axis` is the wall direction
@@ -225,8 +226,8 @@ export default {
     { type: 'pallet', at: [35.2, 3.4], rot: 90 },
   ],
 
-  // Defender setup for each bomb site (until the preparation phase lets the
-  // defender place them). Behaviors: hold (fixed angle), scan {from, to,
+  // Defender set-up for each bomb site: where the AI defenders stand and the
+  // starting layout a human defender edits in the preparation (sim/prep.js). Behaviors: hold (fixed angle), scan {from, to,
   // period}, patrol {points, wait}; reactsToNoise: turns to gunfire /
   // footsteps / pain; rotate {to, look}: on the first firefight heard, moves
   // there once and holds.
@@ -254,6 +255,13 @@ export default {
       // covers the bathroom door from the north side of the site.
       { at: [26.1, 8.7], facing: 130 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 112 * DEG, to: 195 * DEG, period: 6.5, reactsToNoise: true, rotate: { to: [24.2, 16.0], look: 160 * DEG } } },
     ],
+  },
+
+  // Barricades the AI defenders choose from for each site (they put up
+  // PREP.barricades of them). None is on a door their own rotations walk through.
+  aiBarricades: {
+    A: ['sitio-sala', 'ofi-cocina', 'banio-sala'],
+    B: ['banio-sala', 'ofi-cocina', 'sitio-pasillo'],
   },
 
   // frame: [x, y, w, h] the first shot fits inside the HUD-free area (squad, yard door, corridor).

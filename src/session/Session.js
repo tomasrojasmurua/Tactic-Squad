@@ -5,19 +5,23 @@
 // Phases mirror the round's (sim/round.js) plus what only the screen has:
 //   title              before the first round
 //   buy, prep          the round's first decision phases (time stopped)
+//   drone              the attackers drive their recon drone (real time, like a turn)
 //   planning           a turn's planning: orders apply instantly (routes update live)
 //   running            a turn's execution: the fixed-step simulation advances, no orders
-//   paused             a running turn stopped by the system (help, page hidden, lost graphics)
+//   paused             a running turn (or the drone) stopped by the system (help, page hidden, lost graphics)
 //   ended              outcome shown; the sim runs SIM.postRoundSeconds more
 // The deadlines of the decision phases are session/PhaseClock.js (session.clock).
 
 import { PLAYER_TEAM } from '../config/squad.js';
 import { lastUserIndex } from '../sim/queries.js';
 
-export const PHASES = Object.freeze(['title', 'buy', 'prep', 'planning', 'running', 'paused', 'ended']);
+export const PHASES = Object.freeze(['title', 'buy', 'prep', 'drone', 'planning', 'running', 'paused', 'ended']);
 
 /** Session phase for each round phase of the sim. */
-export const SESSION_PHASE = Object.freeze({ buy: 'buy', prep: 'prep', plan: 'planning', exec: 'running', end: 'ended' });
+export const SESSION_PHASE = Object.freeze({ buy: 'buy', prep: 'prep', drone: 'drone', plan: 'planning', exec: 'running', end: 'ended' });
+
+/** Phases where the fixed-step simulation runs live (a turn, the drone). */
+export const isLivePhase = (phase) => phase === 'running' || phase === 'drone';
 
 /** Phases where the player decides and a clock counts down. */
 export const isDecisionPhase = (session) => session.phase === 'buy' || session.phase === 'prep' || session.phase === 'planning';
@@ -32,6 +36,7 @@ export function createSession({ touch }) {
     pointTarget: null,
     // Why a running turn stopped: 'help' | 'background' | 'graphics' | 'orientation' | null
     pauseReason: null,
+    resumePhase: 'running', // what a pause goes back to: 'running' | 'drone'
     confirm: { action: null, until: 0 }, // destructive request armed until `until` (performance.now ms)
     replay: { pending: 0, attempt: 0, exec: false }, // recorded phases still to replay; retries of this plan; this turn is a replayed one
     clock: { left: 0, total: 0, unlimited: false, auto: false }, // session/PhaseClock.js (decision phases)
