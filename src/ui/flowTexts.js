@@ -3,7 +3,6 @@
 import { ROUND, BUY, BARRICADE, DRONE } from '../config/balance.js';
 
 const TURN = ROUND.turnSeconds;
-const BOMB_MIN = Math.round(ROUND.timeLimit / 60);
 
 export const FLOW_TEXTS = Object.freeze({
   // GO buttons during a turn: how many of the group are in position.
@@ -33,7 +32,7 @@ export const FLOW_TEXTS = Object.freeze({
     confirm_menu: { touch: 'Toca MENÚ otra vez para salir (se pierde esta ronda)', desk: 'Pulsa MENÚ otra vez para salir (se pierde esta ronda)' },
     confirm_newPlan: { touch: 'Repite para empezar un plan nuevo (se borra el actual)', desk: 'Pulsa N otra vez para empezar un plan nuevo' },
     replayDiverged: (n) => `Plan cambiado: ${n === 1 ? 'esta fase ya no se repite' : `estas ${n} fases ya no se repiten`}; sigues tú`,
-    noPause: 'Un turno no se pausa: dura 8 s y luego vuelves a planificar',
+    noPause: `Un turno no se pausa: dura ${TURN} s y luego vuelves a planificar`,
     droneReplay: 'Reintento: el dron repite su recorrido grabado',
     goInTurn: 'Los GO se dan durante el turno: pulsa LISTO y luego A, B o C cuando quieras',
     goReplay: 'Este turno es la repetición de tu plan: tomas el control en la próxima planificación',
@@ -90,7 +89,7 @@ export const FLOW_TEXTS = Object.freeze({
     },
     plan: {
       title: 'Asalto por turnos',
-      text: `Ahora planificas con el tiempo detenido. Cuando pulsas LISTO, tu plan y el del rival se ejecutan a la vez durante ${TURN} s, sin pausa; luego vuelves a planificar. La bomba explota tras ${BOMB_MIN} min de ejecución: planificar no gasta tiempo.`,
+      text: `Ahora planificas con el tiempo detenido. Cuando pulsas LISTO, tu plan y el del rival se ejecutan a la vez durante ${TURN} s, sin pausa; luego vuelves a planificar. La bomba explota tras ${ROUND.timeLimit} s de ejecución (${Math.round(ROUND.timeLimit / TURN)} turnos): planificar no gasta tiempo.`,
     },
     select: { title: 'Elige un operador', text: { touch: 'Toca a ÁGUILA (o su tarjeta arriba a la izquierda).', desk: 'Haz clic en ÁGUILA, o pulsa 1.' } },
     route: {
