@@ -339,8 +339,8 @@ El código ya está ordenado para la versión en red, aunque no haya nada de red
 - El render lee la sim completa en vez de `teamView` (ver arriba). Es la pieza que
   bloquea el online y la que más cuesta. Las cámaras y el humo se dibujan leyendo
   `sim.cameras` / `sim.smokes` (filtrando por `known` para el atacante).
-- Un solo mapa, y la cantidad de operadores por bando la fija el mapa (hoy 3 atacantes
-  contra 4 defensores), no una configuración de partida.
+- Un solo mapa. La ronda es 3 contra 3 (`config/squad.js` `DEFENDERS`, los primeros puestos de
+  `defense`); el 5 contra 5 necesita más puestos en el mapa.
 - Faltan las clases Escudo, Tirador, Granadero y Vigía.
 - Varios comentarios del código mencionan `docs/BRIEF.md` y `tests/sim-plans.mjs`, que
   no venían en el zip original y no existen en el repo.

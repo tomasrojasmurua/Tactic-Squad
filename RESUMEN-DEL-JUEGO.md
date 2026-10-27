@@ -43,7 +43,16 @@ puedas reaccionar en vez de mirar cómo te matan.
 
 Un mapa: **Operación Almacén** (40 × 28 m: patio de salida, oficina y cocina al norte,
 pasillo al centro, baño y sala con el sitio B al sur, nave con el sitio A al este).
-Hoy la ronda es 3 atacantes contra 4 defensores, lo que fija el mapa.
+La ronda es **3 contra 3**: el mapa trae 4 puestos de defensa por sitio y se usan los 3
+primeros (`config/squad.js` `DEFENDERS`).
+
+**Paridad.** Ningún bando tiene ventaja de fábrica: los dos reaccionan y apuntan con las
+mismas reglas, y decide la postura. Reacción base 0,24 s; si el enemigo aparece donde ya
+apuntaba, la mitad; si además **sostiene el ángulo** (0,6 s quieto con la mira puesta),
+otro 25 % menos; recién cruzada una puerta, +0,05 s. Resultado: quien entra a lo bruto
+pierde contra quien lo espera, y gana si entra con un flash, un humo o por otro lado. El
+equilibrio se mide con `node scripts/balance.mjs` (rondas IA contra IA, meta 45-55 % por
+bando; hoy 49 % atacantes en 200 rondas: 54 % en A, 44 % en B).
 
 | Fase | Plazo | Qué pasa |
 | --- | --- | --- |

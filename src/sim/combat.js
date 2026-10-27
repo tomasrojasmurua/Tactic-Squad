@@ -106,7 +106,7 @@ function fire(sim, u) {
   const walk = u.moving ? w.movingSpread * u.speedFraction * u.speedFraction * (u.focused ? COMBAT.focusedMovingSpread : 1) : 0;
   let spread = w.spread + walk;
   if (isSettled(u) || u.focused) spread *= COMBAT.settledSpread;
-  spread = spread * COMBAT.accuracy[u.team] * u.mods.spread + u.recoil;
+  spread = spread * COMBAT.accuracy * u.mods.spread + u.recoil;
   const { ox, oy } = fireLine;
   // Aim error is measured from the line of fire; the facing only gates WHEN he can shoot.
   const angle = Math.atan2(fireLine.ty - oy, fireLine.tx - ox) + rng.gauss() * spread;

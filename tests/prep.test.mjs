@@ -118,7 +118,7 @@ test('los defensores se colocan solo en su mitad, sin encimarse', () => {
 });
 
 test('las cuatro órdenes de vigilancia se vuelven comportamientos de la IA', () => {
-  const sim = new Simulation(MAP, { seed: 2, controllers: BOTH, site: 'A' });
+  const sim = new Simulation(MAP, { seed: 2, controllers: BOTH, site: 'A', defenders: [0, 1, 2, 3] }); // un defensor por orden
   sim.advancePhase();
   const [a, b, c, d] = sim.teams.defenders;
   const watch = (u, w) => cmd(sim, DEF, { type: 'setWatch', unitId: u.id, watch: w });
@@ -182,6 +182,7 @@ function atBarricade(mode = null) {
   const u = sim.teams.attackers[1];
   u.x = u.prevX = 20.55;
   u.y = u.prevY = 12.7;
+  u.hp = 1000; // lo que se prueba es la barricada, no el tiroteo con el ancla de la sala
   cmd(sim, ATK, { type: 'addWaypoint', unitId: u.id, x: 20.55, y: 16 });
   sim.flushCommands();
   // La ruta cruza una puerta cerrada: "?" antes de ella. Se decide cómo.

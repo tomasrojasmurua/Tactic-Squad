@@ -250,7 +250,7 @@ export default {
       // bathroom door. Blind to the hall door behind him: that is the flank.
       { at: [25.9, 21.6], facing: -147 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
       // Second anchor in the far corner, pre-aiming the corridor door from below.
-      { at: [17.0, 23.2], facing: -75 * DEG, weapon: 'smg', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
+      { at: [17.0, 23.2], facing: -75 * DEG, weapon: 'smg', behavior: { type: 'hold', reactsToNoise: false } },
       // Hall guard watching the corridor door; on the first firefight he rotates
       // through the hall door into the lounge, behind the anchor.
       { at: [30.4, 16.8], facing: 175 * DEG, weapon: 'rifle', role: 'roamer', behavior: { type: 'scan', from: 125 * DEG, to: 228 * DEG, period: 6, reactsToNoise: true, rotate: { to: [27.0, 23.6], look: -160 * DEG } } },

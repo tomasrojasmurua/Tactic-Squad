@@ -11,11 +11,13 @@ import { TRAP, NOISE } from '../src/config/balance.js';
 import { EV } from '../src/core/events.js';
 import { collectNoise } from '../src/sim/noise.js';
 
+// Las clases se prueban con los cuatro puestos del mapa (en una ronda normal se usan los 3 primeros).
+const ALL_POSTS = [0, 1, 2, 3];
 const MAP = MAPS[DEFAULT_MAP];
 
 /** A human defender in the preparation. */
 function setup(site = 'A') {
-  const sim = new Simulation(MAP, { seed: 3, site, controllers: controllersFor('defenders') });
+  const sim = new Simulation(MAP, { seed: 3, site, controllers: controllersFor('defenders'), defenders: ALL_POSTS });
   while (sim.phase !== 'prep') sim.advancePhase();
   sim.drainEvents();
   const cmd = (c) => {
@@ -28,7 +30,7 @@ function setup(site = 'A') {
 
 /** An assault with an attacker placed by hand. `clear`: the defenders wait far away, in the kitchen. */
 function assault(site = 'A', clear = false) {
-  const sim = new Simulation(MAP, { seed: 3, site });
+  const sim = new Simulation(MAP, { seed: 3, site, defenders: ALL_POSTS });
   sim.skipToAssault();
   if (clear) {
     sim.teams.defenders.forEach((d, i) => {
