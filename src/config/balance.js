@@ -193,6 +193,12 @@ export const ENTRY = Object.freeze({
   frag: { fuse: 1.1, radius: 4.2, damage: 160, minDamage: 8, hearing: 22 },
   // Carga de brecha: planted on arrival (prepTime), fired by the release. The door is destroyed.
   breach: { prepTime: 1.8, fuse: 0.35, radius: 3.0, damage: 75, blind: 1.8, hearing: 22, depth: 0.25 },
+  // Thrown from any waypoint to a point the player picks (waypoint.toss; not only through a door).
+  tossItems: Object.freeze(['flash', 'frag', 'smoke']),
+  tossRange: 9, // m at most from the thrower (short of the first wall on the way)
+  // Humo: a cloud that blocks sight (not bullets) for `seconds`, growing to `radius` in `grow` s,
+  // thinning out over the last `fade` s. Up to `max` clouds at once (the oldest clears first).
+  smoke: { fuse: 0.6, hearing: 6, radius: 2.6, grow: 1.4, seconds: 14, fade: 2, sides: 8, max: 4 },
 });
 
 export const ROUND = Object.freeze({
@@ -236,9 +242,9 @@ export const NOISE = Object.freeze({
  */
 export const BUY = Object.freeze({
   startMoney: 800, // $ per operator
-  prices: Object.freeze({ flash: 200, frag: 300, breach: 300 }),
-  max: Object.freeze({ flash: 2, frag: 1, breach: 2 }), // carried at most
-  items: Object.freeze(['flash', 'frag', 'breach']), // order of the buy panel
+  prices: Object.freeze({ flash: 200, frag: 300, smoke: 300, breach: 300 }),
+  max: Object.freeze({ flash: 2, frag: 1, smoke: 1, breach: 2 }), // carried at most
+  items: Object.freeze(['flash', 'frag', 'smoke', 'breach']), // order of the buy panel
 });
 
 /** Defender preparation (sim/prep.js): set-up rules and the watch orders. */

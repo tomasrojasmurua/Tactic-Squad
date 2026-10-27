@@ -115,6 +115,7 @@ export class PlanningController {
   /** Tap / click: select an operator, open the door picker on a waypoint, otherwise add a waypoint. */
   tap(px, py, touch = false) {
     if (!this.canEdit) return false;
+    if (this.session.ui.tossPick) return this.placeToss(px, py);
     const g = this.grab(px, py, touch);
     if (g.kind === 'other') {
       this.select(g.unit.id);
@@ -122,6 +123,12 @@ export class PlanningController {
     }
     if (g.kind === 'waypoint') {
       this.request(`door_${g.unit.id}_${g.index}`);
+      return true;
+    }
+    if (g.kind === 'tail') {
+      // A tap on the end of the route opens its menu (a double tap adds no point on top of it).
+      const last = lastUserIndex(g.unit);
+      if (last >= 0) this.request(`door_${g.unit.id}_${last}`);
       return true;
     }
     const u = this.selectedUnit();
@@ -263,6 +270,41 @@ export class PlanningController {
     if (i < 0) return true;
     this.keepTarget(u, i, u.route[i]);
     this.command({ type: 'setPace', unitId: u.id, pace, index: i });
+    return true;
+  }
+
+  /**
+   * Menu "Lanzar": the targeted point throws `item` (flash / frag / smoke).
+   * Pressing the item it already throws removes the throw; otherwise the next
+   * tap on the map is the target (placeToss).
+   */
+  pickToss(item) {
+    const u = this.selectedUnit();
+    if (!u || !this.canEdit) return true;
+    const i = targetIndex(this.session, u);
+    if (i < 0) return true;
+    const p = u.route[i];
+    this.keepTarget(u, i, p);
+    const ui = this.session.ui;
+    if (ui.tossPick && ui.tossPick.item === item) ui.tossPick = null; // pressed again while aiming: cancel
+    else if (p.toss && p.toss.item === item) this.command({ type: 'setToss', unitId: u.id, item: null, index: i });
+    else {
+      ui.tossPick = { unitId: u.id, index: i, item };
+      this.request('tossAim');
+    }
+    return true;
+  }
+
+  /** The tap after "Lanzar": that is where the throw lands (sim keeps it within ENTRY.tossRange). */
+  placeToss(px, py) {
+    const ui = this.session.ui;
+    const tp = ui.tossPick;
+    ui.tossPick = null;
+    const u = this.getSim().units[tp.unitId];
+    if (!u || !u.alive || tp.index >= u.route.length) return true;
+    const w = this.world(px, py);
+    this.session.pointTarget = { unitId: u.id, index: tp.index };
+    this.command({ type: 'setToss', unitId: u.id, item: tp.item, x: w.x, y: w.y, index: tp.index });
     return true;
   }
 

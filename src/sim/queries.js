@@ -2,7 +2,7 @@
 // and by the presentation layers (input previews, HUD, touch bar). Pure
 // functions: they never mutate the state, allocate nothing per call, and are
 // the ONLY sim helpers that input/ui/render may import besides vision.js.
-import { pointInBox, pointAabbDistance, pointSegDist2 } from '../core/geom.js';
+import { pointInBox, pointAabbDistance, pointSegDist2, rayCast } from '../core/geom.js';
 import { angleDiff } from '../core/math.js';
 import { MOVE, ROUND, ENTRY, DOORS } from '../config/balance.js';
 import { PROP_SURFACE, SURFACE_PROBE, DOOR_SURFACE, FENCE_SURFACE } from '../config/materials.js';
@@ -300,8 +300,14 @@ export function entryModeFits(sim, k, mode) {
  */
 export function gearLeft(u, item, skip = -1) {
   let n = u.gear[item] || 0;
-  for (let i = 0; i < u.route.length; i++) if (i !== skip && u.route[i].entry && ENTRY_GEAR[u.route[i].entry] === item) n--;
-  if (u.entry && !u.entry.spent && ENTRY_GEAR[u.entry.mode] === item) n--;
+  for (let i = 0; i < u.route.length; i++) {
+    if (i === skip) continue;
+    const p = u.route[i];
+    if (p.entry && ENTRY_GEAR[p.entry] === item) n--;
+    if (p.toss && p.toss.item === item) n--;
+  }
+  const e = u.entry;
+  if (e && !e.spent && (e.mode === 'toss' ? e.item : ENTRY_GEAR[e.mode]) === item) n--;
   return n;
 }
 
@@ -339,5 +345,25 @@ export function grenadeAt(g, age, out) {
     out.y = g.viaY + (g.y - g.viaY) * f;
   }
   out.k = k;
+  return out;
+}
+
+/**
+ * Where a throw from (x, y) toward (tx, ty) lands: at most ENTRY.tossRange
+ * away and short of the first wall / closed door on the way (ENTRY.wallMargin).
+ * Writes {x, y, reach} into `out`. Shared by the sim (entries.js) and the plan preview.
+ */
+export function tossLanding(world, x, y, tx, ty, out = {}) {
+  const dx = tx - x;
+  const dy = ty - y;
+  const len = Math.hypot(dx, dy) || 1;
+  const want = Math.min(len, ENTRY.tossRange);
+  const nx = dx / len;
+  const ny = dy / len;
+  const hit = rayCast(world.segments, world.solidCount, x, y, nx, ny, want + ENTRY.wallMargin);
+  const reach = Math.max(0, Math.min(want, hit - ENTRY.wallMargin));
+  out.x = x + nx * reach;
+  out.y = y + ny * reach;
+  out.reach = reach;
   return out;
 }

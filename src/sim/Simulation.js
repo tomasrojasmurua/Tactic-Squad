@@ -12,6 +12,7 @@ import { World } from './World.js';
 import { createUnit } from './units.js';
 import { createDoorState, updateDoors } from './doors.js';
 import { updateEntries } from './entries.js';
+import { updateSmokes } from './smoke.js';
 import { applyCommand } from './orders.js';
 import { updatePerception } from './perception.js';
 import { updateAiUnit } from './ai.js';
@@ -71,6 +72,8 @@ export class Simulation {
     this.timeLeft = ROUND.timeLimit;
     this.goCount = 0;
     this.grenades = []; // thrown, not yet detonated (sim/entries.js)
+    this.smokes = []; // smoke clouds standing (sim/smoke.js)
+    this.smokeDirty = false;
     this.grenadeSeq = 0;
     this.outcome = null;
     this.commands = [];
@@ -223,6 +226,7 @@ export class Simulation {
     updateDoors(this, dt);
     for (const u of this.units) if (u.alive && u.bash) updateBash(this, u, dt);
     updateEntries(this, dt);
+    updateSmokes(this, dt);
     updatePerception(this);
     if (this.stopOnContact) for (let i = firstEvent; i < this.events.length; i++) {
       const e = this.events[i];

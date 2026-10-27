@@ -134,6 +134,7 @@ export const EVENT_SOUNDS = Object.freeze({
   doorCrack: { gain: 0.3, db: 2 }, // mode 'crack': eased ajar, a long quiet creak
   blast: { gain: 1, minGain: 0.2, db: 1, farSendMul: 2 }, // frag grenade / breach charge: heard across the map
   flashbang: { gain: 0.95, minGain: 0.16, db: 1 },
+  smoke: { gain: 0.45, db: 1.5 }, // a smoke grenade venting (no bang, no music duck)
   grenadePin: { gain: 0.32, db: 1.5 },
   reload: { gain: 0.42, db: 1.5, send: 0.4 },
   dryFire: { gain: 0.32, db: 1 },

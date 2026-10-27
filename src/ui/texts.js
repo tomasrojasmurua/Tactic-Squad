@@ -89,7 +89,7 @@ export const T = Object.freeze({
     waitingCode: (c) => `Esperando ${goName(c)}`,
     cracking: 'Entreabriendo',
     planting: 'Colocando carga',
-    throwing: { flash: 'Lanzando flash', frag: 'Lanzando granada' },
+    throwing: { flash: 'Lanzando flash', frag: 'Lanzando granada', smoke: 'Lanzando humo' },
     firing: 'Detonando',
     bang: 'Espera el estallido',
     blind: 'Cegado',
@@ -150,6 +150,9 @@ export const T = Object.freeze({
       breach: 'Al llegar coloca la carga; el GO revienta la puerta',
     },
     left: (n) => `×${n}`,
+    toss: 'Lanzar',
+    tossItems: { flash: 'Flash', frag: 'Granada', smoke: 'Humo' },
+    tossAim: 'Toca dónde',
   },
 
   result: {
@@ -245,7 +248,7 @@ export const T = Object.freeze({
     defused: 'Bomba desactivada',
     goCode: (c) => goName(c),
     flashed: (n) => `${n} cegado`,
-    grenade: { flash: '¡Flash!', frag: '¡Granada!' },
+    grenade: { flash: '¡Flash!', frag: '¡Granada!', smoke: '¡Humo!' },
     breach: 'Puerta reventada',
     droneContact: 'El dron vio a un defensor',
     droneDown: 'Dron derribado',
@@ -328,7 +331,7 @@ export const T = Object.freeze({
   buy: {
     title: 'Compra',
     note: 'Cada operador paga con su dinero ($800 por ronda; su equipo de rol ya está pagado). Toca un objeto para comprar otro, − para devolverlo.',
-    gear: { flash: 'flash', frag: 'granada', breach: 'carga' },
+    gear: { flash: 'flash', frag: 'granada', smoke: 'humo', breach: 'carga' },
     price: (n) => `$${n}`,
     money: (n) => `$${n}`,
     sell: '−',

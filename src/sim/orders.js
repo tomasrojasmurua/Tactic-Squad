@@ -23,6 +23,8 @@
 //   {type:'insertWaypoint', unitId, index, x, y}  a new user waypoint on the leg ending at route[index]
 //   {type:'setPace', unitId, pace, index?}     the leg ending at that user waypoint (default: last) is walked
 //                                              'sneak' (MOVE.sneakFactor, quiet) or normally (null)
+//   {type:'setToss', unitId, item, x, y, index?}  from that user waypoint (default: last) he throws a flash /
+//                                              grenade / smoke (ENTRY.tossItems) to (x, y); item null: no throw
 //   {type:'follow', unitId, leaderId, rank}    squad route (sim/follow.js): he walks the leader's route in file
 //                                              (rank 1 right behind) and stacks behind him at his GO holds
 //   {type:'unfollow', unitId}                  back to his own orders (the route he had stays)
@@ -99,10 +101,10 @@ export const REJECT = Object.freeze({
   badFollow: 'badFollow', // follow: no such leader, himself, another side, or a leader who follows someone
 });
 
-const ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'endStroke', 'cancelStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'follow', 'unfollow'];
+const ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'endStroke', 'cancelStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss', 'follow', 'unfollow'];
 
 /** Orders on a follower's own route: he leaves the file and keeps the route he had (now his). */
-const OWN_ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace'];
+const OWN_ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss'];
 
 /** Orders each round phase takes (sim/round.js PHASE; literal keys: round.js imports this module). */
 const PHASE_ORDERS = Object.freeze({
@@ -174,6 +176,8 @@ export function applyCommand(sim, cmd, by = 'human') {
       return insertWaypoint(sim, unit, cmd.index, cmd.x, cmd.y);
     case 'setPace':
       return setPace(sim, unit, cmd.pace === 'sneak' ? 'sneak' : null, cmd.index);
+    case 'setToss':
+      return setToss(sim, unit, cmd.item ?? null, cmd.x, cmd.y, cmd.index);
     case 'follow': {
       const leader = sim.units[cmd.leaderId];
       if (!leader || !obeys(sim, leader, cmd, by) || !startFollow(sim, unit, leader, cmd.rank)) return reject(sim, unit, REJECT.badFollow);
@@ -411,6 +415,7 @@ function setEntry(sim, unit, mode, index) {
   if (item && gearLeft(unit, item, i) <= 0) return reject(sim, unit, REJECT.noGear);
   p.entry = mode;
   p.entryDoor = k;
+  p.toss = null; // one action per point: the door entry replaces a throw
   settleAsk(unit, i);
   changed(sim, unit, 'entry');
 }
@@ -475,6 +480,24 @@ function insertWaypoint(sim, unit, index, x, y) {
   if (!(index >= 0 && index < r.length)) return reject(sim, unit, REJECT.noWaypoint);
   r.splice(index, 0, routePoint(x, y, { user: true, pace: r[index].pace }));
   moveWaypoint(sim, unit, index, x, y);
+}
+
+/** A throw from user point `index` (default: the last one) to (x, y); null item: none. A door entry there gives way. */
+function setToss(sim, unit, item, x, y, index) {
+  const i = userIndex(unit, index);
+  if (i < 0) return reject(sim, unit, REJECT.noWaypoint);
+  const p = unit.route[i];
+  if (item === null) {
+    p.toss = null;
+    return changed(sim, unit, 'toss');
+  }
+  if (!ENTRY.tossItems.includes(item) || !Number.isFinite(x) || !Number.isFinite(y)) return reject(sim, unit, REJECT.badItem);
+  if (gearLeft(unit, item, i) <= 0 && !(p.toss && p.toss.item === item)) return reject(sim, unit, REJECT.noGear);
+  p.toss = { item, x, y };
+  p.entry = null; // one action per point: the throw replaces a door entry
+  p.entryDoor = -1;
+  settleAsk(unit, i);
+  changed(sim, unit, 'toss');
 }
 
 /** Pace of the leg ending at user point `index` (default: the last one): every point since the user point before. */

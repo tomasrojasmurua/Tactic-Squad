@@ -10,7 +10,7 @@ import { MOVE, NAV, ENTRY } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { angleDiff, angleTo, approachAngle } from '../core/math.js';
 import { tryOpenDoors, segmentCrossesDoorway } from './doors.js';
-import { armEntry } from './entries.js';
+import { armEntry, armToss } from './entries.js';
 import { isAiControlled, holdCode, ASK_CODE } from './queries.js';
 import { routePoint } from './routePoint.js';
 
@@ -273,6 +273,7 @@ function arriveAt(sim, u, p) {
     sim.emit(EV.HOLD_REACHED, { unitId: u.id, code: u.waitCode });
   }
   if (p.entry) armEntry(sim, u, p);
+  else if (p.toss) armToss(sim, u, p);
   if (!u.route.length) {
     // End of the plan: hold the angle set there, or keep facing the way he came.
     u.idleLook = p.look !== null ? p.look : isAiControlled(sim, u) ? null : u.heading;

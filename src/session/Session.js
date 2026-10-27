@@ -57,13 +57,14 @@ export function createSession({ touch }) {
       cursorWorld: null, // pointer position on the floor
       holdMenu: false, // the touch ESPERAR chooser (GO colors) is open
       moreEntries: false, // the door picker shows every entry, not only the main three
+      tossPick: null, // {unitId, index, item}: the next tap on the map is where that point throws it
     },
   };
 }
 
 /** Clears the transient planning previews (new round). */
 export function resetSessionPreviews(session) {
-  Object.assign(session.ui, { hoverPath: null, drawing: false, lookPreview: null, movePreview: null, holdMenu: false, moreEntries: false });
+  Object.assign(session.ui, { hoverPath: null, drawing: false, lookPreview: null, movePreview: null, holdMenu: false, moreEntries: false, tossPick: null });
 }
 
 /** Phases where routes can be edited (orders are taken only while deciding: sim/orders.js). */

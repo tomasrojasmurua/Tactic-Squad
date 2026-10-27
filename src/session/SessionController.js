@@ -423,6 +423,9 @@ export class SessionController {
       case 'entryCycle':
         this.planning.cycleEntry();
         return;
+      case 'tossAim':
+        this.notice('tossAim');
+        return;
       case 'pickerMore':
         session.ui.moreEntries = !session.ui.moreEntries;
         return;
@@ -474,7 +477,8 @@ export class SessionController {
         return;
       }
       default:
-        if (action.startsWith('entry_')) this.planning.setEntry(action.slice(6));
+        if (action.startsWith('toss_')) this.planning.pickToss(action.slice(5));
+        else if (action.startsWith('entry_')) this.planning.setEntry(action.slice(6));
         else if (action.startsWith('when_')) {
           this.planning.setWhen(action === 'when_now' ? null : action.slice(5));
           session.ui.holdMenu = false;
@@ -508,6 +512,7 @@ export class SessionController {
   closePicker() {
     this.session.pointTarget = null;
     this.session.ui.moreEntries = false;
+    this.session.ui.tossPick = null;
   }
 
   /** From the menu: a fresh round against the AI, or the guided tutorial's round (config/ui.js TUTORIAL). */

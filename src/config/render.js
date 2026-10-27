@@ -199,7 +199,8 @@ export const OVERLAY = Object.freeze({
     prep: 0.47, // progress arc of an entry being prepared (cracking a door, planting a charge)
   }),
   // Door entries: dashed link waypoint -> doorway and a marker on the doorway, per mode (rgb).
-  entryColors: Object.freeze({ kick: [1, 1, 1], slow: [0.6, 0.85, 1], flash: [1, 0.96, 0.62], frag: [0.72, 0.85, 0.45], breach: [1, 0.69, 0.18] }),
+  entryColors: Object.freeze({ kick: [1, 1, 1], slow: [0.6, 0.85, 1], flash: [1, 0.96, 0.62], frag: [0.72, 0.85, 0.45], breach: [1, 0.69, 0.18], smoke: [0.78, 0.8, 0.82] }),
+  smokeColor: [0.72, 0.74, 0.76], // a smoke cloud (sim/smoke.js)
   entryMarker: 0.2, // m, half-size of the doorway marker
   grenadeRadius: 0.09, // m, a grenade in flight / on the floor
 });

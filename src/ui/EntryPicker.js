@@ -10,8 +10,10 @@
 //           rest (crack, grenade, charge); modes that do not fit the doorway
 //           or need gear he no longer has are disabled, gear left is shown
 //   CUÁNDO  right away, or with a GO group (a color: config/ui.js GO_GROUPS)
+//   LANZAR  a flash / grenade / smoke from this point to wherever the player
+//           taps next (session.ui.tossPick); pressing the active one removes it
 //
-// Emits EV.REQUEST {action: 'entry_<mode>' | 'when_<now|A|B|C>' | 'pickerMore' | 'pickerClose'}.
+// Emits EV.REQUEST {action: 'entry_<mode>' | 'when_<now|A|B|C>' | 'toss_<item>' | 'pace_<k>' | 'pickerMore' | 'pickerClose'}.
 import { EV } from '../core/events.js';
 import { ENTRY } from '../config/balance.js';
 import { GO_GROUPS } from '../config/ui.js';
@@ -35,7 +37,8 @@ export class EntryPicker {
       `<div class="ep-head"><span class="ep-title"></span><button class="ep-x" aria-label="${T.entry.close}">×</button></div>` +
         `<div class="ep-row ep-main"></div><div class="ep-row ep-more"></div>` +
         `<div class="ep-when"><span class="ep-wl">${T.entry.when}</span></div>` +
-        `<div class="ep-pace"><span class="ep-wl">${T.pace.title}</span></div>`,
+        `<div class="ep-pace"><span class="ep-wl">${T.pace.title}</span></div>` +
+        `<div class="ep-toss"><span class="ep-wl">${T.entry.toss}</span></div>`,
     );
     this.title = this.node.querySelector('.ep-title');
     this.buttons = new Map();
@@ -76,6 +79,14 @@ export class EntryPicker {
       b.addEventListener('pointerdown', fire(`pace_${k}`));
       pace.appendChild(b);
       this.pace.set(k, b);
+    }
+    const toss = this.node.querySelector('.ep-toss');
+    this.toss = new Map();
+    for (const item of ENTRY.tossItems) {
+      const b = el('button', `wbtn tbtn tbtn-${item}`, `<span class="tl">${T.entry.tossItems[item]}</span><span class="en"></span>`);
+      b.addEventListener('pointerdown', fire(`toss_${item}`));
+      toss.appendChild(b);
+      this.toss.set(item, { b, label: b.querySelector('.tl'), count: b.querySelector('.en') });
     }
     this.size = null; // measured {w, h} of the popover (re-measured when its content changes)
     this.layoutKey = '';
@@ -122,9 +133,20 @@ export class EntryPicker {
       setText(count, item ? T.entry.left(Math.max(0, left)) : '');
     }
     for (const [code, b] of this.when) toggle(b, 'active', code === 'now' ? !p.hold : p.hold && holdCode(p) === code);
+    const aim = session.ui.tossPick && session.ui.tossPick.unitId === u.id && session.ui.tossPick.index === i ? session.ui.tossPick.item : null;
+    for (const [item, { b, label, count }] of this.toss) {
+      const has = p.toss && p.toss.item === item;
+      const left = gearLeft(u, item, i);
+      const ok = has || left > 0;
+      if (b.disabled !== !ok) b.disabled = !ok;
+      toggle(b, 'active', has && !aim);
+      toggle(b, 'aim', aim === item);
+      setText(label, aim === item ? T.entry.tossAim : T.entry.tossItems[item]);
+      setText(count, T.entry.left(Math.max(0, left)));
+    }
 
     // Anchored over the door point, kept on screen (below it when there is no room above).
-    const key = `${more}|${door}`;
+    const key = `${more}|${door}|${aim}`;
     if (!this.size || this.layoutKey !== key) {
       const r = this.node.getBoundingClientRect();
       this.size = { w: r.width, h: r.height };

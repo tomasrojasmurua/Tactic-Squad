@@ -44,6 +44,7 @@ export const FLOW_TEXTS = Object.freeze({
     tutorialDone: '¡Tutorial completado! Termina la ronda: encuentra la bomba y desactívala',
     tutorialSkipped: 'Tutorial omitido (puedes repetirlo desde el menú)',
     tutorialFirst: 'Primero haz el paso del tutorial (recuadro de la izquierda)',
+    tossAim: { touch: 'Toca el mapa donde quieres que caiga (máx. 9 m, se corta en las paredes)', desk: 'Haz clic donde quieres que caiga (máx. 9 m, se corta en las paredes)' },
     contactCut: '¡Contacto! El turno se cortó para que puedas reaccionar',
     contactOn: 'El turno se cortará al ver un enemigo (desde el próximo plan)',
     contactOff: 'Los turnos duran siempre 5 s (desde el próximo plan)',
