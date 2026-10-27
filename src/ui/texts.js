@@ -6,7 +6,7 @@ export const T = Object.freeze({
   gameTitle: 'TACTIC SQUAD',
   subtitle: 'Prototipo táctico · Operación Almacén',
   briefing:
-    'Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. El asalto va por turnos: planificas sin ver al rival, con todo el tiempo que quieras, y todo se ejecuta a la vez durante 8 s, sin pausa; durante el turno lanzas los grupos GO A·B·C. La bomba estalla tras 3 minutos de ejecución: encuéntrala y desactívala (7 s quieto, sin disparar) o elimina a los Defensores antes.',
+    'Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. Antes del asalto compras equipo, eliges entrada y tienes 15 s de dron para mirar adentro. El asalto va por turnos: planificas sin ver al rival, con todo el tiempo que quieras, y todo se ejecuta a la vez durante 8 s, sin pausa; durante el turno lanzas los grupos GO A·B·C. La bomba estalla tras 3 minutos de ejecución: encuéntrala y desactívala (7 s quieto, sin disparar) o elimina a los Defensores antes.',
   start: 'COMENZAR',
   startHint: 'Clic o Intro',
 
@@ -240,6 +240,7 @@ export const T = Object.freeze({
     title: 'CONTROLES',
     rows: [
       ['1 · 2 · 3 / Tab', 'Seleccionar operador'],
+      ['WASD / flechas (dron)', 'Mover el dron de reconocimiento; ESPACIO lo retira'],
       ['Clic izquierdo', 'Añadir punto de ruta (con pathfinding)'],
       ['Arrastrar', 'Dibujar ruta a mano alzada'],
       ['Clic derecho (arrastrar)', 'Fijar dirección de mirada del último punto'],
@@ -279,6 +280,7 @@ export const T = Object.freeze({
     music: 'Música',
     rows: [
       ['Tocar operador / tarjeta', 'Seleccionar'],
+      ['Mando DRON', 'Mover el dron de reconocimiento; RETIRAR lo termina'],
       ['Tocar el suelo', 'Añadir punto de ruta'],
       ['Arrastrar un dedo', 'Dibujar ruta (desde el operador o el punto tocado)'],
       ['Mantener pulsado un punto', 'Arrastrar para fijar la mirada'],
