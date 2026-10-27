@@ -4,6 +4,7 @@
 // so the next plan shows where they were. Deterministic: no randomness.
 import { SCOUT } from '../../config/balance.js';
 import { EV } from '../../core/events.js';
+import { found as trapFound } from '../traps.js';
 
 export const scoutPulse = Object.freeze({
   id: 'scoutPulse',
@@ -23,6 +24,7 @@ export const scoutPulse = Object.freeze({
       k.alive = true;
       found++;
     }
+    for (const t of sim.traps) if (t.alive && !t.known && (t.x - u.x) ** 2 + (t.y - u.y) ** 2 <= r2) trapFound(sim, t, 'scout');
     sim.emit(EV.SCOUT_PULSE, { unitId: u.id, x: u.x, y: u.y, radius: SCOUT.radius, found });
   },
 });

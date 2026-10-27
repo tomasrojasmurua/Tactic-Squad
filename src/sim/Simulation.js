@@ -14,6 +14,7 @@ import { createDoorState, updateDoors } from './doors.js';
 import { updateEntries } from './entries.js';
 import { updateSmokes } from './smoke.js';
 import { placeCameras, updateCameras } from './cameras.js';
+import { layTraps, updateTraps } from './traps.js';
 import { applyCommand } from './orders.js';
 import { updatePerception } from './perception.js';
 import { updateAiUnit } from './ai.js';
@@ -93,6 +94,8 @@ export class Simulation {
     this.bomb = createBomb(this.site);
     this.cameras = [];
     placeCameras(this); // sim/cameras.js: the defenders' cameras on this site
+    this.traps = [];
+    layTraps(this); // sim/traps.js: the Trampero's traps of the map's layout
     if (loadout) this.applyLoadout(loadout); // a match: class, money and gear carried over
     else if (phases) initMoney(this); // the buy phase: each attacker's money after his role's gear
     initAbilities(this);
@@ -244,6 +247,7 @@ export class Simulation {
     updateSmokes(this, dt);
     updatePerception(this);
     updateCameras(this, dt);
+    updateTraps(this, dt);
     if (this.stopOnContact) for (let i = firstEvent; i < this.events.length; i++) {
       const e = this.events[i];
       if (e.type === EV.SPOTTED && e.team === 'defenders' && !e.byDrone) this.round.contact = true;

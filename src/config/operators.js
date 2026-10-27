@@ -7,8 +7,10 @@
 // numbers of config/balance.js; 1 = unchanged.
 //
 // Classes: attackers Asaltante / Brecha / Explorador (chosen in the buy phase,
-// order setRole; Brecha and Explorador one each), defenders Defensor / Ancla
-// (the map layout says who anchors). Still planned: merodeador, trampero.
+// order setRole; Brecha and Explorador one each), defenders Defensor / Ancla /
+// Merodeador / Trampero (the map layout gives the AI's; a human defender picks
+// them in the preparation, order setDefenderRole, at most `max` of each). Each
+// side picks blind: neither sees the other's classes.
 
 /** Neutral modifiers: every role starts from these. */
 export const BASE_MODIFIERS = Object.freeze({
@@ -20,6 +22,7 @@ export const BASE_MODIFIERS = Object.freeze({
   visionFov: 1, // VISION[team].fov
   breachPrep: 1, // ENTRY.breach.prepTime (planting a charge)
   bash: 1, // BARRICADE.breakTime (breaking a barricade by hand)
+  stepNoise: 1, // NOISE.radius.step (how far his footsteps are heard)
 });
 
 /**
@@ -42,13 +45,33 @@ export const ROLES = Object.freeze({
     label: 'Explorador', pick: true, unique: true, weapon: 'rifle', ability: 'scoutPulse', modifiers: { speed: 1.08, visionRange: 1.1 }, gear: { flash: 1, smoke: 1 },
     blurb: 'Al final de cada turno detecta a los defensores cerca (8 m), aun tras las paredes.',
   },
-  // AI defenders (their weapon comes from each map spawn).
-  defender: { label: 'Defensor', weapon: 'rifle', ability: null, modifiers: {} },
+  // Defenders (their weapon comes from each map spawn). `defPick`: offered in the defender's
+  // preparation; `max`: how many a side may have.
+  defender: {
+    label: 'Defensor', defPick: true, max: 4, weapon: 'rifle', ability: null, modifiers: {},
+    blurb: 'El de siempre.',
+  },
   // Site anchor: holds his angle; tougher and quicker to shoot first.
-  anchor: { label: 'Ancla', weapon: 'rifle', ability: null, modifiers: { reaction: 0.85 }, maxHp: 120 },
+  anchor: {
+    label: 'Ancla', defPick: true, max: 2, weapon: 'rifle', ability: null, modifiers: { reaction: 0.85 }, maxHp: 120,
+    blurb: 'Sostiene el sitio: 120 de vida y dispara antes.',
+  },
+  // Roamer: off the site, hunting the attackers' flank; quick and quiet. The Explorador's pulse finds him.
+  roamer: {
+    label: 'Merodeador', defPick: true, max: 1, weapon: 'smg', ability: null, modifiers: { speed: 1.12, stepNoise: 0.35 },
+    blurb: 'Fuera del sitio: más rápido y sus pasos casi no se oyen.',
+  },
+  // Trapper: lays TRAP.perTrapper traps in the preparation (sim/traps.js).
+  trapper: {
+    label: 'Trampero', defPick: true, max: 1, weapon: 'rifle', ability: null, modifiers: {},
+    blurb: 'Pone 2 trampas: atrapan al que las pisa y lo delatan.',
+  },
 });
 
 /** The attacker classes offered in the buy phase, in panel order. */
 export const PICK_ROLES = Object.freeze(Object.keys(ROLES).filter((id) => ROLES[id].pick));
+
+/** The defender classes offered in the preparation, in panel order. */
+export const DEF_PICK_ROLES = Object.freeze(Object.keys(ROLES).filter((id) => ROLES[id].defPick));
 
 export const DEFAULT_DEFENDER_ROLE = 'defender';

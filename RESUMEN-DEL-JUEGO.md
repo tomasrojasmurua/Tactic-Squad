@@ -124,7 +124,12 @@ marcador cuenta las rondas del jugador contra las de la IA, en los dos bandos.
 | **Brecha** | atacante (una) | subfusil | flash, 2 cargas | Planta la carga en la mitad de tiempo y rompe barricadas a mano un 40 % más rápido |
 | **Explorador** | atacante (uno) | rifle | flash, humo | Algo más rápido y con más alcance de vista. **Al final de cada turno detecta a los defensores a 8 m, aun tras las paredes**: quedan marcados para el plan |
 | **Defensor** | defensor | según el puesto | — | El de siempre |
-| **Ancla** | defensor | según el puesto | — | Los que sostienen el sitio: 120 de vida y reacción un 15 % más rápida |
+| **Ancla** | defensor (hasta 2) | según el puesto | — | Los que sostienen el sitio: 120 de vida y reacción un 15 % más rápida |
+| **Merodeador** | defensor (uno) | según el puesto | — | Fuera del sitio, a la caza del flanco: 12 % más rápido y **sus pasos se oyen a un tercio de distancia**. El pulso del Explorador lo encuentra igual |
+| **Trampero** | defensor (uno) | según el puesto | 2 trampas | Las pone en la preparación. **El que pisa una queda 2 s atrapado, recibe 15 de daño, suena fuerte y los defensores saben dónde está.** Solo se ven yendo con sigilo (a 3,5 m), con el dron o con el pulso del Explorador; una trampa conocida se rompe de un tiro |
+
+El defensor elige las clases en el panel de preparación, a ciegas (no ve las del
+atacante, y el atacante no ve las suyas). La IA las toma de los puestos del mapa.
 
 **Humo.** Una nube de 2,6 m de radio que crece en 1,4 s y dura unos 14 s. Tapa **la vista de
 todos**: operadores, IA, niebla de guerra, dron y cámaras. **No para balas ni
@@ -190,8 +195,8 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 | El jugador elige bando | **Hecho** (Atacar / Defender en el menú) |
 | Partida al mejor de 7 | **Hecho**, con cambio de bando tras la ronda 3 |
 | Economía entre rondas | **Hecho**, con números escalados a la compra de $800: +$600 ganar, +$300 perder (+$100 por racha), +$100 por baja, +$200 por desactivar, tope $2000. Los del diseño (+$3.250 / +$1.400) eran para una compra de otra escala |
-| Clases de operador con habilidad | **Parcial.** Asaltante, Brecha, Explorador y Ancla. Faltan Escudo, Tirador, Granadero, Merodeador, Trampero y Vigía, y la elección a ciegas del defensor |
-| Contras entre clases | **Parcial.** Brecha contra barricadas, Explorador contra Anclas escondidos, humo contra cámaras y anclas |
+| Clases de operador con habilidad | **Parcial.** Asaltante, Brecha, Explorador, Ancla, Merodeador y Trampero (las 3 por bando del primer paso), con elección a ciegas en los dos bandos. Faltan Escudo, Tirador, Granadero y Vigía |
+| Contras entre clases | **Parcial.** Brecha contra barricadas, Explorador contra Anclas escondidos, Merodeador y trampas, humo contra cámaras y anclas |
 | Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (fijas por mapa, gratis). Sensor y elección de refuerzos por el defensor: faltan |
 | Paredes blandas destructibles | **Descartado** por decisión de diseño (27 oct 2026): no se implementan |
 | Plazos de las fases | **Parcial.** El reloj existe (`PhaseClock`), pero contra la IA no hay límite |

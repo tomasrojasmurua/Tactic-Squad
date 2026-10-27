@@ -527,10 +527,15 @@ export class SessionController {
   /**
    * The defender's set-up panel (ui/PhasePanel.js): site_<id> moves the bomb
    * (the set-up starts over from the map's for it), barricade_<doorId>
-   * toggles one, watch_<mode> changes the selected defender's watch order.
+   * toggles one, watch_<mode> changes the selected defender's watch order,
+   * defrole_<role> his class, trapmode switches taps to laying traps.
    */
   setup(action) {
     const sim = this.sim;
+    if (action === 'trapmode') {
+      this.session.ui.trapMode = !this.session.ui.trapMode;
+      return this.sound('select');
+    }
     const [kind, arg] = [action.slice(0, action.indexOf('_')), action.slice(action.indexOf('_') + 1)];
     if (kind === 'site') this.command({ type: 'chooseSite', site: arg });
     else if (kind === 'barricade') {
@@ -542,6 +547,10 @@ export class SessionController {
       if (!u) return this.notice('pickDefender');
       const w = watchOf(u);
       this.command({ type: 'setWatch', unitId: u.id, watch: watchOrder(arg, w.facing, w.fallback) });
+    } else if (kind === 'defrole') {
+      const u = controllableUnit(sim, this.session.selectedId, this.session.team);
+      if (!u) return this.notice('pickDefender');
+      this.command({ type: 'setDefenderRole', unitId: u.id, role: arg });
     } else return;
     sim.flushCommands();
     this.sound('select');

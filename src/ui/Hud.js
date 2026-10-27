@@ -162,6 +162,10 @@ export class Hud {
     bus.on(EV.CAMERA_FOUND, (e) => this.viewer.team === 'attackers' && this.pushInfo(e.byDrone ? T.feed.cameraFoundDrone : T.feed.cameraFound));
     bus.on(EV.CAMERA_SPOT, () => this.viewer.team === 'attackers' && this.pushInfo(T.feed.cameraSpot));
     bus.on(EV.CAMERA_DESTROYED, (e) => this.pushInfo(T.feed.cameraDown(this.sim.units[e.unitId].name)));
+    // Trampero's traps (sim/traps.js): the attackers only hear of the ones they know.
+    bus.on(EV.TRAP_SPRUNG, (e) => this.pushInfo((this.viewer.team === 'attackers' ? T.feed.trapCaught : T.feed.trapCaughtDefend)(this.sim.units[e.unitId].name)));
+    bus.on(EV.TRAP_FOUND, (e) => this.viewer.team === 'attackers' && this.pushInfo(T.feed.trapFound[e.by]));
+    bus.on(EV.TRAP_DESTROYED, (e) => this.pushInfo(T.feed.trapDown(this.sim.units[e.unitId].name)));
     bus.on(EV.DEFUSE_START, (e) => this.pushInfo(T.feed.defusing(this.sim.units[e.unitId].name)));
     bus.on(EV.DEFUSE_ABORT, () => this.pushInfo(T.feed.defuseAborted));
     bus.on(EV.BOMB_DEFUSED, () => this.pushInfo(T.feed.defused));

@@ -228,7 +228,8 @@ export default {
 
   // Defender set-up for each bomb site: where the AI defenders stand and the
   // starting layout a human defender edits in the preparation (sim/prep.js). role: 'anchor' = Ancla
-  // (more health, shoots first; config/operators.js), default 'defender'. Behaviors: hold (fixed angle), scan {from, to,
+  // (more health, shoots first), 'roamer' = Merodeador (quick and quiet), 'trapper' = Trampero
+  // (lays the site's `aiTraps`); config/operators.js. Default 'defender'. Behaviors: hold (fixed angle), scan {from, to,
   // period}, patrol {points, wait}; reactsToNoise: turns to gunfire /
   // footsteps / pain; rotate {to, look}: on the first firefight heard, moves
   // there once and holds.
@@ -240,8 +241,9 @@ export default {
       { at: [34.0, 17.6], facing: -139 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
       { at: [35.2, 4.7], facing: 165 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 132 * DEG, to: 178 * DEG, period: 5.5, reactsToNoise: true } },
       // Kitchen guard: on the first firefight he rotates to the arch and covers the site.
-      { at: [26.1, 8.7], facing: 130 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 112 * DEG, to: 195 * DEG, period: 6.5, reactsToNoise: true, rotate: { to: [27.3, 4.7], look: 45 * DEG } } },
-      { at: [18.4, 22.6], facing: 0, weapon: 'smg', behavior: { type: 'patrol', points: [[18.4, 22.6], [26.2, 22.6]], wait: 2.2, reactsToNoise: true } },
+      { at: [26.1, 8.7], facing: 130 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'scan', from: 112 * DEG, to: 195 * DEG, period: 6.5, reactsToNoise: true, rotate: { to: [27.3, 4.7], look: 45 * DEG } } },
+      // Roamer: walks the lounge, far from the site, to catch a flank.
+      { at: [18.4, 22.6], facing: 0, weapon: 'smg', role: 'roamer', behavior: { type: 'patrol', points: [[18.4, 22.6], [26.2, 22.6]], wait: 2.2, reactsToNoise: true } },
     ],
     B: [
       // Site anchor in the lounge corner: covers both the corridor door and the
@@ -251,10 +253,10 @@ export default {
       { at: [17.0, 23.2], facing: -75 * DEG, weapon: 'smg', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
       // Hall guard watching the corridor door; on the first firefight he rotates
       // through the hall door into the lounge, behind the anchor.
-      { at: [30.4, 16.8], facing: 175 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 125 * DEG, to: 228 * DEG, period: 6, reactsToNoise: true, rotate: { to: [27.0, 23.6], look: -160 * DEG } } },
+      { at: [30.4, 16.8], facing: 175 * DEG, weapon: 'rifle', role: 'roamer', behavior: { type: 'scan', from: 125 * DEG, to: 228 * DEG, period: 6, reactsToNoise: true, rotate: { to: [27.0, 23.6], look: -160 * DEG } } },
       // Kitchen guard: on the first firefight he rotates into the lounge and
       // covers the bathroom door from the north side of the site.
-      { at: [26.1, 8.7], facing: 130 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 112 * DEG, to: 195 * DEG, period: 6.5, reactsToNoise: true, rotate: { to: [24.2, 16.0], look: 160 * DEG } } },
+      { at: [26.1, 8.7], facing: 130 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'scan', from: 112 * DEG, to: 195 * DEG, period: 6.5, reactsToNoise: true, rotate: { to: [24.2, 16.0], look: 160 * DEG } } },
     ],
   },
 
@@ -270,6 +272,13 @@ export default {
   // shot, or blinded with smoke. A: the corridor seen from its east end
   // (whoever comes in through the main door). B: the lounge from its far
   // corner (the corridor door, the bathroom door and the site).
+  // The Trampero's traps for each site (sim/traps.js): just past the doors into it.
+  // A: the corridor door and the lounge door of the hall. B: the corridor door and the bathroom door.
+  aiTraps: {
+    A: [[29.3, 12.7], [29.3, 21.55]],
+    B: [[20.55, 15.3], [17.3, 19.5]],
+  },
+
   aiCameras: {
     A: [{ at: [27.55, 11.7], facing: 177 * DEG }],
     B: [{ at: [27.6, 25.6], facing: -142 * DEG }],

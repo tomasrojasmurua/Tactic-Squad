@@ -154,6 +154,7 @@ export class OverlayLayer {
     for (const u of order) this.route(t, u, unitLayer.poseInto(u, frame.alpha, this.pose), mpp, time, u.id === selected);
 
     this.cameras(t, g, sim, own, mpp, time);
+    this.traps(t, sim, own, mpp);
     this.smokes(t, sim, frame);
     this.grenades(t, sim, frame, mpp);
     if (own === 'attackers') this.drone(t, g, sim, vision, frame, mpp, time);
@@ -417,6 +418,33 @@ export class OverlayLayer {
         t.circle(cam.x, cam.y, s, rgba(0.25, 0.25, 0.27, 1), 12);
         t.line(cam.x - s, cam.y - s, cam.x + s, cam.y + s, 2.4 * mpp, rgba(c[0], c[1], c[2], 0.9));
         t.line(cam.x - s, cam.y + s, cam.x + s, cam.y - s, 2.4 * mpp, rgba(c[0], c[1], c[2], 0.9));
+      }
+    }
+  }
+
+  /**
+   * Trampero's traps (sim/traps.js): the defenders see theirs, the attackers
+   * the ones they found — a toothed orange ring on the floor; a sprung or
+   * broken one is a dark ring with a cross.
+   */
+  traps(t, sim, own, mpp) {
+    const C = OVERLAY.trap;
+    const c = C.color;
+    const s = C.size;
+    for (const trap of sim.traps) {
+      if (own === 'attackers' && !trap.known) continue;
+      const col = trap.alive ? rgba(c[0], c[1], c[2], 1) : rgba(0.3, 0.3, 0.32, 0.9);
+      t.ring(trap.x, trap.y, s, 3.4 * mpp, BLACK(0.6), 18);
+      t.ring(trap.x, trap.y, s, 2 * mpp, col, 18);
+      if (trap.alive) {
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          t.line(trap.x + Math.cos(a) * s * 0.45, trap.y + Math.sin(a) * s * 0.45, trap.x + Math.cos(a) * s, trap.y + Math.sin(a) * s, 1.6 * mpp, col);
+        }
+        t.circle(trap.x, trap.y, s * 0.22, col, 8);
+      } else {
+        t.line(trap.x - s * 0.7, trap.y - s * 0.7, trap.x + s * 0.7, trap.y + s * 0.7, 2 * mpp, col);
+        t.line(trap.x - s * 0.7, trap.y + s * 0.7, trap.x + s * 0.7, trap.y - s * 0.7, 2 * mpp, col);
       }
     }
   }

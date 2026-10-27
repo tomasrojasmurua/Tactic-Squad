@@ -67,6 +67,13 @@ export function compileMap(def) {
     for (const c of list) if (!Array.isArray(c.at) || !Number.isFinite(c.facing)) throw new Error(`aiCameras ${site}: cámara sin at / facing`);
   }
 
+  // Trampero's traps per site (sim/traps.js): [x, y] points.
+  const traps = def.aiTraps || {};
+  for (const [site, list] of Object.entries(traps)) {
+    if (!def.sites.some((s) => s.id === site)) throw new Error(`aiTraps: sitio desconocido ${site}`);
+    for (const p of list) if (!Array.isArray(p) || p.length !== 2) throw new Error(`aiTraps ${site}: trampa sin [x, y]`);
+  }
+
   return {
     id: def.id,
     name: def.name,
@@ -89,6 +96,7 @@ export function compileMap(def) {
     aiBarricades,
     aiEntries,
     cameras,
+    traps,
     camera: def.camera,
   };
 }

@@ -346,10 +346,15 @@ export class PlanningController {
     this.cancel();
   }
 
-  /** Set-up: the selected defender stands at the point (his facing and watch order stay). */
+  /**
+   * Set-up: the selected defender stands at the point (his facing and watch
+   * order stay) — or, in trap mode with the Trampero selected, he lays a trap
+   * there (or picks his own up).
+   */
   place(u, px, py) {
     const w = this.world(px, py);
-    this.command({ type: 'placeUnit', unitId: u.id, x: w.x, y: w.y });
+    if (this.session.ui.trapMode && u.role === 'trapper') this.command({ type: 'placeTrap', unitId: u.id, x: w.x, y: w.y });
+    else this.command({ type: 'placeUnit', unitId: u.id, x: w.x, y: w.y });
     return true;
   }
 

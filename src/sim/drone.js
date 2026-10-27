@@ -18,6 +18,7 @@ import { TAU, approachAngle, angleTo } from '../core/math.js';
 import { circleAabbPush } from '../core/geom.js';
 import { canSee } from './vision.js';
 import { droneSeesCameras } from './cameras.js';
+import { droneSeesTraps } from './traps.js';
 import { alertAiUnit } from './ai.js';
 import { isAiControlled } from './queries.js';
 import { barricadeBoxes, spotBarricades } from './barricades.js';
@@ -137,6 +138,7 @@ function look(sim, d) {
   }
   spotBarricades(sim, d, DRONE.fov);
   droneSeesCameras(sim, d, eyeCfg);
+  droneSeesTraps(sim, d, eyeCfg);
   const bomb = sim.bomb;
   if (!bomb.spotted && canSee(sim.world, d, bomb.x, bomb.y, eyeCfg)) {
     bomb.spotted = true;
