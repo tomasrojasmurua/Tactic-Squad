@@ -182,6 +182,7 @@ export const T = Object.freeze({
     toss: 'Lanzar',
     tossItems: { flash: 'Flash', frag: 'Granada', smoke: 'Humo' },
     tossAim: 'Toca dónde',
+    aimTitle: { flash: '¿Dónde cae el flash?', frag: '¿Dónde cae la granada?', smoke: '¿Dónde cae el humo?' },
   },
 
   result: {

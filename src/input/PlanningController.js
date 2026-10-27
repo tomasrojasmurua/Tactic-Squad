@@ -302,6 +302,12 @@ export class PlanningController {
     return true;
   }
 
+  /** Esc / the menu's × while aiming: no throw is set, the menu is back. */
+  cancelToss() {
+    this.session.ui.tossPick = null;
+    return true;
+  }
+
   /** The tap after "Lanzar": that is where the throw lands (sim keeps it within ENTRY.tossRange). */
   placeToss(px, py) {
     const ui = this.session.ui;

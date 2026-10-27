@@ -610,6 +610,9 @@ body.touch .weapon-plate { left: var(--sal); }
 .entry-picker:not(.door) .ep-main { display: none; }
 .entry-picker .ep-pace { display: flex; align-items: center; gap: 4px; }
 .entry-picker.more .ep-more { display: flex; }
+.entry-picker.aiming > :not(.ep-head) { display: none; } /* aiming a throw: just "where?" and × */
+.entry-picker.aiming { border-top-color: var(--amber); }
+.entry-picker.aiming .ep-title { color: var(--amber); }
 .ebtn {
   pointer-events: auto; touch-action: manipulation; min-width: 58px; min-height: 46px; padding: 4px 6px; position: relative;
   font-family: var(--font); color: #fff; background: rgba(20, 23, 27, 0.95); border: 1px solid rgba(255, 255, 255, 0.18);

@@ -455,7 +455,8 @@ export class SessionController {
         session.ui.moreEntries = !session.ui.moreEntries;
         return;
       case 'pickerClose':
-        this.closePicker();
+        if (session.ui.tossPick) this.planning.cancelToss(); // aiming: back to the menu
+        else this.closePicker();
         return;
       case 'holdMenu':
         // Touch ESPERAR: the GO colors to choose from (H on a keyboard cycles them).

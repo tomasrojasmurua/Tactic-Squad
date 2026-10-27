@@ -149,7 +149,8 @@ export class TouchController {
   beginDrag(e) {
     const pl = this.planning;
     const s = this.start;
-    let grab = pl.canEdit ? pl.grab(s.x, s.y, true) : { kind: 'ground' };
+    // Aiming a throw: a drag only looks around (the tap that follows is the target).
+    let grab = pl.canEdit && !this.session.ui.tossPick ? pl.grab(s.x, s.y, true) : { kind: 'ground' };
     if (grab.kind === 'other') {
       pl.select(grab.unit.id);
       grab = { kind: 'unit', unit: grab.unit };
@@ -172,7 +173,7 @@ export class TouchController {
   }
 
   longPress() {
-    if (this.mode !== 'pending' || this.pointers.size !== 1) return;
+    if (this.mode !== 'pending' || this.pointers.size !== 1 || this.session.ui.tossPick) return;
     const pl = this.planning;
     const s = this.start;
     const onUnit = pl.unitAt(s.x, s.y, true);

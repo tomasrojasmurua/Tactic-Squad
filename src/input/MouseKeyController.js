@@ -64,7 +64,8 @@ export class MouseKeyController {
   /** The press became a drag: draw, move a waypoint, insert one, or pan — by what it grabbed. */
   beginDrag(pr) {
     const k = pr.grab.kind;
-    if ((k === 'unit' || k === 'tail') && this.p.beginDraw(pr.x, pr.y)) pr.mode = 'draw';
+    if (this.p.session.ui.tossPick) pr.mode = 'pan'; // aiming a throw: a drag only looks around
+    else if ((k === 'unit' || k === 'tail') && this.p.beginDraw(pr.x, pr.y)) pr.mode = 'draw';
     else if ((k === 'waypoint' || k === 'segment') && this.p.beginMove(pr.grab, pr.x, pr.y)) pr.mode = 'move';
     else pr.mode = 'pan';
   }
@@ -104,7 +105,8 @@ export class MouseKeyController {
       return true;
     }
     if (matches(KEYS.deselect, e.code)) {
-      if (this.p.draw) this.p.cancelDraw();
+      if (this.p.session.ui.tossPick) this.p.cancelToss();
+      else if (this.p.draw) this.p.cancelDraw();
       else this.p.cancel();
       this.press = null;
       return true;

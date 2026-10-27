@@ -79,8 +79,12 @@ los atacantes.
   - **Cuándo:** Ya, o un GO de color.
   - **Paso:** Normal o **Sigilo**. A la mitad de velocidad, se oye a 2 m en vez de 6.
   - **Lanzar:** flash, granada o humo. El siguiente toque elige dónde cae, a 9 m como
-    mucho, y se corta en la primera pared o puerta cerrada. La línea punteada muestra
-    dónde cae de verdad.
+    mucho, y se corta en la primera pared. Si el punto está junto a una puerta y el
+    blanco del otro lado, **abre la puerta y lanza adentro** (detrás del marco, su propia
+    granada no lo alcanza). El que lanza **se queda quieto hasta que explota** y después
+    sigue su ruta. La línea punteada muestra dónde cae de verdad; en rojo si una granada
+    lo alcanzaría a él. Mientras eliges dónde, el menú se reduce a "¿Dónde cae?" y ×
+    (o Esc) cancela.
 - **Puertas.** Si nadie decide, el operador **la abre y pasa**. El "?" sobre una puerta
   de la ruta es una invitación, no un freno.
 - **GO por colores.** ESPERAR en un punto lo asigna a un grupo de color. Durante el

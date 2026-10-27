@@ -116,11 +116,15 @@ export class EntryPicker {
     }
     const { u, i, p, k } = tg;
     const door = k >= 0;
+    // Aiming a throw: only the head is left ("where does it land?" + ×), the map stays clear around the point.
+    const tp = session.ui.tossPick;
+    const aiming = tp && tp.unitId === u.id && tp.index === i ? tp.item : null;
+    toggle(this.node, 'aiming', !!aiming);
     const more = door && (session.ui.moreEntries || MORE.includes(p.entry));
     toggle(this.node, 'more', more);
     toggle(this.node, 'door', door);
     toggle(this.node, 'ask', !!p.ask);
-    setText(this.title, p.ask ? T.entry.askTitle : door ? T.entry.title : T.entry.point);
+    setText(this.title, aiming ? T.entry.aimTitle[aiming] : p.ask ? T.entry.askTitle : door ? T.entry.title : T.entry.point);
     for (const [k2, b] of this.pace) toggle(b, 'active', k2 === 'sneak' ? p.pace === 'sneak' : p.pace !== 'sneak');
     setText(this.moreLabel, more ? T.entry.less : T.entry.more);
     const current = p.ask ? 'none' : p.entry || 'none';
@@ -133,7 +137,7 @@ export class EntryPicker {
       setText(count, item ? T.entry.left(Math.max(0, left)) : '');
     }
     for (const [code, b] of this.when) toggle(b, 'active', code === 'now' ? !p.hold : p.hold && holdCode(p) === code);
-    const aim = session.ui.tossPick && session.ui.tossPick.unitId === u.id && session.ui.tossPick.index === i ? session.ui.tossPick.item : null;
+    const aim = aiming;
     for (const [item, { b, label, count }] of this.toss) {
       const has = p.toss && p.toss.item === item;
       const left = gearLeft(u, item, i);
