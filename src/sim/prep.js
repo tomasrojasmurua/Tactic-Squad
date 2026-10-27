@@ -223,7 +223,7 @@ function moveTo(u, x, y, facing) {
 
 function setBehavior(u, behavior) {
   u.behavior = behavior;
-  u.ai = { patrolIndex: 0, wait: 0, baseFacing: u.facing, repath: 0, noiseX: 0, noiseY: 0, rotating: null, rotated: false };
+  u.ai = { patrolIndex: 0, wait: 0, baseFacing: u.facing, repath: 0, noiseX: 0, noiseY: 0, rotating: null, rotated: false, rotateTo: null, report: null, commanded: u.ai.commanded };
 }
 
 function setWeapon(u, weaponId) {

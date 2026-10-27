@@ -123,6 +123,33 @@ export class NavGrid {
     return smooth;
   }
 
+  /** findPath with the cells under `boxes` ({minX, maxX, minY, maxY}, e.g. barricaded doors) blocked for this search only. */
+  findPathAvoiding(ax, ay, bx, by, snapRadius, boxes) {
+    if (!boxes.length) return this.findPath(ax, ay, bx, by, snapRadius);
+    const { cell, cols, rows, blocked } = this;
+    const saved = [];
+    for (const b of boxes) {
+      const x0 = Math.max(0, Math.floor(b.minX / cell) - 1);
+      const x1 = Math.min(cols - 1, Math.floor(b.maxX / cell) + 1);
+      const y0 = Math.max(0, Math.floor(b.minY / cell) - 1);
+      const y1 = Math.min(rows - 1, Math.floor(b.maxY / cell) + 1);
+      for (let iy = y0; iy <= y1; iy++) {
+        for (let ix = x0; ix <= x1; ix++) {
+          const i = iy * cols + ix;
+          if (!blocked[i]) {
+            blocked[i] = 1;
+            saved.push(i);
+          }
+        }
+      }
+    }
+    try {
+      return this.findPath(ax, ay, bx, by, snapRadius);
+    } finally {
+      for (const i of saved) blocked[i] = 0;
+    }
+  }
+
   astar(startIdx, goalIdx) {
     if (startIdx < 0 || goalIdx < 0) return null;
     const { cols, blocked, g, came, state, heap } = this;

@@ -129,6 +129,19 @@ export const AI = Object.freeze({
 });
 
 /**
+ * Defending AI (sim/aiDefend.js): when the bomb is threatened, a few of its
+ * defenders leave their posts to hold the way in by the bomb.
+ */
+export const AI_DEFEND = Object.freeze({
+  threatRadius: 8, // m from the bomb: evidence this close means the site is being hit
+  rotators: 2, // defenders sent to the bomb per round
+  nearThreat: 7, // m: defenders closer than this to the threat are already in the fight
+  coverDistance: 2.5, // m from the bomb along the path toward the threat: where a rotator stands
+  lookAhead: 3, // m farther down that path: what he aims at
+  spacing: 0.9, // m sideways between two rotators covering the same way
+});
+
+/**
  * Attacking AI (sim/aiAttack.js): a commander that plays the attackers'
  * side through the same orders as a player (used when the player defends).
  */

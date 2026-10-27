@@ -11,6 +11,7 @@ import { TAU } from '../core/math.js';
 import { AI, COMBAT, NAV, MOVE } from '../config/balance.js';
 import { lineOfSight } from './vision.js';
 import { enemyTeam } from './queries.js';
+import { barricadeBoxes } from './barricades.js';
 
 /** One AI-controlled unit (any side whose controller is 'ai'). */
 export function updateAiUnit(sim, u, dt) {
@@ -87,16 +88,17 @@ function updateWatchPoint(sim, u, dt) {
 }
 
 /**
- * Rotation (map data `behavior.rotate = {to: [x, y], look}`): the first time a
- * defender hears a firefight he walks once to a planned position and holds
- * `look` there — e.g. the kitchen guard moves to cover the site through the
- * arch. Authored per map, so it reads as a plan, never as randomness.
+ * Rotation (`u.ai.rotateTo = {to: [x, y], look}`): the defender walks once to
+ * a position and holds `look` there — e.g. the kitchen guard moves to cover
+ * the site through the arch. A player's defender does it on the first
+ * firefight he hears (his fallback, `behavior.rotate`); an AI side's are sent
+ * by sim/aiDefend.js when the bomb is threatened.
  */
 function updateRotation(sim, u) {
-  const r = u.behavior.rotate;
+  const r = u.ai.rotateTo;
   if (u.ai.rotating === 'pending') {
     if (u.target >= 0) return; // finish the fight first
-    const path = sim.world.nav.findPath(u.x, u.y, r.to[0], r.to[1], NAV.snapRadius);
+    const path = pathAroundBarricades(sim, u.x, u.y, r.to[0], r.to[1]);
     u.ai.rotating = 'moving';
     if (!path) return;
     u.route.length = 0;
@@ -110,15 +112,29 @@ function updateRotation(sim, u) {
   }
 }
 
+/** A defender's walking path: around his side's barricades (he cannot open them), straight through when there is no other way. */
+const barricades = [];
+export function pathAroundBarricades(sim, ax, ay, bx, by) {
+  barricadeBoxes(sim, barricades);
+  return sim.world.nav.findPathAvoiding(ax, ay, bx, by, NAV.snapRadius, barricades) || sim.world.nav.findPath(ax, ay, bx, by, NAV.snapRadius);
+}
+
+/** Starts a one-off rotation to `spot` ({to: [x, y], look}); sim/aiDefend.js decides when for an AI side. */
+export function startRotation(u, spot) {
+  u.ai.rotateTo = spot;
+  u.ai.rotating = 'pending';
+  u.ai.rotated = true;
+}
+
 const HOLD_AFTER_ROTATION = Object.freeze({ type: 'hold', reactsToNoise: true });
 
 /** Gunfire / pain / footsteps make an AI unit watch where that came from (callers pass AI units only). */
 export function alertAiUnit(u, x, y, duration, gunfire = false) {
   if (!u.alive) return;
-  if (gunfire && u.behavior && u.behavior.rotate && u.ai.rotating === null && !u.ai.rotated) {
-    u.ai.rotating = 'pending';
-    u.ai.rotated = true;
-  }
+  u.ai.report = { x, y }; // evidence for an AI side's commander (sim/aiDefend.js)
+  // A player's defender falls back on the first firefight he hears; an AI
+  // side's commander only rotates when the bomb is threatened.
+  if (gunfire && !u.ai.commanded && u.behavior && u.behavior.rotate && u.ai.rotating === null && !u.ai.rotated) startRotation(u, u.behavior.rotate);
   if (u.target >= 0) return;
   if (u.behavior && u.behavior.reactsToNoise === false) return;
   const fresh = u.alertTimer <= 0 || (u.ai.noiseX - x) ** 2 + (u.ai.noiseY - y) ** 2 > 1;

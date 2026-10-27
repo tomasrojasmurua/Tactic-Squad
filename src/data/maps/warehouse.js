@@ -231,8 +231,9 @@ export default {
   // (more health, shoots first), 'roamer' = Merodeador (quick and quiet), 'trapper' = Trampero
   // (lays the site's `aiTraps`); config/operators.js. Default 'defender'. Behaviors: hold (fixed angle), scan {from, to,
   // period}, patrol {points, wait}; reactsToNoise: turns to gunfire /
-  // footsteps / pain; rotate {to, look}: on the first firefight heard, moves
-  // there once and holds.
+  // footsteps / pain; rotate {to, look}: where he falls back to and holds —
+  // played by the AI, when the bomb is threatened (sim/aiDefend.js); set by a
+  // player, on the first firefight he hears.
   defense: {
     A: [
       // Site anchor: off the corridor line, pre-aiming the corridor door at an

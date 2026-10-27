@@ -19,6 +19,7 @@ import { applyCommand } from './orders.js';
 import { updatePerception } from './perception.js';
 import { updateAiUnit } from './ai.js';
 import { createAttackAi, attackAiDecide, attackAiTick } from './aiAttack.js';
+import { createDefendAi, defendAiTick } from './aiDefend.js';
 import { isAiControlled } from './queries.js';
 import { updateFacing, updateMovement } from './movement.js';
 import { resolveCollisions } from './collisions.js';
@@ -100,6 +101,7 @@ export class Simulation {
     else if (phases) initMoney(this); // the buy phase: each attacker's money after his role's gear
     initAbilities(this);
     this.attackAi = createAttackAi(this); // sim/aiAttack.js: the commander of an AI attacking side
+    this.defendAi = createDefendAi(this); // sim/aiDefend.js: sends an AI defending side's rotations
   }
 
   /** Per attacker slot {role?, money, gear?} (session/Match.js): who he is and what he brings. */
@@ -254,6 +256,7 @@ export class Simulation {
     }
     updateMemory(this);
     for (const u of this.teams.attackers) if (u.alive && u.blind <= 0) spotBarricades(this, u, u.vision.fov);
+    defendAiTick(this);
     for (const u of this.units) {
       if (!u.alive) continue;
       if (isAiControlled(this, u)) updateAiUnit(this, u, dt);
