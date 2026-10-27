@@ -69,6 +69,8 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     goDelay: 0, // s released but still holding: a teammate's grenade / charge goes off first
     entry: null, // door entry in progress (sim/entries.js)
     gear: { flash: 0, frag: 0, breach: 0, ...r.role.gear }, // utility left (spent by entries)
+    money: 0, // $ left to buy with (attackers, buy phase: sim/prep.js)
+    bash: null, // breaking a barricade: {door, t, next} (sim/barricades.js)
     blind: 0, // s flashed / stunned: sees nothing, does not shoot
     lookOverride: null, // angle held while walking the current leg
     idleLook: null, // angle to face once the route is done

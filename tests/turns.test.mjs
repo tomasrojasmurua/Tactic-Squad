@@ -24,7 +24,7 @@ function playTurn(sim) {
   while (sim.phase === 'exec') sim.step();
 }
 
-test('la ronda pasa por compra, preparación y planificación sin que corra el tiempo', () => {
+test('la ronda pasa por compra, preparación, dron y planificación; solo el dron hace correr el tiempo', () => {
   const sim = new Simulation(MAP, { seed: 5 });
   assert.equal(sim.phase, 'buy');
   const u = sim.teams.attackers[0];
@@ -36,9 +36,12 @@ test('la ronda pasa por compra, preparación y planificación sin que corra el t
   sim.advancePhase();
   assert.equal(sim.phase, 'prep');
   sim.advancePhase();
+  assert.deepEqual([sim.phase, sim.turn], ['drone', 0]);
+  sim.advancePhase(); // LISTO durante el dron: se retira
   assert.deepEqual([sim.phase, sim.turn], ['plan', 1]);
   for (let i = 0; i < 30; i++) sim.step();
   assert.equal(sim.tick, 0);
+  assert.equal(sim.timeLeft, ROUND.timeLimit, 'la preparación no gasta el tiempo de la bomba');
 });
 
 test('cada turno ejecuta exactamente 8 s y vuelve a planificar; durante la ejecución no hay órdenes de ruta', () => {

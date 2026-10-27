@@ -3,8 +3,8 @@
 // round data (bomb sites, attacker entries, deployment halves, barricade slots).
 // Pure: no DOM, no WebGL. Output is consumed by World (sim) and by render.
 import { PROPS } from '../data/props.js';
-import { DOORS, MAP_FORMAT } from '../config/balance.js';
-import { boxFromRect } from '../core/geom.js';
+import { DOORS, MAP_FORMAT, PREP } from '../config/balance.js';
+import { boxFromRect, pointAabbDistance } from '../core/geom.js';
 
 const DEFAULT_WALL_T = MAP_FORMAT.wallThickness;
 const ON_WALL_TOLERANCE = MAP_FORMAT.onWallTolerance;
@@ -45,6 +45,16 @@ export function compileMap(def) {
     defenders: def.deployment.defenders.map(boxFromRect),
   };
 
+  // Doors the defenders may barricade (ids): marked `barricade` in the map and touching their half.
+  const barricadeSlots = def.doors
+    .filter((d) => d.barricade && deployment.defenders.some((b) => pointAabbDistance(d.at[0], d.at[1], b) <= PREP.barricadeReach))
+    .map((d) => d.id);
+  // The AI defenders' barricade options per site (sim/prep.js aiPrepare).
+  const aiBarricades = def.aiBarricades || {};
+  for (const [site, ids] of Object.entries(aiBarricades)) {
+    for (const id of ids) if (!barricadeSlots.includes(id)) throw new Error(`aiBarricades ${site}: ${id} no se puede atrancar`);
+  }
+
   return {
     id: def.id,
     name: def.name,
@@ -63,8 +73,8 @@ export function compileMap(def) {
     defaultEntry: def.defaultEntry ?? def.entries[0].id,
     defense: def.defense,
     deployment,
-    // Doorways defenders may barricade (door ids).
-    barricadeSlots: def.doors.filter((d) => d.barricade).map((d) => d.id),
+    barricadeSlots,
+    aiBarricades,
     camera: def.camera,
   };
 }

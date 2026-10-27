@@ -27,6 +27,7 @@ import { openDoor, crackDoor, destroyDoor } from './doors.js';
 import { alertAiUnit } from './ai.js';
 import { applyBlast } from './combat.js';
 import { isAiControlled, ENTRY_GEAR } from './queries.js';
+import { startBash, breakBarricade } from './barricades.js';
 
 /** Seconds each mode works on arrival before it is armed (0 = armed at once). */
 const PREP = Object.freeze({ slow: ENTRY.slow.prepTime, breach: ENTRY.breach.prepTime });
@@ -86,7 +87,7 @@ export function updateEntries(sim, dt) {
     if (u.blind > 0) u.blind = Math.max(0, u.blind - dt);
     if (u.goDelay > 0 && !u.waitingGo) u.goDelay = Math.max(0, u.goDelay - dt);
     const e = u.entry;
-    if (!e) continue;
+    if (!e || u.bash) continue; // breaking a barricade first: the entry waits (sim/barricades.js)
     if (e.phase === 'prep') {
       e.t -= dt;
       if (e.t <= 0) finishPrep(sim, u, e);
@@ -117,8 +118,8 @@ function release(sim, u, e) {
   switch (e.mode) {
     case 'kick':
       if (door && !door.open) {
-        openDoor(sim, door, u, 'kick');
-        kickEffects(sim, u, d, e.side);
+        openDoor(sim, door, u, 'kick'); // a barricade: he starts breaking it instead
+        if (door.open) kickEffects(sim, u, d, e.side);
       }
       u.entry = null;
       return;
@@ -128,6 +129,7 @@ function release(sim, u, e) {
     case 'flash':
     case 'frag':
       if ((u.gear[e.mode] || 0) <= 0) return reject(sim, u, e);
+      if (door && door.barricaded) return startBash(sim, door, u); // break it first, then throw (still armed)
       if (door && !door.open) openDoor(sim, door, u, 'push');
       e.phase = 'act';
       e.step = 'throw';
@@ -305,7 +307,8 @@ function detonateBreach(sim, u, e) {
   const B = ENTRY.breach;
   const d = sim.world.doorways[e.doorway];
   const door = doorOf(sim, e.doorway);
-  if (door) destroyDoor(sim, door);
+  if (door && door.barricaded) breakBarricade(sim, door, u, 'breach');
+  else if (door) destroyDoor(sim, door);
   const x = d.cx + d.normalX * e.side * B.depth;
   const y = d.cy + d.normalY * e.side * B.depth;
   sim.emit(EV.CHARGE_BLAST, { unitId: u.id, doorId: d.id, x: d.cx, y: d.cy, dirX: d.normalX * e.side, dirY: d.normalY * e.side });

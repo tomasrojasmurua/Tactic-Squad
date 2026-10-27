@@ -26,7 +26,21 @@
 //                                              there. atTick: the step of the turn it was given at (replays)
 //   {type:'defuseNow', unitId?}                an attacker next to the found bomb stops and defuses
 //                                              (that unit, else the closest one in range)
-//   {type:'chooseEntry', entry}                preparation: the attackers start from another entry (map `entries`)
+//   {type:'chooseEntry', entry}                preparation (and the first planning, before any turn ran):
+//                                              the attackers start from another entry (map `entries`)
+//
+// Buy and set-up (sim/prep.js):
+//   {type:'buy', unitId, item, count}          buy: an attacker buys (count 1) or sells back (-1) one
+//                                              BUY.items item with his own money
+//   {type:'chooseSite', site}                  preparation, defenders: the bomb goes to that site and their
+//                                              set-up restarts from the map's layout for it
+//   {type:'placeUnit', unitId, x, y, facing?}  preparation: a defender stands there (their half, walkable)
+//   {type:'setWatch', unitId, watch}           preparation: a defender's watch order
+//                                              ({facing, sweep?: [from, to], react?, fallback?: {to: [x, y], look}})
+//   {type:'barricade', door, on}               preparation, defenders: puts up / takes down a barricade
+// Recon drone (sim/drone.js), during the drone phase, stamped like a GO:
+//   {type:'drone', dir, atTick}                the stick: one of DRONE.directions headings, -1 = stop
+//   {type:'droneRecall', atTick}               the drone is done (the first planning starts)
 //
 // Each round phase takes only some orders (PHASE_ORDERS; sim/round.js):
 // nothing during buy, only GO codes during the execution, routes while
@@ -45,6 +59,8 @@ import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, ent
 import { segmentCrossesDoorway } from './doors.js';
 import { startDefuse } from './objectives.js';
 import { cancelEntry, releaseDelay } from './entries.js';
+import { buyItem, chooseSite, placeDefender, setWatch, setBarricade } from './prep.js';
+import { steerDrone, endDrone } from './drone.js';
 
 export const REJECT = Object.freeze({
   routeTooLong: 'routeTooLong',
@@ -57,18 +73,32 @@ export const REJECT = Object.freeze({
   goBeforeStart: 'goBeforeStart', // emitted by the session: GO pressed while still planning
   notNow: 'notNow', // this order is not taken in the current round phase (e.g. during an execution turn)
   badEntry: 'badEntry', // chooseEntry with an entry the map does not have
+  // Buy and set-up (sim/prep.js)
+  noMoney: 'noMoney',
+  gearFull: 'gearFull', // he already carries BUY.max of it
+  badItem: 'badItem',
+  badSite: 'badSite',
+  outsideHalf: 'outsideHalf', // a defender placed (or falling back) outside the defenders' half
+  tooClose: 'tooClose', // on top of a teammate
+  badWatch: 'badWatch',
+  badDoor: 'badDoor', // a barricade where the map allows none
+  tooManyBarricades: 'tooManyBarricades', // PREP.barricades already up
 });
 
 const ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'endStroke', 'cancelStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute'];
 
 /** Orders each round phase takes (sim/round.js PHASE; literal keys: round.js imports this module). */
 const PHASE_ORDERS = Object.freeze({
-  buy: [],
-  prep: [...ROUTE_ORDERS, 'chooseEntry'],
-  plan: [...ROUTE_ORDERS, 'defuseNow'],
+  buy: ['buy'],
+  prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade'],
+  drone: ['drone', 'droneRecall'],
+  plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry'],
   exec: ['go'],
   end: [],
 });
+
+/** Orders a side gives as a whole (no unit): which side must be human to give them. */
+const SIDE_ORDERS = Object.freeze({ chooseSite: 'defenders', barricade: 'defenders', drone: 'attackers', droneRecall: 'attackers' });
 
 /** May the side that sent `cmd` command this unit? */
 function obeys(sim, unit, cmd) {
@@ -85,9 +115,25 @@ export function applyCommand(sim, cmd) {
   if (cmd.type === 'go') return issueGo(sim, cmd);
   if (cmd.type === 'defuseNow') return defuseNow(sim, cmd);
   if (cmd.type === 'chooseEntry') return chooseEntry(sim, cmd);
+  const side = SIDE_ORDERS[cmd.type];
+  if (side) {
+    if (sideOf(sim, cmd) !== side || sim.controllers[side] !== 'human') return;
+    if (cmd.type === 'chooseSite') return refuse(sim, -1, chooseSite(sim, cmd.site));
+    if (cmd.type === 'barricade') return refuse(sim, -1, setBarricade(sim, cmd.door, cmd.on !== false));
+    if (cmd.type === 'drone') return steerDrone(sim, cmd.dir);
+    return endDrone(sim, 'recalled');
+  }
   const unit = sim.units[cmd.unitId];
   if (!unit || !unit.alive || !obeys(sim, unit, cmd)) return;
   switch (cmd.type) {
+    case 'buy':
+      return refuse(sim, unit.id, buyItem(sim, unit, cmd.item, cmd.count ?? 1));
+    case 'placeUnit':
+      if (unit.team !== 'defenders') return;
+      return refuse(sim, unit.id, placeDefender(sim, unit, cmd.x, cmd.y, cmd.facing ?? unit.facing));
+    case 'setWatch':
+      if (unit.team !== 'defenders') return;
+      return refuse(sim, unit.id, setWatch(sim, unit, cmd.watch));
     case 'addWaypoint':
       return addWaypoint(sim, unit, cmd);
     case 'promoteLast':
@@ -343,9 +389,19 @@ function undoWaypoint(sim, unit) {
 /** The side an order speaks for: its `team`, else the (only) human side. */
 const sideOf = (sim, cmd) => cmd.team || humanTeam(sim);
 
+/** A set-up function's REJECT code (or null: done) -> the rejection event. */
+function refuse(sim, unitId, reason) {
+  if (reason) sim.emit(EV.ORDER_REJECTED, { unitId, reason });
+}
+
 function chooseEntry(sim, cmd) {
   const team = sideOf(sim, cmd);
   if (team !== 'attackers' || sim.controllers.attackers !== 'human') return;
+  // In the planning only before the first turn ran (the squad has not moved yet).
+  if (sim.round.enabled && sim.round.phase === 'plan' && (sim.round.turn !== 1 || sim.round.execTotal > 0)) {
+    sim.emit(EV.ORDER_REJECTED, { unitId: -1, reason: REJECT.notNow });
+    return;
+  }
   if (!sim.compiled.entries.some((e) => e.id === cmd.entry)) {
     sim.emit(EV.ORDER_REJECTED, { unitId: -1, reason: REJECT.badEntry });
     return;

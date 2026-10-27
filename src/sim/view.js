@@ -31,10 +31,22 @@ export function updateMemory(sim) {
   }
 }
 
+/** Barricades a side knows of: the defenders all theirs; the attackers those they have seen (sim/barricades.js). */
+export function knownBarricades(sim, team) {
+  const out = [];
+  for (const d of sim.doors) {
+    if (!d.barricaded) continue;
+    if (team === 'attackers' && !sim.intel.barricades.has(d.def.index)) continue;
+    out.push({ door: d.def.id, index: d.def.index, x: d.def.cx, y: d.def.cy });
+  }
+  return out;
+}
+
 /**
  * The view of the round for `team`: its own units in full; of the enemy only
- * who is in sight now, where the rest were last seen, the noise heard, and
- * the bomb if this side knows where it is.
+ * who is in sight now, where the rest were last seen, the noise heard, the
+ * barricades it knows of, its own drone and the bomb if this side knows
+ * where it is.
  */
 export function teamView(sim, team) {
   const seen = new Set();
@@ -54,6 +66,8 @@ export function teamView(sim, team) {
     enemies,
     lastKnown: [...sim.memory[team].values()].filter((k) => !seen.has(k.id)).map((k) => ({ ...k })),
     pulses: sim.noise.pulses[team],
+    barricades: knownBarricades(sim, team),
+    drone: team === 'attackers' && sim.drone ? { x: sim.drone.x, y: sim.drone.y, facing: sim.drone.facing, active: sim.drone.active, left: sim.drone.left } : null,
     bomb: bombKnown ? { site: b.site, x: b.x, y: b.y, progress: b.progress, defused: b.defused } : null,
   };
 }

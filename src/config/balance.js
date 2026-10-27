@@ -193,8 +193,56 @@ export const NOISE = Object.freeze({
   jitter: 0.9, // ...and shifted up to this much (deterministic, from the seed)
   keepTurns: 3, // a pulse stays on the map this many turns, fading
   // Radius heard (m) by kind; the loudest kind of a cell names its pulse.
-  radius: Object.freeze({ step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, flash: 18, frag: 22, breach: 22 }),
-  rank: Object.freeze(['step', 'crack', 'door', 'plant', 'defuse', 'kick', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
+  radius: Object.freeze({ step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, flash: 18, frag: 22, breach: 22 }),
+  rank: Object.freeze(['step', 'crack', 'door', 'plant', 'defuse', 'kick', 'bash', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
+});
+
+/**
+ * Buying (sim/prep.js, buy phase): every attacker has his own money and buys
+ * the utility he carries. Starts with his role's gear (config/operators.js),
+ * already paid for. The round economy (win / loss income) comes later.
+ */
+export const BUY = Object.freeze({
+  startMoney: 800, // $ per operator
+  prices: Object.freeze({ flash: 200, frag: 300, breach: 300 }),
+  max: Object.freeze({ flash: 2, frag: 1, breach: 2 }), // carried at most
+  items: Object.freeze(['flash', 'frag', 'breach']), // order of the buy panel
+});
+
+/** Defender preparation (sim/prep.js): set-up rules and the watch orders. */
+export const PREP = Object.freeze({
+  barricades: 2, // per round (free for now)
+  barricadeReach: 0.5, // m: a door counts as in the defenders' half this close to it
+  sweepPeriod: 6, // s of a full sweep (watch order "barrer")
+  minSpacing: 0.7, // m between two defenders placed in the set-up
+});
+
+/** Barricades (sim/barricades.js): block bodies, sight and the drone until broken or blown. */
+export const BARRICADE = Object.freeze({
+  breakTime: 3, // s hitting it (a kick starts the same work): the doorway is then clear
+  hitEvery: 0.6, // s between the blows (noise, sound)
+  hearing: 14, // m: AI defenders this close turn to it (and rotate, like gunfire)
+  spotRange: 14, // m: an attacker (or the drone) with a line of sight this close finds it
+});
+
+/**
+ * Recon drone (sim/drone.js): after the preparation the attackers drive it in
+ * real time for `seconds` (the bomb's timer does not run). It rolls under
+ * doors but not through barricades, marks the defenders it sees where they
+ * are and reveals the site if it sees the bomb. A defender who keeps it in
+ * sight `shootDelay` s shoots it down. Not used in the assault (yet).
+ */
+export const DRONE = Object.freeze({
+  seconds: 15,
+  speed: 2.4, // m/s
+  turnRate: 540 * DEG, // rad/s (it faces where it goes)
+  radius: 0.16, // m (collides with walls, furniture and barricades)
+  fov: 100 * DEG,
+  range: 14, // m
+  directions: 16, // the stick is quantized to this many headings (few, compact orders)
+  hearing: 3, // m: AI defenders this close hear it and turn to it
+  shootDelay: 0.6, // s a defender must see it before shooting it down
+  shootRange: 16, // m
 });
 
 export const NAV = Object.freeze({

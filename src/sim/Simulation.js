@@ -18,14 +18,18 @@ import { updateFacing, updateMovement } from './movement.js';
 import { resolveCollisions } from './collisions.js';
 import { updateCombat } from './combat.js';
 import { createBomb, updateObjectives, endRound } from './objectives.js';
-import { createRound, advancePhase, canStep, afterTick, PHASE } from './round.js';
+import { createRound, advancePhase, canStep, afterTick, phaseTick, isLive, PHASE } from './round.js';
 import { createNoise, collectNoise } from './noise.js';
 import { createMemory, updateMemory } from './view.js';
+import { initMoney } from './prep.js';
+import { updateDrone } from './drone.js';
+import { createIntel, updateBash, spotBarricades } from './barricades.js';
 
 export class Simulation {
   /**
    * @param opts.controllers {team: 'human'|'ai'} who commands each side (config/squad.js CONTROLLERS).
    * @param opts.site  bomb site id ('A' | 'B'); omitted, the defending side picks it from the seed.
+   *                    A human defender may move it in the preparation (sim/prep.js chooseSite).
    * @param opts.entry attacker entry id (map `entries`); omitted, the map's default entry.
    *                    The attackers may change it during the preparation (chooseEntry order).
    * @param opts.phases true: the round goes through its phases (sim/round.js, starts at 'buy');
@@ -62,6 +66,8 @@ export class Simulation {
     this.round = createRound(phases);
     this.noise = createNoise(); // sim/noise.js: heard this turn, pulses per listening side
     this.memory = createMemory(); // sim/view.js: last known enemy positions per side
+    this.intel = createIntel(); // sim/barricades.js: barricades the attackers know of
+    this.drone = null; // sim/drone.js: the attackers' recon drone (drone phase)
 
     this.units = []; // indexed by unit id; fixed for the whole round
     this.spawnUnits();
@@ -69,6 +75,7 @@ export class Simulation {
     this.teams = {};
     for (const t of TEAMS) this.teams[t] = this.units.filter((u) => u.team === t);
     this.bomb = createBomb(this.site);
+    if (phases) initMoney(this); // the buy phase: each attacker's money after his role's gear
     initAbilities(this);
   }
 
@@ -127,7 +134,7 @@ export class Simulation {
     advancePhase(this);
   }
 
-  /** Buy and preparation skipped: straight to planning the first turn (scripts, tests). */
+  /** Buy, preparation and drone skipped: straight to planning the first turn (scripts, tests). */
   skipToAssault() {
     while (this.round.enabled && this.round.phase !== PHASE.plan) this.advancePhase();
   }
@@ -165,7 +172,7 @@ export class Simulation {
     const list = this.commands;
     this.commands = [];
     for (const c of list) {
-      if (c.atTick !== undefined && this.round.phase === PHASE.exec && this.round.execTick < c.atTick) this.commands.push(c);
+      if (c.atTick !== undefined && isLive(this) && phaseTick(this) < c.atTick) this.commands.push(c);
       else applyCommand(this, c);
     }
   }
@@ -188,6 +195,7 @@ export class Simulation {
   step(dt = this.dt) {
     if (!canStep(this)) return; // decision phases: time does not run
     this.dt = dt;
+    if (this.round.phase === PHASE.drone) return this.stepDrone(dt);
     const firstEvent = this.events.length;
     this.flushCommands();
     for (const u of this.units) {
@@ -197,9 +205,11 @@ export class Simulation {
     }
 
     updateDoors(this, dt);
+    for (const u of this.units) if (u.alive && u.bash) updateBash(this, u, dt);
     updateEntries(this, dt);
     updatePerception(this);
     updateMemory(this);
+    for (const u of this.teams.attackers) if (u.alive && u.blind <= 0) spotBarricades(this, u, u.vision.fov);
     for (const u of this.units) {
       if (!u.alive) continue;
       if (this.controllers[u.team] === 'ai') updateAiUnit(this, u, dt);
@@ -213,6 +223,20 @@ export class Simulation {
     if (this.round.enabled) collectNoise(this, firstEvent);
     afterTick(this, endRound);
 
+    this.tick++;
+    this.time += dt;
+  }
+
+  /** A step of the drone phase: only the drone moves; the defenders hold their set-up and only turn. */
+  stepDrone(dt) {
+    this.flushCommands();
+    updateDrone(this, dt);
+    for (const u of this.teams.defenders) {
+      if (!u.alive) continue;
+      if (this.controllers.defenders === 'ai') updateAiUnit(this, u, dt);
+      updateFacing(this, u, dt);
+    }
+    afterTick(this, endRound);
     this.tick++;
     this.time += dt;
   }
