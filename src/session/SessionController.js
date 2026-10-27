@@ -11,10 +11,11 @@
 // recall (LISTO) are stamped with the step of the drone phase the same way.
 //
 // Helpers: PhaseClock (deadlines), PlanRecorder (orders per phase, honest
-// retry), AutoPause (system pause), Tutorial (guided first round),
+// retry), AutoPause (system pause), Tutorial (guided round from the menu),
 // CameraFraming (input/, injected).
 import { EV } from '../core/events.js';
 import { SIM } from '../config/balance.js';
+import { TUTORIAL } from '../config/ui.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
 import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors } from '../sim/queries.js';
 import { phaseTick } from '../sim/round.js';
@@ -111,6 +112,7 @@ export class SessionController {
       this.recorder.enterPhase((cmd) => this.bus.emit(EV.COMMAND, cmd));
       this.session.replay.pending = this.recorder.pending;
       if (phase === 'drone') this.framing.followDrone(this.sim, 0, true);
+      this.tutorialTick(); // a tutorial card for this phase stops it before it runs
       return;
     }
     this.session.replay.exec = false;
@@ -180,11 +182,30 @@ export class SessionController {
     // A phone turned to portrait mid-turn is covered by the "rotate" screen, so pause.
     if (this.session.touch && window.innerHeight > window.innerWidth) this.pause('orientation');
     if (isDecisionPhase(this.session)) this.clock.update(dt);
-    const t = this.tutorial.update(this.sim);
-    if (t === 'done') this.notice('tutorialDone');
-    else if (t === 'step') this.sound('select');
+    this.tutorialTick();
     const c = this.session.confirm;
     if (c.action && performance.now() >= c.until) c.action = null;
+  }
+
+  /** The guided round: next step, or a card that goes up (one during the drone stops it until ENTENDIDO). */
+  tutorialTick() {
+    if (this.session.phase === 'title') return;
+    const t = this.tutorial.update(this.sim, this.session.mode === 'tutorial');
+    if (t === 'done') this.notice('tutorialDone');
+    else if (t === 'step') this.sound('select');
+    else if (t === 'card') {
+      this.sound('hold');
+      if (isLivePhase(this.session.phase)) this.pause('tutorial');
+    }
+  }
+
+  /** ENTENDIDO on the tutorial's card: the next step; a turn or drone it stopped goes on. */
+  ackTutorial() {
+    if (!this.tutorial.ack()) return false;
+    this.sound('select');
+    if (this.session.phase === 'paused' && this.session.pauseReason === 'tutorial') this.resume();
+    this.tutorialTick();
+    return true;
   }
 
   command(cmd) {
@@ -217,14 +238,15 @@ export class SessionController {
 
   /** LISTO / SPACE: ends a decision phase; recalls the drone; resumes a paused turn; a running turn cannot be stopped. */
   ready() {
+    if (this.ackTutorial()) return; // a tutorial card is up: LISTO / Space / Enter closes it
     const phase = this.session.phase;
+    if ((isDecisionPhase(this.session) || phase === 'drone') && this.tutorial.blocksReady()) {
+      this.notice('tutorialFirst');
+      return;
+    }
     if (phase === 'drone') {
       if (this.session.replay.exec) this.notice('droneReplay');
       else this.command({ type: 'droneRecall', atTick: phaseTick(this.sim) });
-      return;
-    }
-    if (phase === 'planning' && this.tutorial.blocksExecute()) {
-      this.notice('tutorialFirst');
       return;
     }
     if (isDecisionPhase(this.session)) {
@@ -264,22 +286,23 @@ export class SessionController {
     switch (action) {
       case 'start':
       case 'tutorial':
+        // Main menu: "Jugar contra la IA" (start) or "Tutorial guiado".
         if (phase !== 'title') return;
         this.audio.unlock();
         if (session.touch) requestFullscreenLandscape();
-        if (action === 'tutorial' || !session.tutorial.done) this.tutorial.begin();
-        this.syncPhase();
-        // The guided round starts at the planning: buy, preparation and drone have nothing to teach yet
-        // (the drone is recalled on its first step: a recorded order, so a retry does the same).
-        if (session.tutorial.active) {
-          while (session.phase === 'buy' || session.phase === 'prep') this.advance();
-          if (session.phase === 'drone') this.command({ type: 'droneRecall', atTick: 0 });
-        }
-        this.framing.frameStart();
-        this.sound('select');
+        this.beginMode(action === 'tutorial' ? 'tutorial' : 'play');
+        return;
+      case 'menu':
+        // Back to the main menu (during the round, only after a confirming second press).
+        if (phase === 'title' || !this.confirmed(action)) return;
+        this.toMenu();
+        return;
+      case 'tutorialOk':
+        this.ackTutorial();
         return;
       case 'tutorialSkip':
         if (this.tutorial.finish()) {
+          if (session.phase === 'paused' && session.pauseReason === 'tutorial') this.resume();
           if (session.selectedId < 0) this.selectNextAlive();
           this.notice('tutorialSkipped');
         }
@@ -386,8 +409,35 @@ export class SessionController {
     this.sound('select');
   }
 
+  /** From the menu: a fresh round against the AI, or the guided tutorial's round (config/ui.js TUTORIAL). */
+  beginMode(mode) {
+    this.session.mode = mode;
+    this.seed = mode === 'tutorial' ? TUTORIAL.seed : SIM.seed;
+    this.recorder.beginAttempt([]);
+    this.session.replay.attempt = 0;
+    this.restart(this.seed); // still on the menu: no phase yet
+    if (mode === 'tutorial') this.tutorial.begin(this.sim);
+    else this.tutorial.stop();
+    this.syncPhase(true);
+    this.framing.frameStart();
+    this.sound('select');
+  }
+
+  /** Back to the main menu: the round is dropped (a new one waits behind the menu). */
+  toMenu() {
+    this.tutorial.stop();
+    this.session.mode = 'play';
+    this.setPhase('title');
+    this.seed = SIM.seed;
+    this.recorder.beginAttempt([]);
+    this.session.replay.attempt = 0;
+    this.restart(this.seed);
+    this.sound('undo');
+  }
+
   /** Preparation (or the first planning): the squad starts from another entry (the camera follows). */
   chooseEntry(id) {
+    this.tutorial.noteEntry();
     this.command({ type: 'chooseEntry', entry: id });
     this.sim.flushCommands();
     this.framing.frameStart();
@@ -418,6 +468,8 @@ export class SessionController {
     const retry = segments.length > 1 || (segments.length === 1 && segments[0].length > 0);
     this.recorder.beginAttempt(segments);
     this.restart(this.seed);
+    if (this.tutorial.active) this.tutorial.begin(this.sim); // the guided round starts over with it
+    else if (this.session.mode === 'tutorial') this.tutorial.reset();
     this.session.replay.attempt = retry ? this.session.replay.attempt + 1 : 0;
     this.planning.refresh();
   }

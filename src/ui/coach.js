@@ -1,9 +1,10 @@
 // Onboarding coach (flow, owner: gameplay): picks the one next step a new
 // player should take, shown in the phase banner's sub line. Pure: reads the
 // sim/session, returns {text, strong} or null (= the phase's default line).
-// Priority: guided tutorial step > why a turn stopped (system pause) > replay
-// progress > GO prompts > planning steps.
-import { teamUnits, controllableUnit, isGoReady, pendingDoors } from '../sim/queries.js';
+// The guided tutorial has its own card (ui/TutorialCard.js): while it runs the
+// banner keeps the phase's line. Priority: why a turn stopped (system pause) >
+// replay progress > GO prompts > planning steps.
+import { teamUnits, controllableUnit, isGoReady, pendingDoors, ASK_CODE } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
 import { T } from './texts.js';
 
@@ -22,8 +23,7 @@ export function coachHint(sim, session) {
   const C = T.coach;
   const F = T.flow;
   const team = session.team;
-  const tut = session.tutorial;
-  if (tut.active && tut.id && session.phase !== 'ended') return say(F.tutorial.prefix(tut.step + 1, tut.count) + F.tutorial[tut.id][dev], true);
+  if (session.tutorial.active) return null;
   if (session.phase === 'paused' && F.pause[session.pauseReason]) return say(F.pause[session.pauseReason][dev], true);
   if (session.replay.pending > 0 && session.phase !== 'ended') return say(F.replaying(session.replay.pending), false);
   if (session.phase === 'drone' || (session.phase === 'paused' && session.resumePhase === 'drone')) return null;
@@ -31,8 +31,10 @@ export function coachHint(sim, session) {
     // A whole group in position: it is the player's call ("now!").
     const ready = ENTRY.goCodes.find((c) => isGoReady(sim, team, c));
     if (ready) return say(C.goNow[dev](ready), true);
+    // Stopped at a door nobody decided: there is no GO to give, the decision waits for the planning.
     const w = teamUnits(sim, team).find((u) => u.alive && u.waitingGo);
-    return w ? say(C.goWaiting[dev](w.name), false) : null;
+    if (!w) return null;
+    return w.waitCode === ASK_CODE ? say(C.askWaiting(w.name), true) : say(C.goWaiting[dev](w.name), false);
   }
   if (session.phase !== 'planning' && session.phase !== 'prep') return null;
   // A door nobody decided: its operator will stop there.

@@ -32,6 +32,12 @@ Abrir `index.html` directamente con `file://` no funciona, porque los navegadore
 
 Para agregar una clase de operador: una entrada en `config/operators.js` (`ROLES`) y, si tiene habilidad, un módulo en `sim/abilities/` registrado en `sim/abilities/index.js`.
 
+## Menú y tutorial guiado
+
+Al abrir el juego aparece el menú principal con dos opciones: **Jugar contra la IA** (una ronda completa) y **Tutorial guiado**. Intro juega contra la IA. Desde la partida se vuelve al menú con el botón MENÚ (en escritorio, en la barra de abajo; en el celular, dentro de Ayuda; también al final de la ronda). Si ya hay un plan, pide una segunda pulsación para confirmar.
+
+El tutorial (`session/Tutorial.js`, tarjeta en `ui/TutorialCard.js`, textos en `ui/flowTexts.js`) recorre una ronda real paso a paso: compra, preparación y entrada, dron, planificación (elegir operador, trazar ruta, decidir la puerta con su entrada y su GO, la mirada), ejecutar el turno, dar el GO y el fin del turno. Hay dos tipos de paso. Las tarjetas de explicación se cierran con ENTENDIDO, LISTO o Intro, y la del dron detiene el dron hasta cerrarla. Los pasos de acción avanzan solos cuando se hace el gesto. LISTO solo funciona en los pasos que lo piden. Después siguen saliendo, una sola vez, consejos de barricada y de desactivar. La ronda del tutorial es más fácil (`TUTORIAL` en `config/ui.js`): semilla fija, bomba en B y solo 2 defensores (opción `defenders` de `Simulation`, que elige qué puestos de `defense` se ocupan). Se puede saltar en cualquier momento, y queda recordado en el dispositivo cuando se termina.
+
 ## Objetivo de la ronda
 
 Los Defensores dejan la bomba en el sitio A o en el B (la IA lo decide con la semilla de la ronda, así que un reintento conserva el sitio; un defensor humano lo elige en la preparación). Los Atacantes no saben en cuál está hasta verla. Para ganar la desactivan, 7 s quietos junto a ella sin disparar (moverse o morir pierde el progreso), o eliminan a todos los Defensores. Los Defensores ganan si se acaba el tiempo o eliminan a todos los Atacantes.
@@ -85,7 +91,7 @@ Una `Simulation` creada con `{ phases: false }` no tiene fases: corre siempre y 
 
 ## Entradas a salas
 
-**Puertas sin decidir.** Si una ruta cruza una puerta cerrada, el juego no decide por ti: pone un punto **?** justo antes de la puerta (`ENTRY.askDistance`, `markDoors` en `sim/orders.js`) y el soldado se detiene ahí. Al tocar el **?** el selector pregunta *cómo* (abrir, patada, entreabrir, flash, granada, carga) y *cuándo* (de inmediato o con el GO A, B o C); "Abrir, de inmediato" es pasar de corrido como antes, pero elegido. Si aprietas LISTO con alguna puerta en **?**, avisa y pide un segundo LISTO para confirmar; esos soldados esperan en la puerta y decides en la siguiente planificación.
+**Puertas sin decidir.** Si una ruta cruza una puerta cerrada, el juego no decide por ti: pone un punto **?** justo antes de la puerta (`ENTRY.askDistance`, `markDoors` en `sim/orders.js`) y el soldado se detiene ahí. Mientras quede un **?**, el selector de entrada del operador muestra esa puerta y se queda en ella hasta decidir también el cuándo (`targetIndex` en `session/Session.js`). Al tocar el **?** el selector pregunta *cómo* (abrir, patada, entreabrir, flash, granada, carga) y *cuándo* (de inmediato o con el GO A, B o C); "Abrir, de inmediato" es pasar de corrido como antes, pero elegido. Si aprietas LISTO con alguna puerta en **?**, avisa y pide un segundo LISTO para confirmar; esos soldados esperan en la puerta y decides en la siguiente planificación.
 
 Cada espera lleva un grupo GO (A, B o C): el botón o la tecla H rota entre ellos, y el GO de ese grupo se da durante el turno (ver arriba). Un punto de ruta junto a una puerta puede llevar además cómo se entra (`sim/entries.js`, selector en pantalla o tecla E):
 
@@ -94,7 +100,7 @@ Cada espera lleva un grupo GO (A, B o C): el botón o la tecla H rota entre ello
 | Abrir | Empuja la puerta y pasa (lo de siempre). |
 | Patada | Con el GO la puerta se abre de golpe, sin pausa; aturde al que esté justo detrás y se oye lejos. |
 | Entreabrir | Al llegar entorna la puerta en silencio y mira por la rendija (revela, no dispara); con el GO pasa. |
-| Flash | Con el GO abre y lanza un flash ~3 m adentro; el resto de ese código espera el estallido. Ciega a quien lo mire, también a los propios. |
+| Flash | Con el GO abre y lanza un flash ~3 m adentro; el resto de ese código espera el estallido. Ciega a quien lo mire, también a los propios, salvo al que lo lanza y a los que esperan su estallido (se cubren tras el marco). |
 | Granada | Igual, pero hace daño según la distancia y sin atravesar paredes. |
 | Carga | Al llegar coloca la carga (1,8 s); el GO revienta la puerta y hiere o aturde a quien esté cerca del otro lado. |
 
@@ -102,4 +108,4 @@ El equipo de cada operador está en `config/operators.js` (`gear`) y todos los n
 
 ## Pruebas
 
-`tests/determinism.test.mjs` juega rondas completas por turnos sin pantalla dos veces con la misma semilla (una por sitio) y comprueba que el resultado es idéntico. `tests/turns.test.mjs` cubre las fases, los turnos de 8 s, la explosión de la bomba, la desactivación entre turnos, los GO en vivo (incluido el que llega tarde), la elección de entrada, el ruido y la vista de cada bando. `tests/round.test.mjs` cubre la desactivación, las condiciones de victoria y la coherencia de los datos del mapa. `tests/entries.test.mjs` cubre los códigos GO y cada tipo de entrada, y repite una ronda con entradas coordinadas para comprobar el determinismo. `tests/prep.test.mjs` cubre la compra, la preparación del defensor (sitio, posiciones, vigilancia, barricadas), la de la IA, romper y volar barricadas, el dron (puertas, barricadas, lo que marca, derribo, tiempo, determinismo) y el cambio de entrada en la primera planificación. Algunos comentarios del código mencionan `docs/ARCHITECTURE.md`, `docs/BRIEF.md` y `tests/sim-plans.mjs`, que no venían en el zip original.
+`tests/determinism.test.mjs` juega rondas completas por turnos sin pantalla dos veces con la misma semilla (una por sitio) y comprueba que el resultado es idéntico. `tests/turns.test.mjs` cubre las fases, los turnos de 8 s, la explosión de la bomba, la desactivación entre turnos, los GO en vivo (incluido el que llega tarde), la elección de entrada, el ruido y la vista de cada bando. `tests/round.test.mjs` cubre la desactivación, las condiciones de victoria y la coherencia de los datos del mapa. `tests/entries.test.mjs` cubre los códigos GO y cada tipo de entrada, y repite una ronda con entradas coordinadas para comprobar el determinismo. `tests/prep.test.mjs` cubre la compra, la preparación del defensor (sitio, posiciones, vigilancia, barricadas), la de la IA, romper y volar barricadas, el dron (puertas, barricadas, lo que marca, derribo, tiempo, determinismo) y el cambio de entrada en la primera planificación. `tests/playability.test.mjs` cubre que tres operadores con ruta al mismo punto llegan (antes se empujaban entre ellos sin avanzar), que el que lanza un flash no se ciega y la ronda del tutorial. `tests/tutorial.test.mjs` recorre el tutorial guiado paso a paso, sus consejos y la salida al menú. Algunos comentarios del código mencionan `docs/ARCHITECTURE.md`, `docs/BRIEF.md` y `tests/sim-plans.mjs`, que no venían en el zip original.

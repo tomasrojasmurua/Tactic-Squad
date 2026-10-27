@@ -111,11 +111,16 @@ export function updateMovement(sim, u, dt) {
     const dy = p.y - u.y;
     const d = Math.hypot(dx, dy);
     if (d > 1e-6) u.heading = Math.atan2(dy, dx);
-    if (d <= budget) {
-      u.x = p.x;
-      u.y = p.y;
-      budget -= d;
-      moved += d;
+    // An ally already stands on the point (two routes to the same spot): close enough counts,
+    // or the two would push each other around it forever (collisions.js).
+    const crowded = d > budget && d <= MOVE.friendlySpacing && allyOn(sim, u, p);
+    if (d <= budget || crowded) {
+      if (!crowded) {
+        u.x = p.x;
+        u.y = p.y;
+        budget -= d;
+        moved += d;
+      } else budget = 0;
       if (p.ask) {
         // A door nobody decided: stop on the "?" point (kept: the decision is made on it).
         stopAtAsk(sim, u, p);
@@ -201,6 +206,15 @@ function doorwayBusy(sim, u) {
     travelled += len;
     ax = p.x;
     ay = p.y;
+  }
+  return false;
+}
+
+/** Is an ally of u standing (or arriving) on point p? */
+function allyOn(sim, u, p) {
+  const r2 = MOVE.friendlySpacing * MOVE.friendlySpacing;
+  for (const a of sim.teams[u.team]) {
+    if (a !== u && a.alive && (a.x - p.x) ** 2 + (a.y - p.y) ** 2 < r2) return true;
   }
   return false;
 }

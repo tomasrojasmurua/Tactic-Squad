@@ -82,7 +82,7 @@ export function chooseSite(sim, id) {
 /** Puts the defenders where a map layout says (`defense[site]`: at, facing, weapon, behavior). */
 export function applyLayout(sim, layout) {
   sim.teams.defenders.forEach((u, i) => {
-    const s = layout[i % layout.length];
+    const s = layout[(sim.defenderSlots ? sim.defenderSlots[i] : i) % layout.length];
     moveTo(u, s.at[0], s.at[1], s.facing);
     if (s.weapon && s.weapon !== u.weaponId) setWeapon(u, s.weapon);
     setBehavior(u, s.behavior || null);

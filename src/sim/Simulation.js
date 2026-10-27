@@ -32,10 +32,12 @@ export class Simulation {
    *                    A human defender may move it in the preparation (sim/prep.js chooseSite).
    * @param opts.entry attacker entry id (map `entries`); omitted, the map's default entry.
    *                    The attackers may change it during the preparation (chooseEntry order).
+   * @param opts.defenders which slots of the site's `defense` layout get a defender (indices; omitted: all).
+   *                    Fewer defenders = an easier round (the guided tutorial: config/ui.js TUTORIAL).
    * @param opts.phases true: the round goes through its phases (sim/round.js, starts at 'buy');
    *                    false: no phases, it always runs and takes orders (mechanics tests).
    */
-  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, phases = true } = {}) {
+  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, defenders = null, phases = true } = {}) {
     this.seed = seed;
     this.controllers = controllers;
     this.rng = new Rng(seed);
@@ -49,6 +51,7 @@ export class Simulation {
     if (!this.site) throw new Error(`Sitio desconocido: ${site}`);
     this.entry = this.compiled.entries.find((e) => e.id === (entry || this.compiled.defaultEntry));
     if (!this.entry) throw new Error(`Entrada desconocida: ${entry}`);
+    this.defenderSlots = defenders;
     this.world = new World(this.compiled);
     this.doors = this.compiled.doors.map(createDoorState);
     this.world.updateDoorSegments(this.doors);
@@ -81,7 +84,8 @@ export class Simulation {
 
   spawnUnits() {
     const attackers = this.entry.spawns;
-    const defenders = this.compiled.defense[this.site.id];
+    const layout = this.compiled.defense[this.site.id];
+    const defenders = this.defenderSlots ? this.defenderSlots.map((i) => layout[i]).filter(Boolean) : layout;
     attackers.forEach((s, i) => {
       const op = SQUAD[i % SQUAD.length];
       this.units.push(

@@ -250,6 +250,7 @@ export class PlanningController {
     const i = targetIndex(this.session, u);
     if (i < 0) return true;
     const p = u.route[i];
+    this.keepTarget(u, i, p);
     // On a "?" door point every press is a decision ("Abrir" too); elsewhere the active mode toggles off.
     const next = mode === 'none' || (mode === p.entry && !p.ask) ? null : mode;
     this.command({ type: 'setEntry', unitId: u.id, mode: next, index: i });
@@ -292,8 +293,15 @@ export class PlanningController {
     const u = this.selectedUnit();
     if (!u || !this.canEdit) return true;
     const i = targetIndex(this.session, u);
-    if (i >= 0) this.command({ type: 'setHold', unitId: u.id, code, index: i });
+    if (i < 0) return true;
+    this.keepTarget(u, i, u.route[i]);
+    this.command({ type: 'setHold', unitId: u.id, code, index: i });
     return true;
+  }
+
+  /** Deciding a "?" door point: the picker stays on it (its "when" still to choose), not on the last waypoint. */
+  keepTarget(u, i, p) {
+    if (p.ask) this.session.pointTarget = { unitId: u.id, index: i };
   }
 
   /** H: the targeted waypoint waits for GO A -> B -> C -> no wait. */
@@ -306,6 +314,7 @@ export class PlanningController {
       return true;
     }
     const p = u.route[i];
+    this.keepTarget(u, i, p);
     const codes = ENTRY.goCodes;
     const next = p.hold ? codes.indexOf(p.code || codes[0]) + 1 : 0;
     this.command({ type: 'setHold', unitId: u.id, code: next < codes.length ? codes[next] : null, index: i });

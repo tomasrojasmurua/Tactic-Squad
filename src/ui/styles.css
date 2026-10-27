@@ -210,7 +210,7 @@ body:has(.pause-glyph.on) #ui::after {
 .plantbar .bar { height: 8px; margin-top: 6px; background: rgba(255, 255, 255, 0.1); }
 .plantbar .fill { height: 100%; width: 0; background: repeating-linear-gradient(-45deg, #ffb02e 0 8px, #ffd23a 8px 16px); }
 
-.toast { position: absolute; left: 50%; top: 110px; transform: translateX(-50%); padding: 7px 14px; font-size: 13px; letter-spacing: 0.08em; font-weight: 700; background: rgba(120, 10, 10, 0.88); border-left: 3px solid var(--red); opacity: 0; transition: opacity 0.2s; white-space: nowrap; }
+.toast { position: absolute; left: 50%; top: 110px; transform: translateX(-50%); padding: 7px 14px; font-size: 13px; letter-spacing: 0.08em; font-weight: 700; background: rgba(120, 10, 10, 0.88); border-left: 3px solid var(--red); opacity: 0; transition: opacity 0.2s; white-space: nowrap; z-index: 40; }
 .toast.on { opacity: 1; }
 .toast.info { background: rgba(10, 12, 16, 0.88); border-left-color: var(--cyan); }
 
@@ -409,14 +409,6 @@ body.touch .help-box { max-height: calc(100dvh - 66px - var(--sat)); overflow: a
 @keyframes pulsePlant { 50% { box-shadow: 0 0 0 9px rgba(255, 176, 46, 0.12); } }
 
 /* ------------------------------------------------------------ flow states (session: tutorial, smart pause, confirm, GO) */
-/* Tutorial way out: a quiet ghost button under the banner (bottom-centre on phones, where the banner may wrap). */
-.btn.tut-skip {
-  position: absolute; left: 50%; top: calc(var(--safe-desk-top) + 4px + var(--sat)); transform: translateX(-50%); z-index: 30;
-  min-height: 36px; padding: 6px 14px; font-size: 11px; letter-spacing: 0.2em; color: #cfd6db;
-  background: rgba(5, 6, 8, 0.62); border-color: rgba(255, 255, 255, 0.22);
-}
-.btn.tut-skip::after { content: '\00d7'; font-size: 16px; line-height: 1; letter-spacing: 0; color: var(--muted); }
-.btn.tut-skip:active { transform: translateX(-50%) translateY(1px); }
 /* Smart pause: the resume button calls the thumb (amber, like the pause frame). */
 .tbtn.primary[data-attn="1"] { border-color: var(--amber); animation: pulseAttn 0.9s ease-in-out infinite; }
 @keyframes pulseAttn {
@@ -441,9 +433,8 @@ body.touch .help-box { max-height: calc(100dvh - 66px - var(--sat)); overflow: a
 .help-options { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 .help-box .help-options .btn { flex: 1 1 200px; margin-top: 0; min-height: 44px; justify-content: center; font-size: 12px; letter-spacing: 0.08em; color: var(--muted); }
 .help-options .btn[data-on="1"] { color: #fff; border-color: var(--cyan); box-shadow: inset 3px 0 0 var(--cyan); }
-/* Title: the guided tutorial is the secondary way in. Result: "new roll" is the quiet third option. */
-.title-box .btn.tutorial { margin-left: 12px; font-size: 13px; padding: 12px 20px; letter-spacing: 0.18em; background: rgba(5, 6, 8, 0.7); }
-.result-box .result-actions .btn.reroll { background: transparent; color: #cfd6db; }
+/* Result: "new roll" and "menu" are the quiet options. */
+.result-box .result-actions .btn.reroll, .result-box .result-actions .btn.to-menu { background: transparent; color: #cfd6db; }
 
 /* ------------------------------------------------------------ rotate-your-phone */
 .rotate {
@@ -563,7 +554,11 @@ body.touch .weapon-plate { left: var(--sal); }
   .title-box .howto { margin-top: 10px; gap: 4px; }
   .title-box .howto li { font-size: 13px; gap: 9px; }
   .title-box .howto li b { width: 18px; height: 18px; font-size: 11px; transform: translateY(3px); }
-  .title-box .btn { margin-top: 14px; font-size: 16px; padding: 12px 32px; }
+  .title-box .pitch { font-size: 13px; margin-top: 10px; max-width: 440px; line-height: 1.4; }
+  .title-box .menu { margin-top: 14px; gap: 10px; }
+  .title-box .menu-btn { width: 250px; min-height: 64px; padding: 10px 16px; }
+  .title-box .menu-btn .mb-l { font-size: 16px; }
+  .title-box .menu-btn .mb-n { font-size: 11px; }
   .title-box .hint { font-size: 11px; margin-top: 6px; }
 
   .result-box { padding: 10px 24px 12px; }
@@ -591,8 +586,6 @@ body.touch .weapon-plate { left: var(--sal); }
 
   /* Banner between the squad chips and the utility row (centred in that gap, wraps instead of overlapping them). */
   .banner { left: calc(168px + var(--sal)); right: calc(268px + var(--sar)); width: fit-content; max-width: none; margin: 0 auto; transform: none; }
-  .btn.tut-skip { top: auto; bottom: calc(6px + var(--sab)); min-height: 44px; }
-  .title-box .btn.tutorial { font-size: 12px; padding: 10px 16px; margin-left: 8px; }
   .help-box .help-options { margin-top: 8px; }
   .help-box .help-options .btn { font-size: 11px; letter-spacing: 0.03em; flex-basis: 160px; }
 }
@@ -733,3 +726,68 @@ body.touch .phase-panel.compact { width: auto; }
 body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom: calc(18px + var(--sab)); width: 120px; height: 120px; }
 .banner.drone::before { background: var(--ok); }
 .banner.drone .phase { color: var(--ok); }
+
+/* ------------------------------------------------------------ main menu (ui/Screens.js title) */
+.title-box .pitch { margin: 18px 0 0; font-size: 17px; line-height: 1.5; color: #d7dde2; max-width: 520px; }
+.title-box .menu { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 26px; }
+.title-box .menu-btn {
+  position: relative; width: 300px; min-height: 84px; margin: 0; padding: 14px 22px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px;
+  text-align: left; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+}
+.title-box .menu-btn .mb-l { font-family: var(--font-display); font-size: 21px; letter-spacing: 0.14em; }
+.title-box .menu-btn .mb-n { font-size: 12px; letter-spacing: 0.04em; text-transform: none; font-weight: 600; color: #cfe7ef; }
+.title-box .menu-btn.tutorial { border-color: var(--amber); }
+.title-box .menu-btn .mb-badge {
+  position: absolute; top: 0; right: 16px; padding: 2px 8px; font-size: 10px; letter-spacing: 0.12em; color: #1a1204; background: var(--amber);
+}
+.title-box .menu-btn.tutorial.done { border-color: rgba(255, 255, 255, 0.16); }
+.title-box .menu-btn.tutorial.done .mb-badge { background: var(--ok); color: #0b1d0e; }
+.title-box .menu-btn.tutorial.done .mb-badge::before { content: '\2713  '; }
+
+/* ------------------------------------------------------------ guided tutorial card (ui/TutorialCard.js) */
+.tut-backdrop { position: absolute; inset: 0; z-index: 38; background: rgba(0, 0, 0, 0.5); pointer-events: auto; }
+.tut-backdrop.hidden, .tut-card.hidden { display: none; }
+.tut-card {
+  /* Docked (a do step) it lets touches through to the map below; only its button takes them. */
+  position: absolute; z-index: 39; pointer-events: none; background: var(--plate-strong); border: 1px solid var(--line-strong); border-left: 4px solid var(--amber);
+  left: calc(16px + var(--sal)); top: calc(262px + var(--sat)); width: 236px; padding: 10px 12px 12px;
+}
+.tut-card.pop { animation: tutPop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1); }
+@keyframes tutPop { from { transform: translateX(-10px); opacity: 0; } to { transform: none; opacity: 1; } }
+.tut-card .tc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tut-card .tc-step { font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--amber); }
+.tut-card .tc-skip {
+  font-family: var(--font); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--muted); background: none; border: 0; padding: 6px 0 6px 6px; min-height: 28px;
+}
+.tut-card .tc-skip:hover { color: #fff; }
+.tut-card .tc-skip[hidden], .tut-card .tc-ok[hidden] { display: none; }
+.tut-card .tc-title { margin-top: 4px; font-family: var(--font-display); font-size: 19px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.tut-card .tc-text { margin-top: 4px; font-size: 14px; line-height: 1.4; color: #e3e8ec; }
+.tut-card .tc-ok { margin-top: 12px; min-height: 44px; }
+/* Info steps and tips: a centred card over the dimmed map. */
+.tut-card.info { pointer-events: auto; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(480px, 86vw); padding: 16px 20px 18px; }
+.tut-card.info.pop { animation: tutPopInfo 0.35s cubic-bezier(0.2, 1.4, 0.4, 1); }
+@keyframes tutPopInfo { from { transform: translate(-50%, -46%); opacity: 0; } to { transform: translate(-50%, -50%); opacity: 1; } }
+.tut-card.info .tc-title { font-size: 26px; }
+.tut-card.info .tc-text { font-size: 16px; line-height: 1.5; }
+.tut-card.tip { border-left-color: var(--cyan); }
+.tut-card.tip .tc-step { color: var(--cyan); }
+@media (max-height: 520px) {
+  /* Phone: bottom-left, see-through (the squad often stands there); over the drone stick it moves right. */
+  body.touch .tut-card { left: calc(8px + var(--sal)); top: auto; bottom: calc(8px + var(--sab)); width: 230px; padding: 6px 9px 8px; background: rgba(5, 6, 8, 0.72); }
+  body.touch .tut-card.drone { left: calc(160px + var(--sal)); }
+  body.touch .tut-card .tc-step { font-size: 10px; letter-spacing: 0.12em; }
+  body.touch .tut-card .tc-skip { font-size: 10px; min-height: 24px; padding: 2px 0 2px 6px; }
+  body.touch .tut-card .tc-title { font-size: 15px; }
+  body.touch .tut-card .tc-text { font-size: 12px; line-height: 1.32; }
+  body.touch .tut-card.info { pointer-events: auto; left: 50%; top: 50%; width: min(440px, 64vw); max-height: 92dvh; overflow: auto; padding: 10px 14px 12px; }
+  body.touch .tut-card.info .tc-title { font-size: 19px; }
+  body.touch .tut-card.info .tc-text { font-size: 13px; line-height: 1.4; }
+  body.touch .tut-card .tc-ok { margin-top: 8px; }
+  body.touch .tut-card .tc-ok .key { display: none; }
+}
+
+/* Help: close, and the way back to the main menu (the phone's top row has no room for it). */
+.help-box .help-actions { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 14px; position: sticky; bottom: 0; background: rgba(6, 7, 9, 0.98); }
+.help-box .help-actions .btn { margin-top: 0; min-height: 44px; }
+.help-box .help-actions .btn.to-menu { background: transparent; color: #cfd6db; }

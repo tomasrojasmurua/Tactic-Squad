@@ -73,18 +73,13 @@ export class Hud {
     });
     this.btnRestart = button('', `<span>${T.actions.restart}</span><span class="key">R</span>`, 'restart');
     this.btnHelp = button('', `<span>${T.actions.help}</span><span class="key">F1</span>`, 'help');
+    this.btnMenu = button('to-menu', `<span>${T.flow.menu.button}</span>`, 'menu');
     this.btnMusic = button('music', `<span class="ico">${ICON.music}</span><span class="key">B</span>`, 'music');
     this.btnMusic.title = T.actions.music;
     root.appendChild(this.actions);
     this.executeLabel = this.btnExecute.querySelector('.lbl');
     this.restartLabel = this.btnRestart.firstChild;
-
-    // Guided tutorial: always-available way out (flow); shown with `display` from update().
-    this.tutSkip = el('button', 'btn tut-skip', T.flow.tutorialSkip);
-    this.tutSkip.style.display = 'none';
-    this.tutSkip.addEventListener('pointerdown', (e) => e.stopPropagation());
-    this.tutSkip.addEventListener('click', () => this.bus.emit(EV.REQUEST, { action: 'tutorialSkip' }));
-    root.appendChild(this.tutSkip);
+    this.menuLabel = this.btnMenu.firstChild;
 
     this.plant = el('div', 'plantbar', `<div class="t">${T.defuse}</div><div class="bar"><div class="fill"></div></div>`);
     this.plantFill = this.plant.querySelector('.fill');
@@ -201,10 +196,7 @@ export class Hud {
     const phase = session.phase;
     const inGame = phase !== 'title';
     this.setVisible(inGame);
-    if (!inGame) {
-      setStyle(this.tutSkip, 'display', 'none');
-      return;
-    }
+    if (!inGame) return;
 
     // Banner: phase, turn and the clock (a limited decision phase counts down; a turn shows what is left of it)
     setClassName(this.banner, `banner ${phase}`);
@@ -292,7 +284,9 @@ export class Hud {
     const armed = session.confirm.action === 'restart';
     setText(this.restartLabel, armed ? T.flow.confirmRestart : T.actions.restart);
     if ((this.btnRestart.dataset.armed || '') !== (armed ? '1' : '')) this.btnRestart.dataset.armed = armed ? '1' : '';
-    setStyle(this.tutSkip, 'display', session.tutorial.active ? '' : 'none');
+    const menuArmed = session.confirm.action === 'menu';
+    setText(this.menuLabel, menuArmed ? T.flow.menu.confirm : T.flow.menu.button);
+    if ((this.btnMenu.dataset.armed || '') !== (menuArmed ? '1' : '')) this.btnMenu.dataset.armed = menuArmed ? '1' : '';
     toggle(this.btnMusic, 'off', !session.musicOn);
     toggle(this.hints, 'hidden', running || phase === 'ended' || phase === 'buy' || phase === 'drone');
 
