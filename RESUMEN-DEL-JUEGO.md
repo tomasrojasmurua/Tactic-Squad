@@ -193,7 +193,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 | Clases de operador con habilidad | **Parcial.** Asaltante, Brecha, Explorador y Ancla. Faltan Escudo, Tirador, Granadero, Merodeador, Trampero y Vigía, y la elección a ciegas del defensor |
 | Contras entre clases | **Parcial.** Brecha contra barricadas, Explorador contra Anclas escondidos, humo contra cámaras y anclas |
 | Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (fijas por mapa, gratis). Sensor y elección de refuerzos por el defensor: faltan |
-| **Paredes blandas destructibles** | **Falta, diseñado** (ver `ARCHITECTURE.md` §11). Se dejó para no romper el pathfinding en una pasada apurada |
+| Paredes blandas destructibles | **Descartado** por decisión de diseño (27 oct 2026): no se implementan |
 | Plazos de las fases | **Parcial.** El reloj existe (`PhaseClock`), pero contra la IA no hay límite |
 | Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Falta** |
 | Online | **Falta.** El código está preparado (determinismo, órdenes serializables, grabador de planes, `teamView`). Bloquea que el render lea la sim entera |

@@ -370,20 +370,4 @@ Una revisión de jugabilidad en tres fases, cada una en sus commits.
 - Clases Asaltante / Brecha / Explorador / Ancla (`config/operators.js`, `setRole`, `abilities/scoutPulse.js`).
 - Partida al mejor de 7 con economía (`session/Match.js`, `MATCH`).
 
-**Paredes blandas destructibles — diseñadas, no implementadas.** Se dejaron fuera
-porque tocan el pathfinding y hacerlas apuradas rompería las rutas. El diseño
-propuesto:
-- **Datos.** En el mapa, `softWalls: [{id, a, b}]`: un tramo de pared que el compilador
-  recorta como un hueco (igual que una puerta) y registra como una "puerta" con
-  `soft: true`, siempre cerrada y atrancada, sin hoja que gire.
-- **Sim.** Bloquea cuerpo, vista y balas como una barricada. Se abre con una carga
-  (`breach`, la deja `destroyed`) o a golpes con `BARRICADE.breakTime × 2` (la Brecha,
-  ×0,6). El ruido es el de una barricada.
-- **Navegación.** Es lo delicado: hoy `NavGrid` trata todo hueco como transitable. Haría
-  falta un **costo** por celda (o excluirlas del A* salvo que el punto de ruta del
-  jugador esté al otro lado y la ruta lo pida explícitamente), para que la ruta corta
-  no las elija sola y el operador no se quede 6 s golpeando una pared que no eligió.
-- **Render.** Dibujarlas como pared (en la malla estática, con otro material o una
-  franja) mientras están en pie, y como escombro (calcomanía + partículas del
-  `CHARGE_BLAST`) cuando caen.
-- **IA.** `aiAttack.js` podría usarlas como entrada alternativa con carga.
+**Paredes blandas destructibles: descartadas.** Tomás decidió no implementarlas (27 oct 2026). No proponerlas como trabajo pendiente.
