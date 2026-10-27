@@ -9,6 +9,7 @@ import { EventBus } from './core/EventBus.js';
 import { EV } from './core/events.js';
 import { FixedLoop } from './core/FixedLoop.js';
 import { SIM } from './config/balance.js';
+import { TUTORIAL } from './config/ui.js';
 import { MAPS, DEFAULT_MAP } from './data/maps/index.js';
 import { Simulation } from './sim/Simulation.js';
 import { createSession, resetSessionPreviews } from './session/Session.js';
@@ -90,9 +91,13 @@ export class Game {
     for (const type of ['pointerdown', 'touchend', 'click', 'keydown']) window.addEventListener(type, unlock, { capture: true });
   }
 
-  /** Fresh simulation (same map; the session picks the seed: a retry keeps it); listeners reset on EV.ROUND_RESET. */
+  /**
+   * Fresh simulation (same map; the session picks the seed: a retry keeps it); listeners reset on EV.ROUND_RESET.
+   * The guided tutorial's round is easier: its site and fewer defenders (config/ui.js TUTORIAL).
+   */
   newRound(seed = SIM.seed) {
-    this.sim = new Simulation(this.mapDef, { seed });
+    const tutorial = this.session.mode === 'tutorial' ? { site: TUTORIAL.site, defenders: TUTORIAL.defenders } : {};
+    this.sim = new Simulation(this.mapDef, { seed, ...tutorial });
     this.attempt++;
     this.flow.onRoundStart();
     resetSessionPreviews(this.session);

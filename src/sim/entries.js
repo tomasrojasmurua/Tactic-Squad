@@ -260,7 +260,7 @@ function updateGrenades(sim, dt) {
 function detonate(sim, g) {
   const owner = sim.units[g.ownerId];
   sim.emit(EV.GRENADE_DETONATE, { id: g.id, kind: g.kind, unitId: g.ownerId, x: g.x, y: g.y });
-  if (g.kind === 'flash') flashAt(sim, g.x, g.y);
+  if (g.kind === 'flash') flashAt(sim, g);
   else blastAt(sim, g.x, g.y, ENTRY.frag.radius, ENTRY.frag.damage, ENTRY.frag.minDamage, 0, owner, null);
   alertNear(sim, owner, g.x, g.y, ENTRY[g.kind].hearing, true);
 }
@@ -268,12 +268,16 @@ function detonate(sim, g) {
 /**
  * Flashbang: everyone within range with a line of sight to it is blinded
  * (perception sees nothing, no target, no shots), longer the closer and the
- * more he looked at it. Teammates too: do not stand in the doorway.
+ * more he looked at it. Teammates too: do not stand in the doorway. Only the
+ * thrower and the allies holding for this bang (goDelay) are ready for it:
+ * they turn away behind the frame and are not blinded.
  */
-function flashAt(sim, x, y) {
+function flashAt(sim, g) {
   const F = ENTRY.flash;
+  const { x, y } = g;
   for (const o of sim.units) {
     if (!o.alive) continue;
+    if (o.id === g.ownerId || (o.team === g.team && o.goDelay > 0)) continue;
     const dist = Math.hypot(o.x - x, o.y - y);
     if (dist > F.radius || !lineOfSight(sim.world, x, y, o.x, o.y)) continue;
     const toward = Math.cos(angleTo(o.x, o.y, x, y) - o.facing); // 1 = staring at it

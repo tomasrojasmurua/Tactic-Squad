@@ -3,7 +3,7 @@
 // Owned by session/SessionController; read by render, input and ui.
 //
 // Phases mirror the round's (sim/round.js) plus what only the screen has:
-//   title              before the first round
+//   title              the main menu (play against the AI / guided tutorial)
 //   buy, prep          the round's first decision phases (time stopped)
 //   drone              the attackers drive their recon drone (real time, like a turn)
 //   planning           a turn's planning: orders apply instantly (routes update live)
@@ -29,6 +29,7 @@ export const isDecisionPhase = (session) => session.phase === 'buy' || session.p
 export function createSession({ touch }) {
   return {
     phase: 'title',
+    mode: 'play', // 'play' (against the AI) | 'tutorial' (the guided round: config/ui.js TUTORIAL)
     team: PLAYER_TEAM, // the side this player commands (orders are stamped with it)
     selectedId: -1, // unit id of the player's side, -1 = none
     // The waypoint the entry picker edits when it is not the last one: a "?" door point the
@@ -40,7 +41,7 @@ export function createSession({ touch }) {
     confirm: { action: null, until: 0 }, // destructive request armed until `until` (performance.now ms)
     replay: { pending: 0, attempt: 0, exec: false }, // recorded phases still to replay; retries of this plan; this turn is a replayed one
     clock: { left: 0, total: 0, unlimited: false, auto: false }, // session/PhaseClock.js (decision phases)
-    tutorial: { active: false, step: 0, id: null, count: 0, done: false }, // session/Tutorial.js
+    tutorial: { active: false, step: 0, id: null, info: false, card: false, count: 0, done: false }, // session/Tutorial.js
     hoverUnitId: -1,
     helpOpen: false,
     musicOn: true, // mirrors the audio (set by SessionController); the UI shows it
@@ -65,11 +66,16 @@ export const canEditRoutes = (session) => (session.phase === 'prep' || session.p
 /** Is this destructive request armed (waiting for its confirming repeat)? */
 export const isArmed = (session, action) => session.confirm.action === action && performance.now() < session.confirm.until;
 
-/** The waypoint the door picker and E / H act on for operator u: the tapped "?" point, else his last one. */
+/**
+ * The waypoint the door picker and E / H act on for operator u: the tapped
+ * "?" point, else his first undecided door ("?": what the coach asks for),
+ * else his last one.
+ */
 export function targetIndex(session, u) {
   const t = session.pointTarget;
   if (t && t.unitId === u.id && t.index < u.route.length && u.route[t.index].user) return t.index;
-  return lastUserIndex(u);
+  const ask = u.route.findIndex((p) => p.ask);
+  return ask >= 0 ? ask : lastUserIndex(u);
 }
 
 /** Phases where time is stopped and the player is planning. */

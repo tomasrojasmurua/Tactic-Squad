@@ -1,4 +1,4 @@
-// Full-screen overlays: title/briefing, round result, controls help,
+// Full-screen overlays: main menu (title), round result, controls help,
 // and the fatal / unsupported-browser message.
 import { EV } from '../core/events.js';
 import { teamUnits } from '../sim/queries.js';
@@ -10,29 +10,26 @@ export class Screens {
   constructor(root, bus) {
     this.bus = bus;
 
+    // Main menu: play a round against the AI, or the guided tutorial (session/Tutorial.js).
+    const M = T.flow.menu;
     this.title = el('div', 'screen title');
     this.title.innerHTML = `
       <div class="title-box">
         <h1>TACTIC <em>SQUAD</em></h1>
         <div class="subtitle">${T.subtitle}</div>
-        <p class="brief">${T.briefing}</p>
-        <ol class="howto touch-only">${T.howTo.touch.map(([n, v]) => `<li><b>${n}</b>${v}</li>`).join('')}</ol>
-        <ol class="howto desk-only">${T.howTo.desk.map(([n, v]) => `<li><b>${n}</b>${v}</li>`).join('')}</ol>
-        <div class="controls">
-          ${T.hints.map(([k, v]) => `<div><span class="key">${k}</span>${v}</div>`).join('')}
+        <p class="pitch">${M.pitch}</p>
+        <div class="menu">
+          <button class="btn primary menu-btn start"><span class="mb-l">${M.play}</span><span class="mb-n">${M.playNote}</span></button>
+          <button class="btn menu-btn tutorial"><span class="mb-l">${M.tutorial}</span><span class="mb-n">${M.tutorialNote}</span><span class="mb-badge"></span></button>
         </div>
-        <button class="btn primary start">${T.start}</button>
-        <button class="btn tutorial">${T.flow.tutorialStart}</button>
-        <div class="hint">${T.startHint}</div>
-        <div class="hint touch-hint">${T.touch.startHint}</div>
+        <ol class="howto desk-only">${T.howTo.desk.map(([n, v]) => `<li><b>${n}</b>${v}</li>`).join('')}</ol>
+        <div class="hint desk-only">${T.startHint}</div>
       </div>`;
     this.title.querySelector('.start').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'start' }));
-    this.title.addEventListener('pointerdown', (e) => e.stopPropagation());
     this.title.querySelector('.tutorial').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'tutorial' }));
-    // The whole title card is the start button (touch and desktop: "click or Enter").
-    this.title.addEventListener('click', (e) => {
-      if (!e.target.closest('button')) bus.emit(EV.REQUEST, { action: 'start' });
-    });
+    this.title.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.tutorialBadge = this.title.querySelector('.mb-badge');
+    this.tutorialBtn = this.title.querySelector('.tutorial');
 
     this.result = el('div', 'screen result hidden');
     this.result.innerHTML = `
@@ -50,6 +47,7 @@ export class Screens {
           <button class="btn primary retry-plan">${T.result.retryButton}</button>
           <button class="btn new-plan">${T.result.newPlanButton}</button>
           <button class="btn reroll">${T.flow.rerollButton}</button>
+          <button class="btn to-menu">${T.flow.menu.button}</button>
         </div>
         <div class="retry"></div>
       </div>`;
@@ -63,6 +61,7 @@ export class Screens {
     this.result.querySelector('.retry-plan').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'restart' }));
     this.result.querySelector('.new-plan').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'newPlan' }));
     this.result.querySelector('.reroll').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'reroll' }));
+    this.result.querySelector('.to-menu').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'menu' }));
 
     this.help = el('div', 'screen help hidden');
     this.help.innerHTML = `
@@ -70,9 +69,11 @@ export class Screens {
         <h3>${T.help.title}</h3>
         <table class="desk-only">${T.help.rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
         <table class="touch-only">${T.touch.rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
-        <button class="btn close">${T.help.close}</button>
+        <div class="help-actions"><button class="btn primary close">${T.help.close}</button><button class="btn to-menu">${T.flow.menu.button}</button></div>
       </div>`;
     this.help.querySelector('.close').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'help' }));
+    this.helpMenu = this.help.querySelector('.to-menu');
+    this.helpMenu.addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'menu' }));
     this.help.addEventListener('pointerdown', (e) => e.stopPropagation());
 
     this.resultShown = false;
@@ -85,7 +86,13 @@ export class Screens {
 
   update(sim, session) {
     toggle(this.title, 'hidden', session.phase !== 'title');
+    if (session.phase === 'title') {
+      const done = session.tutorial.done;
+      setText(this.tutorialBadge, done ? T.flow.menu.tutorialDone : T.flow.menu.tutorialNew);
+      toggle(this.tutorialBtn, 'done', done); // a first-timer sees it recommended (styles.css)
+    }
     toggle(this.help, 'hidden', !session.helpOpen);
+    if (session.helpOpen) setText(this.helpMenu, session.confirm.action === 'menu' ? T.flow.menu.confirm : T.flow.menu.button);
     const showResult = session.phase === 'ended' && sim.outcome;
     toggle(this.result, 'hidden', !showResult);
     if (showResult && !this.resultShown) this.fillResult(sim, session.team);
