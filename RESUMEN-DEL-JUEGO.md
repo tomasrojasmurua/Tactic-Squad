@@ -75,12 +75,19 @@ los atacantes.
   apilan detrás de él con su mismo color. Una orden propia saca a uno de la fila.
 - **Menú del punto.** Tocar un punto, su etiqueta o el final de la ruta abre un menú
   junto a él:
-  - **Puerta:** Abrir / Patada / Flash, y "Más" con Entreabrir / Granada / Carga.
+  - **Puerta: una rueda alrededor del punto** con las seis entradas a la vista (Abrir,
+    Patada, Carga, Granada, Flash, Entreabrir); × en el centro o Esc la cierra. Lo demás
+    (cuándo, paso, lanzar) queda en un panel al lado. **Tocar una puerta directamente**
+    apila al operador del lado por donde llega y abre la rueda: un toque y una elección.
   - **Cuándo:** Ya, o un GO de color.
   - **Paso:** Normal o **Sigilo**. A la mitad de velocidad, se oye a 2 m en vez de 6.
   - **Lanzar:** flash, granada o humo. El siguiente toque elige dónde cae, a 9 m como
-    mucho, y se corta en la primera pared o puerta cerrada. La línea punteada muestra
-    dónde cae de verdad.
+    mucho, y se corta en la primera pared. Si el punto está junto a una puerta y el
+    blanco del otro lado, **abre la puerta y lanza adentro** (detrás del marco, su propia
+    granada no lo alcanza). El que lanza **se queda quieto hasta que explota** y después
+    sigue su ruta. La línea punteada muestra dónde cae de verdad; en rojo si una granada
+    lo alcanzaría a él. Mientras eliges dónde, el menú se reduce a "¿Dónde cae?" y ×
+    (o Esc) cancela.
 - **Puertas.** Si nadie decide, el operador **la abre y pasa**. El "?" sobre una puerta
   de la ruta es una invitación, no un freno.
 - **GO por colores.** ESPERAR en un punto lo asigna a un grupo de color. Durante el

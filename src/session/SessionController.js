@@ -19,7 +19,7 @@ import { PLAYER_TEAM } from '../config/squad.js';
 import { TUTORIAL, FLOW } from '../config/ui.js';
 import { loadPref, savePref } from './storage.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
-import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors } from '../sim/queries.js';
+import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors, lastUserIndex } from '../sim/queries.js';
 import { phaseTick } from '../sim/round.js';
 import { SESSION_PHASE, isDecisionPhase, isPlanningTime, isLivePhase, pilotsDrone, isDefenderSetup } from './Session.js';
 import { watchOf, watchOrder } from './watch.js';
@@ -68,6 +68,14 @@ export class SessionController {
       // A new / undone / cleared leg: the picker goes back to the last waypoint (indices may have moved).
       const t = this.session.pointTarget;
       if (t && t.unitId === unitId && (kind === 'add' || kind === 'undo' || kind === 'clear')) this.session.pointTarget = null;
+      // A tap on a door stacked him by it (PlanningController.stackAt): the door wheel opens on that point.
+      const w = this.session.ui.wheelAt;
+      if (w && w.unitId === unitId) {
+        this.session.ui.wheelAt = null;
+        const u = this.sim.units[unitId];
+        const i = u ? lastUserIndex(u) : -1;
+        if (kind === 'add' && i >= 0 && Math.hypot(u.route[i].x - w.x, u.route[i].y - w.y) < 0.3) this.session.pointTarget = { unitId, index: i };
+      }
       this.planning.refresh();
     });
     bus.on(EV.DEATH, ({ unitId }) => {
@@ -451,11 +459,9 @@ export class SessionController {
       case 'tossAim':
         this.notice('tossAim');
         return;
-      case 'pickerMore':
-        session.ui.moreEntries = !session.ui.moreEntries;
-        return;
       case 'pickerClose':
-        this.closePicker();
+        if (session.ui.tossPick) this.planning.cancelToss(); // aiming: back to the menu
+        else this.closePicker();
         return;
       case 'holdMenu':
         // Touch ESPERAR: the GO colors to choose from (H on a keyboard cycles them).
@@ -578,7 +584,6 @@ export class SessionController {
   /** The door picker's ×. */
   closePicker() {
     this.session.pointTarget = null;
-    this.session.ui.moreEntries = false;
     this.session.ui.tossPick = null;
   }
 

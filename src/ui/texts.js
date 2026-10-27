@@ -164,8 +164,6 @@ export const T = Object.freeze({
     askHint: 'Por defecto la abre y pasa; elige otra entrada si quieres',
     when: 'Cuándo',
     now: 'Ya',
-    more: 'Más',
-    less: 'Menos',
     close: 'Cerrar',
     none: 'Abrir',
     modes: { kick: 'Patada', slow: 'Entreabrir', flash: 'Flash', frag: 'Granada', breach: 'Carga' },
@@ -182,6 +180,7 @@ export const T = Object.freeze({
     toss: 'Lanzar',
     tossItems: { flash: 'Flash', frag: 'Granada', smoke: 'Humo' },
     tossAim: 'Toca dónde',
+    aimTitle: { flash: '¿Dónde cae el flash?', frag: '¿Dónde cae la granada?', smoke: '¿Dónde cae el humo?' },
   },
 
   result: {

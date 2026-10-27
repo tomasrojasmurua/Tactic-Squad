@@ -351,21 +351,58 @@ export function grenadeAt(g, age, out) {
 }
 
 /**
+ * The doorway a throw from route point p toward (tx, ty) goes through: the
+ * one next to the point (ENTRY.doorRange) when the target is across it — he
+ * opens the door and throws through the doorway — else -1 (a straight throw).
+ */
+export function tossDoorway(world, p, tx, ty) {
+  const k = p.door >= 0 ? p.door : entryDoorwayAt(world, p.x, p.y);
+  if (k < 0) return -1;
+  const d = world.doorways[k];
+  const from = (p.x - d.cx) * d.normalX + (p.y - d.cy) * d.normalY;
+  const to = (tx - d.cx) * d.normalX + (ty - d.cy) * d.normalY;
+  return from * to < 0 ? k : -1;
+}
+
+/**
  * Where a throw from (x, y) toward (tx, ty) lands: at most ENTRY.tossRange
  * away and short of the first wall / closed door on the way (ENTRY.wallMargin).
- * Writes {x, y, reach} into `out`. Shared by the sim (entries.js) and the plan preview.
+ * Through doorway k (tossDoorway) it flies to the doorway center first and
+ * from there toward the target, ignoring that doorway's own door (he opens
+ * it to throw). Writes {x, y, reach, viaX, viaY, leg1, leg2} into `out`.
+ * Shared by the sim (entries.js) and the plan preview.
  */
-export function tossLanding(world, x, y, tx, ty, out = {}) {
-  const dx = tx - x;
-  const dy = ty - y;
+export function tossLanding(world, x, y, tx, ty, out = {}, k = -1) {
+  const d = k >= 0 ? world.doorways[k] : null;
+  const ox = d ? d.cx : x;
+  const oy = d ? d.cy : y;
+  const leg1 = d ? Math.hypot(d.cx - x, d.cy - y) : 0;
+  const dx = tx - ox;
+  const dy = ty - oy;
   const len = Math.hypot(dx, dy) || 1;
-  const want = Math.min(len, ENTRY.tossRange);
+  const want = Math.max(0, Math.min(len, ENTRY.tossRange - leg1));
   const nx = dx / len;
   const ny = dy / len;
-  const hit = rayCast(world.segments, world.solidCount, x, y, nx, ny, want + ENTRY.wallMargin);
-  const reach = Math.max(0, Math.min(want, hit - ENTRY.wallMargin));
-  out.x = x + nx * reach;
-  out.y = y + ny * reach;
-  out.reach = reach;
+  const segs = world.segments;
+  const max = want + ENTRY.wallMargin;
+  let hit;
+  const slab = d ? world.staticSegmentCount + k * 4 : -1;
+  if (slab >= 0 && slab < world.solidCount) hit = Math.min(rayCast(segs, slab, ox, oy, nx, ny, max), rayCast(segs, world.solidCount, ox, oy, nx, ny, max, slab + 4));
+  else hit = rayCast(segs, world.solidCount, ox, oy, nx, ny, max);
+  const leg2 = Math.max(0, Math.min(want, hit - ENTRY.wallMargin));
+  out.x = ox + nx * leg2;
+  out.y = oy + ny * leg2;
+  if (d) {
+    out.viaX = ox;
+    out.viaY = oy;
+    out.leg1 = leg1;
+    out.leg2 = leg2;
+  } else {
+    out.viaX = (x + out.x) / 2;
+    out.viaY = (y + out.y) / 2;
+    out.leg1 = leg2 / 2;
+    out.leg2 = leg2 / 2;
+  }
+  out.reach = leg1 + leg2;
   return out;
 }

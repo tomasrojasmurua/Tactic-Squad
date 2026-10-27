@@ -57,8 +57,8 @@ export function createSession({ touch }) {
       movePreview: null, // {unitId, index, insert, x, y} while dragging a waypoint (or a new one out of a leg)
       cursorWorld: null, // pointer position on the floor
       holdMenu: false, // the touch ESPERAR chooser (GO colors) is open
-      moreEntries: false, // the door picker shows every entry, not only the main three
       tossPick: null, // {unitId, index, item}: the next tap on the map is where that point throws it
+      wheelAt: null, // {unitId, x, y}: a tap on a door stacked him there; the door wheel opens once the point is added
       trapMode: false, // defender set-up: taps lay (or pick up) the selected Trampero's traps
     },
   };
@@ -66,7 +66,7 @@ export function createSession({ touch }) {
 
 /** Clears the transient planning previews (new round). */
 export function resetSessionPreviews(session) {
-  Object.assign(session.ui, { hoverPath: null, drawing: false, lookPreview: null, movePreview: null, holdMenu: false, moreEntries: false, tossPick: null, trapMode: false });
+  Object.assign(session.ui, { hoverPath: null, drawing: false, lookPreview: null, movePreview: null, holdMenu: false, tossPick: null, wheelAt: null, trapMode: false });
 }
 
 /** Phases where routes can be edited (orders are taken only while deciding: sim/orders.js). */

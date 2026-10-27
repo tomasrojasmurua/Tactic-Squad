@@ -16,10 +16,10 @@ export function raySegment(ox, oy, dx, dy, x1, y1, x2, y2) {
   return t;
 }
 
-/** Closest hit parameter along the ray among all segments, capped at maxT. */
-export function rayCast(segs, count, ox, oy, dx, dy, maxT) {
+/** Closest hit parameter along the ray among the segments [from, count) (floats), capped at maxT. */
+export function rayCast(segs, count, ox, oy, dx, dy, maxT, from = 0) {
   let best = maxT;
-  for (let i = 0; i < count; i += 4) {
+  for (let i = from; i < count; i += 4) {
     const t = raySegment(ox, oy, dx, dy, segs[i], segs[i + 1], segs[i + 2], segs[i + 3]);
     if (t < best) best = t;
   }

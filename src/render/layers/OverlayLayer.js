@@ -14,7 +14,7 @@ import { ENTRY, MOVE, ROUND, NOISE, DRONE } from '../../config/balance.js';
 import { teamView } from '../../sim/view.js';
 import { visibilityPolygon } from '../../sim/vision.js';
 import { hexToRgb, lerp, lerpAngle } from '../../core/math.js';
-import { grenadeAt, tossLanding } from '../../sim/queries.js';
+import { grenadeAt, tossLanding, tossDoorway } from '../../sim/queries.js';
 import { ShaderProgram } from '../gl/ShaderProgram.js';
 import { ShapeBatch } from '../gl/ShapeBatch.js';
 import { FLAT_VS, FLAT_FS } from '../shaders/flat.js';
@@ -24,6 +24,7 @@ import { rgba, BLACK, WHITE, withAlpha } from './overlayColors.js';
 
 const LOOK_PREVIEW_RGB = [1, 1, 1];
 const DRONE_RGB = hexToRgb('#8fe36b');
+const TOSS_DANGER_RGB = [1, 0.33, 0.3]; // a grenade that would reach its own thrower
 const BARRICADE_RGBA = [1, 0.69, 0.18, 0.95];
 const SIDES = [-1, 1];
 
@@ -42,6 +43,7 @@ export class OverlayLayer {
     this.camPoly = null; // scratch camera field of view (cameras)
     this.routePts = []; // scratch flat polyline
     this.linkPts = [0, 0, 0, 0]; // scratch entry link
+    this.tossPts = []; // scratch throw path (2 or 3 points)
     this.routeOrder = []; // own operators, selected last
     this.pings = new OverlayPings();
     this.lastSelected = -1;
@@ -267,7 +269,7 @@ export class OverlayLayer {
       const p = u.route[i];
       if (!p.user) continue;
       if (p.entry) this.entryMarker(t, p.x, p.y, p.entry, p.entryDoor, selected, mpp);
-      if (p.toss) this.tossMarker(t, p.x, p.y, p.toss.x, p.toss.y, p.toss.item, selected ? 1 : 0.55, mpp);
+      if (p.toss) this.tossMarker(t, p.x, p.y, p.toss.x, p.toss.y, p.toss.item, selected ? 1 : 0.55, mpp, tossDoorway(this.sim.world, p, p.toss.x, p.toss.y));
       if (p.look !== null) this.lookMarker(t, p.x, p.y, p.look, c, selected ? 1 : 0.6, mpp, u.vision.fov);
       if (p.hold) {
         this.holdMarker(t, p.x, p.y, r * 1.6, c, mpp, this.goRgb(p.code));
@@ -284,7 +286,7 @@ export class OverlayLayer {
       this.lookMarker(t, pos.x, pos.y, u.idleLook, c, selected ? 0.9 : 0.5, mpp, u.vision.fov);
     }
     const e = u.entry;
-    if (e && e.phase !== 'act' && e.mode === 'toss') this.tossMarker(t, pos.x, pos.y, e.tx, e.ty, e.item, selected ? 1 : 0.55, mpp);
+    if (e && e.phase !== 'act' && e.mode === 'toss') this.tossMarker(t, pos.x, pos.y, e.tx, e.ty, e.item, selected ? 1 : 0.55, mpp, e.doorway);
     else if (e && e.phase !== 'act') this.entryMarker(t, pos.x, pos.y, e.mode, e.doorway, selected, mpp);
     if (e && e.phase === 'prep') {
       // Progress of the crack / the plant around the operator.
@@ -370,17 +372,23 @@ export class OverlayLayer {
     t.quad(d.cx, d.cy - r, d.cx + r, d.cy, d.cx, d.cy + r, d.cx - r, d.cy, rgba(c[0], c[1], c[2], a));
   }
 
-  /** A planned throw: a dashed line from the point to where it lands (sim/queries.js tossLanding) and a ring there. */
-  tossMarker(t, x, y, tx, ty, item, alpha, mpp) {
-    const c = OVERLAY.entryColors[item] || LOOK_PREVIEW_RGB;
-    const land = tossLanding(this.sim.world, x, y, tx, ty, this.land);
+  /**
+   * A planned throw: a dashed line from the point to where it lands
+   * (sim/queries.js tossLanding; through doorway k, a bend at its center)
+   * and a ring there. A grenade that would reach the thrower himself
+   * (straight throw, too close) is drawn red.
+   */
+  tossMarker(t, x, y, tx, ty, item, alpha, mpp, k = -1) {
+    const land = tossLanding(this.sim.world, x, y, tx, ty, this.land, k);
     const ex = land.x;
     const ey = land.y;
-    const pts = this.linkPts;
-    pts[0] = x;
-    pts[1] = y;
-    pts[2] = ex;
-    pts[3] = ey;
+    const self = item === 'frag' && k < 0 && ENTRY.frag.damage * (1 - Math.hypot(ex - x, ey - y) / ENTRY.frag.radius) >= ENTRY.frag.minDamage;
+    const c = self ? TOSS_DANGER_RGB : OVERLAY.entryColors[item] || LOOK_PREVIEW_RGB;
+    const pts = this.tossPts;
+    pts.length = 0;
+    pts.push(x, y);
+    if (k >= 0) pts.push(land.viaX, land.viaY);
+    pts.push(ex, ey);
     t.dashed(pts, 3.6 * mpp, 0.12, 0.12, 0, BLACK(0.55 * alpha));
     t.dashed(pts, 2 * mpp, 0.12, 0.12, 0, rgba(c[0], c[1], c[2], 0.95 * alpha));
     const r = item === 'smoke' ? ENTRY.smoke.radius : item === 'frag' ? ENTRY.frag.radius : 0.45;
@@ -551,7 +559,13 @@ export class OverlayLayer {
     const tp = ui.tossPick;
     if (tp && tp.unitId === u.id && tp.index < u.route.length && ui.cursorWorld) {
       const p = u.route[tp.index];
-      this.tossMarker(t, p.x, p.y, ui.cursorWorld.x, ui.cursorWorld.y, tp.item, 0.8, mpp);
+      const { x: cx, y: cy } = ui.cursorWorld;
+      const k = tossDoorway(this.sim.world, p, cx, cy);
+      // How far it can go: from the point, or from the doorway it is thrown through.
+      const d = k >= 0 ? this.sim.world.doorways[k] : null;
+      const reach = d ? ENTRY.tossRange - Math.hypot(d.cx - p.x, d.cy - p.y) : ENTRY.tossRange;
+      t.ring(d ? d.cx : p.x, d ? d.cy : p.y, reach, 1.6 * mpp, WHITE(0.28), 64);
+      this.tossMarker(t, p.x, p.y, cx, cy, tp.item, 0.8, mpp, k);
     }
     // The waypoint the player tapped (door picker, ESPERAR, sigilo act on it): a white ring.
     const tg = session.pointTarget;

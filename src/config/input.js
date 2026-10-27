@@ -34,6 +34,13 @@ export const KEYS = Object.freeze({
 /** Keys whose browser default is always suppressed (scroll, focus change, help). */
 export const PREVENT_DEFAULT_KEYS = Object.freeze(['Space', 'Tab', 'Backspace', 'F1', 'Slash']);
 
+/**
+ * A tap / click this close to a door (m from the wall plane; half of it past
+ * the jambs) is a tap ON the door: the operator stacks by it and the door
+ * wheel opens (input/PlanningController.js stackAt). Fingers get more room.
+ */
+export const DOOR_TAP = Object.freeze({ pointer: 0.35, touch: 0.5 });
+
 export const POINTER = Object.freeze({
   unitPickRadius: 0.6, // m
   unitPickPx: 16, // px: the pick radius never shrinks below this on screen (zoomed out)

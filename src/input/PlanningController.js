@@ -14,9 +14,9 @@
 // turns out to be a pinch can remove it whole (cancelStroke).
 // Helpers: input/picking.js (what is under a screen point), input/RoutePreview.js (hover leg).
 import { EV } from '../core/events.js';
-import { POINTER, TOUCH } from '../config/input.js';
+import { POINTER, TOUCH, DOOR_TAP } from '../config/input.js';
 import { NAV } from '../config/balance.js';
-import { routeTail, lastUserIndex, controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, teamUnits } from '../sim/queries.js';
+import { routeTail, lastUserIndex, controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, teamUnits, doorwayNear } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
 import { canEditRoutes, targetIndex, isDefenderSetup } from '../session/Session.js';
 import { watchOf, watchOrder } from '../session/watch.js';
@@ -143,7 +143,60 @@ export class PlanningController {
     // A second tap on the last point (double tap, shaky finger) adds nothing.
     if (u.route.length && this.nearTail(px, py, touch ? TOUCH.duplicatePointPx : POINTER.duplicatePointPx)) return true;
     const w = this.world(px, py);
+    const k = this.doorAt(w.x, w.y, touch);
+    if (k >= 0) return this.stackAt(u, k);
     this.command({ type: 'addWaypoint', unitId: u.id, x: w.x, y: w.y, user: true });
+    return true;
+  }
+
+  /** Index of the doorway (with a door) a tap on the floor at (x, y) lands on, or -1. */
+  doorAt(x, y, touch) {
+    const sim = this.getSim();
+    const d = doorwayNear(sim.world, x, y, 2);
+    if (!d) return -1;
+    const k = sim.world.doorways.indexOf(d);
+    if (k >= sim.doors.length) return -1; // an open passage: a tap there is just a point
+    const across = Math.abs((x - d.cx) * d.normalX + (y - d.cy) * d.normalY);
+    const along = Math.abs((x - d.cx) * d.normalY - (y - d.cy) * d.normalX);
+    const slack = touch ? DOOR_TAP.touch : DOOR_TAP.pointer;
+    return across <= slack && along <= d.length / 2 + slack * 0.5 ? k : -1;
+  }
+
+  /**
+   * A tap on a door: he stacks on the near side of it (ENTRY.askDistance from
+   * the wall, the side his route reaches first) and the door wheel opens on
+   * that point. Already stacked there: the wheel just opens.
+   */
+  stackAt(u, k) {
+    const sim = this.getSim();
+    const d = sim.world.doorways[k];
+    const tail = routeTail(u);
+    const last = lastUserIndex(u);
+    let best = null;
+    for (const side of [-1, 1]) {
+      const x = d.cx + d.normalX * side * ENTRY.askDistance;
+      const y = d.cy + d.normalY * side * ENTRY.askDistance;
+      if (last >= 0 && Math.hypot(u.route[last].x - x, u.route[last].y - y) < 0.3) {
+        this.request(`door_${u.id}_${last}`);
+        return true;
+      }
+      const path = sim.world.nav.findPath(tail.x, tail.y, x, y, NAV.snapRadius);
+      if (!path || !path.length) continue;
+      let len = 0;
+      let a = tail;
+      for (const q of path) {
+        len += Math.hypot(q.x - a.x, q.y - a.y);
+        a = q;
+      }
+      if (!best || len < best.len) best = { x, y, len };
+    }
+    if (!best) {
+      this.command({ type: 'addWaypoint', unitId: u.id, x: d.cx, y: d.cy, user: true }); // rejected: tells why
+      return true;
+    }
+    // The wheel opens on the new point once the sim reports it added (SessionController, EV.ROUTE_CHANGED).
+    this.session.ui.wheelAt = { unitId: u.id, x: best.x, y: best.y };
+    this.command({ type: 'addWaypoint', unitId: u.id, x: best.x, y: best.y, user: true });
     return true;
   }
 
@@ -299,6 +352,12 @@ export class PlanningController {
       ui.tossPick = { unitId: u.id, index: i, item };
       this.request('tossAim');
     }
+    return true;
+  }
+
+  /** Esc / the menu's × while aiming: no throw is set, the menu is back. */
+  cancelToss() {
+    this.session.ui.tossPick = null;
     return true;
   }
 
