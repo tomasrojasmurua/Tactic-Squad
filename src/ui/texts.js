@@ -255,6 +255,10 @@ export const T = Object.freeze({
     barricade: 'Barricada a la vista',
     barricadeBroken: 'Barricada rota',
     barricadeBlown: 'Barricada volada',
+    cameraFound: 'Cámara enemiga a la vista',
+    cameraFoundDrone: 'El dron encontró una cámara',
+    cameraSpot: '¡Una cámara te vio! Saben por dónde vienes',
+    cameraDown: (n) => `${n} rompió la cámara`,
   },
 
   help: {
@@ -267,7 +271,7 @@ export const T = Object.freeze({
       ['Clic en el suelo', 'Añadir punto de ruta (con pathfinding)'],
       ['Arrastrar desde el operador o el final de su ruta', 'Dibujar ruta a mano alzada'],
       ['Arrastrar un punto · un tramo', 'Mover ese punto · crear uno nuevo en el tramo'],
-      ['Clic en un punto, una etiqueta o un ?', 'Menú del punto: cómo entra por la puerta, cuándo (GO) y a qué paso'],
+      ['Clic en un punto, una etiqueta o un ?', 'Menú del punto: cómo entra por la puerta, cuándo (GO), a qué paso y qué lanza (flash, granada, humo)'],
       ['Arrastrar el suelo · botón central', 'Mover cámara'],
       ['Clic derecho (arrastrar)', 'Fijar dirección de mirada del último punto'],
       ['H', 'El último punto espera a un grupo GO (violeta → rosa → blanco → sin espera)'],

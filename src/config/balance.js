@@ -302,3 +302,22 @@ export const MAP_FORMAT = Object.freeze({
   onWallTolerance: 0.05, // m, a door/opening this close to a wall line cuts it
   minWallSpan: 0.01, // m, shorter leftover wall pieces are dropped
 });
+
+/**
+ * Defender cameras (sim/cameras.js, map `aiCameras[site]`): a fixed eye on a
+ * wall. While it keeps an attacker in sight for `detect` s every AI defender
+ * is told where he is (as if they heard him, COMBAT.alertDuration). The
+ * attackers see it like an enemy (their cones, the drone) and whoever has it
+ * in sight within `shootRange` and nothing else to shoot breaks it in
+ * `shootDelay` s (one loud shot).
+ */
+export const CAMERA = Object.freeze({
+  fov: (80 * Math.PI) / 180,
+  range: 15, // m
+  detect: 0.5, // s in sight before it reports
+  realert: 2, // s between two reports while it keeps seeing someone
+  alertSeconds: 6, // s the defenders watch the reported spot
+  shootRange: 16, // m (beyond its range: a camera you know of, you break before it sees you)
+  shootDelay: 0.7, // s the attacker spends finding and aiming at it
+  shootDelayKnown: 0.2, // s when it was already known (the drone found it): he walks in aiming at it
+});

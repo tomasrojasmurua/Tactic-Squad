@@ -12,6 +12,7 @@ import { HEIGHTS, OVERLAY } from '../../config/render.js';
 import { GO_GROUPS } from '../../config/ui.js';
 import { ENTRY, MOVE, ROUND, NOISE, DRONE } from '../../config/balance.js';
 import { teamView } from '../../sim/view.js';
+import { visibilityPolygon } from '../../sim/vision.js';
 import { hexToRgb, lerp, lerpAngle } from '../../core/math.js';
 import { grenadeAt, tossLanding } from '../../sim/queries.js';
 import { ShaderProgram } from '../gl/ShaderProgram.js';
@@ -38,6 +39,7 @@ export class OverlayLayer {
     this.pose = { x: 0, y: 0, facing: 0 }; // scratch interpolated pose
     this.gpos = { x: 0, y: 0, k: 0 }; // scratch grenade position
     this.land = { x: 0, y: 0, reach: 0 }; // scratch throw landing (tossMarker)
+    this.camPoly = null; // scratch camera field of view (cameras)
     this.routePts = []; // scratch flat polyline
     this.linkPts = [0, 0, 0, 0]; // scratch entry link
     this.routeOrder = []; // own operators, selected last
@@ -151,6 +153,7 @@ export class OverlayLayer {
     for (const u of sim.teams[own]) if (u.alive && u.id === selected) order.push(u);
     for (const u of order) this.route(t, u, unitLayer.poseInto(u, frame.alpha, this.pose), mpp, time, u.id === selected);
 
+    this.cameras(t, g, sim, own, mpp, time);
     this.smokes(t, sim, frame);
     this.grenades(t, sim, frame, mpp);
     if (own === 'attackers') this.drone(t, g, sim, vision, frame, mpp, time);
@@ -383,6 +386,39 @@ export class OverlayLayer {
     t.ring(ex, ey, r, 3.4 * mpp, BLACK(0.35 * alpha), 32);
     t.ring(ex, ey, r, 2 * mpp, rgba(c[0], c[1], c[2], 0.8 * alpha), 32);
     t.circle(ex, ey, 0.12, rgba(c[0], c[1], c[2], alpha), 12);
+  }
+
+  /**
+   * Defender cameras (sim/cameras.js): the attackers see the ones they know of
+   * — a small red box with its field of view on the floor, pulsing while it
+   * reports someone; a broken one is a dark box with a cross.
+   */
+  cameras(t, g, sim, own, mpp, time) {
+    const C = OVERLAY.camera;
+    const c = C.color;
+    for (const cam of sim.cameras) {
+      if (own === 'attackers' && !cam.known) continue;
+      const s = C.size;
+      if (cam.alive) {
+        const hot = sim.time - cam.lastAlert < C.spotPulse;
+        const a = hot ? 0.18 + 0.12 * Math.sin(time * 14) : C.coneAlpha;
+        // What it sees, cut by walls, doors and smoke (a fan from the lens).
+        const poly = (this.camPoly = visibilityPolygon(sim.world, cam.x, cam.y, cam.facing, cam.fov, cam.range, this.camPoly));
+        const col = rgba(c[0], c[1], c[2], a);
+        for (let i = 0; i + 3 < poly.length; i += 2) g.tri(cam.x, cam.y, poly[i], poly[i + 1], poly[i + 2], poly[i + 3], col);
+        t.circle(cam.x, cam.y, s + 2 * mpp, BLACK(0.85), 12);
+        t.circle(cam.x, cam.y, s, rgba(c[0], c[1], c[2], 1), 12);
+        const lx = cam.x + Math.cos(cam.facing) * s * 0.9;
+        const ly = cam.y + Math.sin(cam.facing) * s * 0.9;
+        t.circle(lx, ly, s * 0.45, BLACK(0.9), 10);
+        t.circle(lx, ly, s * 0.22, hot ? WHITE(1) : rgba(1, 0.85, 0.85, 0.8), 8);
+      } else {
+        t.circle(cam.x, cam.y, s + 2 * mpp, BLACK(0.85), 12);
+        t.circle(cam.x, cam.y, s, rgba(0.25, 0.25, 0.27, 1), 12);
+        t.line(cam.x - s, cam.y - s, cam.x + s, cam.y + s, 2.4 * mpp, rgba(c[0], c[1], c[2], 0.9));
+        t.line(cam.x - s, cam.y + s, cam.x + s, cam.y - s, 2.4 * mpp, rgba(c[0], c[1], c[2], 0.9));
+      }
+    }
   }
 
   /** Smoke clouds (sim/smoke.js): a soft gray disc, denser in the middle; it fills the sight cone's gap. */

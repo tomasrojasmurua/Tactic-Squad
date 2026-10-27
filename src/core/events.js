@@ -36,6 +36,9 @@ export const EV = Object.freeze({
   GRENADE_THROWN: 'grenadeThrown', // {id, kind:'flash'|'frag', unitId, x, y, viaX, viaY, toX, toY, flight}
   GRENADE_DETONATE: 'grenadeDetonate', // {id, kind, unitId, x, y}
   BLINDED: 'blinded', // {unitId, team, seconds, cause:'flash'|'blast'|'kick', x, y}
+  CAMERA_FOUND: 'cameraFound', // {cameraId, x, y, byDrone}: the attackers know where a defender camera is
+  CAMERA_SPOT: 'cameraSpot', // {cameraId, unitId, x, y}: a camera saw an attacker and told the defenders
+  CAMERA_DESTROYED: 'cameraDestroyed', // {cameraId, unitId, x, y}: an attacker shot it
   BOMB_SPOTTED: 'bombSpotted', // {unitId, site, x, y}: the attackers found the bomb
   DEFUSE_START: 'defuseStart', // {unitId, x, y}
   DEFUSE_ABORT: 'defuseAbort', // {unitId}

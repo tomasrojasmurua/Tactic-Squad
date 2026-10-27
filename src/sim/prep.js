@@ -16,6 +16,7 @@
 //                    on the first firefight heard, falls back there and holds `look`
 // Everything here is deterministic and uses no sim.rng (the AI's barricade
 // pick hashes the seed), so a set-up cannot shift the rest of the round.
+import { placeCameras } from './cameras.js';
 import { BUY, PREP } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { pointInBox } from '../core/geom.js';
@@ -75,6 +76,7 @@ export function chooseSite(sim, id) {
   sim.site = site;
   sim.bomb = createBomb(site);
   applyLayout(sim, sim.compiled.defense[site.id]);
+  placeCameras(sim);
   sim.emit(EV.SITE_CHOSEN, { site: site.id });
   return null;
 }

@@ -13,6 +13,7 @@ import { createUnit } from './units.js';
 import { createDoorState, updateDoors } from './doors.js';
 import { updateEntries } from './entries.js';
 import { updateSmokes } from './smoke.js';
+import { placeCameras, updateCameras } from './cameras.js';
 import { applyCommand } from './orders.js';
 import { updatePerception } from './perception.js';
 import { updateAiUnit } from './ai.js';
@@ -90,6 +91,8 @@ export class Simulation {
     this.teams = {};
     for (const t of TEAMS) this.teams[t] = this.units.filter((u) => u.team === t);
     this.bomb = createBomb(this.site);
+    this.cameras = [];
+    placeCameras(this); // sim/cameras.js: the defenders' cameras on this site
     if (phases) initMoney(this); // the buy phase: each attacker's money after his role's gear
     initAbilities(this);
     this.attackAi = createAttackAi(this); // sim/aiAttack.js: the commander of an AI attacking side
@@ -228,6 +231,7 @@ export class Simulation {
     updateEntries(this, dt);
     updateSmokes(this, dt);
     updatePerception(this);
+    updateCameras(this, dt);
     if (this.stopOnContact) for (let i = firstEvent; i < this.events.length; i++) {
       const e = this.events[i];
       if (e.type === EV.SPOTTED && e.team === 'defenders' && !e.byDrone) this.round.contact = true;

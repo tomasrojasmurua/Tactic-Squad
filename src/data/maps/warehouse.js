@@ -264,6 +264,16 @@ export default {
     B: ['banio-sala', 'ofi-cocina', 'sitio-pasillo'],
   },
 
+  // Defender cameras for each site (sim/cameras.js): a fixed eye that tells
+  // the defenders where it saw an attacker. Both can be found by the drone,
+  // shot, or blinded with smoke. A: the corridor seen from its east end
+  // (whoever comes in through the main door). B: the lounge from its far
+  // corner (the corridor door, the bathroom door and the site).
+  aiCameras: {
+    A: [{ at: [27.55, 11.7], facing: 177 * DEG }],
+    B: [{ at: [27.6, 25.6], facing: -142 * DEG }],
+  },
+
   // Entries the attacking AI (sim/aiAttack.js) goes for each site through, with
   // weights (the round's seed picks one). Played against this map's defense:
   // the office approaches B from the north (the corridor door, away from the
