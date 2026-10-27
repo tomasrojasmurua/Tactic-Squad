@@ -25,7 +25,7 @@ export function createNoise() {
 function kindOf(ev) {
   switch (ev.type) {
     case EV.FOOTSTEP:
-      return 'step';
+      return ev.sneak ? 'sneak' : 'step';
     case EV.SHOT:
       return 'shot';
     case EV.DOOR_OPEN:

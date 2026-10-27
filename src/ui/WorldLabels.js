@@ -1,12 +1,13 @@
 // Small DOM tags floating over each operator (number, GO hold, defusing the bomb,
 // blinded) and under the planned waypoints that wait for a GO code or carry a
 // door entry ("A · FLASH"), positioned every frame through the camera projection.
-// A door still undecided gets a pulsing "?" on its point instead: tapping it
-// asks for that door (EV.REQUEST 'door_<unitId>_<index>': the entry picker).
+// A door on the route gets a small "?" on its point (it is opened on the way if
+// nobody decides): tapping it, or any tag, opens the door picker on that point
+// (EV.REQUEST 'door_<unitId>_<index>'). GO holds wear their group's color.
 import { EV } from '../core/events.js';
 import { el, toggle, setStyle } from './dom.js';
 import { HEIGHTS } from '../config/render.js';
-import { HUD } from '../config/ui.js';
+import { HUD, GO_GROUPS } from '../config/ui.js';
 import { teamUnits, holdCode, ASK_CODE } from '../sim/queries.js';
 import { T } from './texts.js';
 
@@ -65,7 +66,10 @@ export class WorldLabels {
       toggle(t.go, 'on', u.waitingGo);
       if (u.waitingGo && t.code !== u.waitCode) {
         t.code = u.waitCode;
-        t.go.textContent = u.waitCode === ASK_CODE ? T.tagAsk : u.waitCode ? `${T.tagGo} ${u.waitCode}` : T.tagGo;
+        t.go.textContent = u.waitCode === ASK_CODE ? T.tagAsk : u.waitCode ? T.goShort(u.waitCode) : T.tagGo;
+        const g = GO_GROUPS[u.waitCode];
+        if (g) t.go.style.setProperty('--g', g.color);
+        toggle(t.go, 'grp', !!g);
       }
       toggle(t.bomb, 'on', u.defusing);
       toggle(t.blind, 'on', u.blind > 0);
@@ -83,9 +87,15 @@ export class WorldLabels {
           const p = u.route[i];
           if (!p.user || (!p.hold && !p.entry && !p.ask)) continue;
           const t = this.point(n++);
-          const text = p.ask ? '?' : p.hold && p.entry ? `${holdCode(p)} · ${T.entry.tags[p.entry]}` : p.hold ? holdCode(p) : T.entry.tags[p.entry];
+          const code = p.hold ? holdCode(p) : null;
+          const g = code && GO_GROUPS[code];
+          const text = p.ask ? '?' : p.hold && p.entry ? `${g.glyph} ${T.entry.tags[p.entry]}` : p.hold ? T.goShort(code) : T.entry.tags[p.entry];
           toggle(t.node, 'ask', p.ask);
-          t.node.dataset.action = p.ask ? `door_${u.id}_${i}` : '';
+          toggle(t.node, 'go', !p.ask && !!g);
+          toggle(t.node, 'entry', !p.ask && !g);
+          if (g) t.node.style.setProperty('--g', g.color);
+          // Every tag opens the door picker on its point (a hold away from doors: the picker only shows near one).
+          t.node.dataset.action = `door_${u.id}_${i}`;
           toggle(t.node, 'target', !!session.pointTarget && session.pointTarget.unitId === u.id && session.pointTarget.index === i);
           if (t.text !== text) {
             t.text = text;

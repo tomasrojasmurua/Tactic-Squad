@@ -221,6 +221,7 @@ body:has(.pause-glyph.on) #ui::after {
 .tag .s { height: 17px; padding: 0 5px; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; background: rgba(0, 0, 0, 0.8); color: #fff; display: none; align-items: center; }
 .tag .s.on { display: flex; }
 .tag .s.go { color: #0b0b0b; background: #fff; animation: lowAmmo 0.9s ease-in-out infinite; }
+.tag .s.go.grp { background: var(--g); }
 .tag .s.bomb { color: var(--amber); }
 .tag.sel .n { outline: 2px solid #fff; outline-offset: 0; }
 .tag.dead { display: none; }
@@ -590,37 +591,43 @@ body.touch .weapon-plate { left: var(--sal); }
   .help-box .help-options .btn { font-size: 11px; letter-spacing: 0.03em; flex-basis: 160px; }
 }
 
-/* ------------------------------------------------------------ door entry picker (ui/EntryPicker.js) */
+/* ------------------------------------------------------------ door picker (ui/EntryPicker.js): a popover on the door point */
 .entry-picker {
-  position: absolute; left: 50%; bottom: calc(122px + var(--sab)); transform: translateX(-50%); display: none; flex-direction: column; gap: 4px;
-  padding: 6px 8px 8px; background: var(--plate-strong); border: 1px solid var(--line-strong); pointer-events: none; z-index: 5;
+  position: absolute; left: 0; top: 0; display: none; flex-direction: column; gap: 4px; will-change: transform;
+  padding: 5px 6px 6px; background: var(--plate-strong); border: 1px solid var(--line-strong); border-top: 2px solid var(--cyan);
+  pointer-events: none; z-index: 5; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
 }
 .entry-picker.on { display: flex; }
-.entry-picker .ep-head { display: flex; align-items: baseline; gap: 8px; font-size: 11px; letter-spacing: 0.12em; white-space: nowrap; }
+.entry-picker .ep-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; letter-spacing: 0.12em; white-space: nowrap; }
 .entry-picker .ep-title { font-weight: 800; text-transform: uppercase; color: var(--cyan); }
-.entry-picker .ep-code { font-weight: 900; color: #071a0b; background: var(--ok); padding: 0 5px; letter-spacing: 0.06em; }
-.entry-picker .ep-code[hidden] { display: none; }
-.entry-picker .ep-hint { color: #cfd6db; letter-spacing: 0.02em; overflow: hidden; text-overflow: ellipsis; max-width: 380px; }
+.entry-picker .ep-x {
+  pointer-events: auto; touch-action: manipulation; min-width: 28px; min-height: 24px; padding: 0; margin: -3px -3px 0 0; font-size: 17px; line-height: 1;
+  color: var(--muted); background: none; border: 0; cursor: pointer;
+}
+.entry-picker .ep-x:hover { color: #fff; }
 .entry-picker .ep-row { display: flex; gap: 4px; }
+.entry-picker .ep-more { display: none; }
+.entry-picker:not(.door) .ep-main { display: none; }
+.entry-picker .ep-pace { display: flex; align-items: center; gap: 4px; }
+.entry-picker.more .ep-more { display: flex; }
 .ebtn {
-  pointer-events: auto; touch-action: manipulation; min-width: 62px; min-height: 48px; padding: 4px 6px; position: relative;
+  pointer-events: auto; touch-action: manipulation; min-width: 58px; min-height: 46px; padding: 4px 6px; position: relative;
   font-family: var(--font); color: #fff; background: rgba(20, 23, 27, 0.95); border: 1px solid rgba(255, 255, 255, 0.18);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer;
 }
 .ebtn:hover { border-color: rgba(255, 255, 255, 0.45); }
 .ebtn:active { transform: scale(0.95); }
-.ebtn .ei { width: 20px; height: 20px; }
+.ebtn .ei { width: 20px; height: 20px; display: grid; place-items: center; font-size: 18px; font-weight: 900; line-height: 1; }
 .ebtn .ei svg { width: 100%; height: 100%; }
 .ebtn .el { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .ebtn .en { position: absolute; top: 2px; right: 4px; font-size: 9.5px; font-weight: 800; color: var(--amber); }
 .ebtn.active { background: var(--cyan-deep); border-color: var(--cyan); box-shadow: 0 0 0 1px rgba(47, 215, 255, 0.35); }
 .ebtn[disabled] { opacity: 0.32; cursor: default; }
+.ebtn-more { background: transparent; color: #cfd6db; }
 .ebtn-flash .ei { color: #fff6c4; }
 .ebtn-frag .ei { color: #b9d38a; }
 .ebtn-breach .ei { color: var(--amber); }
-/* Phones: centred at the bottom, under the thumb, between the chips and the objective. */
-body.touch .entry-picker { bottom: calc(6px + var(--sab)); padding: 4px 6px 6px; }
-body.touch .entry-picker .ep-hint { display: none; }
+body.touch .entry-picker { padding: 4px 5px 5px; }
 body.touch .ebtn { min-width: 50px; padding: 3px 4px; }
 @media (max-width: 700px) { body.touch .ebtn .el { font-size: 8.5px; letter-spacing: 0.04em; } body.touch .ebtn { min-width: 46px; } }
 
@@ -637,25 +644,29 @@ body.touch .ebtn { min-width: 50px; padding: 3px 4px; }
 .ptag.sel { opacity: 1; }
 .ptag.off { display: none; }
 .ptag.under-hud { visibility: hidden; }
-/* A door nobody decided: an amber "?" that breathes until it is tapped (minimal, but it asks for attention). */
+/* A door on the route: a small "?" that opens the door picker (it is opened on the way if nobody decides). */
 .ptag.ask {
-  pointer-events: auto; cursor: pointer; touch-action: manipulation; width: 22px; height: 22px; padding: 0; margin-top: -4px; border-radius: 50%;
-  justify-content: center; font-size: 14px; color: #1a1000; background: var(--amber); opacity: 1; animation: askPulse 1.3s ease-in-out infinite;
+  pointer-events: auto; cursor: pointer; touch-action: manipulation; width: 20px; height: 20px; padding: 0; margin-top: -4px; border-radius: 50%;
+  justify-content: center; font-size: 13px; color: #1a1000; background: #d9dee2; opacity: 0.9;
 }
-.ptag.ask::before { content: ''; position: absolute; inset: -11px; } /* a finger-size target */
-.ptag.ask.target { animation: none; box-shadow: 0 0 0 2px #fff, 0 1px 0 rgba(0, 0, 0, 0.9); }
-@keyframes askPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 176, 46, 0.65), 0 1px 0 rgba(0, 0, 0, 0.9); }
-  50% { box-shadow: 0 0 0 7px rgba(255, 176, 46, 0), 0 1px 0 rgba(0, 0, 0, 0.9); }
-}
-.entry-picker.ask .ep-title { color: var(--amber); }
+.ptag.ask.sel { background: #fff; }
+.ptag.ask::before { content: ''; position: absolute; inset: -12px; } /* a finger-size target */
+.ptag.ask.target { box-shadow: 0 0 0 2px var(--cyan), 0 1px 0 rgba(0, 0, 0, 0.9); }
+/* Waypoint tags with a GO hold wear their group's color (config/ui.js GO_GROUPS). */
+.ptag.go { background: var(--g); pointer-events: auto; cursor: pointer; touch-action: manipulation; }
+.ptag.go::before { content: ''; position: absolute; inset: -8px -4px; }
+.ptag.entry { pointer-events: auto; cursor: pointer; touch-action: manipulation; }
+.ptag.entry::before { content: ''; position: absolute; inset: -8px -4px; }
+.gdot { display: inline-block; font-style: normal; color: var(--g); margin-right: 4px; text-shadow: 0 0 1px #000; }
+.entry-picker.ask .ep-title { color: #d9dee2; }
 .entry-picker .ep-when { display: flex; align-items: center; gap: 4px; }
 .entry-picker .ep-wl { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #cfd6db; margin-right: 4px; }
 .wbtn {
   pointer-events: auto; touch-action: manipulation; min-height: 30px; padding: 2px 10px; font-family: var(--font); font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
   text-transform: uppercase; color: #fff; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16);
 }
-.wbtn.active { background: var(--ok-deep); border-color: var(--ok); }
+.wbtn.active { background: rgba(255, 255, 255, 0.14); border-color: #fff; }
+.wbtn { display: inline-flex; align-items: center; }
 
 /* ------------------------------------------------------------ We-Go turns (hito 2) */
 /* Phase bar: turn + clock; the thin bar under it empties with the decision clock / the 5 s turn. */
@@ -791,3 +802,38 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
 .help-box .help-actions { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 14px; position: sticky; bottom: 0; background: rgba(6, 7, 9, 0.98); }
 .help-box .help-actions .btn { margin-top: 0; min-height: 44px; }
 .help-box .help-actions .btn.to-menu { background: transparent; color: #cfd6db; }
+
+/* ------------------------------------------------------------ GO groups as colors (config/ui.js GO_GROUPS) */
+/* A GO button wears its group's color (--g) instead of a letter: A / B are the bomb sites. */
+.btn.go.grp { border-color: var(--g); background: color-mix(in srgb, var(--g) 22%, rgba(5, 6, 8, 0.9)); }
+.btn.go.grp .code { color: var(--g); }
+.btn.go.grp .gdot, .tbtn.go.grp .gdot, .tbtn.hm .gdot { color: var(--g); }
+.btn.go.grp.all, .tbtn.go.grp.all { background: var(--g); border-color: #fff; color: #08090b; }
+.btn.go.grp.all .code, .btn.go.grp.all .gdot, .tbtn.go.grp.all .gdot, .tbtn.go.grp.all .ti b { color: #08090b; }
+.tbtn.go.grp { border-color: var(--g); background: color-mix(in srgb, var(--g) 22%, rgba(8, 9, 11, 0.85)); }
+.tbtn.go.grp .gdot { font-size: 17px; margin: 0 0 0 2px; }
+.tbtn.grp:not(.go) { border-color: var(--g); box-shadow: inset 3px 0 0 var(--g); }
+.tbtn.active { background: rgba(47, 215, 255, 0.28); }
+/* Touch ESPERAR: the colors, left of the right-hand column. */
+.hold-menu {
+  position: absolute; right: calc(80px + var(--sar)); top: 50%; transform: translateY(-50%); display: none; flex-direction: column; gap: 5px;
+  padding: 5px; background: var(--plate-strong); border: 1px solid var(--line-strong); pointer-events: auto; z-index: 7;
+}
+.hold-menu.on { display: flex; }
+.hold-menu .tbtn { min-width: 74px; min-height: 44px; }
+.tbtn.hm .gdot { font-size: 18px; font-style: normal; }
+.help-box .help-options { grid-column: 1 / -1; position: static; box-shadow: none; }
+
+/* Squad route button (ui/SquadPanel.js): after the cards; lit while the others follow the selected one. */
+.card.squad-all {
+  --op: #8f99a2; border: 0; border-left: 4px solid var(--op); font-family: var(--font); color: #cfd6db; cursor: pointer; text-align: left;
+  min-height: 40px; display: flex; align-items: center; gap: 10px; padding: 6px 10px; pointer-events: auto;
+}
+.card.squad-all .sq-ic { width: 24px; height: 24px; flex: none; }
+.card.squad-all .sq-l { font-family: var(--font-display); font-size: 14px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.card.squad-all.on { --op: var(--cyan); color: #fff; background: color-mix(in srgb, var(--cyan) 18%, rgba(8, 9, 11, 0.94)); }
+@media (max-height: 520px) {
+  .card.squad-all { width: 48px; height: 46px; padding: 0; flex-direction: column; justify-content: center; gap: 1px; border-left: 0; border-top: 3px solid var(--op); }
+  .card.squad-all .sq-ic { width: 20px; height: 20px; }
+  .card.squad-all .sq-l { font-size: 9px; letter-spacing: 0.04em; }
+}

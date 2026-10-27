@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
 import { ENTRY, DOORS } from '../src/config/balance.js';
-import { isGoReady, codeWaiting, pendingDoors, ASK_CODE } from '../src/sim/queries.js';
+import { isGoReady, codeWaiting, pendingDoors } from '../src/sim/queries.js';
 import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
 
 const MAP = MAPS[DEFAULT_MAP];
@@ -190,7 +190,7 @@ test('órdenes de entrada imposibles se rechazan: sin puerta cerca o sin equipo'
   assert.equal(a.route.filter((p) => p.entry === 'flash').length, 1);
 });
 
-test('una ruta a través de una puerta cerrada se detiene en un "?" antes de ella', () => {
+test('una ruta a través de una puerta cerrada marca un "?" antes de ella y, sin decidir nada, la abre y pasa', () => {
   const { sim, a, door } = atTheDoor({ defender: [36, 3] });
   wp(sim, a, 12.5, 12.7);
   sim.flushCommands();
@@ -198,19 +198,21 @@ test('una ruta a través de una puerta cerrada se detiene en un "?" antes de ell
   assert.ok(ask && ask.user, 'se marca la puerta');
   assert.ok(Math.abs(ask.x - (10 - ENTRY.askDistance)) < 0.05, 'justo antes de la puerta');
   assert.equal(pendingDoors(sim, T), 1);
-  runFor(sim, 3);
-  assert.ok(a.waitingGo && a.waitCode === ASK_CODE, 'espera la decisión');
-  assert.ok(!door.open && !door.cracked, 'la puerta sigue cerrada: nada pasa sin decidirlo');
-  cmd(sim, { type: 'go' });
-  runFor(sim, 1);
-  assert.ok(a.waitingGo, 'ningún GO lo suelta: solo la decisión');
-  // "Abrir, de inmediato": la decisión sobre el punto donde espera.
-  cmd(sim, { type: 'setEntry', unitId: a.id, mode: null, index: 0 });
-  runFor(sim, 3);
-  assert.equal(pendingDoors(sim, T), 0);
-  assert.ok(door.open && a.x > 10.5, 'abrió y pasó');
+  assert.equal(ENTRY.undecided, 'open', 'por defecto, como en Door Kickers');
+  runFor(sim, 4);
+  assert.ok(!a.waitingGo, 'no se detiene a esperar una decisión');
+  assert.ok(door.open && a.x > 10.5, 'la abrió y pasó');
   // De vuelta por la puerta ya abierta: no pregunta.
   wp(sim, a, 8.2, 12.7);
+  sim.flushCommands();
+  assert.equal(pendingDoors(sim, T), 0);
+});
+
+test('"Abrir" en el "?" es una decisión: el punto deja de estar pendiente', () => {
+  const { sim, a } = atTheDoor({ defender: [36, 3] });
+  wp(sim, a, 12.5, 12.7);
+  sim.flushCommands();
+  cmd(sim, { type: 'setEntry', unitId: a.id, mode: null, index: a.route.findIndex((p) => p.ask) });
   sim.flushCommands();
   assert.equal(pendingDoors(sim, T), 0);
 });
@@ -228,16 +230,6 @@ test('en el "?" se decide cómo y cuándo: patada con el GO B', () => {
   cmd(sim, { type: 'go', code: 'B' });
   runFor(sim, 2);
   assert.ok(door.open && a.x > 10.5, 'patada y adentro');
-});
-
-test('deshacer el tramo del "?" libera al que esperaba en él', () => {
-  const { sim, a } = atTheDoor({ defender: [36, 3] });
-  wp(sim, a, 12.5, 12.7);
-  runFor(sim, 3);
-  assert.equal(a.waitCode, ASK_CODE);
-  cmd(sim, { type: 'clearRoute', unitId: a.id });
-  sim.flushCommands();
-  assert.ok(!a.waitingGo && pendingDoors(sim, T) === 0);
 });
 
 /** Una entrada completa por turnos: entreabrir con A, flash y patada por dos puertas con B; el jugador da cada GO en el turno, cuando su grupo está en posición (B no antes de 1 s). */

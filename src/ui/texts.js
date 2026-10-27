@@ -2,14 +2,17 @@
 
 import { FLOW_TEXTS } from './flowTexts.js';
 import { ROUND, DRONE } from '../config/balance.js';
+import { GO_GROUPS } from '../config/ui.js';
 
 const TURN = ROUND.turnSeconds;
+/** "GO VIOLETA": a GO group as the player sees it (never its letter: A / B are the bomb sites). */
+const goName = (c) => `GO ${GO_GROUPS[c] ? GO_GROUPS[c].name.toUpperCase() : c}`;
 
 export const T = Object.freeze({
   gameTitle: 'TACTIC SQUAD',
   subtitle: 'Prototipo táctico · Operación Almacén',
   briefing:
-    `Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. Antes del asalto compras equipo, eliges entrada y tienes ${DRONE.seconds} s de dron para mirar adentro. El asalto va por turnos: planificas sin ver al rival, con todo el tiempo que quieras, y todo se ejecuta a la vez durante ${TURN} s, sin pausa; durante el turno lanzas los grupos GO A·B·C. La bomba estalla tras ${ROUND.timeLimit} s de ejecución: encuéntrala y desactívala (${ROUND.defuseTime} s quieto, sin disparar) o elimina a los Defensores antes.`,
+    `Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. Antes del asalto compras equipo, eliges entrada y tienes ${DRONE.seconds} s de dron para mirar adentro. El asalto va por turnos: planificas sin ver al rival, con todo el tiempo que quieras, y todo se ejecuta a la vez durante ${TURN} s, sin pausa; durante el turno lanzas los grupos GO (violeta, rosa, blanco). La bomba estalla tras ${ROUND.timeLimit} s de ejecución: encuéntrala y desactívala (${ROUND.defuseTime} s quieto, sin disparar) o elimina a los Defensores antes.`,
   start: 'COMENZAR',
   startHint: 'Intro: jugar contra la IA',
 
@@ -56,7 +59,7 @@ export const T = Object.freeze({
     desk: [
       ['1', 'Selecciona un operador (1·2·3) y haz clic o arrastra su ruta.'],
       ['2', 'Clic derecho y arrastra en un punto: hacia dónde mira.'],
-      ['3', `ESPACIO: listo, el turno corre ${TURN} s. H marca un grupo GO; en el turno, A·B·C lo lanzan.`],
+      ['3', `ESPACIO: listo, el turno corre ${TURN} s. H marca un grupo GO de color; en el turno, Z·X·C lo lanzan.`],
     ],
   },
 
@@ -64,7 +67,7 @@ export const T = Object.freeze({
     ['Clic', 'punto de ruta'],
     ['Arrastrar', 'dibujar ruta'],
     ['Clic der.', 'mirar hacia'],
-    ['H', 'grupo GO A·B·C'],
+    ['H', 'grupo GO'],
     ['E', 'cómo entrar'],
     ['Retroceso', 'deshacer'],
     ['X', 'borrar ruta'],
@@ -83,7 +86,7 @@ export const T = Object.freeze({
   status: {
     dead: 'Abatido',
     waitingGo: 'Esperando GO',
-    waitingCode: (c) => `Esperando GO ${c}`,
+    waitingCode: (c) => `Esperando ${goName(c)}`,
     cracking: 'Entreabriendo',
     planting: 'Colocando carga',
     throwing: { flash: 'Lanzando flash', frag: 'Lanzando granada' },
@@ -96,6 +99,7 @@ export const T = Object.freeze({
     moving: 'Avanzando',
     breaching: 'Abriendo',
     planned: 'Ruta lista',
+    following: (n) => `Sigue a ${n}`,
     idle: 'En posición',
   },
 
@@ -109,20 +113,31 @@ export const T = Object.freeze({
     bombDefused: 'Bomba: desactivada',
   },
 
+  /** Squad route (sim/follow.js): the squad panel's button. */
+  squad: { button: 'Escuadra', on: 'En fila' },
+  /** Pace of a stretch of route (sim/movement.js): the waypoint menu. */
+  pace: { title: 'Paso', normal: 'Normal', sneak: 'Sigilo' },
   defuse: 'DESACTIVANDO BOMBA',
   reloadTag: 'RECARGANDO',
   tagGo: 'GO',
   tagAsk: 'PUERTA ?',
+  goName,
+  /** Short GO group label for tags and chips: its shape and color name. */
+  goShort: (c) => (GO_GROUPS[c] ? `${GO_GROUPS[c].glyph} ${GO_GROUPS[c].name.toUpperCase()}` : c),
   tagBomb: 'BOMBA',
   tagBlind: 'CIEGO',
 
   /** Door entries (sim/entries.js): picker labels, short tags on the map and the help line. */
   entry: {
-    title: 'Entrada',
-    askTitle: 'Puerta sin decidir',
-    askHint: 'Elige cómo abrirla y cuándo: hasta entonces se detiene aquí',
+    title: 'Puerta',
+    point: 'Punto de ruta',
+    askTitle: 'Puerta: se abre al pasar',
+    askHint: 'Por defecto la abre y pasa; elige otra entrada si quieres',
     when: 'Cuándo',
-    now: 'De inmediato',
+    now: 'Ya',
+    more: 'Más',
+    less: 'Menos',
+    close: 'Cerrar',
     none: 'Abrir',
     modes: { kick: 'Patada', slow: 'Entreabrir', flash: 'Flash', frag: 'Granada', breach: 'Carga' },
     tags: { kick: 'PATADA', slow: 'ENTREABRIR', flash: 'FLASH', frag: 'GRANADA', breach: 'CARGA' },
@@ -228,7 +243,7 @@ export const T = Object.freeze({
     defusing: (n) => `${n} desactiva la bomba`,
     defuseAborted: 'Desactivación interrumpida',
     defused: 'Bomba desactivada',
-    goCode: (c) => `Código GO ${c}`,
+    goCode: (c) => goName(c),
     flashed: (n) => `${n} cegado`,
     grenade: { flash: '¡Flash!', frag: '¡Granada!' },
     breach: 'Puerta reventada',
@@ -247,9 +262,10 @@ export const T = Object.freeze({
       ['Clic izquierdo', 'Añadir punto de ruta (con pathfinding)'],
       ['Arrastrar', 'Dibujar ruta a mano alzada'],
       ['Clic derecho (arrastrar)', 'Fijar dirección de mirada del último punto'],
-      ['H', 'El último punto espera a un grupo GO (A → B → C → sin espera)'],
-      ['E', 'Cómo entra por la puerta junto al último punto: patada, entreabrir, flash, granada, carga'],
-      ['A · B · C (o G)', 'Durante el turno: ¡ahora! Ese grupo actúa a la vez (los que aún no llegan, siguen de largo)'],
+      ['H', 'El último punto espera a un grupo GO (violeta → rosa → blanco → sin espera)'],
+      ['E', 'Cómo entra por la puerta junto al último punto: abrir, patada, entreabrir, flash, granada, carga'],
+      ['Clic en ? o en una etiqueta', 'Elegir cómo y cuándo entra por esa puerta (sin elegir, la abre y pasa)'],
+      ['Z · X · C (o G)', 'Durante el turno: ¡ahora! GO violeta · rosa · blanco (G: el primero listo). Los que aún no llegan, siguen de largo'],
       ['Retroceso / Z', 'Deshacer último punto'],
       ['X / Supr', 'Borrar ruta'],
       ['Espacio / Intro', `Listo: termina la fase y ejecuta el turno (${TURN} s, sin pausa)`],
@@ -274,6 +290,7 @@ export const T = Object.freeze({
     resume: 'Seguir',
     go: 'GO',
     hold: 'Esperar',
+    noHold: 'Sin espera',
     undo: 'Deshacer',
     clear: 'Borrar',
     defuse: 'Desactivar',
@@ -291,9 +308,9 @@ export const T = Object.freeze({
       ['Arrastrar desde el último punto', 'Continuar la ruta'],
       ['Dos dedos', 'Mover cámara · pellizcar para zoom'],
       ['Dedo en el borde al dibujar', 'La cámara te sigue'],
-      ['Esperar', 'El último punto espera a un grupo GO (cada toque: A, B, C, sin espera)'],
-      ['Entrada (junto a una puerta)', 'Patada, entreabrir, flash, granada o carga'],
-      ['GO A · B · C', 'Durante el turno: ¡ahora! Ese grupo actúa a la vez'],
+      ['Esperar', 'Elige el color del grupo GO del último punto (o sin espera)'],
+      ['Tocar el ? de una puerta', 'Cómo y cuándo entra: abrir, patada, flash… (sin elegir, la abre y pasa)'],
+      ['GO de color', 'Durante el turno: ¡ahora! Ese grupo actúa a la vez'],
       ['Listo', `Termina la fase; el turno corre ${TURN} s sin pausa`],
     ],
     startHint: 'Toca para comenzar',
@@ -327,12 +344,19 @@ export const T = Object.freeze({
     look: { touch: 'Mantén pulsado un punto y arrastra: hacia dónde mira', desk: 'Clic derecho y arrastra: hacia dónde mira' },
     next: { touch: (n) => `Bien. Ahora ${n}: tócalo y traza su ruta`, desk: (n) => `Bien. Ahora ${n} (tecla o clic)` },
     ready: { touch: 'Pulsa LISTO · ESPERAR marca un grupo GO que lanzas en el turno', desk: 'ESPACIO: listo · H marca un grupo GO que lanzas en el turno' },
-    goNow: { touch: (c) => `Grupo ${c} en posición: toca GO ${c} cuando quieras`, desk: (c) => `Grupo ${c} en posición: pulsa GO ${c} (o G) cuando quieras` },
+    goNow: {
+      touch: (c) => `Grupo ${GO_GROUPS[c].name.toLowerCase()} en posición: toca ${goName(c)} cuando quieras`,
+      desk: (c) => `Grupo ${GO_GROUPS[c].name.toLowerCase()} en posición: pulsa ${GO_GROUPS[c].key} (${goName(c)}) cuando quieras`,
+    },
     goWaiting: { touch: (n) => `${n} espera el GO`, desk: (n) => `${n} espera el GO` },
     askWaiting: (n) => `${n} está parado en una puerta sin decidir (?): decídela al planificar`,
-    doors: {
+    doorsStrict: {
       touch: (n) => `${n === 1 ? 'Una puerta' : `${n} puertas`} sin decidir: toca el ? para elegir cómo y cuándo`,
       desk: (n) => `${n === 1 ? 'Una puerta' : `${n} puertas`} sin decidir: haz clic en el ? para elegir cómo y cuándo`,
+    },
+    doors: {
+      touch: 'Las puertas (?) se abren solas al pasar · toca el ? para entrar con flash, patada o carga',
+      desk: 'Las puertas (?) se abren solas al pasar · clic en el ? para entrar con flash, patada o carga',
     },
   },
 

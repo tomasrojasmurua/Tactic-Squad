@@ -8,7 +8,7 @@
 // usually behind a wall. This is what makes them dangerous rather than
 // random: they pre-aim the entry the attackers have to use.
 import { TAU } from '../core/math.js';
-import { AI, COMBAT, NAV } from '../config/balance.js';
+import { AI, COMBAT, NAV, MOVE } from '../config/balance.js';
 import { lineOfSight } from './vision.js';
 import { enemyTeam } from './queries.js';
 
@@ -50,9 +50,10 @@ export function updateAiUnit(sim, u, dt) {
 function listenForFootsteps(sim, u) {
   if (u.target >= 0 || u.alertTimer > 0) return;
   const r2 = COMBAT.footstepHearing * COMBAT.footstepHearing;
+  const quiet2 = MOVE.sneakHearing * MOVE.sneakHearing;
   for (const a of sim.teams[enemyTeam(u.team)]) {
     if (!a.alive || !a.moving) continue;
-    if ((a.x - u.x) ** 2 + (a.y - u.y) ** 2 < r2) {
+    if ((a.x - u.x) ** 2 + (a.y - u.y) ** 2 < (a.sneaking ? quiet2 : r2)) {
       alertAiUnit(u, a.x, a.y, COMBAT.alertDuration);
       return;
     }

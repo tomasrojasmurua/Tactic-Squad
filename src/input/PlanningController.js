@@ -12,10 +12,10 @@
 import { EV } from '../core/events.js';
 import { POINTER, TOUCH } from '../config/input.js';
 import { NAV } from '../config/balance.js';
-import { routeTail, lastUserIndex, controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR } from '../sim/queries.js';
+import { routeTail, lastUserIndex, controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, teamUnits } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
 import { canEditRoutes, targetIndex } from '../session/Session.js';
-import { unitAt, waypointAt, nearTail, pickRadius } from './picking.js';
+import { unitAt, waypointAt, nearTail, pickRadius, segmentAt } from './picking.js';
 import { RoutePreview } from './RoutePreview.js';
 
 export class PlanningController {
@@ -26,6 +26,7 @@ export class PlanningController {
     this.getSim = getSim;
     this.draw = null; // {lastX, lastY, added, unitId, px, py, touch}
     this.look = null; // {x, y, unitId, index}
+    this.move = null; // {unitId, index, insert}: a waypoint (or a new one) being dragged
     this.preview = new RoutePreview(session);
     this.edgeSince = 0; // s the drawing pointer has rested at the screen edge
   }
@@ -35,7 +36,7 @@ export class PlanningController {
   }
 
   get busy() {
-    return !!(this.draw || this.look);
+    return !!(this.draw || this.look || this.move);
   }
 
   selectedUnit() {
@@ -84,18 +85,48 @@ export class PlanningController {
     return pickRadius(this.camera, meters, px);
   }
 
+  /**
+   * What a press at a screen point grabs (selected operator's plan first):
+   *   unit      the selected operator          -> drag draws his route (from its end)
+   *   tail      the end of his route           -> drag continues it
+   *   waypoint  one of his user waypoints      -> drag moves it; tap opens the door picker on it
+   *   segment   a stretch of his route         -> drag inserts a waypoint there
+   *   other     another operator of the side   -> tap selects him
+   *   ground    nothing of the plan            -> drag pans the camera; tap adds a waypoint
+   */
+  grab(px, py, touch = false) {
+    const hit = this.unitAt(px, py, touch);
+    const u = this.selectedUnit();
+    if (hit && (!u || hit.id !== u.id)) return { kind: 'other', unit: hit };
+    if (!u) return { kind: 'ground' };
+    if (hit) return { kind: 'unit', unit: u };
+    if (u.route.length && this.nearTail(px, py, touch ? TOUCH.tailPickPx : POINTER.tailPickPx)) return { kind: 'tail', unit: u };
+    const w = this.world(px, py);
+    const radius = touch ? this.pickRadius(TOUCH.waypointPickMinRadius, TOUCH.waypointPickPx) : this.pickRadius(POINTER.waypointPickRadius, POINTER.waypointPickPx);
+    const wp = waypointAt(u, w.x, w.y, radius);
+    if (wp >= 0) return { kind: 'waypoint', unit: u, index: wp };
+    const seg = segmentAt(u, w.x, w.y, radius * 0.6);
+    if (seg >= 0) return { kind: 'segment', unit: u, index: seg };
+    return { kind: 'ground', unit: u };
+  }
+
   // ------------------------------------------------------------ actions
 
-  /** Tap / click: select an operator, otherwise add a waypoint. */
+  /** Tap / click: select an operator, open the door picker on a waypoint, otherwise add a waypoint. */
   tap(px, py, touch = false) {
     if (!this.canEdit) return false;
-    const hit = this.unitAt(px, py, touch);
-    if (hit) {
-      this.select(hit.id);
+    const g = this.grab(px, py, touch);
+    if (g.kind === 'other') {
+      this.select(g.unit.id);
+      return true;
+    }
+    if (g.kind === 'waypoint') {
+      this.request(`door_${g.unit.id}_${g.index}`);
       return true;
     }
     const u = this.selectedUnit();
     if (!u) return false;
+    if (g.kind === 'unit') return true; // tapping the selected operator again changes nothing
     // A second tap on the last point (double tap, shaky finger) adds nothing.
     if (u.route.length && this.nearTail(px, py, touch ? TOUCH.duplicatePointPx : POINTER.duplicatePointPx)) return true;
     const w = this.world(px, py);
@@ -104,23 +135,15 @@ export class PlanningController {
   }
 
   /**
-   * Starts a freehand route at a screen point: from the selected operator if
-   * the drag starts on him, from the route's end if it starts there, else
-   * from a new waypoint at the touch point (the route is extended to it).
+   * Starts a freehand route: from the selected operator (when he has no route)
+   * or from his route's end — the drag began on one of them (grab()).
    */
   beginDraw(px, py, touch = false) {
     const u = this.selectedUnit();
     if (!u || !this.canEdit) return false;
-    const onUnit = this.unitAt(px, py, touch) === u;
-    const onTail = this.nearTail(px, py, touch ? TOUCH.tailPickPx : POINTER.tailPickPx);
     this.command({ type: 'beginStroke', unitId: u.id });
-    let start;
-    if (onUnit && !u.route.length) start = u;
-    else if (onUnit || onTail) start = routeTail(u);
-    else {
-      start = this.world(px, py);
-      this.command({ type: 'addWaypoint', unitId: u.id, x: start.x, y: start.y, user: true });
-    }
+    // From the operator (no route yet) or from the end of his route: a drag elsewhere pans the camera.
+    const start = routeTail(u);
     this.draw = { lastX: start.x, lastY: start.y, added: 0, unitId: u.id, px, py, touch };
     this.edgeSince = 0;
     this.session.ui.drawing = true;
@@ -158,6 +181,91 @@ export class PlanningController {
     this.cancel();
   }
 
+  /**
+   * Dragging a waypoint (or a stretch of route: a new waypoint there) to
+   * another place: a ghost follows the pointer and the order is given on
+   * release (sim/orders.js moveWaypoint / insertWaypoint).
+   */
+  beginMove(grab, px, py) {
+    if (!this.canEdit || !grab.unit) return false;
+    this.move = { unitId: grab.unit.id, index: grab.index, insert: grab.kind === 'segment' };
+    this.moveTo(px, py);
+    return true;
+  }
+
+  moveTo(px, py) {
+    if (!this.move) return;
+    const w = this.world(px, py);
+    this.session.ui.movePreview = { unitId: this.move.unitId, index: this.move.index, insert: this.move.insert, x: w.x, y: w.y };
+  }
+
+  endMove(px, py) {
+    if (!this.move) return;
+    const w = this.world(px, py);
+    const m = this.move;
+    this.command({ type: m.insert ? 'insertWaypoint' : 'moveWaypoint', unitId: m.unitId, index: m.index, x: w.x, y: w.y });
+    this.cancel();
+  }
+
+  /**
+   * Squad route: the other living operators follow the selected one in file
+   * (sim/follow.js) — one route for the squad. Again: each one is back on
+   * his own (the route he had stays).
+   */
+  toggleSquad() {
+    const u = this.selectedUnit();
+    if (!u || !this.canEdit) return true;
+    const sim = this.getSim();
+    const others = teamUnits(sim, this.session.team).filter((o) => o.alive && o !== u);
+    const all = others.length && others.every((o) => o.follow && o.follow.leader === u.id);
+    if (u.follow) this.command({ type: 'unfollow', unitId: u.id }); // the new leader leads
+    others.forEach((o, i) => {
+      if (all) this.command({ type: 'unfollow', unitId: o.id });
+      else this.command({ type: 'follow', unitId: o.id, leaderId: u.id, rank: i + 1 });
+    });
+    return true;
+  }
+
+  /** Shift + click on an operator: he joins (or leaves) the selected one's file. */
+  toggleFollower(unitId) {
+    const u = this.selectedUnit();
+    const sim = this.getSim();
+    const o = controllableUnit(sim, unitId, this.session.team);
+    if (!u || !o || o === u || !this.canEdit) return true;
+    if (o.follow && o.follow.leader === u.id) {
+      this.command({ type: 'unfollow', unitId: o.id });
+      return true;
+    }
+    if (u.follow) this.command({ type: 'unfollow', unitId: u.id });
+    const rank = teamUnits(sim, this.session.team).filter((f) => f.alive && f.follow && f.follow.leader === u.id).length + 1;
+    this.command({ type: 'follow', unitId: o.id, leaderId: u.id, rank });
+    return true;
+  }
+
+  /** Pace of the targeted leg (the tapped waypoint's, else the last one): sneak <-> normal. */
+  togglePace() {
+    const u = this.selectedUnit();
+    if (!u || !this.canEdit) return true;
+    const i = targetIndex(this.session, u);
+    if (i < 0) {
+      this.command({ type: 'setPace', unitId: u.id, pace: 'sneak' }); // rejected without a waypoint: tells why
+      return true;
+    }
+    this.command({ type: 'setPace', unitId: u.id, pace: u.route[i].pace === 'sneak' ? null : 'sneak', index: i });
+    return true;
+  }
+
+  /** Pace of the targeted leg: 'sneak' or null (normal). */
+  setPace(pace) {
+    const u = this.selectedUnit();
+    if (!u || !this.canEdit) return true;
+    const i = targetIndex(this.session, u);
+    if (i < 0) return true;
+    this.keepTarget(u, i, u.route[i]);
+    this.command({ type: 'setPace', unitId: u.id, pace, index: i });
+    return true;
+  }
+
   /** Look mode anchored on a waypoint index (-1 = last user waypoint / the unit). */
   beginLook(px, py, index = -1) {
     const u = this.selectedUnit();
@@ -187,8 +295,10 @@ export class PlanningController {
   cancel() {
     this.draw = null;
     this.look = null;
+    this.move = null;
     this.session.ui.drawing = false;
     this.session.ui.lookPreview = null;
+    this.session.ui.movePreview = null;
     this.preview.invalidate();
   }
 
@@ -299,9 +409,10 @@ export class PlanningController {
     return true;
   }
 
-  /** Deciding a "?" door point: the picker stays on it (its "when" still to choose), not on the last waypoint. */
+  /** Deciding on a tapped point (a "?" stops being one): the menu stays on it, not on the last waypoint. */
   keepTarget(u, i, p) {
-    if (p.ask) this.session.pointTarget = { unitId: u.id, index: i };
+    const t = this.session.pointTarget;
+    if (p.ask || (t && t.unitId === u.id && t.index === i)) this.session.pointTarget = { unitId: u.id, index: i };
   }
 
   /** H: the targeted waypoint waits for GO A -> B -> C -> no wait. */

@@ -4,8 +4,11 @@
 export const KEYS = Object.freeze({
   pause: ['Space'],
   execute: ['Enter', 'NumpadEnter'],
-  go: ['KeyG'],
+  go: ['KeyG'], // during a turn: the first GO group ready
+  goGroups: ['KeyZ', 'KeyX', 'KeyC'], // during a turn: GO violeta / rosa / blanco (Z / X edit routes only while planning)
   hold: ['KeyH'],
+  squad: ['KeyQ'], // the others follow the selected operator in file (again: each on his own)
+  pace: ['KeyT'], // the targeted leg is walked quietly (again: normally)
   entry: ['KeyE'], // cycles how he goes through the door next to the last waypoint
   undo: ['Backspace', 'KeyZ'],
   clear: ['KeyX', 'Delete'],
@@ -39,6 +42,8 @@ export const POINTER = Object.freeze({
   lookMinDistance: 0.3, // m
   drawEndMinDistance: 0.25, // m, releasing a drag farther than this adds a final point
   tailPickPx: 22, // px: a drag starting this close to the route's last point continues it
+  waypointPickRadius: 0.35, // m: a press this close to a waypoint grabs it (drag: move; click: door picker)...
+  waypointPickPx: 12, // ...never less than this on screen
   duplicatePointPx: 10, // px: a tap this close to the route's last point adds nothing
   edgePanPx: 28, // px: while drawing, the camera follows the pointer near the screen edge...
   edgePanSpeed: 0.8, // ...at this fraction of the visible height per second

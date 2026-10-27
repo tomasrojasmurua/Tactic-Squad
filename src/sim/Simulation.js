@@ -2,6 +2,7 @@
 // no wall-clock time: it only advances through step(dt) with a fixed dt and
 // a seeded RNG, and reports what happened as queued events.
 import { Rng } from '../core/rng.js';
+import { EV } from '../core/events.js';
 import { SIM, ROUND } from '../config/balance.js';
 import { SQUAD, DEFENDER_NAME, DEFENDER_COLOR, TEAMS, CONTROLLERS } from '../config/squad.js';
 import { DEFAULT_DEFENDER_ROLE } from '../config/operators.js';
@@ -38,9 +39,15 @@ export class Simulation {
    *                    Fewer defenders = an easier round (the guided tutorial: config/ui.js TUTORIAL).
    * @param opts.phases true: the round goes through its phases (sim/round.js, starts at 'buy');
    *                    false: no phases, it always runs and takes orders (mechanics tests).
+   * @param opts.stopOnContact the execution turn ends early (ROUND.minContactSeconds at the earliest)
+   *                    when the attackers see a new enemy: the player gets to react (against the AI).
+   * @param opts.loadout per attacker slot {money, gear?, role?} carried over from the last round of a
+   *                    match (session/Match.js); omitted: BUY.startMoney and the role's gear.
    */
-  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, defenders = null, phases = true } = {}) {
+  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, defenders = null, phases = true, stopOnContact = false, loadout = null } = {}) {
     this.seed = seed;
+    this.stopOnContact = stopOnContact;
+    this.loadout = loadout;
     this.controllers = controllers;
     this.rng = new Rng(seed);
     this.compiled = compileMap(mapDef);
@@ -217,6 +224,10 @@ export class Simulation {
     for (const u of this.units) if (u.alive && u.bash) updateBash(this, u, dt);
     updateEntries(this, dt);
     updatePerception(this);
+    if (this.stopOnContact) for (let i = firstEvent; i < this.events.length; i++) {
+      const e = this.events[i];
+      if (e.type === EV.SPOTTED && e.team === 'defenders' && !e.byDrone) this.round.contact = true;
+    }
     updateMemory(this);
     for (const u of this.teams.attackers) if (u.alive && u.blind <= 0) spotBarricades(this, u, u.vision.fov);
     for (const u of this.units) {

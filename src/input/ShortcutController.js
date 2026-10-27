@@ -2,6 +2,7 @@
 // Emits EV.REQUEST; the Game decides what each request means in each phase.
 import { EV } from '../core/events.js';
 import { KEYS } from '../config/input.js';
+import { ENTRY } from '../config/balance.js';
 import { matches } from './InputManager.js';
 
 export class ShortcutController {
@@ -27,6 +28,9 @@ export class ShortcutController {
     if (matches(KEYS.pause, code)) return this.request('toggle');
     if (matches(KEYS.execute, code)) return this.request('execute');
     if (matches(KEYS.go, code)) return this.request('go');
+    // Z / X / C call a GO group, but only during a turn: while planning they edit routes (MouseKeyController).
+    const g = KEYS.goGroups.indexOf(code);
+    if (g >= 0 && (this.session.phase === 'running' || this.session.phase === 'paused')) return this.request(`go_${ENTRY.goCodes[g]}`);
     if (matches(KEYS.restart, code)) return this.request('restart');
     if (matches(KEYS.newPlan, code)) return this.request('newPlan');
     if (matches(KEYS.mute, code)) return this.request('mute');

@@ -76,6 +76,8 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     idleLook: null, // angle to face once the route is done
     stun: 0, // seconds frozen (door breach beat)
     moving: false,
+    sneaking: false, // walked a 'sneak' leg this tick (quiet footsteps: MOVE.sneakHearing)
+    follow: null, // squad route (sim/follow.js): {leader, rank} while he walks another's route
     wasMoving: false, // moving on the previous tick (followers read it)
     heading: facing, // direction of the last step taken
     speedFraction: 0, // current walking speed / MOVE.speed (scales the moving spread)

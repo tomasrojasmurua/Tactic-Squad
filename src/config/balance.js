@@ -38,6 +38,13 @@ export const MOVE = Object.freeze({
   queueDoorMaxWidth: 1.4, // m: wider openings (arches) let two through side by side
   stackDoorRange: 2.4, // m: resting allies this close to a doorway space out along its wall
   collisionPasses: 2, // hard separation + wall push-out iterations per tick
+  // Pace per stretch of route (waypoint.pace): 'sneak' trades speed for silence (Door Kickers' slow
+  // move, Counter-Strike's walk). Footsteps are heard only sneakHearing m away (noise and the AI's ears).
+  sneakFactor: 0.5,
+  sneakHearing: 1.6,
+  // Squad route (sim/follow.js): followers walk the leader's route in file, this far behind each other,
+  // and stack behind him at his GO holds.
+  fileGap: 0.85,
   // "Slicing the pie": while walking, look at a point this far ahead along the
   // route, so the operator turns into corners and doorways BEFORE reaching them.
   lookAhead: 2.2, // m
@@ -165,6 +172,9 @@ export const ENTRY = Object.freeze({
   // A route drawn through a closed door stops this far before it, on a "?" point: how and when to go
   // through is the player's call (sim/orders.js markDoors). Closer than DOORS.triggerDistance would open it.
   askDistance: 0.75,
+  // What an operator does at a "?" door nobody decided: 'open' (default, as in Door Kickers: he opens it
+  // and goes through — the "?" only offers a better entry) or 'stop' (strict: he waits for a decision).
+  undecided: 'open',
   lookPast: 1.6, // m past the doorway a stacked operator aims (through the crack / at the room)
   followGap: 0.12, // s after the grenade / charge goes off before the rest of the code moves in
   // De golpe: the door bursts open (no breach pause), loud, and whoever stands right behind it reels.
@@ -199,6 +209,9 @@ export const ROUND = Object.freeze({
   defuseTime: 7.0, // s standing still next to the bomb
   defuseRadius: 1.1, // m from the bomb an attacker can work on it
   goStallHint: 3, // s with every planned operator waiting for GO before the HUD insists
+  // Option (Simulation `stopOnContact`, against the AI): the turn ends early when the attackers see a
+  // new enemy, so the player can react (the tutorial plays with it). Never before minContactSeconds.
+  minContactSeconds: 0.5,
 });
 
 /**
@@ -212,8 +225,8 @@ export const NOISE = Object.freeze({
   jitter: 0.9, // ...and shifted up to this much (deterministic, from the seed)
   keepTurns: 3, // a pulse stays on the map this many turns, fading
   // Radius heard (m) by kind; the loudest kind of a cell names its pulse.
-  radius: Object.freeze({ step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, flash: 18, frag: 22, breach: 22 }),
-  rank: Object.freeze(['step', 'crack', 'door', 'plant', 'defuse', 'kick', 'bash', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
+  radius: Object.freeze({ sneak: 2, step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, flash: 18, frag: 22, breach: 22 }),
+  rank: Object.freeze(['sneak', 'step', 'crack', 'door', 'plant', 'defuse', 'kick', 'bash', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
 });
 
 /**

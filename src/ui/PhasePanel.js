@@ -14,7 +14,8 @@ import { T } from './texts.js';
 function panelFor(sim, session) {
   if (session.phase === 'buy' || session.phase === 'prep') return session.phase;
   // Before the first turn ran the attackers may still change their entry.
-  if (session.phase === 'planning' && !session.tutorial.active && session.team === 'attackers' && sim.turn === 1 && sim.round.execTotal === 0 && sim.controllers.attackers === 'human') return 'entry';
+  // Not while the entry choice is still locked for this player (it comes with experience: SessionController lockedPhases).
+  if (session.phase === 'planning' && !session.locked.includes('prep') && !session.tutorial.active && session.team === 'attackers' && sim.turn === 1 && sim.round.execTotal === 0 && sim.controllers.attackers === 'human') return 'entry';
   return null;
 }
 

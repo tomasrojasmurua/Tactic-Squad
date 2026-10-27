@@ -14,8 +14,9 @@
 // retry), AutoPause (system pause), Tutorial (guided round from the menu),
 // CameraFraming (input/, injected).
 import { EV } from '../core/events.js';
-import { SIM } from '../config/balance.js';
-import { TUTORIAL } from '../config/ui.js';
+import { SIM, ENTRY } from '../config/balance.js';
+import { TUTORIAL, FLOW } from '../config/ui.js';
+import { loadPref, savePref } from './storage.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
 import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors } from '../sim/queries.js';
 import { phaseTick } from '../sim/round.js';
@@ -46,11 +47,15 @@ export class SessionController {
     this.restart = restart;
     this.seed = SIM.seed; // the scenario: kept on retry (same plan = same round); "reroll" changes it
     this.postRoundTimer = 0;
+    this.locks = null; // phases skipped in this attempt (lockedPhases)
     this.helpPaused = false; // the help opened while a turn ran (closing it resumes)
     this.recorder = new PlanRecorder();
     this.clock = new PhaseClock({ session, advance: () => this.advance() });
     this.autoPause = new AutoPause({ session, pause: (reason) => this.pause(reason) });
     this.tutorial = new Tutorial(session);
+    session.progress.roundsDone = loadPref(FLOW.storageKeys.roundsDone, 0) | 0;
+    session.progress.fullRound = !!loadPref(FLOW.storageKeys.fullRound, false);
+    session.progress.stopOnContact = !!loadPref(FLOW.storageKeys.stopOnContact, true);
 
     bus.on(EV.COMMAND, (cmd) => this.record(cmd));
     bus.on(EV.REQUEST, ({ action }) => this.handleRequest(action));
@@ -99,7 +104,15 @@ export class SessionController {
    */
   syncPhase(fresh = false) {
     const sim = this.sim;
+    // Phases not unlocked yet go by on their own (defaults: no purchase, the map's entry, no drone).
+    // Each still counts as one recorded phase, so a retry replays in step.
+    this.session.locked = this.lockedPhases();
+    while (this.session.locked.includes(sim.phase)) {
+      this.recorder.advance();
+      sim.advancePhase();
+    }
     if (sim.phase === 'end') {
+      if (this.session.phase !== 'ended') this.countRound();
       this.postRoundTimer = SIM.postRoundSeconds;
       this.setPhase('ended');
       return;
@@ -121,6 +134,58 @@ export class SessionController {
     this.session.replay.pending = this.recorder.pending;
     this.clock.start(sim.phase, auto);
     if (phase === 'planning' && this.selectedDead() && this.tutorial.current() !== 'select') this.selectNextAlive();
+  }
+
+  /**
+   * Options of the next round's Simulation: the tutorial's easier round
+   * (config/ui.js TUTORIAL) and the player's "stop the turn on contact".
+   */
+  roundOptions() {
+    const s = this.session;
+    const tutorial = s.mode === 'tutorial' ? { site: TUTORIAL.site, defenders: TUTORIAL.defenders } : {};
+    return { ...tutorial, stopOnContact: s.mode === 'tutorial' || s.progress.stopOnContact };
+  }
+
+  /** Help option: the turn ends when the squad sees a new enemy (from the next round / attempt on). */
+  toggleStopOnContact() {
+    const p = this.session.progress;
+    p.stopOnContact = !p.stopOnContact;
+    savePref(FLOW.storageKeys.stopOnContact, p.stopOnContact);
+    this.notice(p.stopOnContact ? 'contactOn' : 'contactOff');
+  }
+
+  /**
+   * Round phases before the assault that this player has not unlocked yet
+   * (config/ui.js FLOW.unlockAfterRounds): they are skipped with defaults.
+   * The guided tutorial skips them all; "Ronda completa" (help) keeps them all.
+   */
+  lockedPhases() {
+    return this.locks || (this.locks = this.computeLocks());
+  }
+
+  /** Fixed for an attempt and its retries (a replayed plan must meet the same phases). */
+  computeLocks() {
+    const s = this.session;
+    if (s.mode === 'tutorial') return ['buy', 'prep', 'drone'];
+    if (s.progress.fullRound) return [];
+    const n = s.progress.roundsDone;
+    return Object.keys(FLOW.unlockAfterRounds).filter((p) => n < FLOW.unlockAfterRounds[p]);
+  }
+
+  /** A round of the play mode finished: one more toward unlocking the phases before the assault. */
+  countRound() {
+    if (this.session.mode !== 'play') return;
+    const p = this.session.progress;
+    p.roundsDone++;
+    savePref(FLOW.storageKeys.roundsDone, p.roundsDone);
+  }
+
+  /** Help option "Ronda completa": always play buy, entry and drone (or let them come with experience). */
+  toggleFullRound() {
+    const p = this.session.progress;
+    p.fullRound = !p.fullRound;
+    savePref(FLOW.storageKeys.fullRound, p.fullRound);
+    this.notice(p.fullRound ? 'fullRoundOn' : 'fullRoundOff');
   }
 
   /** Ends the current decision phase (LISTO, deadline, replay): the next phase or the turn's execution. */
@@ -165,6 +230,7 @@ export class SessionController {
     const phase = this.session.phase;
     if (phase === 'running' && sim.phase !== 'exec') {
       if (sim.phase !== 'end') this.recorder.advance(); // the turn's GOs are one segment
+      if (sim.phase === 'plan' && sim.round.cut) this.notice('contactCut');
       this.syncPhase();
     } else if (phase === 'drone' && sim.phase !== 'drone') {
       this.recorder.advance(); // the drone's stick is one segment
@@ -250,8 +316,8 @@ export class SessionController {
       return;
     }
     if (isDecisionPhase(this.session)) {
-      // Doors still on "?": their operators will stop there. Say so once; a second LISTO confirms.
-      const doors = pendingDoors(this.sim, this.session.team);
+      // Strict mode (ENTRY.undecided 'stop'): doors still on "?" stop their operators. Say so once; a second LISTO confirms.
+      const doors = ENTRY.undecided === 'stop' ? pendingDoors(this.sim, this.session.team) : 0;
       if (armOrConfirm(this.session, 'ready', doors > 0) === 'armed') {
         this.notice('confirm_ready', doors);
         this.sound('hold');
@@ -328,6 +394,16 @@ export class SessionController {
       case 'hold':
         this.planning.toggleHold();
         return;
+      case 'squad':
+        if (isPlanningTime(session)) this.planning.toggleSquad();
+        return;
+      case 'pace':
+        this.planning.togglePace();
+        return;
+      case 'pace_sneak':
+      case 'pace_normal':
+        this.planning.setPace(action === 'pace_sneak' ? 'sneak' : null);
+        return;
       case 'fullscreen':
         toggleFullscreen();
         return;
@@ -346,6 +422,16 @@ export class SessionController {
       }
       case 'entryCycle':
         this.planning.cycleEntry();
+        return;
+      case 'pickerMore':
+        session.ui.moreEntries = !session.ui.moreEntries;
+        return;
+      case 'pickerClose':
+        this.closePicker();
+        return;
+      case 'holdMenu':
+        // Touch ESPERAR: the GO colors to choose from (H on a keyboard cycles them).
+        if (isPlanningTime(session)) session.ui.holdMenu = !session.ui.holdMenu;
         return;
       case 'restart':
         // After the round: retry — the same plan (every recorded phase) on the same seed.
@@ -369,6 +455,12 @@ export class SessionController {
       case 'help':
         this.toggleHelp();
         return;
+      case 'fullRound':
+        this.toggleFullRound();
+        return;
+      case 'stopOnContact':
+        this.toggleStopOnContact();
+        return;
       case 'mute':
         this.bus.emit(EV.MUTE_CHANGED, { muted: this.audio.toggleMute() });
         return;
@@ -383,7 +475,10 @@ export class SessionController {
       }
       default:
         if (action.startsWith('entry_')) this.planning.setEntry(action.slice(6));
-        else if (action.startsWith('when_')) this.planning.setWhen(action === 'when_now' ? null : action.slice(5));
+        else if (action.startsWith('when_')) {
+          this.planning.setWhen(action === 'when_now' ? null : action.slice(5));
+          session.ui.holdMenu = false;
+        }
         else if (action.startsWith('door_')) this.targetDoor(action);
         else if (action.startsWith('chooseEntry_') && (phase === 'prep' || phase === 'planning')) this.chooseEntry(action.slice(12));
         else if (action.startsWith('buy_') && phase === 'buy') this.buy(action);
@@ -409,9 +504,16 @@ export class SessionController {
     this.sound('select');
   }
 
+  /** The door picker's ×. */
+  closePicker() {
+    this.session.pointTarget = null;
+    this.session.ui.moreEntries = false;
+  }
+
   /** From the menu: a fresh round against the AI, or the guided tutorial's round (config/ui.js TUTORIAL). */
   beginMode(mode) {
     this.session.mode = mode;
+    this.locks = null;
     this.seed = mode === 'tutorial' ? TUTORIAL.seed : SIM.seed;
     this.recorder.beginAttempt([]);
     this.session.replay.attempt = 0;
@@ -427,6 +529,7 @@ export class SessionController {
   toMenu() {
     this.tutorial.stop();
     this.session.mode = 'play';
+    this.locks = null;
     this.setPhase('title');
     this.seed = SIM.seed;
     this.recorder.beginAttempt([]);
@@ -466,6 +569,7 @@ export class SessionController {
   /** Fresh round on the session seed, replaying the given recorded phases (empty: a new plan). */
   newAttempt(segments) {
     const retry = segments.length > 1 || (segments.length === 1 && segments[0].length > 0);
+    if (!retry) this.locks = null; // a new plan meets the phases this player has now
     this.recorder.beginAttempt(segments);
     this.restart(this.seed);
     if (this.tutorial.active) this.tutorial.begin(this.sim); // the guided round starts over with it

@@ -9,6 +9,7 @@
 // scratch buffers. A pooled color is valid until 16 more are requested,
 // which is always enough because ShapeBatch consumes colors immediately.
 import { HEIGHTS, OVERLAY } from '../../config/render.js';
+import { GO_GROUPS } from '../../config/ui.js';
 import { ENTRY, MOVE, ROUND, NOISE, DRONE } from '../../config/balance.js';
 import { teamView } from '../../sim/view.js';
 import { hexToRgb, lerp, lerpAngle } from '../../core/math.js';
@@ -32,6 +33,7 @@ export class OverlayLayer {
     this.ground = new ShapeBatch(gl);
     this.top = new ShapeBatch(gl);
     this.colors = new Map();
+    this.goColors = new Map(); // GO group code -> rgb
     this.markers = new ContactMarkers();
     this.pose = { x: 0, y: 0, facing: 0 }; // scratch interpolated pose
     this.gpos = { x: 0, y: 0, k: 0 }; // scratch grenade position
@@ -239,7 +241,17 @@ export class OverlayLayer {
         const size = OVERLAY.chevronSizePx * mpp;
         t.chevrons(pts, OVERLAY.chevronSpacing, -time * OVERLAY.dashSpeed, size, w * 0.6, BLACK(0.75));
       } else {
-        t.polyline(pts, w, withAlpha(c, 0.7));
+        t.polyline(pts, w, withAlpha(c, u.follow ? 0.45 : 0.7)); // a follower's route is the leader's: quieter
+      }
+      // Quiet legs (pace 'sneak'): dark stripes across the line, like footprints.
+      const seg = this.linkPts;
+      for (let i = 0; i < u.route.length; i++) {
+        if (u.route[i].pace !== 'sneak') continue;
+        seg[0] = pts[i * 2];
+        seg[1] = pts[i * 2 + 1];
+        seg[2] = pts[i * 2 + 2];
+        seg[3] = pts[i * 2 + 3];
+        t.dashed(seg, w * 1.5, 0.08, 0.16, 0, BLACK(0.6));
       }
     }
     const r = OVERLAY.waypointRadiusPx * mpp * (selected ? 1 : 0.78);
@@ -251,7 +263,7 @@ export class OverlayLayer {
       if (p.entry) this.entryMarker(t, p.x, p.y, p.entry, p.entryDoor, selected, mpp);
       if (p.look !== null) this.lookMarker(t, p.x, p.y, p.look, c, selected ? 1 : 0.6, mpp, u.vision.fov);
       if (p.hold) {
-        this.holdMarker(t, p.x, p.y, r * 1.6, c, mpp);
+        this.holdMarker(t, p.x, p.y, r * 1.6, c, mpp, this.goRgb(p.code));
       } else {
         const end = i === lastUser;
         const rr = end ? r * 1.25 : r;
@@ -297,7 +309,7 @@ export class OverlayLayer {
       const time = len / speed;
       if (time < left) {
         left -= time;
-        if (u.route[i].hold || u.route[i].ask) return; // he will wait there
+        if (u.route[i].hold || (u.route[i].ask && ENTRY.undecided === 'stop')) return; // he will wait there
         continue;
       }
       const k = len > 1e-6 ? (left * speed) / len : 0;
@@ -376,10 +388,19 @@ export class OverlayLayer {
     t.arrow(x, y, x2, y2, 2.6 * mpp, 0.26, withAlpha(c, alpha));
   }
 
-  holdMarker(t, x, y, r, c, mpp) {
+  /** RGB of a GO group's color (config/ui.js GO_GROUPS; old plans without a code: the first group). */
+  goRgb(code) {
+    const id = code || ENTRY.goCodes[0];
+    let c = this.goColors.get(id);
+    if (!c) this.goColors.set(id, (c = hexToRgb((GO_GROUPS[id] || GO_GROUPS.A).color)));
+    return c;
+  }
+
+  /** A GO hold: a diamond in its group's color, with the operator's color as the two bars. */
+  holdMarker(t, x, y, r, c, mpp, g) {
     const o = r + 1.6 * mpp;
     t.quad(x, y - o, x + o, y, x, y + o, x - o, y, BLACK(0.75));
-    t.quad(x, y - r, x + r, y, x, y + r, x - r, y, WHITE(1));
+    t.quad(x, y - r, x + r, y, x, y + r, x - r, y, withAlpha(g, 1));
     const bw = r * 0.22;
     const bh = r * 0.5;
     for (const s of SIDES) {
@@ -401,6 +422,38 @@ export class OverlayLayer {
     if (ui.lookPreview) {
       const lp = ui.lookPreview;
       this.lookMarker(t, lp.x, lp.y, lp.angle, LOOK_PREVIEW_RGB, 0.95, mpp, u.vision.fov);
+    }
+    // A waypoint being dragged (or a new one pulled out of a stretch of route): a ghost and its legs.
+    const mp = ui.movePreview;
+    if (mp && mp.unitId === u.id) {
+      const r = u.route;
+      const at = Math.min(mp.index, r.length - 1);
+      let prev = u;
+      for (let j = at - 1; j >= 0; j--) if (r[j].user && !r[j].ask) { prev = r[j]; break; }
+      let next = null;
+      for (let j = mp.insert ? at : at + 1; j < r.length; j++) if (r[j].user && !r[j].ask) { next = r[j]; break; }
+      const pts = this.linkPts;
+      pts[0] = prev.x;
+      pts[1] = prev.y;
+      pts[2] = mp.x;
+      pts[3] = mp.y;
+      t.dashed(pts, 2.4 * mpp, 0.2, 0.14, 0, withAlpha(c, 0.8));
+      if (next) {
+        pts[0] = mp.x;
+        pts[1] = mp.y;
+        pts[2] = next.x;
+        pts[3] = next.y;
+        t.dashed(pts, 2.4 * mpp, 0.2, 0.14, 0, withAlpha(c, 0.8));
+      }
+      const rr = OVERLAY.waypointRadiusPx * mpp * 1.3;
+      t.circle(mp.x, mp.y, rr + 2 * mpp, BLACK(0.7), 16);
+      t.circle(mp.x, mp.y, rr, WHITE(0.95), 16);
+    }
+    // The waypoint the player tapped (door picker, ESPERAR, sigilo act on it): a white ring.
+    const tg = session.pointTarget;
+    if (tg && tg.unitId === u.id && tg.index < u.route.length) {
+      const p = u.route[tg.index];
+      t.ring(p.x, p.y, OVERLAY.waypointRadiusPx * mpp * 2.1, 2.2 * mpp, WHITE(0.9), 24);
     }
   }
 

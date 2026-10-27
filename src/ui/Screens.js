@@ -69,12 +69,17 @@ export class Screens {
         <h3>${T.help.title}</h3>
         <table class="desk-only">${T.help.rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
         <table class="touch-only">${T.touch.rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
+        <div class="help-options"><button class="btn stop-contact"></button><button class="btn full-round"></button></div>
         <div class="help-actions"><button class="btn primary close">${T.help.close}</button><button class="btn to-menu">${T.flow.menu.button}</button></div>
       </div>`;
     this.help.querySelector('.close').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'help' }));
     this.helpMenu = this.help.querySelector('.to-menu');
     this.helpMenu.addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'menu' }));
     this.help.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.fullRound = this.help.querySelector('.full-round');
+    this.fullRound.addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'fullRound' }));
+    this.stopContact = this.help.querySelector('.stop-contact');
+    this.stopContact.addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'stopOnContact' }));
 
     this.resultShown = false;
     root.append(this.title, this.result, this.help);
@@ -92,7 +97,15 @@ export class Screens {
       toggle(this.tutorialBtn, 'done', done); // a first-timer sees it recommended (styles.css)
     }
     toggle(this.help, 'hidden', !session.helpOpen);
-    if (session.helpOpen) setText(this.helpMenu, session.confirm.action === 'menu' ? T.flow.menu.confirm : T.flow.menu.button);
+    if (session.helpOpen) {
+      setText(this.helpMenu, session.confirm.action === 'menu' ? T.flow.menu.confirm : T.flow.menu.button);
+      setText(this.fullRound, T.flow.fullRound(session.progress.fullRound));
+      const on = session.progress.fullRound ? '1' : '';
+      if ((this.fullRound.dataset.on || '') !== on) this.fullRound.dataset.on = on;
+      setText(this.stopContact, T.flow.stopOnContact(session.progress.stopOnContact));
+      const sc = session.progress.stopOnContact ? '1' : '';
+      if ((this.stopContact.dataset.on || '') !== sc) this.stopContact.dataset.on = sc;
+    }
     const showResult = session.phase === 'ended' && sim.outcome;
     toggle(this.result, 'hidden', !showResult);
     if (showResult && !this.resultShown) this.fillResult(sim, session.team);

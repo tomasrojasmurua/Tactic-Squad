@@ -18,6 +18,18 @@ export const HUD = Object.freeze({
   coachInterval: 0.12, // s between re-evaluations of the onboarding hint (gameplay flow)
 });
 
+/**
+ * GO groups (sim codes 'A' | 'B' | 'C', ENTRY.goCodes) as the player sees
+ * them: a color and a shape, never a letter (A / B are the bomb sites).
+ * Shared by the HUD (buttons, tags, picker) and the overlay (hold markers).
+ * `key`: the key that calls the group during a turn (config/input.js KEYS.goGroups).
+ */
+export const GO_GROUPS = Object.freeze({
+  A: Object.freeze({ name: 'Violeta', glyph: '◆', color: '#a77bff', key: 'Z' }),
+  B: Object.freeze({ name: 'Rosa', glyph: '●', color: '#ff5fae', key: 'X' }),
+  C: Object.freeze({ name: 'Blanco', glyph: '▲', color: '#f2f4f5', key: 'C' }),
+});
+
 /** Red damage vignette (Hud). Levels are opacities 0..1. */
 export const VIGNETTE = Object.freeze({
   hitKick: 0.55, // added when an operator is hit
@@ -58,7 +70,11 @@ export const FLOW = Object.freeze({
   framePaddingM: 1.0, // m of map kept around a framed rectangle ("see all", first shot)
   overviewTapMs: 320, // a two-finger tap (both fingers up within this, barely moving)...
   overviewTapPx: 14, // ...toggles the whole-map view
-  storageKeys: Object.freeze({ tutorialDone: 'ts.tutorialDone' }),
+  storageKeys: Object.freeze({ tutorialDone: 'ts.tutorialDone', roundsDone: 'ts.roundsDone', fullRound: 'ts.fullRound', introsSeen: 'ts.introsSeen', stopOnContact: 'ts.stopOnContact' }),
+  // The phases before the assault come in as the player learns: a round's buy / prep / drone is
+  // skipped (defaults) until this many rounds were finished on the device. The guided tutorial
+  // skips them all (it teaches the assault); "Ronda completa" in the help turns them all on.
+  unlockAfterRounds: Object.freeze({ buy: 2, prep: 1, drone: 2 }),
   droneCameraHeight: 14, // m: the camera follows the recon drone from this height...
   droneFollow: 7, // ...catching up at this rate (1/s)
 });

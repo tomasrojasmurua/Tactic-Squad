@@ -46,6 +46,9 @@ export const DECISION_PHASES = Object.freeze([PHASE.buy, PHASE.prep, PHASE.plan]
 /** Steps per execution turn. */
 export const TURN_TICKS = Math.round(ROUND.turnSeconds * SIM.tickRate);
 
+/** Steps a turn runs at least before a contact can end it (Simulation stopOnContact). */
+const MIN_CONTACT_TICKS = Math.round(ROUND.minContactSeconds * SIM.tickRate);
+
 export function createRound(phases) {
   return {
     enabled: phases,
@@ -54,6 +57,8 @@ export function createRound(phases) {
     execTick: 0, // steps run in the current execution turn
     execTotal: 0, // steps run in every turn so far (the bomb's timer)
     droneTick: 0, // steps run in the drone phase
+    contact: false, // stopOnContact: the attackers saw a new enemy this turn (the turn ends early)
+    cut: false, // the last turn ended early on contact
   };
 }
 
@@ -87,6 +92,8 @@ export function advancePhase(sim) {
   } else if (from === PHASE.plan) {
     r.phase = PHASE.exec;
     r.execTick = 0;
+    r.contact = false;
+    r.cut = false;
   } else return;
   sim.emit(EV.ROUND_PHASE, { phase: r.phase, previous: from, turn: r.turn });
 }
@@ -119,7 +126,10 @@ export function afterTick(sim, endRound) {
     endRound(sim, 'defenders', 'time');
     return toEnd(sim);
   }
-  if (r.execTick < TURN_TICKS) return;
+  const cut = r.contact && r.execTick >= MIN_CONTACT_TICKS;
+  if (r.execTick < TURN_TICKS && !cut) return;
+  r.cut = cut && r.execTick < TURN_TICKS;
+  r.contact = false;
   summarizeNoise(sim);
   r.turn++;
   r.phase = PHASE.plan;

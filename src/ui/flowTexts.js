@@ -8,14 +8,14 @@ export const FLOW_TEXTS = Object.freeze({
   // GO buttons during a turn: how many of the group are in position.
   goReady: (ready, total) => `${ready}/${total}`,
   confirmRestart: '¿Borrar plan?', // restart button armed (second press wipes the plan)
-  confirmReady: '¿Listo igual?', // LISTO armed: some door is still on "?"
+  confirmReady: '¿Listo igual?', // LISTO armed: some door is still on "?" (strict mode, ENTRY.undecided 'stop')
   overview: 'Ver todo',
   tutorialStart: 'Tutorial guiado',
   tutorialSkip: 'Saltar tutorial',
   /** Main menu (ui/Screens.js). */
   menu: {
     play: 'Jugar contra la IA',
-    playNote: 'Una ronda completa: compra, preparación, dron y asalto',
+    playNote: 'Asalto por turnos; compra, entrada y dron se suman a medida que juegas',
     tutorial: 'Tutorial guiado',
     tutorialNote: 'Paso a paso, en una ronda más fácil',
     tutorialNew: 'Recomendado para empezar',
@@ -25,6 +25,9 @@ export const FLOW_TEXTS = Object.freeze({
     pitch: 'Asalto táctico por turnos. Planificas sin ver al rival y todo se ejecuta a la vez. Encuentra la bomba y desactívala.',
   },
   rerollButton: 'Nueva tirada',
+  /** Help option (ui/Screens.js): the phases before the assault. */
+  stopOnContact: (on) => `Cortar el turno al ver un enemigo: ${on ? 'SÍ' : 'NO'}`,
+  fullRound: (on) => `Ronda completa (compra, entrada, dron): ${on ? 'SÍ' : 'SEGÚN EXPERIENCIA'}`,
   /** EV.NOTICE codes -> toast text. */
   notice: {
     confirm_restart: { touch: 'Toca REINICIAR otra vez para borrar todo el plan', desk: 'Pulsa R otra vez para borrar todo el plan' },
@@ -34,13 +37,18 @@ export const FLOW_TEXTS = Object.freeze({
     replayDiverged: (n) => `Plan cambiado: ${n === 1 ? 'esta fase ya no se repite' : `estas ${n} fases ya no se repiten`}; sigues tú`,
     noPause: `Un turno no se pausa: dura ${TURN} s y luego vuelves a planificar`,
     droneReplay: 'Reintento: el dron repite su recorrido grabado',
-    goInTurn: 'Los GO se dan durante el turno: pulsa LISTO y luego A, B o C cuando quieras',
+    goInTurn: 'Los GO se dan durante el turno: pulsa LISTO y luego el GO de color cuando quieras',
     goReplay: 'Este turno es la repetición de tu plan: tomas el control en la próxima planificación',
     planFirst: 'Las órdenes se dan al planificar: espera al fin del turno',
     rerolled: 'Nueva tirada: mismo plan, otra suerte',
     tutorialDone: '¡Tutorial completado! Termina la ronda: encuentra la bomba y desactívala',
     tutorialSkipped: 'Tutorial omitido (puedes repetirlo desde el menú)',
     tutorialFirst: 'Primero haz el paso del tutorial (recuadro de la izquierda)',
+    contactCut: '¡Contacto! El turno se cortó para que puedas reaccionar',
+    contactOn: 'El turno se cortará al ver un enemigo (desde el próximo plan)',
+    contactOff: 'Los turnos duran siempre 5 s (desde el próximo plan)',
+    fullRoundOn: 'Ronda completa: compra, entrada y dron desde el próximo plan',
+    fullRoundOff: 'Compra, entrada y dron se suman a medida que juegas',
   },
   /** Banner hint while a turn is paused, by session.pauseReason. */
   pause: {
@@ -60,32 +68,7 @@ export const FLOW_TEXTS = Object.freeze({
     tip: 'Consejo',
     welcome: {
       title: 'Bienvenido',
-      text: `Los Defensores escondieron una bomba en el sitio A o en el B. Tu escuadrón de 3 debe encontrarla y desactivarla antes de que explote, o eliminar a todos los Defensores. La ronda va así: compra, preparación, dron y asalto por turnos. Aquí hay solo 2 defensores, para aprender tranquilo.`,
-    },
-    buy: {
-      title: 'Compra',
-      text: {
-        touch: `Cada operador tiene $${BUY.startMoney} y ya lleva el equipo de su rol. Toca un objeto en la fila de ÁGUILA para comprarle otro (− lo devuelve).`,
-        desk: `Cada operador tiene $${BUY.startMoney} y ya lleva el equipo de su rol. Haz clic en un objeto de la fila de ÁGUILA para comprarle otro (− lo devuelve).`,
-      },
-    },
-    buyReady: { title: 'Compra lista', text: { touch: 'Pulsa LISTO para pasar a la preparación.', desk: 'Pulsa LISTO (Espacio) para pasar a la preparación.' } },
-    prep: {
-      title: 'Preparación',
-      text: 'Los dos bandos se preparan a la vez y a ciegas. El defensor elige el sitio de la bomba, coloca a los suyos y atranca 2 puertas con barricadas. Tú eliges por qué puerta exterior entra tu escuadrón: él no lo sabe.',
-    },
-    entry: { title: 'Elige la entrada', text: 'Toca una de las entradas del recuadro: Norte, Principal o Sur. La cámara te muestra dónde queda.' },
-    prepReady: { title: 'Entrada lista', text: { touch: 'Pulsa LISTO: sale el dron.', desk: 'Pulsa LISTO (Espacio): sale el dron.' } },
-    drone: {
-      title: 'Dron de reconocimiento',
-      text: {
-        touch: `Tienes ${DRONE.seconds} s de dron, en tiempo real. Muévelo con el mando de la izquierda. Pasa por debajo de las puertas, pero no por las barricadas. Lo que ve queda marcado: defensores, barricadas (barra naranja) y la bomba. Si un defensor lo ve, lo derriba.`,
-        desk: `Tienes ${DRONE.seconds} s de dron, en tiempo real. Muévelo con WASD o las flechas. Pasa por debajo de las puertas, pero no por las barricadas. Lo que ve queda marcado: defensores, barricadas (barra naranja) y la bomba. Si un defensor lo ve, lo derriba.`,
-      },
-    },
-    droneFly: {
-      title: 'Explora',
-      text: { touch: 'Entra al edificio y busca el sitio B. RETIRAR termina antes.', desk: 'Entra al edificio y busca el sitio B. Espacio lo retira antes.' },
+      text: `Los Defensores escondieron una bomba en el sitio A o en el B. Tu escuadrón de 3 debe encontrarla y desactivarla antes de que explote, o eliminar a todos los Defensores. Aquí aprendes el asalto, con solo 2 defensores. La compra, la elección de entrada y el dron se suman en las rondas siguientes, de a uno.`,
     },
     plan: {
       title: 'Asalto por turnos',
@@ -102,13 +85,13 @@ export const FLOW_TEXTS = Object.freeze({
     door: {
       title: 'Decide la puerta',
       text: {
-        touch: 'La ruta cruza una puerta cerrada: ÁGUILA se detendrá en el ?. En el recuadro de abajo elige CÓMO entra; prueba FLASH: abre y lanza un flash adentro. Si no ves el recuadro, toca el ?.',
-        desk: 'La ruta cruza una puerta cerrada: ÁGUILA se detendrá en el ?. En el recuadro de abajo elige CÓMO entra; prueba FLASH: abre y lanza un flash adentro. Si no ves el recuadro, haz clic en el ?.',
+        touch: 'La ruta cruza una puerta cerrada: verás un ? sobre ella. Sin hacer nada, ÁGUILA la abre y pasa. Toca el ? para elegir cómo entra; prueba FLASH: abre y lanza un flash adentro.',
+        desk: 'La ruta cruza una puerta cerrada: verás un ? sobre ella. Sin hacer nada, ÁGUILA la abre y pasa. Haz clic en el ? para elegir cómo entra; prueba FLASH: abre y lanza un flash adentro.',
       },
     },
     hold: {
       title: 'Elige cuándo',
-      text: 'En CUÁNDO elige GO A: ÁGUILA esperará en la puerta hasta que tú des la orden. Así se coordina a varios para entrar juntos.',
+      text: 'En CUÁNDO elige VIOLETA: ÁGUILA esperará en la puerta hasta que des el GO violeta. Cada color es un grupo: los que esperan el mismo color entran juntos.',
     },
     look: {
       title: 'Hacia dónde mira',
@@ -127,8 +110,8 @@ export const FLOW_TEXTS = Object.freeze({
     go: {
       title: 'Da el GO',
       text: {
-        touch: 'Cuando ÁGUILA llegue a la puerta, toca GO A a la derecha: ¡ahora! Si el turno se acaba antes, pulsa LISTO y sigue en el próximo.',
-        desk: 'Cuando ÁGUILA llegue a la puerta, pulsa GO A (o G): ¡ahora! Si el turno se acaba antes, pulsa Espacio y sigue en el próximo.',
+        touch: 'Cuando ÁGUILA llegue a la puerta, toca GO VIOLETA a la derecha: ¡ahora! Si el turno se acaba antes, pulsa LISTO y sigue en el próximo.',
+        desk: 'Cuando ÁGUILA llegue a la puerta, pulsa GO VIOLETA (o Z): ¡ahora! Si el turno se acaba antes, pulsa Espacio y sigue en el próximo.',
       },
     },
     turnEnd: {
@@ -136,6 +119,24 @@ export const FLOW_TEXTS = Object.freeze({
       text: `Vuelves a planificar con lo que pasó: las rutas sin terminar siguen, y los ruidos que oyó tu equipo aparecen como pulsos en el mapa. Repite hasta el final: encuentra la bomba en B y desactívala (${ROUND.defuseTime} s quieto junto a ella), o elimina a los Defensores.`,
     },
     tips: {
+      introBuy: {
+        title: 'Nuevo: compra',
+        text: {
+          touch: `Antes del asalto cada operador tiene $${BUY.startMoney} y ya lleva el equipo de su rol. Toca un objeto en su fila para comprar otro (− lo devuelve). LISTO para seguir.`,
+          desk: `Antes del asalto cada operador tiene $${BUY.startMoney} y ya lleva el equipo de su rol. Haz clic en un objeto de su fila para comprar otro (− lo devuelve). LISTO (Espacio) para seguir.`,
+        },
+      },
+      introPrep: {
+        title: 'Nuevo: elige la entrada',
+        text: 'Los dos bandos se preparan a la vez y a ciegas. El defensor elige el sitio de la bomba, coloca a los suyos y atranca 2 puertas. Tú eliges por qué puerta exterior entra tu escuadrón (Norte, Principal o Sur): él no lo sabe.',
+      },
+      introDrone: {
+        title: 'Nuevo: dron de reconocimiento',
+        text: {
+          touch: `Tienes ${DRONE.seconds} s de dron, en tiempo real. Muévelo con el mando de la izquierda. Pasa por debajo de las puertas, pero no por las barricadas. Lo que ve queda marcado: defensores, barricadas (barra naranja) y la bomba. Si un defensor lo ve, lo derriba. RETIRAR lo termina antes.`,
+          desk: `Tienes ${DRONE.seconds} s de dron, en tiempo real. Muévelo con WASD o las flechas. Pasa por debajo de las puertas, pero no por las barricadas. Lo que ve queda marcado: defensores, barricadas (barra naranja) y la bomba. Si un defensor lo ve, lo derriba. Espacio lo retira antes.`,
+        },
+      },
       barricade: {
         title: 'Barricada',
         text: `La barra naranja es una barricada: no se abre. Si tu ruta la cruza, el operador la rompe a golpes (${BARRICADE.breakTime} s quieto y se oye lejos). Una CARGA la vuela al instante. También puedes rodearla por otra puerta.`,

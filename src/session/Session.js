@@ -32,8 +32,8 @@ export function createSession({ touch }) {
     mode: 'play', // 'play' (against the AI) | 'tutorial' (the guided round: config/ui.js TUTORIAL)
     team: PLAYER_TEAM, // the side this player commands (orders are stamped with it)
     selectedId: -1, // unit id of the player's side, -1 = none
-    // The waypoint the entry picker edits when it is not the last one: a "?" door point the
-    // player tapped ({unitId, index}), null = the selected operator's last waypoint.
+    // The waypoint the player tapped ({unitId, index}: a "?" door, a tag, a waypoint): the door
+    // picker shows for it; E / H / ESPERAR act on it. null = the selected operator's last waypoint.
     pointTarget: null,
     // Why a running turn stopped: 'help' | 'background' | 'graphics' | 'orientation' | null
     pauseReason: null,
@@ -42,6 +42,9 @@ export function createSession({ touch }) {
     replay: { pending: 0, attempt: 0, exec: false }, // recorded phases still to replay; retries of this plan; this turn is a replayed one
     clock: { left: 0, total: 0, unlimited: false, auto: false }, // session/PhaseClock.js (decision phases)
     tutorial: { active: false, step: 0, id: null, info: false, card: false, count: 0, done: false }, // session/Tutorial.js
+    // Per-device progress (session/storage.js): finished rounds unlock the phases before the assault.
+    progress: { roundsDone: 0, fullRound: false, stopOnContact: true },
+    locked: [], // round phases skipped in this attempt ('buy' | 'prep' | 'drone'), set by SessionController
     hoverUnitId: -1,
     helpOpen: false,
     musicOn: true, // mirrors the audio (set by SessionController); the UI shows it
@@ -50,14 +53,17 @@ export function createSession({ touch }) {
       hoverPath: null, // flat [x, y, ...] preview of the leg a click would add
       drawing: false, // a freehand route is being drawn
       lookPreview: null, // {x, y, angle, valid} while aiming a facing
+      movePreview: null, // {unitId, index, insert, x, y} while dragging a waypoint (or a new one out of a leg)
       cursorWorld: null, // pointer position on the floor
+      holdMenu: false, // the touch ESPERAR chooser (GO colors) is open
+      moreEntries: false, // the door picker shows every entry, not only the main three
     },
   };
 }
 
 /** Clears the transient planning previews (new round). */
 export function resetSessionPreviews(session) {
-  Object.assign(session.ui, { hoverPath: null, drawing: false, lookPreview: null });
+  Object.assign(session.ui, { hoverPath: null, drawing: false, lookPreview: null, movePreview: null, holdMenu: false, moreEntries: false });
 }
 
 /** Phases where routes can be edited (orders are taken only while deciding: sim/orders.js). */
@@ -67,15 +73,15 @@ export const canEditRoutes = (session) => (session.phase === 'prep' || session.p
 export const isArmed = (session, action) => session.confirm.action === action && performance.now() < session.confirm.until;
 
 /**
- * The waypoint the door picker and E / H act on for operator u: the tapped
- * "?" point, else his first undecided door ("?": what the coach asks for),
- * else his last one.
+ * The waypoint the door picker and E / H act on for operator u: the point
+ * the player tapped (a "?" door or a waypoint tag), else his last one.
+ * Undecided doors are opened on the way (ENTRY.undecided), so nothing is
+ * forced on the player: the picker comes when he asks for it.
  */
 export function targetIndex(session, u) {
   const t = session.pointTarget;
   if (t && t.unitId === u.id && t.index < u.route.length && u.route[t.index].user) return t.index;
-  const ask = u.route.findIndex((p) => p.ask);
-  return ask >= 0 ? ask : lastUserIndex(u);
+  return lastUserIndex(u);
 }
 
 /** Phases where time is stopped and the player is planning. */
