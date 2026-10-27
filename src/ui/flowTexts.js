@@ -14,8 +14,10 @@ export const FLOW_TEXTS = Object.freeze({
   tutorialSkip: 'Saltar tutorial',
   /** Main menu (ui/Screens.js). */
   menu: {
-    play: 'Jugar contra la IA',
-    playNote: 'Asalto por turnos; compra, entrada y dron se suman a medida que juegas',
+    play: 'Atacar',
+    playNote: 'Contra la IA: encuentra la bomba y desactívala',
+    defend: 'Defender',
+    defendNote: `Contra la IA: esconde la bomba y aguanta ${ROUND.timeLimit} s`,
     match: 'Partida al mejor de 7',
     matchNote: 'Ronda tras ronda contra la IA: el dinero y el equipo de los vivos pasan a la siguiente',
     tutorial: 'Tutorial guiado',
@@ -24,7 +26,7 @@ export const FLOW_TEXTS = Object.freeze({
     tutorialDone: 'Completado',
     button: 'Menú',
     confirm: '¿Salir?',
-    pitch: 'Asalto táctico por turnos. Planificas sin ver al rival y todo se ejecuta a la vez. Encuentra la bomba y desactívala.',
+    pitch: 'Asalto táctico por turnos. Planificas sin ver al rival y todo se ejecuta a la vez. Ataca para desactivar la bomba, o defiéndela.',
   },
   rerollButton: 'Nueva tirada',
   /** Help option (ui/Screens.js): the phases before the assault. */
@@ -39,6 +41,8 @@ export const FLOW_TEXTS = Object.freeze({
     replayDiverged: (n) => `Plan cambiado: ${n === 1 ? 'esta fase ya no se repite' : `estas ${n} fases ya no se repiten`}; sigues tú`,
     noPause: `Un turno no se pausa: dura ${TURN} s y luego vuelves a planificar`,
     droneReplay: 'Reintento: el dron repite su recorrido grabado',
+    enemyDrone: 'El dron es del atacante: termina solo (o cuando un defensor lo derriba)',
+    pickDefender: 'Primero toca a un defensor',
     goInTurn: 'Los GO se dan durante el turno: pulsa LISTO y luego el GO de color cuando quieras',
     goReplay: 'Este turno es la repetición de tu plan: tomas el control en la próxima planificación',
     planFirst: 'Las órdenes se dan al planificar: espera al fin del turno',

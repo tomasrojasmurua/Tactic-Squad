@@ -51,11 +51,12 @@ export class CameraFraming {
     this.placeAt(r[0] + r[2] / 2, r[1] + r[3] / 2, this.fitHeight(r[2] + 2 * pad, r[3] + 2 * pad));
   }
 
-  /** First shot of a round: the map's `camera.frame` rect (squad + first rooms), never under the HUD. */
+  /** First shot of a round: the map's `camera.frame` rect (squad + first rooms; a defender: `defendFrame`, their half), never under the HUD. */
   frameStart() {
     this.saved = null;
     const c = this.mapDef.camera;
-    if (c.frame) this.frameRect(c.frame);
+    const frame = this.session.team === 'defenders' && c.defendFrame ? c.defendFrame : c.frame;
+    if (frame) this.frameRect(frame);
     else this.placeAt(c.start[0], c.start[1], c.height);
   }
 

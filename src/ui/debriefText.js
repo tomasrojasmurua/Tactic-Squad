@@ -29,12 +29,14 @@ export function buildDebrief(sim, team) {
     lines.push(D.death[c.code](d));
     tipCode ??= c.code; // the first mistake is the one that broke the plan
   }
+  const defending = team === 'defenders';
   for (const n of sim.outcome.notes || []) {
+    if (defending && n.code !== 'bombHidden') continue; // the rest speak to the attackers' plan
     const u = n.unitId >= 0 ? sim.units[n.unitId] : null;
     lines.push(D.note[n.code]({ name: u ? u.name : '', place: placeName(n.room), site: n.site }));
   }
   const lost = sim.outcome.winner !== team;
   if (lost && sim.outcome.reason === 'time') tipCode ??= 'time';
-  const tip = lost && tipCode ? D.tip[tipCode] : null;
+  const tip = lost && tipCode ? (defending ? D.tipDefend : D.tip)[tipCode] || null : null;
   return { lines, tip };
 }

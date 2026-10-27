@@ -73,7 +73,7 @@ function stepDone(id, sim, session, t) {
 
 /** Does tip `id` apply now? */
 function tipApplies(id, sim, session) {
-  if (session.phase !== 'planning') return false;
+  if (session.phase !== 'planning' || session.team === 'defenders') return false; // the tips speak to the attacker
   if (id === 'barricade') return sim.intel.barricades.size > 0;
   if (id === 'defuse') return canOrderDefuse(sim);
   return false;
@@ -169,8 +169,9 @@ export class Tutorial {
     const phase = this.session.phase;
     if (!t.active) {
       if (t.card || phase === 'ended') return null;
-      // A phase before the assault, reached for the first time on this device: its intro card.
-      const intro = PHASE_INTROS[phase];
+      // A phase before the assault, reached for the first time on this device: its intro card
+      // (they explain the attacker's side; the defender's set-up has its own panel and hints).
+      const intro = this.session.team === 'defenders' ? null : PHASE_INTROS[phase];
       if (intro && !t.introsSeen.includes(intro)) {
         t.introsSeen.push(intro);
         savePref(FLOW.storageKeys.introsSeen, t.introsSeen);

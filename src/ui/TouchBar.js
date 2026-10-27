@@ -4,7 +4,7 @@
 import { EV } from '../core/events.js';
 import { canOrderDefuse, isGoReady, codeInUse, codeWaiting, goStatus, lastUserIndex, holdCode } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
-import { isDecisionPhase } from '../session/Session.js';
+import { isDecisionPhase, pilotsDrone } from '../session/Session.js';
 import { HUD, GO_GROUPS } from '../config/ui.js';
 import { el, setText, toggle, setHidden } from './dom.js';
 import { ICON } from './icons.js';
@@ -88,7 +88,7 @@ export class TouchBar {
     const deciding = isDecisionPhase(session);
     // LISTO ends a decision phase; a running turn cannot be paused (no button), a system pause resumes here.
     setText(this.execLabel, phase === 'drone' ? T.touch.recall : !deciding ? T.touch.resume : session.confirm.action === 'ready' ? T.flow.confirmReady : T.touch.ready);
-    setHidden(this.exec, !deciding && phase !== 'paused' && phase !== 'drone');
+    setHidden(this.exec, !deciding && phase !== 'paused' && !(phase === 'drone' && pilotsDrone(session)));
 
     const sel = sim.units[session.selectedId];
     const canPlan = phase === 'planning' || phase === 'prep';

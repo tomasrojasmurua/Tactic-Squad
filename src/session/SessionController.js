@@ -15,12 +15,14 @@
 // CameraFraming (input/, injected).
 import { EV } from '../core/events.js';
 import { SIM, ENTRY } from '../config/balance.js';
+import { PLAYER_TEAM } from '../config/squad.js';
 import { TUTORIAL, FLOW } from '../config/ui.js';
 import { loadPref, savePref } from './storage.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
 import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors } from '../sim/queries.js';
 import { phaseTick } from '../sim/round.js';
-import { SESSION_PHASE, isDecisionPhase, isPlanningTime, isLivePhase } from './Session.js';
+import { SESSION_PHASE, isDecisionPhase, isPlanningTime, isLivePhase, pilotsDrone, isDefenderSetup } from './Session.js';
+import { watchOf, watchOrder } from './watch.js';
 import { armOrConfirm } from './confirm.js';
 import { PlanRecorder } from './PlanRecorder.js';
 import { PhaseClock } from './PhaseClock.js';
@@ -129,12 +131,14 @@ export class SessionController {
       this.session.replay.exec = this.recorder.inReplay;
       this.recorder.enterPhase((cmd) => this.bus.emit(EV.COMMAND, cmd));
       this.session.replay.pending = this.recorder.pending;
-      if (phase === 'drone') this.framing.followDrone(this.sim, 0, true);
+      if (phase === 'drone' && pilotsDrone(this.session)) this.framing.followDrone(this.sim, 0, true);
       this.tutorialTick(); // a tutorial card for this phase stops it before it runs
       return;
     }
     this.session.replay.exec = false;
     if (!isDecisionPhase(this.session)) return;
+    // Playing the defenders there is nothing to buy: the AI's squad buys when the phase ends.
+    if (sim.phase === 'buy' && sim.controllers.attackers === 'ai') return this.advance();
     const auto = this.recorder.enterPhase((cmd) => this.bus.emit(EV.COMMAND, cmd));
     this.session.replay.pending = this.recorder.pending;
     this.clock.start(sim.phase, auto);
@@ -163,7 +167,7 @@ export class SessionController {
   /**
    * Round phases before the assault that this player has not unlocked yet
    * (config/ui.js FLOW.unlockAfterRounds): they are skipped with defaults.
-   * The guided tutorial skips them all; "Ronda completa" (help) keeps them all.
+   * The guided tutorial skips them all; "Ronda completa" (help) and the defenders keep them all.
    */
   lockedPhases() {
     return this.locks || (this.locks = this.computeLocks());
@@ -174,6 +178,7 @@ export class SessionController {
     const s = this.session;
     if (s.mode === 'tutorial') return ['buy', 'prep', 'drone'];
     if (s.mode === 'match') return []; // a match is played whole: its money is spent in the buy phase
+    if (s.team === 'defenders') return []; // the set-up is the defender's round: nothing to unlock
     if (s.progress.fullRound) return [];
     const n = s.progress.roundsDone;
     return Object.keys(FLOW.unlockAfterRounds).filter((p) => n < FLOW.unlockAfterRounds[p]);
@@ -242,7 +247,7 @@ export class SessionController {
     } else if (phase === 'drone' && sim.phase !== 'drone') {
       this.recorder.advance(); // the drone's stick is one segment
       this.syncPhase();
-      this.framing.frameStart(); // back to the squad
+      if (pilotsDrone(this.session)) this.framing.frameStart(); // back to the squad
     }
     else if (phase === 'ended') {
       this.postRoundTimer -= dt;
@@ -318,7 +323,8 @@ export class SessionController {
       return;
     }
     if (phase === 'drone') {
-      if (this.session.replay.exec) this.notice('droneReplay');
+      if (!pilotsDrone(this.session)) this.notice('enemyDrone');
+      else if (this.session.replay.exec) this.notice('droneReplay');
       else this.command({ type: 'droneRecall', atTick: phaseTick(this.sim) });
       return;
     }
@@ -338,7 +344,7 @@ export class SessionController {
 
   /** The drone's stick changed (input/DroneController.js): a heading index or -1, stamped with the drone phase's step. */
   steerDrone(dir) {
-    if (this.session.phase !== 'drone' || this.session.replay.exec) return;
+    if (this.session.phase !== 'drone' || this.session.replay.exec || !pilotsDrone(this.session)) return;
     this.command({ type: 'drone', dir, atTick: phaseTick(this.sim) });
   }
 
@@ -363,13 +369,15 @@ export class SessionController {
     }
     switch (action) {
       case 'start':
+      case 'defend':
       case 'tutorial':
       case 'match':
-        // Main menu: "Jugar contra la IA" (start), "Partida al mejor de 7" (match) or "Tutorial guiado".
+        // Main menu: attack or defend against the AI (start / defend), "Partida al mejor de 7" (match)
+        // or the guided tutorial (always attacking).
         if (phase !== 'title') return;
         this.audio.unlock();
         if (session.touch) requestFullscreenLandscape();
-        this.beginMode(action === 'start' ? 'play' : action);
+        this.beginMode(action === 'start' || action === 'defend' ? 'play' : action, action === 'defend' ? 'defenders' : 'attackers');
         return;
       case 'nextRound':
         // Match result screen: the next round (or, when it is over, a new match).
@@ -504,6 +512,7 @@ export class SessionController {
         else if (action.startsWith('chooseEntry_') && (phase === 'prep' || phase === 'planning')) this.chooseEntry(action.slice(12));
         else if (action.startsWith('buy_') && phase === 'buy') this.buy(action);
         else if (action.startsWith('role_') && phase === 'buy') this.setRole(action);
+        else if (isDefenderSetup(session)) this.setup(action);
     }
   }
 
@@ -512,6 +521,29 @@ export class SessionController {
     const [, id, role] = action.split('_');
     this.command({ type: 'setRole', unitId: +id, role });
     this.sim.flushCommands();
+    this.sound('select');
+  }
+
+  /**
+   * The defender's set-up panel (ui/PhasePanel.js): site_<id> moves the bomb
+   * (the set-up starts over from the map's for it), barricade_<doorId>
+   * toggles one, watch_<mode> changes the selected defender's watch order.
+   */
+  setup(action) {
+    const sim = this.sim;
+    const [kind, arg] = [action.slice(0, action.indexOf('_')), action.slice(action.indexOf('_') + 1)];
+    if (kind === 'site') this.command({ type: 'chooseSite', site: arg });
+    else if (kind === 'barricade') {
+      const door = sim.doors.find((d) => d.def.id === arg);
+      if (!door) return;
+      this.command({ type: 'barricade', door: arg, on: !door.barricaded });
+    } else if (kind === 'watch') {
+      const u = controllableUnit(sim, this.session.selectedId, this.session.team);
+      if (!u) return this.notice('pickDefender');
+      const w = watchOf(u);
+      this.command({ type: 'setWatch', unitId: u.id, watch: watchOrder(arg, w.facing, w.fallback) });
+    } else return;
+    sim.flushCommands();
     this.sound('select');
   }
 
@@ -542,8 +574,9 @@ export class SessionController {
   }
 
   /** From the menu: a fresh round against the AI, or the guided tutorial's round (config/ui.js TUTORIAL). */
-  beginMode(mode) {
+  beginMode(mode, team = PLAYER_TEAM) {
     this.session.mode = mode;
+    this.session.team = mode === 'tutorial' ? PLAYER_TEAM : team;
     this.locks = null;
     this.session.match = mode === 'match' ? createMatch() : null;
     // A match: every round its own scenario (site, spread...), a fresh series each match.
@@ -580,6 +613,7 @@ export class SessionController {
   toMenu() {
     this.tutorial.stop();
     this.session.mode = 'play';
+    this.session.team = PLAYER_TEAM;
     this.session.match = null;
     this.locks = null;
     this.setPhase('title');

@@ -5,7 +5,7 @@
 // banner keeps the phase's line. Priority: why a turn stopped (system pause) >
 // replay progress > GO prompts > planning steps.
 import { teamUnits, controllableUnit, isGoReady, pendingDoors, ASK_CODE } from '../sim/queries.js';
-import { ENTRY } from '../config/balance.js';
+import { ENTRY, PREP } from '../config/balance.js';
 import { T } from './texts.js';
 
 const hasUserPoint = (u) => u.route.some((p) => p.user);
@@ -37,10 +37,11 @@ export function coachHint(sim, session) {
     return w.waitCode === ASK_CODE ? say(C.askWaiting(w.name), true) : say(C.goWaiting[dev](w.name), false);
   }
   if (session.phase !== 'planning' && session.phase !== 'prep') return null;
+  if (team === 'defenders' && session.phase === 'prep') return defenderSetup(sim, session, dev);
   // Strict mode only (ENTRY.undecided 'stop'): a door nobody decided stops its operator there.
   const doors = pendingDoors(sim, team);
   if (doors > 0 && ENTRY.undecided === 'stop') return say(C.doorsStrict[dev](doors), true);
-  if (session.phase !== 'planning') return null;
+  if (session.phase !== 'planning' || team === 'defenders') return null; // a defender's plan is optional
   if (sim.turn > 1) return null; // the first planning teaches the steps; later ones are the player's
   const squad = teamUnits(sim, team);
   const sel = controllableUnit(sim, session.selectedId, team);
@@ -52,4 +53,14 @@ export function coachHint(sim, session) {
   const idle = squad.find((u) => u.alive && !hasUserPoint(u));
   if (idle) return say(C.next[dev](idle.name), false);
   return say(C.ready[dev], false);
+}
+
+/** Playing the defenders, preparation: pick one, place and aim him; the barricades still to put up. */
+function defenderSetup(sim, session, dev) {
+  const C = T.coach;
+  const sel = controllableUnit(sim, session.selectedId, session.team);
+  if (!sel) return say(C.defSelect[dev], true);
+  const left = PREP.barricades - sim.doors.filter((d) => d.barricaded).length;
+  if (left > 0) return say(C.defBarricades(left), false);
+  return say(C.defPlace[dev](sel.name), false);
 }
