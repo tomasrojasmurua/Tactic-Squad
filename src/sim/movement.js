@@ -6,7 +6,7 @@
 // side is revealed inside his cone, not behind his back. A doorway coming up
 // on the route is aimed THROUGH (MOVE.doorPeek past it). When the route ends
 // he keeps facing the way he arrived (or the look the player set there).
-import { MOVE } from '../config/balance.js';
+import { MOVE, NAV } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { angleDiff, angleTo, approachAngle } from '../core/math.js';
 import { tryOpenDoors, segmentCrossesDoorway } from './doors.js';
@@ -92,7 +92,7 @@ export function updateMovement(sim, u, dt) {
     u.stun -= dt;
     return;
   }
-  if (u.waitingGo || u.entry || u.bash || u.goDelay > 0 || !u.route.length) return;
+  if (u.waitingGo || u.entry || u.bash || u.goDelay > 0 || !u.route.length) return resetStuck(u);
 
   let speed = (u.behavior && u.behavior.type === 'patrol' ? MOVE.patrolSpeed : MOVE.speed) * u.mods.speed;
   if (u.target >= 0) speed *= MOVE.engageFactor;
@@ -135,6 +135,7 @@ export function updateMovement(sim, u, dt) {
     }
   }
 
+  unstick(sim, u, dt, moved);
   if (moved > 0) {
     u.moving = true;
     u.distanceWalked += moved;
@@ -208,6 +209,38 @@ function doorwayBusy(sim, u) {
     ay = p.y;
   }
   return false;
+}
+
+/**
+ * Pushed off his line (an ally in a doorway, a blast) an operator can end up
+ * walking straight into a wall toward his next point. When he has been
+ * trying to walk for MOVE.stuckTime without getting anywhere, the way to
+ * that point is found again (the new corners are inserted before it).
+ */
+function unstick(sim, u, dt, moved) {
+  const s = u.stuck;
+  if (!u.route.length) return resetStuck(u);
+  s.t += dt;
+  s.want += moved;
+  if (s.t < MOVE.stuckTime) return;
+  const went = Math.hypot(u.x - s.x, u.y - s.y);
+  const want = s.want;
+  resetStuck(u);
+  if (want <= 0 || went >= want * MOVE.stuckFraction) return;
+  const p = u.route[0];
+  const path = sim.world.nav.findPath(u.x, u.y, p.x, p.y, NAV.snapRadius);
+  if (!path || path.length < 2) return;
+  path.pop(); // the point itself stays as it is (user, hold, entry...)
+  const corners = path.map((q) => ({ x: q.x, y: q.y, user: false, look: null, hold: false, code: null, entry: null, entryDoor: -1, ask: false, door: -1 }));
+  u.route.unshift(...corners);
+}
+
+function resetStuck(u) {
+  const s = u.stuck;
+  s.t = 0;
+  s.want = 0;
+  s.x = u.x;
+  s.y = u.y;
 }
 
 /** Is an ally of u standing (or arriving) on point p? */

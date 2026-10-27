@@ -21,9 +21,8 @@ import { alertAiUnit } from './ai.js';
 import { isAiControlled } from './queries.js';
 import { barricadeBoxes, spotBarricades } from './barricades.js';
 
-/** Launches the drone in front of the attackers' entry door, facing it. False when nobody drives it (the attackers are not human). */
+/** Launches the drone in front of the attackers' entry door, facing it (a player or the attacking AI drives it). */
 export function launchDrone(sim) {
-  if (sim.controllers.attackers !== 'human') return false;
   const door = sim.compiled.doors.find((d) => d.id === sim.entry.door);
   const s = sim.entry.spawns[0];
   const side = Math.sign((s.at[0] - door.cx) * door.normalX + (s.at[1] - door.cy) * door.normalY) || -1;

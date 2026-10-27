@@ -45,6 +45,10 @@ export const MOVE = Object.freeze({
   doorPeekRange: 3.0, // m along the route: doorways closer than this are aimed through
   settleTime: 0.35, // s standing still before the aim counts as "set" (accuracy bonus)
   readyAngle: 8 * DEG, // a unit waiting for GO is "in position" once aimed this close to its set look
+  // Stuck: over stuckTime s of walking he got less than stuckFraction of the way he walked
+  // (pushed against a wall): he finds the way to his next point again.
+  stuckFraction: 0.15,
+  stuckTime: 0.6,
 });
 
 export const VISION = Object.freeze({
@@ -115,6 +119,21 @@ export const AI = Object.freeze({
   // of staring at a wall: he holds that angle, he does not wander off.
   watchMinDistance: 1.2, // m: path corners closer than this are skipped
   repathInterval: 0.5, // s between watch-point updates while alerted
+});
+
+/**
+ * Attacking AI (sim/aiAttack.js): a commander that plays the attackers'
+ * side through the same orders as a player (used when the player defends).
+ */
+export const AI_ATTACK = Object.freeze({
+  buyFlashes: 1, // flashbangs each operator tries to buy (as long as his money lasts)
+  droneReach: 0.35, // m: a point of the drone's path counts as reached this close
+  droneStuck: 0.6, // s without moving (a barricade, a prop) before it gives up on that point
+  choiceSlack: 0.15, // entries / sites up to this much longer than the best are as good (the seed picks)
+  spotSpacing: 0.9, // m between the operators' end points around the bomb
+  flashers: 1, // operators who throw a flashbang through each door (if they carry one); the rest follow
+  goPause: 0.25, // s a group waits in position before its GO (it reads as a call, not a reflex)
+  goTimeout: 4, // s waiting for a GO before it is given anyway (someone is stuck or fighting)
 });
 
 /** Round debrief (sim/debrief.js). */

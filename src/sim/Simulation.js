@@ -14,6 +14,8 @@ import { updateEntries } from './entries.js';
 import { applyCommand } from './orders.js';
 import { updatePerception } from './perception.js';
 import { updateAiUnit } from './ai.js';
+import { createAttackAi, attackAiDecide, attackAiTick } from './aiAttack.js';
+import { isAiControlled } from './queries.js';
 import { updateFacing, updateMovement } from './movement.js';
 import { resolveCollisions } from './collisions.js';
 import { updateCombat } from './combat.js';
@@ -80,6 +82,7 @@ export class Simulation {
     this.bomb = createBomb(this.site);
     if (phases) initMoney(this); // the buy phase: each attacker's money after his role's gear
     initAbilities(this);
+    this.attackAi = createAttackAi(this); // sim/aiAttack.js: the commander of an AI attacking side
   }
 
   spawnUnits() {
@@ -135,6 +138,7 @@ export class Simulation {
   /** Ends the current decision phase (buy -> prep -> plan -> exec); applies pending orders first. */
   advancePhase() {
     this.flushCommands();
+    attackAiDecide(this); // an AI side decides when the phase ends, like a player pressing LISTO
     advancePhase(this);
   }
 
@@ -202,6 +206,7 @@ export class Simulation {
     if (this.round.phase === PHASE.drone) return this.stepDrone(dt);
     const firstEvent = this.events.length;
     this.flushCommands();
+    attackAiTick(this);
     for (const u of this.units) {
       u.prevX = u.x;
       u.prevY = u.y;
@@ -216,7 +221,7 @@ export class Simulation {
     for (const u of this.teams.attackers) if (u.alive && u.blind <= 0) spotBarricades(this, u, u.vision.fov);
     for (const u of this.units) {
       if (!u.alive) continue;
-      if (this.controllers[u.team] === 'ai') updateAiUnit(this, u, dt);
+      if (isAiControlled(this, u)) updateAiUnit(this, u, dt);
       updateFacing(this, u, dt);
       updateMovement(this, u, dt);
     }
@@ -234,10 +239,11 @@ export class Simulation {
   /** A step of the drone phase: only the drone moves; the defenders hold their set-up and only turn. */
   stepDrone(dt) {
     this.flushCommands();
+    attackAiTick(this);
     updateDrone(this, dt);
     for (const u of this.teams.defenders) {
       if (!u.alive) continue;
-      if (this.controllers.defenders === 'ai') updateAiUnit(this, u, dt);
+      if (isAiControlled(this, u)) updateAiUnit(this, u, dt);
       updateFacing(this, u, dt);
     }
     afterTick(this, endRound);

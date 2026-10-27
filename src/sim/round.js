@@ -11,7 +11,7 @@
 //   drone the attackers drive their recon drone in real time (sim/drone.js,
 //         DRONE.seconds); only the drone and the defenders' eyes run, the
 //         bomb's timer does not. It ends when the time is up, the drone is
-//         shot down or recalled. Skipped when the attackers are not human.
+//         shot down or recalled. The attacking AI drives it too (sim/aiAttack.js).
 //   plan  both sides edit their orders blind; time does not run (in the
 //         first one the attackers may still change their entry)
 //   exec  every order runs at once for ROUND.turnSeconds (turnTicks steps);
