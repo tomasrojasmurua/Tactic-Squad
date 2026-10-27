@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
 import { applyRole } from '../src/sim/units.js';
 import { ENTRY, DOORS } from '../src/config/balance.js';
-import { isGoReady, codeWaiting, pendingDoors } from '../src/sim/queries.js';
+import { isGoReady, codeWaiting, pendingDoors, peekEye } from '../src/sim/queries.js';
+import { canSee } from '../src/sim/vision.js';
 import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
 
 const MAP = MAPS[DEFAULT_MAP];
@@ -277,4 +278,25 @@ test('una ronda con entradas coordinadas es determinista', () => {
   assert.ok(a.outcome, 'la ronda debe terminar');
   assert.equal(a.go.length, 2, 'se dieron los dos GO');
   assert.deepEqual(a, b);
+});
+
+test('entreabrir: por la rendija se ve una franja de la sala, no la sala entera', () => {
+  const { sim, a } = atTheDoor({ defender: [36, 3] });
+  wp(sim, a, 9.25, 9.3); // junto a la puerta de la oficina (x = 10, la sala al este)
+  cmd(sim, { type: 'setHold', unitId: a.id, code: 'A' });
+  cmd(sim, { type: 'setEntry', unitId: a.id, mode: 'slow' });
+  runFor(sim, 3);
+  const eye = {};
+  assert.ok(peekEye(sim, a, eye), 'mira por la rendija');
+  const cfg = { fov: ENTRY.slow.peekFov, range: a.vision.range };
+  let seen = 0;
+  let all = 0;
+  for (let x = 10.6; x < 17; x += 0.4) {
+    for (let y = 2.6; y < 10.8; y += 0.4) {
+      all++;
+      if (canSee(sim.world, eye, x, y, cfg)) seen++;
+    }
+  }
+  const part = seen / all;
+  assert.ok(part > 0.05 && part < 0.25, `ve ${(part * 100).toFixed(0)} % de la sala`);
 });
