@@ -1,12 +1,15 @@
 // Every user-facing string (Spanish). Keep UI copy here, not in components.
 
 import { FLOW_TEXTS } from './flowTexts.js';
+import { ROUND, DRONE } from '../config/balance.js';
+
+const TURN = ROUND.turnSeconds;
 
 export const T = Object.freeze({
   gameTitle: 'TACTIC SQUAD',
   subtitle: 'Prototipo táctico · Operación Almacén',
   briefing:
-    'Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. Antes del asalto compras equipo, eliges entrada y tienes 15 s de dron para mirar adentro. El asalto va por turnos: planificas sin ver al rival, con todo el tiempo que quieras, y todo se ejecuta a la vez durante 8 s, sin pausa; durante el turno lanzas los grupos GO A·B·C. La bomba estalla tras 3 minutos de ejecución: encuéntrala y desactívala (7 s quieto, sin disparar) o elimina a los Defensores antes.',
+    `Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. Antes del asalto compras equipo, eliges entrada y tienes ${DRONE.seconds} s de dron para mirar adentro. El asalto va por turnos: planificas sin ver al rival, con todo el tiempo que quieras, y todo se ejecuta a la vez durante ${TURN} s, sin pausa; durante el turno lanzas los grupos GO A·B·C. La bomba estalla tras ${ROUND.timeLimit} s de ejecución: encuéntrala y desactívala (${ROUND.defuseTime} s quieto, sin disparar) o elimina a los Defensores antes.`,
   start: 'COMENZAR',
   startHint: 'Intro: jugar contra la IA',
 
@@ -48,12 +51,12 @@ export const T = Object.freeze({
     touch: [
       ['1', 'Toca un operador y arrastra el dedo para dibujar su ruta.'],
       ['2', 'Mantén pulsado un punto para elegir hacia dónde mira.'],
-      ['3', 'LISTO: el turno corre 8 s. Luego corriges el plan con lo que pasó.'],
+      ['3', `LISTO: el turno corre ${TURN} s. Luego corriges el plan con lo que pasó.`],
     ],
     desk: [
       ['1', 'Selecciona un operador (1·2·3) y haz clic o arrastra su ruta.'],
       ['2', 'Clic derecho y arrastra en un punto: hacia dónde mira.'],
-      ['3', 'ESPACIO: listo, el turno corre 8 s. H marca un grupo GO; en el turno, A·B·C lo lanzan.'],
+      ['3', `ESPACIO: listo, el turno corre ${TURN} s. H marca un grupo GO; en el turno, A·B·C lo lanzan.`],
     ],
   },
 
@@ -249,7 +252,7 @@ export const T = Object.freeze({
       ['A · B · C (o G)', 'Durante el turno: ¡ahora! Ese grupo actúa a la vez (los que aún no llegan, siguen de largo)'],
       ['Retroceso / Z', 'Deshacer último punto'],
       ['X / Supr', 'Borrar ruta'],
-      ['Espacio / Intro', 'Listo: termina la fase y ejecuta el turno (8 s, sin pausa)'],
+      ['Espacio / Intro', `Listo: termina la fase y ejecuta el turno (${TURN} s, sin pausa)`],
       ['WASD · flechas · bordes', 'Mover cámara'],
       ['Rueda · + / −', 'Zoom'],
       ['Botón central (arrastrar)', 'Mover cámara'],
@@ -291,7 +294,7 @@ export const T = Object.freeze({
       ['Esperar', 'El último punto espera a un grupo GO (cada toque: A, B, C, sin espera)'],
       ['Entrada (junto a una puerta)', 'Patada, entreabrir, flash, granada o carga'],
       ['GO A · B · C', 'Durante el turno: ¡ahora! Ese grupo actúa a la vez'],
-      ['Listo', 'Termina la fase; el turno corre 8 s sin pausa'],
+      ['Listo', `Termina la fase; el turno corre ${TURN} s sin pausa`],
     ],
     startHint: 'Toca para comenzar',
   },

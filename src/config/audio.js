@@ -154,7 +154,7 @@ export const NEAR_MISS = Object.freeze({ radius: 1.7, minTravel: 2.5, perShot: 1
 /** Bomb arming beeps speed up with progress: interval = start - progress * speedup. */
 export const PLANT_BEEP = Object.freeze({ startInterval: 0.5, speedup: 0.32 });
 /** The bomb's timer in its last `window` s of execution: beeps from `slowest` s apart down to `fastest`. */
-export const BOMB_BEEP = Object.freeze({ window: 30, slowest: 1.0, fastest: 0.15 });
+export const BOMB_BEEP = Object.freeze({ window: 20, slowest: 1.0, fastest: 0.15 });
 
 /**
  * Gunshot recipes keyed by weapon id (audio/recipes/guns.js): four independently varied layers

@@ -18,7 +18,7 @@ const cmd = (sim, c) => sim.enqueue({ team: T, ...c });
 const wp = (sim, u, x, y) => cmd(sim, { type: 'addWaypoint', unitId: u.id, x, y, user: true });
 const rejects = (sim) => sim.drainEvents().filter((e) => e.type === EV.ORDER_REJECTED).map((e) => e.reason);
 
-/** Ejecuta el turno planificado (8 s) y vuelve a planificar (o termina). */
+/** Ejecuta el turno planificado (ROUND.turnSeconds) y vuelve a planificar (o termina). */
 function playTurn(sim) {
   sim.advancePhase();
   while (sim.phase === 'exec') sim.step();
@@ -44,7 +44,7 @@ test('la ronda pasa por compra, preparación, dron y planificación; solo el dro
   assert.equal(sim.timeLeft, ROUND.timeLimit, 'la preparación no gasta el tiempo de la bomba');
 });
 
-test('cada turno ejecuta exactamente 8 s y vuelve a planificar; durante la ejecución no hay órdenes de ruta', () => {
+test('cada turno ejecuta exactamente ROUND.turnSeconds y vuelve a planificar; durante la ejecución no hay órdenes de ruta', () => {
   const sim = new Simulation(MAP, { seed: 5 });
   sim.skipToAssault();
   const u = sim.teams.attackers[0];
@@ -65,7 +65,7 @@ test('las rutas sin terminar siguen al turno siguiente y se pueden cambiar al pl
   const sim = new Simulation(MAP, { seed: 5, controllers: STILL });
   sim.skipToAssault();
   const u = sim.teams.attackers[0];
-  wp(sim, u, 10.6, 21.55); // lejos: más de 8 s de camino
+  wp(sim, u, 10.6, 21.55); // lejos: más de un turno de camino
   wp(sim, u, 15.4, 19.5);
   wp(sim, u, 6.2, 22.4); // y de vuelta
   playTurn(sim);
@@ -77,7 +77,7 @@ test('las rutas sin terminar siguen al turno siguiente y se pueden cambiar al pl
   assert.ok(u.y < y, 'el nuevo plan manda en el turno siguiente');
 });
 
-test('la bomba explota a los 3 min de ejecución (planificar no gasta su tiempo): ganan los defensores', () => {
+test('la bomba explota al acabar su tiempo de ejecución (planificar no gasta su tiempo): ganan los defensores', () => {
   const sim = new Simulation(MAP, { seed: 9 });
   sim.skipToAssault();
   let exploded = 0;
