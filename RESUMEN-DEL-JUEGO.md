@@ -156,7 +156,8 @@ explosiones.**
 
 **Cámaras de los defensores.** Una por sitio: en A mira el pasillo, en B la sala. Si
 tiene a un atacante a la vista 0,5 s, **todos los defensores saben dónde está** y
-apuntan a esa entrada. Los atacantes la descubren con un operador o con el dron (punto
+apuntan a esa entrada. Si juegas de defensor, **lo ves en tu mapa** y la primera vez
+cuenta como contacto (corta el turno); con **CÁMARAS** (tecla O) las recorres al planificar. Los atacantes la descubren con un operador o con el dron (punto
 rojo con su cono) y **la rompen de un tiro** si no tienen a quién más dispararle. Si ya
 la conocían, la rompen antes de que alcance a verlos. El humo también la ciega.
 
