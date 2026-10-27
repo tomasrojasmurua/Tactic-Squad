@@ -176,7 +176,7 @@ es el trabajo pendiente para que el servidor online no mande lo que el jugador n
 | `Session.js` | Estado de "esta sesión de juego": fase de pantalla, selección, estado transitorio de UI. Las fases espejan las de la ronda y agregan `title`, `paused` y `ended` |
 | `SessionController.js` | El **único** lugar que decide qué significa cada petición del jugador en cada fase: cierra fases de decisión, corre el bucle solo mientras un turno se ejecuta, sella los GO y el mando del dron. Decide qué fases previas están **bloqueadas** para este jugador (`FLOW.unlockAfterRounds`, fijo por intento para que el reintento no se desincronice) y las salta con valores por defecto. Lleva el modo (`play` / `tutorial` / `match`) |
 | `PhaseClock.js` | Plazos de reloj de pared de las fases de decisión. La sim nunca ve este reloj; online, lo tendrá el servidor. Se detiene mientras el jugador no puede planificar (ayuda abierta, página oculta, celular en vertical, tutorial) |
-| `Match.js` | Partida al mejor de 7 contra la IA: reglas puras (`createMatch`, `matchLoadout`, `endMatchRound`). Marcador, ingresos (`MATCH`), y qué pasa a la ronda siguiente (clase, dinero, equipo de los vivos) como `opts.loadout` de la próxima `Simulation` |
+| `Match.js` | Partida al mejor de 7 contra la IA: reglas puras (`createMatch`, `matchLoadout`, `endMatchRound`). Marcador del jugador contra la IA, cambio de bando tras `MATCH.switchAfter` rondas (`match.team`, que el flujo copia a `session.team`), ingresos (`MATCH`), y qué pasa a la ronda siguiente (clase, dinero, equipo de los vivos) como `opts.loadout` de la próxima `Simulation` |
 | `PlanRecorder.js` | Todas las órdenes de un intento, agrupadas por fase. Es exactamente la lista de paquetes de turno We-Go: lo que mandaría una partida online y lo que necesita un replay. Sostiene el "reintentar" |
 | `Tutorial.js` | Tutorial guiado: una ronda real paso a paso (solo el asalto), y las tarjetas de presentación de compra, entrada y dron la primera vez que aparecen (`PHASE_INTROS`) |
 | `AutoPause.js` | Pausa de sistema cuando el jugador no puede seguir el turno (página oculta, foco perdido, contexto WebGL perdido). Nunca por contacto |
@@ -338,9 +338,6 @@ El código ya está ordenado para la versión en red, aunque no haya nada de red
   `sim.cameras` / `sim.smokes` (filtrando por `known` para el atacante).
 - Un solo mapa, y la cantidad de operadores por bando la fija el mapa (hoy 3 atacantes
   contra 4 defensores), no una configuración de partida.
-- La partida al mejor de 7 es solo de atacante: el cambio de bando necesita el PR #10
-  (jugar de defensor). `Match.js` ya guarda el marcador por bando, así que el cambio es
-  invertir `session.team` y los `controllers` en la ronda 4.
 - Faltan las demás clases del diseño y la elección a ciegas del defensor.
 - Varios comentarios del código mencionan `docs/BRIEF.md` y `tests/sim-plans.mjs`, que
   no venían en el zip original y no existen en el repo.

@@ -265,7 +265,7 @@ export class Hud {
     const killsText = (defending ? T.objective.killsDefend : T.objective.kills)(dead, enemies.length);
     const m = session.mode === 'match' && session.match;
     const shownRound = m && session.phase === 'ended' && !m.over ? m.round - 1 : m && m.round; // the result still talks about the round played
-    setText(this.kills, m ? `${T.objective.match(shownRound, m.score.attackers, m.score.defenders)} · ${killsText}` : killsText);
+    setText(this.kills, m ? `${T.objective.match(shownRound, m.score.player, m.score.ai)} · ${killsText}` : killsText);
     const b = sim.bomb;
     setText(this.bombText, b.defused ? T.objective.bombDefused : bombKnownTo(sim, session.team) ? T.objective.bombAt(b.site) : T.objective.bombUnknown);
     setText(this.timer, formatTime(sim.timeLeft));

@@ -331,6 +331,8 @@ export const SCOUT = Object.freeze({ radius: 8 });
  * Each operator carries his class, his money and — if he lived — his unused
  * gear into the next round, and earns per round: `win` or `loss` (+`lossBonus`
  * per round lost in a row, up to `lossBonusMax` rounds), `kill` per defender
- * he downed, `defuse` if he defused. Money is capped at `cap`.
+ * he downed, `defuse` if he defused. Money is capped at `cap`. The player
+ * attacks the first `switchAfter` rounds and then defends; the new attackers
+ * start over from the first round's money.
  */
-export const MATCH = Object.freeze({ toWin: 4, win: 600, loss: 300, lossBonus: 100, lossBonusMax: 3, kill: 100, defuse: 200, cap: 2000 });
+export const MATCH = Object.freeze({ toWin: 4, switchAfter: 3, win: 600, loss: 300, lossBonus: 100, lossBonusMax: 3, kill: 100, defuse: 200, cap: 2000 });

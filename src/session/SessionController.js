@@ -578,7 +578,7 @@ export class SessionController {
     this.session.mode = mode;
     this.session.team = mode === 'tutorial' ? PLAYER_TEAM : team;
     this.locks = null;
-    this.session.match = mode === 'match' ? createMatch() : null;
+    this.session.match = mode === 'match' ? createMatch(this.session.team) : null;
     // A match: every round its own scenario (site, spread...), a fresh series each match.
     this.matchSeed = mode === 'match' ? (Math.random() * 1e9) | 0 : 0;
     this.seed = mode === 'tutorial' ? TUTORIAL.seed : mode === 'match' ? this.matchSeed + 1 : SIM.seed;
@@ -601,6 +601,7 @@ export class SessionController {
       return;
     }
     this.locks = null;
+    this.session.team = m.team; // after MATCH.switchAfter rounds the player defends
     this.seed = this.matchSeed + m.round;
     this.recorder.beginAttempt([]);
     this.session.replay.attempt = 0;

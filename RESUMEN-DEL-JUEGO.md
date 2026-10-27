@@ -109,8 +109,10 @@ gane 4. Cada operador cobra por ronda:
 
 Pasan a la ronda siguiente la **clase**, el **dinero** y el **equipo sin usar de los
 que sobrevivieron**. El que cae pierde lo que llevaba. En una partida no hay reintentos.
-El resultado muestra el marcador, cuánto cobró cada uno y SIGUIENTE RONDA. Por ahora se
-juega siempre de atacante (ver sección 5).
+El resultado muestra el marcador, cuánto cobró cada uno y SIGUIENTE RONDA. El jugador
+ataca las 3 primeras rondas y después **cambia de bando** y defiende. Como en el medio
+tiempo, los nuevos atacantes (la IA) empiezan con el dinero de la primera ronda. El
+marcador cuenta las rondas del jugador contra las de la IA, en los dos bandos.
 
 ---
 
@@ -181,15 +183,12 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 - Determinista por semilla, paso fijo de 60 Hz. Visión compartida entre percepción y niebla de guerra (el humo entra en las dos).
 - Renderer WebGL2 propio, HUD en DOM para celular horizontal, audio 100 % procedural (con siseo de humo), mouse/teclado y gestos táctiles.
 
-**PR abierto, sin mergear:** [#10](https://github.com/tomasrojasmurua/tactic-squad/pull/10)
-agrega **jugar de defensor**. Esta rama sale de `main` y **no lo incluye**: se juega
-solo de atacante, y por eso la partida no tiene cambio de bando.
 
 | Del diseño | Estado |
 | --- | --- |
 | Una ronda completa contra la IA, jugable en celular | **Hecho** |
-| El jugador elige bando | En el PR #10, sin mergear |
-| Partida al mejor de 7 | **Hecho**, de atacante. Falta el cambio de bando tras la ronda 3 (necesita el PR #10) |
+| El jugador elige bando | **Hecho** (Atacar / Defender en el menú) |
+| Partida al mejor de 7 | **Hecho**, con cambio de bando tras la ronda 3 |
 | Economía entre rondas | **Hecho**, con números escalados a la compra de $800: +$600 ganar, +$300 perder (+$100 por racha), +$100 por baja, +$200 por desactivar, tope $2000. Los del diseño (+$3.250 / +$1.400) eran para una compra de otra escala |
 | Clases de operador con habilidad | **Parcial.** Asaltante, Brecha, Explorador y Ancla. Faltan Escudo, Tirador, Granadero, Merodeador, Trampero y Vigía, y la elección a ciegas del defensor |
 | Contras entre clases | **Parcial.** Brecha contra barricadas, Explorador contra Anclas escondidos, humo contra cámaras y anclas |
