@@ -69,16 +69,22 @@ export const VISION = Object.freeze({
 });
 
 export const COMBAT = Object.freeze({
-  // Reaction = time from first sight to first shot. Whoever is already
-  // watching the angle wins: a target inside the shooter's focus cone is
-  // engaged much faster; every radian to turn and walking add time.
-  reaction: { attackers: 0.2, defenders: 0.36 }, // s, base before modifiers (the squad is elite)
+  // Reaction = time from first sight to first shot. The same for both sides:
+  // the posture decides, never the side. Whoever is already watching the
+  // angle wins: a target inside the shooter's focus cone is engaged much
+  // faster; holding that angle still is faster yet; every radian to turn,
+  // walking and having just come through a doorway add time.
+  reaction: 0.24, // s, base before modifiers
   reactionJitter: 0.04, // s, uniform random extra (low: the same plan should give a recognizable result)
   focusAngle: 14 * DEG, // half-angle of the "already aiming there" cone
   focusFactor: 0.5, // reaction multiplier when the target appears inside the focus cone
   reactionPerRadian: 0.2, // s per radian the shooter must turn
   movingReaction: 0.07, // s extra when the shooter is walking and NOT already aiming there
-  alertFactor: 0.8, // reaction multiplier for a defender already alerted
+  alertFactor: 0.8, // reaction multiplier for a unit already alerted (heard / took fire / remembers a target)
+  holdFactor: 0.75, // reaction multiplier for a focused shooter who holds the angle (still, aim set, holdTime)
+  holdTime: 0.6, // s standing still without turning before the angle counts as held
+  doorwayPenalty: 0.05, // s extra for a shooter who came through a doorway less than doorwayTime ago
+  doorwayTime: 0.8, // s
   aimTolerance: 5 * DEG, // must be this well aligned to shoot
   targetTurnCost: 2.5, // m: picking a target, one radian of turning weighs like this much distance
   settledSpread: 0.75, // spread multiplier when standing with the aim set (MOVE.settleTime) or pre-aimed (focused)
@@ -96,7 +102,7 @@ export const COMBAT = Object.freeze({
   maxRecoil: 4.5 * DEG,
   flinchRecoil: 3 * DEG, // aim punch: spread added to a wounded shooter (decays like recoil)
   flinchDelay: 0.12, // s added to a wounded unit's pending reaction (he had not fired yet)
-  accuracy: { attackers: 1.0, defenders: 1.1 }, // spread multiplier per team
+  accuracy: 1.0, // spread multiplier (the same for both sides)
   hearingRadius: 15, // defenders turn toward gunfire within this distance
   footstepHearing: 4.2, // m: defenders hear attackers walking this close (even through walls)
   alertDuration: 6, // s a defender keeps watching where a noise / pain came from

@@ -61,6 +61,20 @@ function routeCrossesDoor(unit, def) {
   return false;
 }
 
+/** After movement: whoever walked through a doorway this tick is marked (unit.doorwayAt; sim/perception.js). */
+export function markDoorwayCrossings(sim) {
+  const ds = sim.world.doorways;
+  for (const u of sim.units) {
+    if (!u.alive || (u.x === u.prevX && u.y === u.prevY)) continue;
+    for (let k = 0; k < ds.length; k++) {
+      if (segmentCrossesDoorway(u.prevX, u.prevY, u.x, u.y, ds[k]) >= 0) {
+        u.doorwayAt = sim.time;
+        break;
+      }
+    }
+  }
+}
+
 /**
  * Where segment a->b crosses a doorway ({cx, cy, normalX, normalY, length}:
  * door defs and world.doorways), as a fraction 0..1 of the segment, or -1.

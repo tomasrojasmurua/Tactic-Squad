@@ -4,13 +4,13 @@
 import { Rng } from '../core/rng.js';
 import { EV } from '../core/events.js';
 import { SIM, ROUND } from '../config/balance.js';
-import { SQUAD, DEFENDER_NAME, DEFENDER_COLOR, TEAMS, CONTROLLERS } from '../config/squad.js';
+import { SQUAD, DEFENDERS, DEFENDER_NAME, DEFENDER_COLOR, TEAMS, CONTROLLERS } from '../config/squad.js';
 import { DEFAULT_DEFENDER_ROLE } from '../config/operators.js';
 import { initAbilities, updateAbilities } from './abilities/index.js';
 import { compileMap } from './mapCompiler.js';
 import { World } from './World.js';
 import { createUnit, applyRole, roleGear } from './units.js';
-import { createDoorState, updateDoors } from './doors.js';
+import { createDoorState, updateDoors, markDoorwayCrossings } from './doors.js';
 import { updateEntries } from './entries.js';
 import { updateSmokes } from './smoke.js';
 import { placeCameras, updateCameras } from './cameras.js';
@@ -38,7 +38,7 @@ export class Simulation {
    *                    A human defender may move it in the preparation (sim/prep.js chooseSite).
    * @param opts.entry attacker entry id (map `entries`); omitted, the map's default entry.
    *                    The attackers may change it during the preparation (chooseEntry order).
-   * @param opts.defenders which slots of the site's `defense` layout get a defender (indices; omitted: all).
+   * @param opts.defenders which slots of the site's `defense` layout get a defender (indices; omitted: the first DEFENDERS).
    *                    Fewer defenders = an easier round (the guided tutorial: config/ui.js TUTORIAL).
    * @param opts.phases true: the round goes through its phases (sim/round.js, starts at 'buy');
    *                    false: no phases, it always runs and takes orders (mechanics tests).
@@ -116,7 +116,7 @@ export class Simulation {
   spawnUnits() {
     const attackers = this.entry.spawns;
     const layout = this.compiled.defense[this.site.id];
-    const defenders = this.defenderSlots ? this.defenderSlots.map((i) => layout[i]).filter(Boolean) : layout;
+    const defenders = this.defenderSlots ? this.defenderSlots.map((i) => layout[i]).filter(Boolean) : layout.slice(0, DEFENDERS);
     attackers.forEach((s, i) => {
       const op = SQUAD[i % SQUAD.length];
       this.units.push(
@@ -261,6 +261,7 @@ export class Simulation {
       updateMovement(this, u, dt);
     }
     resolveCollisions(this);
+    markDoorwayCrossings(this);
     for (const u of this.units) if (u.alive) updateCombat(this, u, dt);
     updateAbilities(this, dt);
     updateObjectives(this, dt);
