@@ -11,8 +11,12 @@ import { TEAMS } from '../config/squad.js';
 /** The opposing side of a team. */
 export const enemyTeam = (team) => (team === TEAMS[0] ? TEAMS[1] : TEAMS[0]);
 
-/** Is this unit driven by the sim's AI (its side's controller is 'ai')? */
-export const isAiControlled = (sim, u) => sim.controllers[u.team] === 'ai';
+/**
+ * Is this unit run by the sim's unit AI (sim/ai.js: watch behaviors, ears,
+ * reflexes)? Only the defenders of an AI side: an AI attacking side is a
+ * commander (sim/aiAttack.js) that gives its operators a player's orders.
+ */
+export const isAiControlled = (sim, u) => u.team === 'defenders' && sim.controllers.defenders === 'ai';
 
 /** First side whose orders come from a human (default for the GO / HUD questions), or null. */
 export function humanTeam(sim) {

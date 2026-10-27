@@ -264,6 +264,15 @@ export default {
     B: ['banio-sala', 'ofi-cocina', 'sitio-pasillo'],
   },
 
+  // Entries the attacking AI (sim/aiAttack.js) goes for each site through, with
+  // weights (the round's seed picks one). Played against this map's defense:
+  // the office approaches B from the north (the corridor door, away from the
+  // bathroom the anchors watch) and the main door gives the corridor to A.
+  aiEntries: {
+    A: { principal: 2, norte: 1 },
+    B: { norte: 2, principal: 1 },
+  },
+
   // frame: [x, y, w, h] the first shot fits inside the HUD-free area (squad, yard door, corridor).
   camera: { start: [13.5, 13.4], height: 21, frame: [2.5, 8.5, 24, 9.5] },
 };

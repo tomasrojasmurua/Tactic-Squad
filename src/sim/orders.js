@@ -50,7 +50,9 @@
 // Every command may carry `team` (the side giving it; the session stamps it):
 // a unit only obeys its own side, and only a side whose controller is
 // 'human' (sim.controllers) takes orders. Without `team` (scripts, old
-// replays) the unit's side must be human-controlled.
+// replays) the unit's side must be human-controlled. The attacking AI
+// (sim/aiAttack.js) gives the same orders from inside the sim, with
+// applyCommand's `by` = 'ai': they only reach a side whose controller is 'ai'.
 // Rejections are reported as EV.ORDER_REJECTED with a REJECT code; the UI
 // turns codes into text (ui/texts.js T.rejectReason), the sim never does.
 import { NAV, ENTRY } from '../config/balance.js';
@@ -101,31 +103,32 @@ const PHASE_ORDERS = Object.freeze({
 /** Orders a side gives as a whole (no unit): which side must be human to give them. */
 const SIDE_ORDERS = Object.freeze({ chooseSite: 'defenders', barricade: 'defenders', drone: 'attackers', droneRecall: 'attackers' });
 
-/** May the side that sent `cmd` command this unit? */
-function obeys(sim, unit, cmd) {
+/** May the side that sent `cmd` command this unit? (`by`: who gives it, 'human' | 'ai') */
+function obeys(sim, unit, cmd, by) {
   if (cmd.team && unit.team !== cmd.team) return false;
-  return sim.controllers[unit.team] === 'human';
+  return sim.controllers[unit.team] === by;
 }
 
-export function applyCommand(sim, cmd) {
+/** Applies one order. `by` = 'ai' only from the sim's own AI commander (sim/aiAttack.js). */
+export function applyCommand(sim, cmd, by = 'human') {
   const r = sim.round;
   if (r.enabled && !PHASE_ORDERS[r.phase].includes(cmd.type)) {
     sim.emit(EV.ORDER_REJECTED, { unitId: cmd.unitId ?? -1, reason: REJECT.notNow });
     return;
   }
-  if (cmd.type === 'go') return issueGo(sim, cmd);
-  if (cmd.type === 'defuseNow') return defuseNow(sim, cmd);
-  if (cmd.type === 'chooseEntry') return chooseEntry(sim, cmd);
+  if (cmd.type === 'go') return issueGo(sim, cmd, by);
+  if (cmd.type === 'defuseNow') return defuseNow(sim, cmd, by);
+  if (cmd.type === 'chooseEntry') return chooseEntry(sim, cmd, by);
   const side = SIDE_ORDERS[cmd.type];
   if (side) {
-    if (sideOf(sim, cmd) !== side || sim.controllers[side] !== 'human') return;
+    if (sideOf(sim, cmd) !== side || sim.controllers[side] !== by) return;
     if (cmd.type === 'chooseSite') return refuse(sim, -1, chooseSite(sim, cmd.site));
     if (cmd.type === 'barricade') return refuse(sim, -1, setBarricade(sim, cmd.door, cmd.on !== false));
     if (cmd.type === 'drone') return steerDrone(sim, cmd.dir);
     return endDrone(sim, 'recalled');
   }
   const unit = sim.units[cmd.unitId];
-  if (!unit || !unit.alive || !obeys(sim, unit, cmd)) return;
+  if (!unit || !unit.alive || !obeys(sim, unit, cmd, by)) return;
   switch (cmd.type) {
     case 'buy':
       return refuse(sim, unit.id, buyItem(sim, unit, cmd.item, cmd.count ?? 1));
@@ -395,9 +398,9 @@ function refuse(sim, unitId, reason) {
   if (reason) sim.emit(EV.ORDER_REJECTED, { unitId, reason });
 }
 
-function chooseEntry(sim, cmd) {
+function chooseEntry(sim, cmd, by) {
   const team = sideOf(sim, cmd);
-  if (team !== 'attackers' || sim.controllers.attackers !== 'human') return;
+  if (team !== 'attackers' || sim.controllers.attackers !== by) return;
   // In the planning only before the first turn ran (the squad has not moved yet).
   if (sim.round.enabled && sim.round.phase === 'plan' && (sim.round.turn !== 1 || sim.round.execTotal > 0)) {
     sim.emit(EV.ORDER_REJECTED, { unitId: -1, reason: REJECT.entryLocked });
@@ -419,15 +422,15 @@ function chooseEntry(sim, cmd) {
  * reached his hold of that code yet loses it: he goes straight through
  * (and does his entry) when he gets there — the GO was already given.
  */
-export function issueGo(sim, cmd) {
+export function issueGo(sim, cmd, by = 'human') {
   const team = cmd.team || null;
-  const code = ENTRY.goCodes.includes(cmd.code) ? cmd.code : firstCode(sim, cmd, team);
+  const code = ENTRY.goCodes.includes(cmd.code) ? cmd.code : firstCode(sim, cmd, team, by);
   const released = [];
   const own = []; // per released unit: its own bang delay (0 = it follows the others)
   const late = []; // still on the way to a hold of the code
   let delay = 0;
   for (const u of sim.units) {
-    if (!u.alive || !obeys(sim, u, cmd)) continue;
+    if (!u.alive || !obeys(sim, u, cmd, by)) continue;
     if (u.waitingGo && u.waitCode === code) {
       const d = releaseDelay(sim, u);
       released.push(u);
@@ -456,15 +459,15 @@ export function issueGo(sim, cmd) {
 }
 
 /** The code a plain GO releases: the first one someone the order may command waits for. */
-function firstCode(sim, cmd, team) {
+function firstCode(sim, cmd, team, by) {
   if (team) return nextGoCode(sim, team) || ENTRY.goCodes.find((c) => codeInUse(sim, team, c)) || null;
-  for (const c of ENTRY.goCodes) for (const u of sim.units) if (u.alive && u.waitingGo && u.waitCode === c && obeys(sim, u, cmd)) return c;
+  for (const c of ENTRY.goCodes) for (const u of sim.units) if (u.alive && u.waitingGo && u.waitCode === c && obeys(sim, u, cmd, by)) return c;
   return null;
 }
 
-function defuseNow(sim, cmd) {
+function defuseNow(sim, cmd, by) {
   const u = defuseCandidate(sim, cmd.unitId);
-  if (!u || !obeys(sim, u, cmd)) {
+  if (!u || !obeys(sim, u, cmd, by)) {
     sim.emit(EV.ORDER_REJECTED, { unitId: cmd.unitId ?? -1, reason: REJECT.notAtBomb });
     return;
   }

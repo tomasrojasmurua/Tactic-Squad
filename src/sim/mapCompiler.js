@@ -54,6 +54,11 @@ export function compileMap(def) {
   for (const [site, ids] of Object.entries(aiBarricades)) {
     for (const id of ids) if (!barricadeSlots.includes(id)) throw new Error(`aiBarricades ${site}: ${id} no se puede atrancar`);
   }
+  // The attacking AI's entries per site, with weights (sim/aiAttack.js pickEntry).
+  const aiEntries = def.aiEntries || {};
+  for (const [site, weights] of Object.entries(aiEntries)) {
+    for (const id of Object.keys(weights)) if (!def.entries.some((e) => e.id === id)) throw new Error(`aiEntries ${site}: entrada desconocida ${id}`);
+  }
 
   return {
     id: def.id,
@@ -75,6 +80,7 @@ export function compileMap(def) {
     deployment,
     barricadeSlots,
     aiBarricades,
+    aiEntries,
     camera: def.camera,
   };
 }

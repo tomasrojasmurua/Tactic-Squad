@@ -82,6 +82,7 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     stillTime: 0, // s standing still without turning (aim set after MOVE.settleTime)
     stepAccum: 0,
     distanceWalked: 0,
+    stuck: { t: 0, want: 0, x, y }, // walking without getting anywhere (pushed against a wall): sim/movement.js re-paths
 
     // Perception & combat
     visibleEnemies: [],
