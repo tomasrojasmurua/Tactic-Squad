@@ -110,7 +110,7 @@ export function applyLayout(sim, layout) {
   sim.teams.defenders.forEach((u, i) => {
     const s = layout[(sim.defenderSlots ? sim.defenderSlots[i] : i) % layout.length];
     moveTo(u, s.at[0], s.at[1], s.facing);
-    const role = s.role || DEFAULT_DEFENDER_ROLE;
+    const role = sim.roles.defenders[i] || s.role || DEFAULT_DEFENDER_ROLE; // the lobby's class, else the post's
     if (role !== u.role) applyRole(u, role); // an anchor slot makes him an Ancla (config/operators.js)
     if (s.weapon && s.weapon !== u.weaponId) setWeapon(u, s.weapon);
     setBehavior(u, s.behavior || null);

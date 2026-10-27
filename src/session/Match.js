@@ -1,9 +1,10 @@
 // A match against the AI: rounds in a row until the player or the AI wins
-// MATCH.toWin (best of 7). The player attacks first and defends after
-// MATCH.switchAfter rounds. Pure data and rules (no DOM, no sim imports beyond
-// reading a finished Simulation), so it is tested headless.
+// toWin of them (best of `bestOf`: 3, 5 or 7, chosen in the lobby). The player
+// starts on the side he picked and switches after switchAfter rounds (half of
+// the series). Pure data and rules (no DOM, no sim imports beyond reading a
+// finished Simulation), so it is tested headless.
 //
-//   match = {round, team, score: {player, ai}, lossStreak, slots, history, over}
+//   match = {bestOf, toWin, switchAfter, round, team, score: {player, ai}, lossStreak, slots, history, over}
 //   team: the player's side this round; over: null | 'player' | 'ai'
 //   slots[i] = {role, money, gear} for attacker slot i (null: the defaults of a first round)
 //
@@ -13,8 +14,9 @@
 // a half-time: the new attackers start over from the first round's money.
 import { MATCH, BUY } from '../config/balance.js';
 
-export function createMatch(team = 'attackers') {
-  return { round: 1, team, score: { player: 0, ai: 0 }, lossStreak: 0, slots: null, history: [], over: null };
+export function createMatch(team = 'attackers', bestOf = MATCH.bestOf) {
+  const toWin = Math.floor(bestOf / 2) + 1;
+  return { bestOf, toWin, switchAfter: toWin - 1, round: 1, team, score: { player: 0, ai: 0 }, lossStreak: 0, slots: null, history: [], over: null };
 }
 
 const OTHER_SIDE = Object.freeze({ attackers: 'defenders', defenders: 'attackers' });
@@ -50,10 +52,10 @@ export function endMatchRound(match, sim) {
   const entry = { round: match.round, team: match.team, winner, playerWon: side === 'player', reason: sim.outcome.reason, income, switched: false };
   match.history.push(entry);
   match.slots = slots;
-  if (match.score[side] >= MATCH.toWin) match.over = side;
+  if (match.score[side] >= match.toWin) match.over = side;
   else {
     match.round++;
-    if (match.round === MATCH.switchAfter + 1) {
+    if (match.round === match.switchAfter + 1) {
       // Half-time: the player takes the other side and the new attackers start from scratch.
       entry.switched = true;
       match.team = OTHER_SIDE[match.team];

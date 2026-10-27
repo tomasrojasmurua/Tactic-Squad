@@ -781,6 +781,44 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
 .title-box .menu-btn.tutorial.done .mb-badge { background: var(--ok); color: #0b1d0e; }
 .title-box .menu-btn.tutorial.done .mb-badge::before { content: '\2713  '; }
 
+/* Menu views (ui/Menu.js): one at a time. */
+.menu-view { display: none; }
+.menu-view.on { display: block; animation: viewIn 0.22s ease-out; }
+@keyframes viewIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+.title-box .mv-title { margin: 22px 0 0; font-family: var(--font-display); font-size: 26px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan); }
+.title-box .menu-btn.back { width: auto; min-height: 0; padding: 12px 22px; border-color: rgba(255, 255, 255, 0.16); }
+.title-box .menu-btn.soon[disabled] { opacity: 0.45; cursor: default; }
+/* The lobby: settings left, the player's classes right; LISTO under both. */
+.title .title-box:has(.lobby.on) { max-width: min(980px, 92vw); }
+.title:has(.lobby.on) { background: linear-gradient(90deg, rgba(0, 0, 0, 0.93) 0%, rgba(0, 0, 0, 0.84) 70%, rgba(0, 0, 0, 0.6) 100%); }
+.lobby .lb-cols { display: flex; flex-wrap: wrap; gap: 14px 34px; margin-top: 14px; }
+.lobby .lb-col { flex: 1 1 340px; min-width: 0; display: grid; gap: 12px; align-content: start; }
+.lobby .lb-l, .lobby .lb-side { font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+.lobby .lb-row { display: grid; gap: 6px; }
+.lobby .lb-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.title-box .lobby .btn.lb-opt {
+  margin: 0; min-height: 34px; padding: 6px 12px; font-size: 13px; letter-spacing: 0.06em; clip-path: none; flex: 0 1 auto; justify-content: center;
+}
+.lobby .lb-opt.on { border-color: var(--cyan); background: var(--cyan-deep); color: #fff; }
+.lobby .lb-opt.off { opacity: 0.35; }
+.lobby .lb-opt[disabled] { opacity: 0.45; cursor: default; }
+.lobby .lb-note { font-size: 12px; line-height: 1.35; color: #b9c3ca; max-width: 440px; }
+.lobby .lb-players { display: flex; gap: 8px; }
+.lobby .lb-player { display: flex; align-items: center; gap: 10px; padding: 6px 12px; background: var(--plate); border-left: 3px solid var(--line-strong); font-size: 14px; }
+.lobby .lb-player .st { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--amber); }
+.lobby .lb-player .st.ok { color: var(--ok); }
+.lobby .lb-team { display: grid; gap: 5px; }
+.lobby .lb-team + .lb-team { margin-top: 6px; }
+.lobby .lb-side { color: #dfe6ea; }
+.lobby .lb-slot { display: flex; align-items: center; gap: 10px; }
+.lobby .lb-name { flex: none; width: 88px; font-size: 13px; font-weight: 800; letter-spacing: 0.06em; }
+.lobby .lb-slot .lb-opts { flex-wrap: nowrap; }
+.title-box .lobby .lb-slot .btn.lb-opt { min-height: 30px; padding: 4px 9px; font-size: 12px; }
+.lobby .lb-actions { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.title-box .lobby .lb-ready { margin: 0; padding: 13px 44px; }
+.title-box .lobby .lb-ready .key { margin-left: 10px; }
+.title-box .lobby .menu-btn.back { margin: 0; }
+
 /* ------------------------------------------------------------ guided tutorial card (ui/TutorialCard.js) */
 .tut-backdrop { position: absolute; inset: 0; z-index: 38; background: rgba(0, 0, 0, 0.5); pointer-events: auto; }
 .tut-backdrop.hidden, .tut-card.hidden { display: none; }
@@ -828,6 +866,19 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
   .title-box .menu-btn .mb-n { font-size: 11px; }
   .title-box .menu-btn .mb-badge { font-size: 9px; padding: 1px 6px; }
   .title-box .menu-btn.tutorial { padding-top: 16px; }
+  /* The lobby on a phone: it scrolls inside the screen, both columns side by side if they fit. */
+  .title .title-box:has(.lobby.on) { max-height: calc(100dvh - 24px); overflow: auto; padding-right: 10px; }
+  .title-box:has(.lobby.on)::before, .title-box:has(.lobby.on) h1, .title-box:has(.lobby.on) .subtitle { display: none; }
+  .title-box .mv-title { margin-top: 10px; font-size: 18px; }
+  .lobby .lb-cols { gap: 10px 20px; margin-top: 8px; }
+  .lobby .lb-col { flex-basis: 300px; gap: 8px; }
+  .title-box .lobby .btn.lb-opt { min-height: 32px; padding: 4px 9px; font-size: 12px; }
+  .lobby .lb-name { width: 62px; font-size: 11px; }
+  .title-box .lobby .lb-slot .btn.lb-opt { min-height: 30px; padding: 3px 6px; font-size: 11px; letter-spacing: 0.02em; }
+  .lobby .lb-slot { gap: 6px; }
+  .lobby .lb-note { font-size: 11px; }
+  .lobby .lb-actions { margin-top: 10px; position: sticky; bottom: 0; padding: 8px 0; background: rgba(0, 0, 0, 0.92); }
+  .title-box .lobby .lb-ready { padding: 10px 34px; }
 }
 
 /* Help: close, and the way back to the main menu (the phone's top row has no room for it). */

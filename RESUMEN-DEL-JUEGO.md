@@ -7,10 +7,10 @@ juego se puede probar en el HTML único que acompaña a este resumen.
 
 > **Qué cambió en esta revisión** (detalle en la sección 5): GO por colores en vez de
 > letras, puertas que se abren solas si no decidís, menú del punto junto a la puerta,
-> fases que se van sumando con la experiencia, ruta de escuadra en fila, editar rutas,
+> menú con JUGAR y lobby (formato, bando, clases), ruta de escuadra en fila, editar rutas,
 > paso sigiloso, turno que se corta al ver un enemigo, lanzar flash/granada/humo a
 > cualquier punto, humo, cámaras de los defensores, clases (Asaltante, Brecha,
-> Explorador / Ancla), y partida al mejor de 7 con economía.
+> Explorador / Ancla), y partidas al mejor de 3, 5 o 7 con economía.
 
 ---
 
@@ -27,7 +27,7 @@ referencia del objetivo y de la preparación es **Rainbow Six Siege**: la bomba 
 en el mapa, los defensores la protegen con barricadas y cámaras, los atacantes
 reconocen con un dron y la desactivan. La ambientación y la estructura de partida vienen
 de **Counter-Strike**: sitios A y B, entradas, utilidad (flash, granada, humo, carga),
-economía entre rondas y partida al mejor de 7.
+economía entre rondas y partidas al mejor de 3, 5 o 7.
 
 La decisión de diseño que define el juego es el ritmo **We-Go**: nadie juega en tiempo
 real contra el reloj. Se planifica a ciegas, sin límite contra la IA, y al apretar
@@ -63,11 +63,16 @@ bando; hoy 49 % atacantes en 200 rondas: 54 % en A, 44 % en B).
 | **Ejecución** | 5 s (menos si ve a alguien) | Todo corre a la vez. La única orden durante el turno es el **GO de un color**: ese grupo sale junto. |
 | **Fin** | 10 s | Resultado, con un "por qué" que explica cómo murió cada uno y qué falló. |
 
-**Fases que se suman con la experiencia.** La primera partida va directo a la
-planificación: compra, entrada y dron llegan solos después (entrada a la 2.ª ronda,
-compra y dron a la 3.ª), cada uno con una tarjeta que lo explica la primera vez. La
-opción "Ronda completa" de la ayuda las muestra todas desde el principio. La partida al
-mejor de 7 se juega siempre completa.
+**Toda ronda es completa.** Desde la primera partida hay compra, entrada y dron; cada
+fase trae una tarjeta que la explica la primera vez. Solo el tutorial guiado las salta
+(enseña el asalto).
+
+**Menú y lobby.** JUGAR → CONTRA LA IA (MULTIJUGADOR, próximamente) → el lobby:
+**formato** (una ronda suelta, que se puede reintentar, o al mejor de 3, 5 o 7), **con
+qué bando empiezas**, **mapa** (Operación Almacén; más, próximamente) y **tu equipo**: la
+clase de cada puesto al atacar y al defender (en la compra o la preparación se puede
+cambiar ronda a ronda). Abajo, quién está y si está listo; con LISTO empieza (contra la
+IA, la IA siempre lo está). El lobby recuerda lo elegido.
 
 **Objetivo.** Los atacantes ganan si desactivan la bomba (7 s quieto al lado) o si
 eliminan a todos los defensores. Los defensores ganan si explota o si eliminan a todos
@@ -120,10 +125,10 @@ semilla y las mismas órdenes grabadas, fase por fase. Cambiar una cosa toma el 
 desde ahí. El bucle buscado: fallar, entender por qué, cambiar **una** cosa, probar de
 nuevo.
 
-### Partida al mejor de 7
+### Partida al mejor de 3, 5 o 7
 
-Desde el menú, "Partida al mejor de 7": rondas seguidas contra la IA hasta que alguien
-gane 4. Cada operador cobra por ronda:
+Desde el lobby: rondas seguidas contra la IA hasta que alguien gane la mayoría (2, 3 o
+4). A la mitad (tras 1, 2 o 3 rondas) se cambia de bando. Cada operador cobra por ronda:
 
 - **Victoria** +$600. **Derrota** +$300, más $100 por cada derrota seguida (hasta 3).
 - **+$100 por baja** y **+$200 a quien desactiva**.
@@ -192,10 +197,10 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 - Fases dentro de la simulación: compra → preparación → dron → planificación ⇄ ejecución → fin.
 - Turnos de 5 s que se cortan al ver un enemigo nuevo (opción), bomba de 90 s.
 - Grupos GO de color en vivo.
-- Fases que se desbloquean con las rondas jugadas, con tarjeta de presentación.
+- Todas las fases desde la primera ronda, con tarjeta de presentación.
 - Reintentar con el plan grabado (fuera de partida).
-- **Partida al mejor de 7 con economía**, marcador y equipo que se conserva.
-- Menú, tutorial guiado sobre una ronda real más fácil, pantalla de "por qué".
+- **Partidas al mejor de 3, 5 o 7 con economía**, marcador y equipo que se conserva.
+- Menú con lobby (formato, bando, mapa, clases), tutorial guiado sobre una ronda real más fácil, pantalla de "por qué".
 
 **Atacante**
 - Clases elegibles en la compra, compra por operador con dinero propio.
@@ -215,8 +220,8 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 | Del diseño | Estado |
 | --- | --- |
 | Una ronda completa contra la IA, jugable en celular | **Hecho** |
-| El jugador elige bando | **Hecho** (Atacar / Defender en el menú) |
-| Partida al mejor de 7 | **Hecho**, con cambio de bando tras la ronda 3 |
+| El jugador elige bando | **Hecho** (en el lobby) |
+| Partida al mejor de 7 | **Hecho**, también al mejor de 3 y 5, con cambio de bando a la mitad |
 | Economía entre rondas | **Hecho**, con números escalados a la compra de $800: +$600 ganar, +$300 perder (+$100 por racha), +$100 por baja, +$200 por desactivar, tope $2000. Los del diseño (+$3.250 / +$1.400) eran para una compra de otra escala |
 | Clases de operador con habilidad | **Parcial.** Asaltante, Brecha, Explorador, Ancla, Merodeador y Trampero (las 3 por bando del primer paso), con elección a ciegas en los dos bandos. Faltan Escudo, Tirador, Granadero y Vigía |
 | Contras entre clases | **Parcial.** Brecha contra barricadas, Explorador contra Anclas escondidos, Merodeador y trampas, humo contra cámaras y anclas |

@@ -36,7 +36,7 @@ export const TUTORIAL_STEPS = Object.freeze([
 /**
  * The phases before the assault are not in the guided round: each one is
  * explained by a card the first time a round on this device reaches it
- * (they unlock as the player finishes rounds: SessionController lockedPhases).
+ * (every game from the lobby has them all from its first round).
  */
 export const PHASE_INTROS = Object.freeze({ buy: 'introBuy', prep: 'introPrep', drone: 'introDrone' });
 

@@ -70,11 +70,7 @@ export const FLOW = Object.freeze({
   framePaddingM: 1.0, // m of map kept around a framed rectangle ("see all", first shot)
   overviewTapMs: 320, // a two-finger tap (both fingers up within this, barely moving)...
   overviewTapPx: 14, // ...toggles the whole-map view
-  storageKeys: Object.freeze({ tutorialDone: 'ts.tutorialDone', roundsDone: 'ts.roundsDone', fullRound: 'ts.fullRound', introsSeen: 'ts.introsSeen', stopOnContact: 'ts.stopOnContact' }),
-  // The phases before the assault come in as the player learns: a round's buy / prep / drone is
-  // skipped (defaults) until this many rounds were finished on the device. The guided tutorial
-  // skips them all (it teaches the assault); "Ronda completa" in the help turns them all on.
-  unlockAfterRounds: Object.freeze({ buy: 2, prep: 1, drone: 2 }),
+  storageKeys: Object.freeze({ tutorialDone: 'ts.tutorialDone', introsSeen: 'ts.introsSeen', stopOnContact: 'ts.stopOnContact', lobby: 'ts.lobby' }),
   droneCameraHeight: 14, // m: the camera follows the recon drone from this height...
   droneFollow: 7, // ...catching up at this rate (1/s)
 });

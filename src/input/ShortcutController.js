@@ -21,6 +21,7 @@ export class ShortcutController {
     const code = e.code;
     if (this.session.phase === 'title') {
       if (matches(KEYS.execute, code) || matches(KEYS.pause, code)) return this.request('start');
+      if (matches(KEYS.deselect, code)) return this.request('back');
       return false;
     }
     if (matches(KEYS.help, code)) return this.request('help');

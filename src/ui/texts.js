@@ -14,7 +14,7 @@ export const T = Object.freeze({
   briefing:
     `Los Defensores dejaron una bomba en el sitio A o en el B, y no sabes en cuál. Antes del asalto compras equipo, eliges entrada y tienes ${DRONE.seconds} s de dron para mirar adentro. El asalto va por turnos: planificas sin ver al rival, con todo el tiempo que quieras, y todo se ejecuta a la vez durante ${TURN} s, sin pausa; durante el turno lanzas los grupos GO (violeta, rosa, blanco). La bomba estalla tras ${ROUND.timeLimit} s de ejecución: encuéntrala y desactívala (${ROUND.defuseTime} s quieto, sin disparar) o elimina a los Defensores antes.`,
   start: 'COMENZAR',
-  startHint: 'Intro: atacar contra la IA',
+  startHint: 'Intro: jugar · Esc: volver',
 
   phase: {
     buy: 'COMPRA',
@@ -134,7 +134,7 @@ export const T = Object.freeze({
     next: 'SIGUIENTE RONDA',
     again: 'NUEVA PARTIDA',
     score: (player, ai) => `Tú ${player} – ${ai} IA`,
-    switchSides: 'Cambio de bando: desde la próxima ronda defiendes',
+    switchSides: (team) => `Cambio de bando: desde la próxima ronda ${team === 'defenders' ? 'defiendes' : 'atacas'}`,
     round: (n) => `Ronda ${n}`,
     won: '¡PARTIDA GANADA!',
     lost: 'PARTIDA PERDIDA',
