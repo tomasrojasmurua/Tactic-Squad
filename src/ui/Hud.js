@@ -153,6 +153,10 @@ export class Hud {
       if (u && e.cause === 'flash' && e.seconds > 1) this.pushInfo(T.feed.flashed(u.name));
     });
     bus.on(EV.BOMB_SPOTTED, (e) => this.pushInfo(T.feed.bombSpotted(e.site)));
+    bus.on(EV.SCOUT_PULSE, (e) => {
+      const u = this.sim && this.sim.units[e.unitId];
+      if (u && u.team === this.viewer.team) this.pushInfo(T.feed.scout(u.name, e.found));
+    });
     // Defender cameras (sim/cameras.js), told to the attackers.
     bus.on(EV.CAMERA_FOUND, (e) => this.viewer.team === 'attackers' && this.pushInfo(e.byDrone ? T.feed.cameraFoundDrone : T.feed.cameraFound));
     bus.on(EV.CAMERA_SPOT, () => this.viewer.team === 'attackers' && this.pushInfo(T.feed.cameraSpot));

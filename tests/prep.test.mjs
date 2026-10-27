@@ -45,14 +45,14 @@ test('cada atacante empieza con $800 menos el equipo de su rol, compra y vende c
   const sim = new Simulation(MAP, { seed: 1 });
   const [aguila, lobo] = sim.teams.attackers;
   assert.equal(aguila.money, BUY.startMoney - BUY.prices.flash - BUY.prices.frag);
-  assert.equal(lobo.money, 0, 'el de entrada gastó todo en flash, granada y carga');
+  assert.equal(lobo.money, 0, 'la Brecha gastó todo en flash y dos cargas');
   cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'flash', count: 1 });
   sim.flushCommands();
   assert.deepEqual(rejects(sim), ['noMoney']);
   cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'breach', count: -1 });
   cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'flash', count: 1 });
   sim.flushCommands();
-  assert.deepEqual([lobo.gear.breach, lobo.gear.flash, lobo.money], [0, 2, BUY.prices.breach - BUY.prices.flash]);
+  assert.deepEqual([lobo.gear.breach, lobo.gear.flash, lobo.money], [1, 2, BUY.prices.breach - BUY.prices.flash]);
   cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'flash', count: 1 });
   sim.flushCommands();
   assert.deepEqual(rejects(sim), ['gearFull']);
@@ -66,6 +66,7 @@ test('cada atacante empieza con $800 menos el equipo de su rol, compra y vende c
 test('lo comprado es lo que se lleva al asalto (sin carga no hay brecha)', () => {
   const sim = new Simulation(MAP, { seed: 1 });
   const lobo = sim.teams.attackers[1];
+  cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'breach', count: -1 });
   cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'breach', count: -1 });
   sim.skipToAssault();
   cmd(sim, ATK, { type: 'addWaypoint', unitId: lobo.id, x: 8.6, y: 12.7 });
@@ -190,7 +191,7 @@ function atBarricade(mode = null) {
   return { sim, u };
 }
 
-test('una barricada no se abre: el atacante la rompe a golpes (3 s, ruidosa) y luego pasa', () => {
+test('una barricada no se abre: el atacante la rompe a golpes (3 s; la Brecha antes), ruidosa, y luego pasa', () => {
   const { sim, u } = atBarricade(null);
   assert.equal(teamView(sim, ATK).barricades.length, 0, 'el atacante aún no la conoce');
   sim.advancePhase();
@@ -202,9 +203,9 @@ test('una barricada no se abre: el atacante la rompe a golpes (3 s, ruidosa) y l
   assert.ok(seen.some((e) => e.type === EV.BARRICADE_SPOTTED), 'la ve al llegar');
   const hits = seen.filter((e) => e.type === EV.BARRICADE_HIT);
   const broken = seen.find((e) => e.type === EV.BARRICADE_BROKEN);
-  assert.ok(hits.length >= Math.floor(BARRICADE.breakTime / BARRICADE.hitEvery));
+  assert.ok(hits.length >= Math.floor((BARRICADE.breakTime * u.mods.bash) / BARRICADE.hitEvery));
   assert.equal(broken.how, 'bash');
-  assert.ok(broken.tick - hits[0].tick >= BARRICADE.breakTime * SIM.tickRate - 1);
+  assert.ok(broken.tick - hits[0].tick >= BARRICADE.breakTime * u.mods.bash * SIM.tickRate - 1);
   assert.ok(u.y > 14.5, 'pasó por el hueco');
   // Los defensores lo oyen (el pulso lleva el ruido más fuerte de su celda: puede ser un disparo).
   assert.ok(sim.noise.pulses.defenders.some((p) => Math.hypot(p.x - 20.55, p.y - 14) < 3), 'los defensores lo oyen');

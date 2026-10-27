@@ -40,6 +40,7 @@
 //                                              the attackers start from another entry (map `entries`)
 //
 // Buy and set-up (sim/prep.js):
+//   {type:'setRole', unitId, role}             buy: an attacker changes class (config/operators.js PICK_ROLES)
 //   {type:'buy', unitId, item, count}          buy: an attacker buys (count 1) or sells back (-1) one
 //                                              BUY.items item with his own money
 //   {type:'chooseSite', site}                  preparation, defenders: the bomb goes to that site and their
@@ -71,7 +72,7 @@ import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, ent
 import { segmentCrossesDoorway } from './doors.js';
 import { startDefuse } from './objectives.js';
 import { cancelEntry, releaseDelay } from './entries.js';
-import { buyItem, chooseSite, placeDefender, setWatch, setBarricade } from './prep.js';
+import { buyItem, setRole, chooseSite, placeDefender, setWatch, setBarricade } from './prep.js';
 import { steerDrone, endDrone } from './drone.js';
 import { routePoint } from './routePoint.js';
 import { startFollow, rebuildFollowers } from './follow.js';
@@ -92,6 +93,8 @@ export const REJECT = Object.freeze({
   noMoney: 'noMoney',
   gearFull: 'gearFull', // he already carries BUY.max of it
   badItem: 'badItem',
+  badRole: 'badRole', // not a class to pick
+  roleTaken: 'roleTaken', // another operator already has that one-per-squad class
   badSite: 'badSite',
   outsideHalf: 'outsideHalf', // a defender placed (or falling back) outside the defenders' half
   tooClose: 'tooClose', // on top of a teammate
@@ -108,7 +111,7 @@ const OWN_ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'promoteLast', 'setLook'
 
 /** Orders each round phase takes (sim/round.js PHASE; literal keys: round.js imports this module). */
 const PHASE_ORDERS = Object.freeze({
-  buy: ['buy'],
+  buy: ['buy', 'setRole'],
   prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade'],
   drone: ['drone', 'droneRecall'],
   plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry'],
@@ -149,6 +152,8 @@ export function applyCommand(sim, cmd, by = 'human') {
   switch (cmd.type) {
     case 'buy':
       return refuse(sim, unit.id, buyItem(sim, unit, cmd.item, cmd.count ?? 1));
+    case 'setRole':
+      return refuse(sim, unit.id, setRole(sim, unit, cmd.role));
     case 'placeUnit':
       if (unit.team !== 'defenders') return;
       return refuse(sim, unit.id, placeDefender(sim, unit, cmd.x, cmd.y, cmd.facing ?? unit.facing));

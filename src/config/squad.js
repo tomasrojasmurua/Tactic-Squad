@@ -24,7 +24,7 @@ export const TEAM_LABEL = Object.freeze({
 export const SQUAD = Object.freeze([
   { callsign: 'ÁGUILA', color: '#38c6ff', role: 'assault' },
   { callsign: 'LOBO', color: '#ffab2e', role: 'entry' },
-  { callsign: 'ZORRO', color: '#9be15d', role: 'assault' },
+  { callsign: 'ZORRO', color: '#9be15d', role: 'scout' },
 ]);
 
 export const DEFENDER_NAME = 'Defensor';

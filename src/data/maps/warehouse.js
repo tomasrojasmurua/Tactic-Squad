@@ -227,7 +227,8 @@ export default {
   ],
 
   // Defender set-up for each bomb site: where the AI defenders stand and the
-  // starting layout a human defender edits in the preparation (sim/prep.js). Behaviors: hold (fixed angle), scan {from, to,
+  // starting layout a human defender edits in the preparation (sim/prep.js). role: 'anchor' = Ancla
+  // (more health, shoots first; config/operators.js), default 'defender'. Behaviors: hold (fixed angle), scan {from, to,
   // period}, patrol {points, wait}; reactsToNoise: turns to gunfire /
   // footsteps / pain; rotate {to, look}: on the first firefight heard, moves
   // there once and holds.
@@ -236,7 +237,7 @@ export default {
       // Site anchor: off the corridor line, pre-aiming the corridor door at an
       // angle (whoever walks in looking straight ahead must turn to find him).
       // Blind to the south door: the lounge flank is the way to beat him.
-      { at: [34.0, 17.6], facing: -139 * DEG, weapon: 'rifle', behavior: { type: 'hold', reactsToNoise: false } },
+      { at: [34.0, 17.6], facing: -139 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
       { at: [35.2, 4.7], facing: 165 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 132 * DEG, to: 178 * DEG, period: 5.5, reactsToNoise: true } },
       // Kitchen guard: on the first firefight he rotates to the arch and covers the site.
       { at: [26.1, 8.7], facing: 130 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 112 * DEG, to: 195 * DEG, period: 6.5, reactsToNoise: true, rotate: { to: [27.3, 4.7], look: 45 * DEG } } },
@@ -245,9 +246,9 @@ export default {
     B: [
       // Site anchor in the lounge corner: covers both the corridor door and the
       // bathroom door. Blind to the hall door behind him: that is the flank.
-      { at: [25.9, 21.6], facing: -147 * DEG, weapon: 'rifle', behavior: { type: 'hold', reactsToNoise: false } },
+      { at: [25.9, 21.6], facing: -147 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
       // Second anchor in the far corner, pre-aiming the corridor door from below.
-      { at: [17.0, 23.2], facing: -75 * DEG, weapon: 'smg', behavior: { type: 'hold', reactsToNoise: false } },
+      { at: [17.0, 23.2], facing: -75 * DEG, weapon: 'smg', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
       // Hall guard watching the corridor door; on the first firefight he rotates
       // through the hall door into the lounge, behind the anchor.
       { at: [30.4, 16.8], facing: 175 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 125 * DEG, to: 228 * DEG, period: 6, reactsToNoise: true, rotate: { to: [27.0, 23.6], look: -160 * DEG } } },

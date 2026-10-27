@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
+import { applyRole } from '../src/sim/units.js';
 import { ENTRY, DOORS } from '../src/config/balance.js';
 import { isGoReady, codeWaiting, pendingDoors } from '../src/sim/queries.js';
 import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
@@ -144,6 +145,7 @@ test('flash: el resto del código espera la detonación y el que la mira queda c
 test('granada: daña según la distancia y la baja cuenta como explosión', () => {
   // Defensor pegado a la pared norte del pasillo: fuera de la vista desde los costados de la puerta.
   const { sim, a, b, d0 } = atTheDoor({ defender: [12.8, 12.0], facing: 0 });
+  applyRole(d0, 'defender'); // un defensor común (el Ancla aguanta más)
   b.x = 3;
   b.y = 18;
   stack(sim, a, 11.75, 'A', 'frag', null);
@@ -162,9 +164,9 @@ test('carga de brecha: se coloca al llegar, el GO revienta la puerta y daña al 
   runFor(sim, 1.6);
   assert.equal(b.entry?.phase, 'prep');
   assert.equal(isGoReady(sim, T), false, 'colocando la carga');
-  runFor(sim, ENTRY.breach.prepTime + 0.2);
+  runFor(sim, ENTRY.breach.prepTime * b.mods.breachPrep + 0.2);
   assert.ok(isGoReady(sim, T));
-  assert.equal(b.gear.breach, 0);
+  assert.equal(b.gear.breach, 1, 'la Brecha lleva dos: le queda una');
   cmd(sim, { type: 'go' });
   runFor(sim, ENTRY.breach.fuse + 0.1);
   assert.ok(door.destroyed && door.open);

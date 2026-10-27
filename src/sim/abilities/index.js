@@ -7,12 +7,14 @@
 //     id: 'breachCharge',
 //     init(sim, unit)        // optional: called once at spawn, may set unit.abilityState
 //     update(sim, unit, dt)  // optional: called every tick while the unit is alive
+//     turnEnd(sim, unit)     // optional: called when a turn ends (exec -> plan, sim/round.js)
 //   }
 // and is activated by an order (sim/orders.js, e.g. {type:'useAbility', unitId})
-// when it has an active part. None exist yet: add the file, then list it below.
+// when it has an active part. Add the file, then list it below.
+import { scoutPulse } from './scoutPulse.js';
 
 export const ABILITIES = Object.freeze({
-  // breachCharge, shield, scoutDrone ... (next phase)
+  scoutPulse,
 });
 
 export function initAbilities(sim) {
@@ -29,5 +31,14 @@ export function updateAbilities(sim, dt) {
     if (!u.alive || !u.ability) continue;
     const a = ABILITIES[u.ability];
     if (a.update) a.update(sim, u, dt);
+  }
+}
+
+/** A turn just ended (sim/round.js afterTick): passives that act once per turn. */
+export function turnEndAbilities(sim) {
+  for (const u of sim.units) {
+    if (!u.alive || !u.ability) continue;
+    const a = ABILITIES[u.ability];
+    if (a.turnEnd) a.turnEnd(sim, u);
   }
 }

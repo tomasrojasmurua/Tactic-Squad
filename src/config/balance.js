@@ -321,3 +321,6 @@ export const CAMERA = Object.freeze({
   shootDelay: 0.7, // s the attacker spends finding and aiming at it
   shootDelayKnown: 0.2, // s when it was already known (the drone found it): he walks in aiming at it
 });
+
+/** Explorador (sim/abilities/scoutPulse.js): at each turn's end, defenders this close are detected through walls. */
+export const SCOUT = Object.freeze({ radius: 8 });

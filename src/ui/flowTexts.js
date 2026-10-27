@@ -121,10 +121,10 @@ export const FLOW_TEXTS = Object.freeze({
     },
     tips: {
       introBuy: {
-        title: 'Nuevo: compra',
+        title: 'Nuevo: clases y compra',
         text: {
-          touch: `Antes del asalto cada operador tiene $${BUY.startMoney} y ya lleva el equipo de su rol. Toca un objeto en su fila para comprar otro (− lo devuelve). LISTO para seguir.`,
-          desk: `Antes del asalto cada operador tiene $${BUY.startMoney} y ya lleva el equipo de su rol. Haz clic en un objeto de su fila para comprar otro (− lo devuelve). LISTO (Espacio) para seguir.`,
+          touch: `Elige la clase de cada operador: Asaltante (duelos), Brecha (cargas rápidas) o Explorador (detecta defensores cerca al final de cada turno). Cada uno tiene $${BUY.startMoney} y ya lleva el equipo de su clase: toca un objeto para comprar otro (− lo devuelve). LISTO para seguir.`,
+          desk: `Elige la clase de cada operador: Asaltante (duelos), Brecha (cargas rápidas) o Explorador (detecta defensores cerca al final de cada turno). Cada uno tiene $${BUY.startMoney} y ya lleva el equipo de su clase: haz clic en un objeto para comprar otro (− lo devuelve). LISTO (Espacio) para seguir.`,
         },
       },
       introPrep: {

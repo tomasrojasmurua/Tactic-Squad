@@ -259,6 +259,7 @@ export const T = Object.freeze({
     cameraFoundDrone: 'El dron encontró una cámara',
     cameraSpot: '¡Una cámara te vio! Saben por dónde vienes',
     cameraDown: (n) => `${n} rompió la cámara`,
+    scout: (n, k) => (k ? `${n} detecta ${k === 1 ? 'un defensor' : `${k} defensores`} cerca` : `${n}: nadie cerca`),
   },
 
   help: {
@@ -334,7 +335,7 @@ export const T = Object.freeze({
   /** Buy and preparation panels (ui/PhasePanel.js). */
   buy: {
     title: 'Compra',
-    note: 'Cada operador paga con su dinero ($800 por ronda; su equipo de rol ya está pagado). Toca un objeto para comprar otro, − para devolverlo.',
+    note: 'Elige la clase de cada uno (Brecha y Explorador, uno solo). Cada operador paga con su dinero ($800 por ronda; el equipo de su clase ya está pagado). Toca un objeto para comprar otro, − para devolverlo.',
     gear: { flash: 'flash', frag: 'granada', smoke: 'humo', breach: 'carga' },
     price: (n) => `$${n}`,
     money: (n) => `$${n}`,

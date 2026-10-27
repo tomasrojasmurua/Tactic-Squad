@@ -16,6 +16,8 @@ export const EV = Object.freeze({
   GO_CODE: 'goCode', // {released, code}
   ENTRY_CHOSEN: 'entryChosen', // {entry}: the attackers start from another entry (preparation)
   // Buy and defender set-up (sim/prep.js)
+  ROLE_CHANGED: 'roleChanged', // {unitId, role, money}: an attacker changed class in the buy phase
+  SCOUT_PULSE: 'scoutPulse', // {unitId, x, y, radius, found}: an Explorador's turn-end sweep (found: defenders detected)
   GEAR_CHANGED: 'gearChanged', // {unitId, item, count, money}: bought or sold in the buy phase
   SITE_CHOSEN: 'siteChosen', // {site}: the defenders moved the bomb (and reset their set-up to that site's)
   SETUP_CHANGED: 'setupChanged', // {unitId, kind:'place'|'watch'}: a defender placed or given a watch order

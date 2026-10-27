@@ -287,7 +287,7 @@ export class OverlayLayer {
     else if (e && e.phase !== 'act') this.entryMarker(t, pos.x, pos.y, e.mode, e.doorway, selected, mpp);
     if (e && e.phase === 'prep') {
       // Progress of the crack / the plant around the operator.
-      const total = e.mode === 'breach' ? ENTRY.breach.prepTime : ENTRY.slow.prepTime;
+      const total = e.mode === 'breach' ? ENTRY.breach.prepTime * u.mods.breachPrep : ENTRY.slow.prepTime;
       const k = 1 - Math.max(0, e.t) / total;
       const ec = OVERLAY.entryColors[e.mode];
       t.arc(pos.x, pos.y, OVERLAY.unitRing.prep, 3 * mpp, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2, rgba(ec[0], ec[1], ec[2], 0.95), 28);

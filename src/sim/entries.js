@@ -62,7 +62,7 @@ export function armEntry(sim, u, p) {
     ay = door.def.hingeY + Math.sin(door.def.closedAngle) * door.def.length * 0.85;
   }
   const look = p.look !== null ? p.look : angleTo(u.x, u.y, ax + d.normalX * side * ENTRY.lookPast, ay + d.normalY * side * ENTRY.lookPast);
-  const prep = PREP[p.entry] || 0;
+  const prep = (PREP[p.entry] || 0) * (p.entry === 'breach' ? u.mods.breachPrep : 1);
   u.entry = { mode: p.entry, doorway: k, side, look, phase: prep > 0 ? 'prep' : 'armed', t: prep, spent: false, step: null, grenade: null };
   if (p.entry === 'slow' && door) {
     crackDoor(sim, door, u);

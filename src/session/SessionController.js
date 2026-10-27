@@ -486,7 +486,16 @@ export class SessionController {
         else if (action.startsWith('door_')) this.targetDoor(action);
         else if (action.startsWith('chooseEntry_') && (phase === 'prep' || phase === 'planning')) this.chooseEntry(action.slice(12));
         else if (action.startsWith('buy_') && phase === 'buy') this.buy(action);
+        else if (action.startsWith('role_') && phase === 'buy') this.setRole(action);
     }
+  }
+
+  /** Buy panel: role_<unitId>_<role> (the operator's class). */
+  setRole(action) {
+    const [, id, role] = action.split('_');
+    this.command({ type: 'setRole', unitId: +id, role });
+    this.sim.flushCommands();
+    this.sound('select');
   }
 
   /** Buy panel: buy_<unitId>_<item>_<+|-> (one item bought or sold back). */

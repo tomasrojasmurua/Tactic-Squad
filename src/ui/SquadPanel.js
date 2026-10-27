@@ -1,5 +1,6 @@
 // Left squad panel: one card per operator (portrait, weapon, ammo, HP,
 // live status). Clicking a card selects the operator.
+import { ROLES } from '../config/operators.js';
 import { EV } from '../core/events.js';
 import { teamUnits } from '../sim/queries.js';
 import { el, setText, toggle, setStyle, setClassName } from './dom.js';
@@ -68,7 +69,7 @@ export class SquadPanel {
     for (const [id, c] of this.cards) {
       const u = sim.units[id];
       setText(c.name, u.name);
-      setText(c.weapon, u.weapon.name);
+      setText(c.weapon, `${ROLES[u.role]?.label ?? ''} · ${u.weapon.name}`);
       setText(c.ammo, u.alive ? `${u.mag}/${u.reserve}` : '—');
       const hp = `${Math.max(0, (u.hp / u.maxHp) * 100)}%`;
       setStyle(c.hp, 'width', hp);

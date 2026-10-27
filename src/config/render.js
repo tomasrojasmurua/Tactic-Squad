@@ -70,6 +70,8 @@ export const ANIMATION = Object.freeze({
 export const ROLE_GEAR = Object.freeze({
   assault: { head: 'helmet', pack: 'large', extra: null },
   entry: { head: 'heavy', pack: 'none', extra: 'charges' },
+  scout: { head: 'cap', pack: 'small', extra: null },
+  anchor: { head: 'heavy', pack: 'none', extra: null },
   defender: { head: 'cap', pack: 'small', extra: null },
   // Planned classes (BRIEF, not implemented yet) — reserved looks:
   breacher: { head: 'heavy', pack: 'small', extra: 'charges' },
@@ -216,6 +218,7 @@ export const PINGS = Object.freeze({
   go: { life: 0.7, r0: 0.4, r1: 2.0, widthPx: 4, color: [0.56, 0.89, 0.42], follow: true },
   door: { life: 0.35, r0: 0.3, r1: 1.5, widthPx: 3, color: [1, 1, 1] },
   kill: { life: 0.8, r0: 0.3, r1: 0.9, widthPx: 3, color: [1, 0.25, 0.2] },
+  scout: { life: 1.6, r0: 0.5, r1: 8, widthPx: 3, color: [0.6, 0.88, 0.36] }, // SCOUT.radius
 });
 
 export const FX = Object.freeze({
