@@ -48,8 +48,8 @@
 //
 // Buy and set-up (sim/prep.js):
 //   {type:'setRole', unitId, role}             buy: an attacker changes class (config/operators.js PICK_ROLES)
-//   {type:'buy', unitId, item, count}          buy: an attacker buys (count 1) or sells back (-1) one
-//                                              BUY.items item with his own money
+//   {type:'buy', unitId, item, count}          buy (attackers) / preparation (defenders): buys (count 1) or
+//                                              gives back (-1) one BUY.items item for his utility points
 //   {type:'chooseSite', site}                  preparation, defenders: the bomb goes to that site and their
 //                                              set-up restarts from the map's layout for it
 //   {type:'placeUnit', unitId, x, y, facing?}  preparation: a defender stands there (their half, walkable)
@@ -99,7 +99,7 @@ export const REJECT = Object.freeze({
   badEntry: 'badEntry', // chooseEntry with an entry the map does not have
   entryLocked: 'entryLocked', // chooseEntry after the first turn ran (the squad already left)
   // Buy and set-up (sim/prep.js)
-  noMoney: 'noMoney',
+  noPoints: 'noPoints',
   gearFull: 'gearFull', // he already carries BUY.max of it
   badItem: 'badItem',
   badRole: 'badRole', // not a class to pick
@@ -123,7 +123,7 @@ const OWN_ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'promoteLast', 'setLook'
 /** Orders each round phase takes (sim/round.js PHASE; literal keys: round.js imports this module). */
 const PHASE_ORDERS = Object.freeze({
   buy: ['buy', 'setRole'],
-  prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade', 'setDefenderRole', 'placeTrap'],
+  prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade', 'setDefenderRole', 'placeTrap', 'buy'],
   drone: ['drone', 'droneRecall'],
   plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry'],
   exec: ['go'],

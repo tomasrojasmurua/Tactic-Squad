@@ -139,8 +139,7 @@ export const T = Object.freeze({
     won: '¡PARTIDA GANADA!',
     lost: 'PARTIDA PERDIDA',
     toWin: (n) => `Gana el primero en llegar a ${n}`,
-    pay: (name, n) => `${name} +$${n}`,
-    payTitle: 'Cobran para la próxima',
+    bonus: (playerLost) => (playerLost ? 'Perdiste la ronda: en la próxima cada uno de los tuyos tiene +1 punto de utilidad' : 'La IA perdió la ronda: en la próxima cada uno de los suyos tiene +1 punto de utilidad'),
   },
 
   /** Squad route (sim/follow.js): the squad panel's button. */
@@ -398,10 +397,10 @@ export const T = Object.freeze({
   /** Buy and preparation panels (ui/PhasePanel.js). */
   buy: {
     title: 'Compra',
-    note: 'Elige la clase de cada uno (Brecha y Explorador, uno solo). Cada operador paga con su dinero ($800 por ronda; el equipo de su clase ya está pagado). Toca un objeto para comprar otro, − para devolverlo.',
+    note: 'Elige la clase de cada uno (Brecha y Explorador, uno solo). Cada clase trae su equipo gratis y cada operador suma utilidad con sus puntos (● = 1 punto; lo que no gastes se pierde). Toca un objeto para sumar uno, − para devolverlo.',
     gear: { flash: 'flash', frag: 'granada', smoke: 'humo', breach: 'carga' },
-    price: (n) => `$${n}`,
-    money: (n) => `$${n}`,
+    price: (n) => `${'●'.repeat(n)}`,
+    points: (n) => (n > 0 ? '●'.repeat(n) : 'sin puntos'),
     sell: '−',
     none: 'sin utilidad',
   },
@@ -415,7 +414,7 @@ export const T = Object.freeze({
   /** The defender's set-up panel (ui/PhasePanel.js 'setup', session/watch.js). */
   setup: {
     title: 'Tu defensa',
-    note: 'Toca a un defensor y luego el suelo para moverlo (solo en tu mitad). Clic derecho y arrastra (en el celular, mantén pulsado y arrastra) para orientarlo. El atacante no ve nada de esto.',
+    note: 'Toca a un defensor y luego el suelo para moverlo (solo en tu mitad). Clic derecho y arrastra (en el celular, mantén pulsado y arrastra) para orientarlo. Con sus puntos (●) súmale granada, humo o flash para el asalto. El atacante no ve nada de esto.',
     site: 'Bomba',
     siteName: (id) => `Sitio ${id}`,
     barricades: (n, max) => `Barricadas ${n}/${max}`,
@@ -426,6 +425,8 @@ export const T = Object.freeze({
     roleOf: (n, blurb) => `Clase de ${n}: ${blurb}`,
     pickRole: 'Clase: toca a un defensor',
     traps: (n, max) => `Trampas ${n}/${max}`,
+    gearOf: (n, pts) => `Equipo de ${n} · ${pts}`,
+    pickGear: 'Equipo: toca a un defensor',
     trapMode: 'Poner trampas',
     trapModeOn: 'Poniendo trampas: toca el suelo',
   },
@@ -476,7 +477,7 @@ export const T = Object.freeze({
     notNow: 'Durante la ejecución solo se dan los GO: espera a planificar',
     badEntry: 'Esa entrada no existe en el mapa',
     entryLocked: 'La entrada ya no se cambia: el escuadrón ya salió',
-    noMoney: 'No le alcanza el dinero',
+    noPoints: 'No le quedan puntos',
     gearFull: 'Ya lleva el máximo de eso',
     badItem: 'Ese objeto no se compra',
     badSite: 'Ese sitio no existe',
