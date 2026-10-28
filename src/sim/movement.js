@@ -6,9 +6,9 @@
 // side is revealed inside his cone, not behind his back. A doorway coming up
 // on the route is aimed THROUGH (MOVE.doorPeek past it). When the route ends
 // he keeps facing the way he arrived (or the look the player set there).
-import { MOVE, NAV, ENTRY } from '../config/balance.js';
+import { MOVE, NAV, ENTRY, PREP } from '../config/balance.js';
 import { EV } from '../core/events.js';
-import { angleDiff, angleTo, approachAngle } from '../core/math.js';
+import { angleDiff, angleTo, approachAngle, TAU } from '../core/math.js';
 import { tryOpenDoors, segmentCrossesDoorway } from './doors.js';
 import { armEntry, armToss } from './entries.js';
 import { isAiControlled, holdCode, ASK_CODE, doorClaimed } from './queries.js';
@@ -35,6 +35,11 @@ function desiredFacing(sim, u) {
   }
   if (u.waitingGo && u.lookOverride !== null) return u.lookOverride;
   if (isAiControlled(sim, u) && u.behavior && u.behavior.type === 'scan') return u.ai.baseFacing; // sweeps around his idle look (sim/ai.js)
+  if (u.cover && u.idleLook !== null && !u.route.length && !u.waitingGo) {
+    // Cubrir zona (sim/orders.js setCover): the same sweep as a defender's "barrer".
+    const k = 0.5 - 0.5 * Math.cos((sim.time / PREP.sweepPeriod) * TAU + u.id);
+    return u.idleLook + (k - 0.5) * PREP.sweepArc;
+  }
   if (u.idleLook !== null) return u.idleLook;
   if (isAiControlled(sim, u)) return u.ai.baseFacing;
   return u.facing;
@@ -297,6 +302,7 @@ function arriveAt(sim, u, p) {
     // End of the plan: hold the angle set there, or keep facing the way he came.
     // (A defender on patrol goes back to his watch's facing: sim/ai.js.)
     u.idleLook = p.look !== null ? p.look : isAiControlled(sim, u) && u.behavior && u.behavior.type === 'patrol' ? null : u.heading;
+    u.cover = !!p.cover;
     u.lookOverride = null;
   }
 }

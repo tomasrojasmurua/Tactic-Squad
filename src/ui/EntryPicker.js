@@ -55,7 +55,8 @@ export class EntryPicker {
         `<div class="ep-when"><span class="ep-wl">${T.entry.when}</span></div>` +
         `<div class="ep-pace"><span class="ep-wl">${T.pace.title}</span></div>` +
         `<div class="ep-toss"><span class="ep-wl">${T.entry.toss}</span></div>` +
-        `<div class="ep-peek"><button class="wbtn pbtn"></button></div></div>`,
+        `<div class="ep-peek"><button class="wbtn pbtn"></button></div>` +
+        `<div class="ep-peek ep-cover"><button class="wbtn pbtn"></button></div></div>`,
     );
     this.ring = this.node.querySelector('.ep-ring');
     this.panel = this.node.querySelector('.ep-panel');
@@ -109,6 +110,10 @@ export class EntryPicker {
     this.peek = this.peekRow.firstChild;
     this.peek.title = T.peek.hint;
     this.peek.addEventListener('pointerdown', fire('peek'));
+    this.coverRow = this.node.querySelector('.ep-cover');
+    this.cover = this.coverRow.firstChild;
+    this.cover.title = T.cover.hint;
+    this.cover.addEventListener('pointerdown', fire('cover'));
     this.size = null; // measured {w, h} of the panel (re-measured when its content changes)
     this.layoutKey = '';
     root.appendChild(this.node);
@@ -182,8 +187,15 @@ export class EntryPicker {
     this.peekRow.hidden = !canPeek;
     toggle(this.peek, 'active', peeking);
     setText(this.peek, peeking ? T.peek.on : T.peek.off);
+    // Cubrir zona (attackers): where he stands, or at the end of his route.
+    const coverAt = here ? (u.route.length ? -2 : -1) : !p.ask && !p.back && !peeking && i === lastUserIndex(u) ? i : -2;
+    const canCover = u.team === 'attackers' && coverAt > -2;
+    const covering = canCover && (coverAt < 0 ? u.cover : u.route[coverAt].cover);
+    this.coverRow.hidden = !canCover;
+    toggle(this.cover, 'active', covering);
+    setText(this.cover, covering ? T.cover.on : T.cover.off);
 
-    const key = `${door}|${aiming}|${canPeek}|${here}|${session.touch}|${camera.width}`;
+    const key = `${door}|${aiming}|${canPeek}|${canCover}|${here}|${session.touch}|${camera.width}`;
     if (!this.size || this.layoutKey !== key) {
       const r = this.panel.getBoundingClientRect();
       // On touch the button column stays usable: the menu keeps to its left.

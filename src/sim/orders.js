@@ -35,6 +35,9 @@
 //                                              MOVE.peekTime s looking at its look (the way he walked in, if
 //                                              none) and goes back to the point before it (or where he
 //                                              stood) facing as he did there. on false: removes both
+//   {type:'setCover', unitId, on, index?}    attackers, "cubrir zona": at the end of his route (index: its last user
+//                                              point) or where he stands (index 'here') he sweeps PREP.sweepArc
+//                                              around his look instead of holding it
 //   {type:'follow', unitId, leaderId, rank}    squad route (sim/follow.js): he walks the leader's route in file
 //                                              (rank 1 right behind) and stacks behind him at his GO holds
 //   {type:'unfollow', unitId}                  back to his own orders (the route he had stays)
@@ -131,7 +134,7 @@ export const REJECT = Object.freeze({
   badFollow: 'badFollow', // follow: no such leader, himself, another side, or a leader who follows someone
 });
 
-const ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'endStroke', 'cancelStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss', 'setPeek', 'follow', 'unfollow'];
+const ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'endStroke', 'cancelStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss', 'setPeek', 'setCover', 'follow', 'unfollow'];
 
 /** Orders on a follower's own route: he leaves the file and keeps the route he had (now his). */
 const OWN_ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss', 'setPeek'];
@@ -224,6 +227,8 @@ export function applyCommand(sim, cmd, by = 'human') {
     }
     case 'setPeek':
       return setPeek(sim, unit, cmd.on !== false, cmd.index);
+    case 'setCover':
+      return setCover(sim, unit, cmd.on !== false, cmd.index);
     case 'follow': {
       const leader = sim.units[cmd.leaderId];
       if (!leader || !obeys(sim, leader, cmd, by) || !startFollow(sim, unit, leader, cmd.rank)) return reject(sim, unit, REJECT.badFollow);
@@ -758,6 +763,25 @@ function setPeek(sim, unit, on, index) {
   end.look = look;
   for (let j = n; j < r.length; j++) r[j].pace = p.pace; // back as quietly as he went
   changed(sim, unit, 'peek');
+}
+
+/** "Cubrir zona" (attackers): he sweeps around his look where he stands (HERE) or at the end of his route. */
+function setCover(sim, unit, on, index) {
+  if (unit.team !== 'attackers') return;
+  if (index === HERE || !unit.route.length) {
+    unit.cover = on;
+    if (on && unit.idleLook === null) unit.idleLook = unit.facing;
+    return changed(sim, unit, 'cover');
+  }
+  const i = lastUserIndex(unit);
+  if (i < 0 || (index !== undefined && index !== null && index !== i)) return reject(sim, unit, REJECT.noWaypoint);
+  const p = unit.route[i];
+  p.cover = on;
+  if (on && p.look === null) {
+    const prev = i > 0 ? unit.route[i - 1] : unit;
+    p.look = Math.atan2(p.y - prev.y, p.x - prev.x);
+  }
+  changed(sim, unit, 'cover');
 }
 
 function undoWaypoint(sim, unit) {

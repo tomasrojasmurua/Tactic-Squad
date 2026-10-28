@@ -197,6 +197,7 @@ export class Simulation {
       u.facing = u.prevFacing = u.heading = u.ai.baseFacing = s.facing;
       u.route.length = 0;
       u.idleLook = null;
+      u.cover = false;
       u.waitingGo = false;
       u.waitCode = null;
     }

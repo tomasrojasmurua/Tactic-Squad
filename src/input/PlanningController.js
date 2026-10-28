@@ -341,6 +341,18 @@ export class PlanningController {
     return true;
   }
 
+  /** Cubrir zona (attackers): where he stands (the menu on himself) or at the end of his route. */
+  toggleCover() {
+    const u = this.selectedUnit();
+    if (!u || !this.canEdit) return true;
+    const t = this.session.pointTarget;
+    const here = (t && t.unitId === u.id && t.index === HERE) || !u.route.length;
+    const i = lastUserIndex(u);
+    const on = !(here ? u.cover : i >= 0 && u.route[i].cover);
+    this.command({ type: 'setCover', unitId: u.id, on, index: here ? HERE : i });
+    return true;
+  }
+
   /** Pace of the targeted leg: 'sneak' or null (normal). */
   setPace(pace) {
     const u = this.selectedUnit();

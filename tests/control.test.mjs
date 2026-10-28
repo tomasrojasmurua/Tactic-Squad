@@ -203,3 +203,34 @@ test('Explorador: al terminar el turno detecta a los defensores cerca, con pared
   assert.ok(pulse && pulse.found >= 1, 'lo detectó');
   assert.ok(sim.memory.attackers.has(d.id), 'queda marcado para el plan');
 });
+
+test('cubrir zona: el atacante barre alrededor de su mirada al final de la ruta o donde está', async () => {
+  const { Simulation } = await import('../src/sim/Simulation.js');
+  const { MAPS, DEFAULT_MAP } = await import('../src/data/maps/index.js');
+  const { PREP } = await import('../src/config/balance.js');
+  const sim = new Simulation(MAPS[DEFAULT_MAP], { seed: 3, phases: false });
+  const a = sim.teams.attackers[0];
+  const c = (x) => { sim.enqueue({ team: 'attackers', ...x }); sim.flushCommands(); };
+  c({ type: 'setCover', unitId: a.id, on: true, index: 'here' });
+  assert.ok(a.cover && a.idleLook !== null);
+  const center = a.idleLook;
+  const seen = [];
+  for (let i = 0; i < 400; i++) { sim.step(); if (a.target < 0) seen.push(a.facing); }
+  const off = seen.map((f) => Math.atan2(Math.sin(f - center), Math.cos(f - center)));
+  assert.ok(Math.max(...off) - Math.min(...off) > PREP.sweepArc * 0.6, 'barre');
+  assert.ok(off.every((o) => Math.abs(o) <= PREP.sweepArc / 2 + 0.05));
+  c({ type: 'setCover', unitId: a.id, on: false, index: 'here' });
+  assert.equal(a.cover, false);
+  // Al final de la ruta: queda marcado en el punto y se aplica al llegar.
+  c({ type: 'addWaypoint', unitId: a.id, x: a.x + 2, y: a.y, user: true });
+  c({ type: 'setCover', unitId: a.id, on: true });
+  assert.ok(a.route[a.route.length - 1].cover);
+  for (let i = 0; i < 600 && a.route.length; i++) sim.step();
+  assert.equal(a.route.length, 0);
+  assert.ok(a.cover);
+  // Los defensores no la usan (tienen su vigilancia).
+  const d = sim.teams.defenders[0];
+  sim.enqueue({ team: 'defenders', type: 'setCover', unitId: d.id, on: true, index: 'here' });
+  sim.flushCommands();
+  assert.equal(d.cover, false);
+});

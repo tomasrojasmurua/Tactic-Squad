@@ -159,6 +159,13 @@ export const T = Object.freeze({
     hint: 'Se queda 1,5 s mirando hacia donde marques en el punto y vuelve a su lugar',
     tag: 'ASOMA',
   },
+  /** "Cubrir zona" (sim/orders.js setCover): the attackers' waypoint menu and the tag on the map. */
+  cover: {
+    off: 'Cubrir zona',
+    on: '✓ Cubre la zona (barre)',
+    hint: 'Al llegar barre a un lado y otro de donde lo orientes, como el "Barrer" del defensor',
+    tag: 'CUBRE',
+  },
   defuse: 'DESACTIVANDO BOMBA',
   reloadTag: 'RECARGANDO',
   tagGo: 'GO',
