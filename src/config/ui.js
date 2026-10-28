@@ -61,9 +61,22 @@ export const HUD_OCCLUSION = Object.freeze({
 /**
  * The last kill, again, when the round is over (session/KillCam.js): from
  * `before` s before it to `after` s after, the `slowWindow` s around the
- * shot at `slow` speed. The camera frames killer and victim from `height` m.
+ * shot at `slow` speed. The camera keeps everyone in the exchange on screen
+ * (killer, victim and whoever shoots at or is shot by them): `padM` m around
+ * them inside `insets` (px; only the clip's bar is on screen), never closer
+ * than `height` m, catching up at `follow` (1/s).
  */
-export const KILLCAM = Object.freeze({ before: 3.5, after: 1.2, slow: 0.4, slowWindow: 0.6, height: 13, minDelay: 0.4 });
+export const KILLCAM = Object.freeze({
+  before: 3.5,
+  after: 1.2,
+  slow: 0.4,
+  slowWindow: 0.6,
+  height: 13,
+  padM: 3,
+  follow: 3,
+  insets: Object.freeze({ top: 84, right: 16, bottom: 16, left: 16 }),
+  minDelay: 0.4,
+});
 
 /**
  * Session flow tuning (owner: gameplay — what happens and when, not how it looks).
