@@ -70,11 +70,15 @@ fase trae una tarjeta que la explica la primera vez. Solo las lecciones del tuto
 **Menú y lobby.** JUGAR → CONTRA LA IA (MULTIJUGADOR, próximamente) → el lobby:
 **formato** (una ronda suelta o al mejor de 3, 5 o 7), **con
 qué bando empiezas** y **mapa** (Operación Almacén; más, próximamente). ELEGIR CLASES
-lleva a la **selección de clases**, como el pick phase de un MOBA: la clase de cada puesto
-(en una partida, una pestaña para cuando atacas y otra para cuando defiendes), con la
-descripción de cada una. Duran toda la partida: dentro de ella no se cambian. Abajo,
-quién está y si está listo; con CONFIRMAR empieza (contra la IA, la IA elige la suya a
-ciegas). El menú recuerda lo elegido.
+lleva al **roster**, como el pick phase de un MOBA: un grupo de personajes por bando,
+cada uno con su símbolo y su color, del que se eligen los 3 de tu escuadra (en una
+partida, una pestaña para cuando atacas y otra para cuando defiendes). Al tocar uno se ve
+su ficha: arma (con barras de daño, cadencia y precisión), equipo de cada ronda y
+características; AÑADIR lo suma al primer puesto libre y tocar un puesto lo quita. Las
+clases que vienen (Escudo, Tirador, Granadero, Vigía) aparecen bloqueadas. Duran toda la
+partida: dentro de ella no se cambian. Abajo, quién está y si está listo; CONFIRMAR
+empieza cuando las escuadras tienen sus 3 (contra la IA, la IA elige la suya a ciegas).
+El menú recuerda lo elegido.
 
 **Objetivo.** Los atacantes ganan si desactivan la bomba (7 s quieto al lado) o si
 eliminan a todos los defensores. Los defensores ganan si explota o si eliminan a todos

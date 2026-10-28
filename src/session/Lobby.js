@@ -5,18 +5,21 @@
 //   lessons the tutorial's lessons (config/lessons.js)
 //   play    CONTRA LA IA · MULTIJUGADOR (coming soon)
 //   lobby   the game's conditions (format, starting side, map), then LISTO
-//   pick    the class pick (like a MOBA's pick phase): each operator's class
-//           for the whole game, per side; CONFIRMAR starts once everyone is
-//           ready (against the AI only the player; the AI picks its own, blind)
+//   pick    the roster (like a MOBA's pick phase): a pool of characters per
+//           side, 3 of them make the squad for the whole game; CONFIRMAR
+//           starts once every slot is filled and everyone is ready (against
+//           the AI only the player; the AI picks its own, blind)
 //
-//   lobby = {view, bestOf, side, map, roles: {attackers: [roleId x3], defenders: [roleId x3]}, pickSide, ready}
+//   lobby = {view, bestOf, side, map, roles: {attackers: [roleId|null x3], defenders: [roleId|null x3]}, inspect, pickSide, ready}
 //   bestOf  1 = a single round (retries allowed), else MATCH.formats (3, 5, 7)
 //   side    the side the player starts on (a match switches at half-time)
-//   roles   the player's classes per slot (Simulation opts.roles); they are
-//           not changed inside the game
+//   roles   the player's classes per slot (Simulation opts.roles), null =
+//           an empty slot; they are not changed inside the game
+//   inspect the character each side's roster shows in detail (screen only)
 //   pickSide the side the pick screen shows (a match picks both)
 //
-// The choices last on the device (session/storage.js), except `view`, `pickSide` and `ready`.
+// The choices last on the device (session/storage.js), except `view`, `inspect`, `pickSide` and `ready`
+// (a squad left incomplete comes back as the defaults).
 import { MATCH } from '../config/balance.js';
 import { ROLES, PICK_ROLES, DEF_PICK_ROLES } from '../config/operators.js';
 import { SQUAD, DEFENDERS } from '../config/squad.js';
@@ -37,12 +40,14 @@ export function createLobby(saved = null) {
     side: s.side === 'defenders' ? 'defenders' : 'attackers',
     map: DEFAULT_MAP,
     roles: { attackers: [...DEFAULT_ROLES.attackers], defenders: [...DEFAULT_ROLES.defenders] },
+    inspect: { attackers: PICK_ROLES[0], defenders: DEF_PICK_ROLES[0] },
     pickSide: 'attackers',
     ready: false,
   };
   for (const team of ['attackers', 'defenders']) {
     const ids = s.roles && s.roles[team];
     if (Array.isArray(ids) && ids.length === lobby.roles[team].length && ids.every((id, i) => canPick(lobby, team, i, id, ids))) lobby.roles[team] = [...ids];
+    lobby.inspect[team] = lobby.roles[team][0];
   }
   return lobby;
 }
@@ -64,6 +69,18 @@ export function canPick(lobby, team, i, id, ids = lobby.roles[team]) {
 /** The sides the player picks classes for: both in a match (it switches at half-time), else his own. */
 export const pickSides = (lobby) => (lobby.bestOf === 1 ? [lobby.side] : lobby.side === 'attackers' ? ['attackers', 'defenders'] : ['defenders', 'attackers']);
 
+/** The first empty slot of `team`'s squad, or -1 when it is full. */
+export const freeSlot = (lobby, team) => lobby.roles[team].indexOf(null);
+
+/** May `id` join `team`'s squad now (a free slot and the class's limit)? */
+export function canAdd(lobby, team, id) {
+  const i = freeSlot(lobby, team);
+  return i >= 0 && canPick(lobby, team, i, id);
+}
+
+/** Every side the player picks for has its 3 (CONFIRMAR needs it); else the first side still missing some. */
+export const pickMissing = (lobby) => pickSides(lobby).find((t) => freeSlot(lobby, t) >= 0) || null;
+
 /** From the lobby to the class pick: it opens on the side he starts on. */
 export function openPick(lobby) {
   lobby.view = 'pick';
@@ -72,7 +89,9 @@ export function openPick(lobby) {
 }
 
 /**
- * One lobby request ('bestOf_<n>' | 'side_<team>' | 'role_<team>_<i>_<id>' | 'pickSide_<team>').
+ * One lobby request ('bestOf_<n>' | 'side_<team>' | 'pickSide_<team>' | the roster's
+ * 'inspect_<team>_<id>' (show it in detail) | 'add_<team>_<id>' (to the first empty slot) |
+ * 'remove_<team>_<i>' (empty that slot) | 'role_<team>_<i>_<id>' (set a slot directly)).
  * Returns true when it changed something (to save it).
  */
 export function lobbySet(lobby, what) {
@@ -88,6 +107,19 @@ export function lobbySet(lobby, what) {
     if (!pickSides(lobby).includes(rest[0]) || lobby.pickSide === rest[0]) return false;
     lobby.pickSide = rest[0];
     return false; // only the screen: nothing to save
+  } else if (key === 'inspect') {
+    if (!lobby.inspect[rest[0]] || !pickRoles(rest[0]).includes(rest[1]) || lobby.inspect[rest[0]] === rest[1]) return false;
+    lobby.inspect[rest[0]] = rest[1];
+    return false; // only the screen
+  } else if (key === 'add') {
+    const [team, id] = rest;
+    if (!lobby.roles[team] || !canAdd(lobby, team, id)) return false;
+    lobby.roles[team][freeSlot(lobby, team)] = id;
+  } else if (key === 'remove') {
+    const [team, i] = [rest[0], +rest[1]];
+    const ids = lobby.roles[team];
+    if (!ids || !(i >= 0 && i < ids.length) || ids[i] === null) return false;
+    ids[i] = null;
   } else if (key === 'role') {
     const [team, i, id] = [rest[0], +rest[1], rest[2]];
     const ids = lobby.roles[team];
