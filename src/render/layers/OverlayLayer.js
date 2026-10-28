@@ -26,7 +26,9 @@ const LOOK_PREVIEW_RGB = [1, 1, 1];
 const DRONE_RGB = hexToRgb('#8fe36b');
 const TOSS_DANGER_RGB = [1, 0.33, 0.3]; // a grenade that would reach its own thrower
 const BARRICADE_RGBA = [1, 0.69, 0.18, 0.95];
-const WIRE_RGBA = [0.78, 0.82, 0.86, 0.95]; // barbed wire: steel grey
+const WIRE_RGB = [0.8, 0.84, 0.88]; // barbed wire: steel grey (the far half of each loop darker)
+const WIRE_BARB_RGBA = [0.93, 0.95, 0.97, 1];
+const WIRE_LOOP = Object.freeze({ radius: 0.24, pitch: 0.17, steps: 24, barb: 0.04 }); // m (steps per loop: a multiple of 8)
 const SIDES = [-1, 1];
 
 export class OverlayLayer {
@@ -47,6 +49,7 @@ export class OverlayLayer {
     this.ghostSim = null;
     this.routePts = []; // scratch flat polyline
     this.linkPts = [0, 0, 0, 0]; // scratch entry link
+    this.wirePt = [0, 0, 0]; // scratch point on a wire's coil (x, y, near side)
     this.tossPts = []; // scratch throw path (2 or 3 points)
     this.conePts = []; // scratch outline of a camera's view
     this.routeOrder = []; // own operators, selected last
@@ -230,26 +233,68 @@ export class OverlayLayer {
     }
   }
 
-  /** Barbed wire the viewer's side knows of: a zigzag coil across the doorway (sim/wires.js). */
+  /**
+   * Barbed wire the viewer's side knows of (sim/wires.js): a concertina coil
+   * seen from above, overlapping loops lit on their near side, barbs knotted
+   * along it and a picket at each end, with its shadow on the floor.
+   */
   wires(t, sim, own, mpp) {
     for (const door of sim.doors) {
       if (!door.wired || (own === 'attackers' && !sim.intel.wires.has(door.def.index))) continue;
       const d = door.def;
       const tx = d.normalY; // along the wall
       const ty = -d.normalX;
-      const h = d.length / 2 + 0.1;
-      const n = 7;
-      let px = d.cx - tx * h;
-      let py = d.cy - ty * h;
-      for (let k = 1; k <= n; k++) {
-        const s = -h + (2 * h * k) / n;
-        const off = (k % 2 ? 1 : -1) * 0.22;
-        const x = d.cx + tx * s + d.normalX * off;
-        const y = d.cy + ty * s + d.normalY * off;
-        t.line(px, py, x, y, 5 * mpp, BLACK(0.55));
-        t.line(px, py, x, y, 2.4 * mpp, WIRE_RGBA);
-        px = x;
-        py = y;
+      const h = d.length / 2 + 0.14;
+      const loops = Math.max(4, Math.round((2 * h) / WIRE_LOOP.pitch));
+      const r = WIRE_LOOP.radius;
+      // Prolate cycloid: the axis walks 2h while the wire turns `loops` times around it.
+      const n = loops * WIRE_LOOP.steps;
+      const pt = (k) => {
+        const a = (k / n) * loops * Math.PI * 2;
+        const s = -h + r * 0.55 + ((2 * h - r * 1.1) * k) / n - Math.sin(a) * r * 0.55;
+        const o = Math.cos(a) * r;
+        this.wirePt[0] = d.cx + tx * s + d.normalX * o;
+        this.wirePt[1] = d.cy + ty * s + d.normalY * o;
+        this.wirePt[2] = Math.sin(a); // > 0: the near half of the loop
+        return this.wirePt;
+      };
+      // Pickets at both ends and the coil's shadow first, then the wire over them.
+      for (const e of SIDES) {
+        const px = d.cx + tx * h * e;
+        const py = d.cy + ty * h * e;
+        t.circle(px + 0.04, py + 0.05, 0.075, BLACK(0.35), 10);
+        t.circle(px, py, 0.06, rgba(0.2, 0.17, 0.13, 1), 10);
+        t.ring(px, py, 0.06, 1.2 * mpp, BLACK(0.7), 10);
+      }
+      for (let pass = 0; pass < 2; pass++) {
+        let p = pt(0);
+        let x0 = p[0];
+        let y0 = p[1];
+        for (let k = 1; k <= n; k++) {
+          p = pt(k);
+          const x = p[0];
+          const y = p[1];
+          if (pass === 0) {
+            t.line(x0 + 0.05, y0 + 0.07, x + 0.05, y + 0.07, 3 * mpp, BLACK(0.28));
+          } else {
+            const lit = 0.45 + 0.55 * Math.max(0, p[2]);
+            t.line(x0, y0, x, y, 3.4 * mpp, BLACK(0.6));
+            t.line(x0, y0, x, y, 1.7 * mpp, rgba(WIRE_RGB[0] * lit, WIRE_RGB[1] * lit, WIRE_RGB[2] * lit, 1));
+          }
+          x0 = x;
+          y0 = y;
+        }
+      }
+      // Barbs: a short twisted cross every 3/8 of a turn, so they spread all over the loops.
+      const b = WIRE_LOOP.barb;
+      for (let k = WIRE_LOOP.steps / 8; k < n; k += (WIRE_LOOP.steps * 3) / 8) {
+        const p = pt(k);
+        const x = p[0];
+        const y = p[1];
+        t.line(x - b, y - b, x + b, y + b, 1.3 * mpp, BLACK(0.75));
+        t.line(x - b, y + b, x + b, y - b, 1.3 * mpp, BLACK(0.75));
+        t.line(x - b * 0.8, y - b * 0.8, x + b * 0.8, y + b * 0.8, 0.8 * mpp, WIRE_BARB_RGBA);
+        t.line(x - b * 0.8, y + b * 0.8, x + b * 0.8, y - b * 0.8, 0.8 * mpp, WIRE_BARB_RGBA);
       }
     }
   }
