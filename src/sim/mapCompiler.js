@@ -93,6 +93,7 @@ export function compileMap(def) {
     rooms,
     floors: def.floors,
     paint: def.paint || [],
+    palette: def.palette || {}, // wall colors (render only)
     sites,
     entries: def.entries,
     defaultEntry: def.defaultEntry ?? def.entries[0].id,

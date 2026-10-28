@@ -57,7 +57,7 @@ export const FLOW_TEXTS = Object.freeze({
     side: 'Empiezas',
     sides: { attackers: 'Atacando', defenders: 'Defendiendo', attackersTeam: 'Cuando atacas', defendersTeam: 'Cuando defiendes' },
     map: 'Mapa',
-    moreMaps: 'Más mapas · próximamente',
+    randomMap: 'Al azar',
     players: 'Jugadores',
     you: 'Tú',
     youWaiting: 'Eligiendo',
@@ -74,6 +74,7 @@ export const FLOW_TEXTS = Object.freeze({
         ? 'Elige 3 del grupo para cada bando: los juegas toda la partida. Toca uno para ver su equipo. La IA elige los suyos a ciegas'
         : 'Elige 3 del grupo: los juegas toda la ronda. Toca uno para ver su equipo. La IA elige los suyos a ciegas',
     count: (n) => `${n}/3`,
+    map: (name, drawn) => (drawn ? `Mapa al azar: ${name}` : `Mapa: ${name}`),
     aiPicks: 'Elige a ciegas',
     ready: 'Confirmar',
     missing: (n, side) => `${n === 1 ? 'Falta 1' : `Faltan ${n}`}${side ? ` · ${side}` : ''}`,

@@ -870,6 +870,8 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
 .pick [hidden] { display: none !important; }
 .pick .pk-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 22px; }
 .pick .pk-head .mv-title { margin-right: auto; }
+.pick .pk-map { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber); }
+.pick .pk-map:empty { display: none; }
 .pick .pk-sides { gap: 6px; }
 .title-box .pick .btn.pk-side { display: inline-flex; align-items: center; gap: 8px; }
 .pick .pk-n { font-size: 11px; color: var(--amber); letter-spacing: 0.06em; }

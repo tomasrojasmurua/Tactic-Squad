@@ -22,6 +22,13 @@ export const FLOORS = Object.freeze({
   siteConcrete: { pattern: 'concrete', a: '#8e918b', b: '#6d706a', scale: 3.0 },
   yardAsphalt: { pattern: 'asphalt', a: '#4a4d52', b: '#3a3c40', scale: 1.0 },
   redRug: { pattern: 'rug', a: '#9b2f35', b: '#e2c27a', scale: 1.0 },
+  // hotel (data/maps/hotel.js)
+  hotelCarpet: { pattern: 'carpet', a: '#6e2430', b: '#561b26', scale: 0.7 },
+  roomCarpet: { pattern: 'carpet', a: '#b4a283', b: '#9f8e70', scale: 1.0 },
+  suiteWood: { pattern: 'wood', a: '#8a5a36', b: '#4a2c16', scale: 0.2 },
+  suiteRug: { pattern: 'rug', a: '#2c4a6e', b: '#d8c27a', scale: 1.0 },
+  laundryTiles: { pattern: 'tiles', a: '#dbe5e9', b: '#a7bcc6', scale: 0.4 },
+  serviceLino: { pattern: 'checker', a: '#9aa0a3', b: '#8a9094', scale: 0.5 },
 });
 
 export const WALL = Object.freeze({

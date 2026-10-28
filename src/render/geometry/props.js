@@ -221,6 +221,94 @@ const BUILDERS = {
     m.box(w / 2 - 0.1, 0, 0, 0.06, d, h - 0.05, C.metalDark);
     for (let i = 0; i < 3; i++) m.box(0, -d / 2 + 0.08 + i * ((d - 0.16) / 2), h - 0.05, w, 0.11, 0.05, C.wood, { top: C.woodLight });
   },
+
+  // --- hotel (data/maps/hotel.js)
+  bed(m, w, d, h) {
+    const base = h * 0.5;
+    m.box(0, 0.02, 0, w, d - 0.04, base, C.woodDark, { top: C.wood });
+    m.box(0, 0.04, base, w - 0.06, d - 0.12, h - base, C.white, { top: '#f6f7f5' }); // mattress
+    m.box(0, d * 0.16, h, w - 0.02, d * 0.62, 0.05, '#e6e0d2', { top: '#efe9dc' }); // duvet
+    m.box(0, d * 0.36, h + 0.05, w + 0.01, 0.34, 0.012, '#7a2633', { top: '#8e2f3d' }); // runner at the foot
+    for (const s of [-1, 1]) m.box(s * w * 0.24, -d / 2 + 0.3, h, w * 0.4, 0.34, 0.11, '#fbfbf8', { top: '#ffffff' }); // pillows
+    m.box(0, -d / 2 + 0.04, 0, w + 0.1, 0.08, 1.05, '#4e3322', { top: '#6a4630' }); // headboard
+  },
+  nightstand(m, w, d, h) {
+    m.box(0, 0, 0, w, d, h, C.woodDark, { top: C.wood });
+    m.box(0, d / 2 + 0.005, h * 0.55, w * 0.3, 0.01, 0.03, '#d8c48a');
+    m.cylinder(-0.05, -0.04, h, 0.06, 0.2, '#c9a24a', { sides: 8 }); // lamp
+    m.frustum(-0.05, -0.04, h + 0.2, 0.13, 0.09, 0.14, '#efe4c8', { sides: 10, top: '#fff6dc' });
+  },
+  wardrobe(m, w, d, h) {
+    m.box(0, 0, 0, w, d, h, '#5b3a24', { top: '#6e4a31' });
+    m.box(0, d / 2 + 0.005, 0.08, 0.015, 0.01, h - 0.16, '#3a2416'); // the two doors
+    for (const s of [-1, 1]) m.box(s * 0.07, d / 2 + 0.02, h * 0.5, 0.025, 0.03, 0.22, '#d8c48a');
+    m.box(-w * 0.22, -0.02, h, w * 0.4, d * 0.7, 0.24, '#2d3a4f', { top: '#3b4b66' }); // suitcase on top
+  },
+  hotelDesk(m, w, d, h) {
+    m.box(0, 0, h - 0.04, w, d, 0.04, C.woodDark, { top: '#7a5236' });
+    for (const s of [-1, 1]) m.box((s * (w - 0.06)) / 2, 0, 0, 0.05, d - 0.04, h - 0.04, '#4e3322');
+    m.cylinder(w * 0.34, -d * 0.18, h, 0.06, 0.32, '#c9a24a', { sides: 8 }); // lamp
+    m.frustum(w * 0.34, -d * 0.18, h + 0.32, 0.15, 0.1, 0.14, '#efe4c8', { sides: 10, top: '#fff6dc' });
+    m.box(-w * 0.12, d * 0.05, h, 0.34, 0.24, 0.02, '#2f2a26', { yaw: 0.1 }); // leather folder
+    m.box(-w * 0.12, d * 0.05, h + 0.02, 0.22, 0.16, 0.004, '#efe9dc', { yaw: 0.1 });
+  },
+  floorLamp(m, w, d, h) {
+    m.cylinder(0, 0, 0, 0.16, 0.03, '#2a2622', { sides: 10 });
+    m.cylinder(0, 0, 0.03, 0.02, h - 0.3, '#c9a24a', { sides: 6 });
+    m.frustum(0, 0, h - 0.3, 0.2, 0.13, 0.3, '#efe4c8', { sides: 12, top: '#fff6dc' });
+  },
+  washer(m, w, d, h) {
+    m.box(0, 0, 0, w, d, h, '#e9eef0', { top: '#f4f7f8' });
+    m.box(0, -d / 2 + 0.08, h, w - 0.04, 0.14, 0.012, '#9aa6ad'); // control panel
+    m.cylinder(w * 0.28, -d / 2 + 0.08, h + 0.012, 0.035, 0.015, '#2a2d31', { sides: 8 });
+    m.cylinder(0, d * 0.06, h, w * 0.3, 0.008, '#cfd8dc', { sides: 14 }); // lid
+    m.box(0, d / 2 + 0.01, h * 0.48, w * 0.56, 0.02, w * 0.56, '#3c4a52'); // porthole
+  },
+  dryerStack(m, w, d, h) {
+    const half = h / 2;
+    for (let i = 0; i < 2; i++) {
+      m.box(0, 0, i * half, w, d, half - 0.01, '#dfe5e8', { top: '#eef2f4' });
+      m.box(0, d / 2 + 0.01, i * half + half * 0.45, w * 0.55, 0.02, w * 0.55, '#2e383e');
+      m.box(0, d / 2 + 0.01, i * half + half * 0.86, w * 0.8, 0.02, 0.06, '#9aa6ad');
+    }
+    m.box(0, -0.05, h, w * 0.5, d * 0.5, 0.12, '#d7e3ea', { top: '#ffffff' }); // folded towels
+  },
+  laundryCart(m, w, d, h) {
+    for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) m.cylinder((x * (w - 0.12)) / 2, (y * (d - 0.12)) / 2, 0, 0.05, 0.1, C.black, { sides: 6 });
+    m.box(0, 0, 0.1, w, d, h - 0.1, '#566a7a', { top: '#3a4954' });
+    m.box(0, 0, h - 0.04, w + 0.04, d + 0.04, 0.04, C.metal);
+    m.box(-w * 0.15, 0.02, h - 0.3, w * 0.62, d * 0.75, 0.34, '#f4f4ef', { top: '#ffffff' }); // linen piled up
+    m.box(w * 0.22, -0.04, h - 0.2, w * 0.4, d * 0.6, 0.26, '#e3e9ec', { top: '#f0f4f6', yaw: 0.2 });
+  },
+  linenShelf(m, w, d, h) {
+    for (const x of [-1, 1]) for (const y of [-1, 1]) m.box((x * (w - 0.04)) / 2, (y * (d - 0.04)) / 2, 0, 0.04, 0.04, h, C.metal);
+    for (let s = 0; s < 4; s++) {
+      const z = 0.1 + s * 0.6;
+      m.box(0, 0, z, w, d, 0.03, C.metalDark, { top: '#7d858c' });
+      for (let i = 0; i < 4; i++) {
+        if ((s + i) % 4 === 3) continue;
+        const tw = w / 4 - 0.06;
+        m.box(-w / 2 + (i + 0.5) * (w / 4), 0, z + 0.03, tw, d * 0.8, 0.22 + ((s + i) % 2) * 0.06, i % 2 ? '#f4f4ef' : '#dfe9ee', { top: '#ffffff' });
+      }
+    }
+  },
+  shower(m, w, d, h) {
+    m.box(0, 0, 0, w, d, 0.08, '#e9eef0', { top: '#f4f7f8' }); // tray
+    m.box(0, 0, 0.08, w - 0.12, d - 0.12, 0.004, '#c4d3da');
+    m.cylinder(w * 0.18, -d * 0.18, 0.084, 0.04, 0.004, '#7d858c', { sides: 8 }); // drain
+    m.box(-w / 2 + 0.02, 0, 0.08, 0.03, d, h - 0.08, '#a9cbd8', { top: '#d8eef6' }); // glass
+    m.box(0, d / 2 - 0.02, 0.08, w, 0.03, h - 0.08, '#a9cbd8', { top: '#d8eef6' });
+    m.cylinder(w * 0.3, -d * 0.36, 1.6, 0.06, 0.03, C.metal, { sides: 8 }); // head
+  },
+  luggageCart(m, w, d, h) {
+    m.box(0, 0, 0.12, w, d, 0.05, '#b8902e', { top: '#d8b048' });
+    for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) m.cylinder((x * (w - 0.14)) / 2, (y * (d - 0.14)) / 2, 0, 0.06, 0.12, C.black, { sides: 6 });
+    for (const s of [-1, 1]) m.cylinder((s * (w - 0.06)) / 2, 0, 0.17, 0.025, h - 0.17, '#d8b048', { sides: 6 });
+    m.box(0, 0, h - 0.04, w, 0.04, 0.04, '#d8b048');
+    m.box(-0.2, 0.02, 0.17, 0.55, 0.4, 0.62, '#2d3a4f', { top: '#3b4b66' }); // suitcases
+    m.box(0.3, -0.03, 0.17, 0.4, 0.3, 0.48, '#7a2633', { top: '#8e2f3d' });
+    m.box(0.3, -0.03, 0.65, 0.34, 0.26, 0.2, '#4a4f55', { top: '#5d636a' });
+  },
 };
 
 /** Appends one prop instance (compiled map prop) to the builder. */

@@ -10,6 +10,7 @@ import { WEAPONS } from '../config/weapons.js';
 import { UNIT, SCOUT, TRAP } from '../config/balance.js';
 import { SQUAD, DEFENDER_NAME } from '../config/squad.js';
 import { canAdd, freeSlot, pickRoles, pickSides, pickMissing } from '../session/Lobby.js';
+import { MAPS } from '../data/maps/index.js';
 import { el, setText, toggle } from './dom.js';
 import { ROLE_EMBLEM, GEAR_ICON, WEAPON_ICONS } from './icons.js';
 import { T } from './texts.js';
@@ -74,7 +75,7 @@ export class Roster {
     this.root = el(
       'div',
       'menu-view lobby pick',
-      `<div class="pk-head"><h2 class="mv-title">${P.title}</h2><div class="lb-opts pk-sides"></div></div>
+      `<div class="pk-head"><h2 class="mv-title">${P.title}</h2><span class="pk-map"></span><div class="lb-opts pk-sides"></div></div>
       <div class="lb-note pk-note"></div>
       <div class="rs-body">
         <div class="rs-left"><div class="rs-pool"></div><div class="rs-squad"></div></div>
@@ -84,6 +85,7 @@ export class Roster {
     );
     const q = (s) => this.root.querySelector(s);
     this.note = q('.pk-note');
+    this.mapTag = q('.pk-map');
 
     this.tabs = TEAMS.map((t) => {
       const b = el('button', 'btn lb-opt pk-side', `<span class="pk-sl"></span><span class="pk-n"></span>`);
@@ -200,6 +202,7 @@ export class Roster {
     const side = lobby.pickSide;
     const sides = pickSides(lobby);
     setText(this.note, P.note(sides.length > 1));
+    setText(this.mapTag, MAPS[lobby.drawn] ? P.map(MAPS[lobby.drawn].name, lobby.map === 'random') : '');
     for (const { b, n, t } of this.tabs) {
       toggle(b, 'on', t === side);
       b.hidden = sides.length < 2;
