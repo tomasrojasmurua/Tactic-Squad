@@ -50,20 +50,21 @@
 //                                              the attackers start from another entry (map `entries`)
 //
 // Buy and set-up (sim/prep.js):
-//   {type:'setRole', unitId, role}             buy: an attacker changes class (config/operators.js PICK_ROLES)
-//   {type:'buy', unitId, item, count}          buy (attackers) / preparation (defenders): buys (count 1) or
-//                                              gives back (-1) one BUY.items item for his utility points
-//   {type:'chooseSite', site}                  preparation, defenders: the bomb goes to that site and their
+// (The classes are picked before the game, Simulation opts.roles: no order changes them.)
+//   {type:'buy', unitId, item, count}          buy, both sides: buys (count 1) or gives back (-1) one
+//                                              BUY.items / BUY.defenderItems item for his utility points
+// The defenders' preparation has two steps: the recon (site, barricades, cameras), then their operators.
+//   {type:'chooseSite', site}                  recon: the bomb goes to that site and their
 //                                              set-up restarts from the map's layout for it
 //   {type:'placeUnit', unitId, x, y, facing?}  preparation: a defender stands there (their half, walkable)
 //   {type:'setWatch', unitId, watch}           preparation: a defender's watch order
 //                                              ({facing, sweep?: [from, to], react?, fallback?: {to: [x, y], look}})
-//   {type:'barricade', door, on}               preparation, defenders: puts up / takes down a barricade
-//   {type:'setDefenderRole', unitId, role}     preparation: a defender's class (config/operators.js DEF_PICK_ROLES)
+//   {type:'barricade', door, on}               recon: puts up / takes down a barricade
+//   {type:'camera', mount, on}                 recon: a camera up on that map mount (`cameraMounts`; on
+//                                              false: taken down)
+//   {type:'endRecon'}                          the recon is over: site, barricades and cameras stay as they
+//                                              are for the rest of the round
 //   {type:'placeTrap', unitId, x, y}           preparation: the Trampero lays a trap there (or picks his own up)
-//   {type:'camera', mount, on, atTick?}        preparation and drone, defenders: a camera up on that map mount
-//                                              (`cameraMounts`; on false: taken down). During the drone it is
-//                                              live, stamped with the drone phase's step like the stick
 // Recon drone (sim/drone.js), during the drone phase, stamped like a GO:
 //   {type:'drone', dir, atTick}                the stick: one of DRONE.directions headings, -1 = stop
 //   {type:'droneRecall', atTick}               the drone is done (the first planning starts)
@@ -88,7 +89,7 @@ import { segmentCrossesDoorway } from './doors.js';
 import { startDefuse } from './objectives.js';
 import { cancelEntry, releaseDelay } from './entries.js';
 import { setCamera } from './cameras.js';
-import { buyItem, setRole, chooseSite, placeDefender, setWatch, setBarricade, setDefenderRole, placeTrap } from './prep.js';
+import { buyItem, chooseSite, placeDefender, setWatch, setBarricade, placeTrap, endRecon } from './prep.js';
 import { steerDrone, endDrone } from './drone.js';
 import { routePoint } from './routePoint.js';
 import { startFollow, rebuildFollowers } from './follow.js';
@@ -121,6 +122,7 @@ export const REJECT = Object.freeze({
   tooManyTraps: 'tooManyTraps', // TRAP.perTrapper already laid
   badMount: 'badMount', // a camera on a mount the map does not have
   tooManyCameras: 'tooManyCameras', // CAMERA.max already up
+  reconOver: 'reconOver', // site, barricade or camera after the defenders' recon ended
   badFollow: 'badFollow', // follow: no such leader, himself, another side, or a leader who follows someone
 });
 
@@ -131,16 +133,19 @@ const OWN_ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'promoteLast', 'setLook'
 
 /** Orders each round phase takes (sim/round.js PHASE; literal keys: round.js imports this module). */
 const PHASE_ORDERS = Object.freeze({
-  buy: ['buy', 'setRole'],
-  prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade', 'setDefenderRole', 'placeTrap', 'buy', 'camera'],
-  drone: ['drone', 'droneRecall', 'camera'],
+  buy: ['buy'],
+  prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade', 'placeTrap', 'camera', 'endRecon'],
+  drone: ['drone', 'droneRecall'],
   plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry'],
   exec: ['go'],
   end: [],
 });
 
 /** Orders a side gives as a whole (no unit): which side must be human to give them. */
-const SIDE_ORDERS = Object.freeze({ chooseSite: 'defenders', barricade: 'defenders', camera: 'defenders', drone: 'attackers', droneRecall: 'attackers' });
+const SIDE_ORDERS = Object.freeze({ chooseSite: 'defenders', barricade: 'defenders', camera: 'defenders', endRecon: 'defenders', drone: 'attackers', droneRecall: 'attackers' });
+
+/** The defenders' recon orders: refused once it is over (sim.reconDone). */
+const RECON_ORDERS = Object.freeze(['chooseSite', 'barricade', 'camera']);
 
 /** May the side that sent `cmd` command this unit? (`by`: who gives it, 'human' | 'ai') */
 function obeys(sim, unit, cmd, by) {
@@ -161,6 +166,8 @@ export function applyCommand(sim, cmd, by = 'human') {
   const side = SIDE_ORDERS[cmd.type];
   if (side) {
     if (sideOf(sim, cmd) !== side || sim.controllers[side] !== by) return;
+    if (RECON_ORDERS.includes(cmd.type) && sim.reconDone) return refuse(sim, -1, REJECT.reconOver);
+    if (cmd.type === 'endRecon') return endRecon(sim);
     if (cmd.type === 'chooseSite') return refuse(sim, -1, chooseSite(sim, cmd.site));
     if (cmd.type === 'barricade') return refuse(sim, -1, setBarricade(sim, cmd.door, cmd.on !== false));
     if (cmd.type === 'camera') return refuse(sim, -1, setCamera(sim, cmd.mount, cmd.on !== false));
@@ -173,16 +180,12 @@ export function applyCommand(sim, cmd, by = 'human') {
   switch (cmd.type) {
     case 'buy':
       return refuse(sim, unit.id, buyItem(sim, unit, cmd.item, cmd.count ?? 1));
-    case 'setRole':
-      return refuse(sim, unit.id, setRole(sim, unit, cmd.role));
     case 'placeUnit':
       if (unit.team !== 'defenders') return;
       return refuse(sim, unit.id, placeDefender(sim, unit, cmd.x, cmd.y, cmd.facing ?? unit.facing));
     case 'setWatch':
       if (unit.team !== 'defenders') return;
       return refuse(sim, unit.id, setWatch(sim, unit, cmd.watch));
-    case 'setDefenderRole':
-      return refuse(sim, unit.id, setDefenderRole(sim, unit, cmd.role));
     case 'placeTrap':
       if (unit.team !== 'defenders') return;
       return refuse(sim, unit.id, placeTrap(sim, unit, cmd.x, cmd.y));

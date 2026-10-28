@@ -1,27 +1,30 @@
 // Panel of the round's first decision phases, over the map (it stays visible):
-//   buy       each operator's class (Asaltante / Brecha / Explorador), its kit
-//             and his utility points: tap an item to buy one, − to give one
-//             back (sim/prep.js, BUY in config/balance.js, ROLES in config/operators.js)
+//   buy       both sides, at once: each operator's class (picked before the
+//             game, in the menu), its kit and his utility points: tap an item
+//             to buy one, − to give one back (sim/prep.js, BUY in config/balance.js)
 //   prep      which entry the squad starts from (hidden from the defenders)
-//   setup     prep, playing the defenders: the bomb's site, the barricades,
-//             how many cameras are up (their mounts are tapped on the map:
-//             ui/CameraMounts.js) and the selected defender's watch order,
-//             class and utility
-//             (placing and aiming him are map gestures: input/PlanningController.js)
+//   recon     prep, playing the defenders, first step: the bomb's site, the
+//             barricades and how many cameras are up (their mounts are tapped
+//             on the map: ui/CameraMounts.js); CONFIRMAR fixes them
+//   deploy    prep, playing the defenders, then: the selected defender's
+//             watch order and the Trampero's traps (placing and aiming him are
+//             map gestures: input/PlanningController.js)
 //   planning  first turn only, compact: the entry can still change
-// Emits EV.REQUEST {action: 'buy_<unitId>_<item>_<+|->' | 'role_<unitId>_<role>' | 'chooseEntry_<id>' |
-// 'site_<id>' | 'barricade_<doorId>' | 'watch_<mode>' | 'defrole_<role>' | 'trapmode'}; LISTO is the usual button.
+// Emits EV.REQUEST {action: 'buy_<unitId>_<item>_<+|->' | 'chooseEntry_<id>' |
+// 'site_<id>' | 'barricade_<doorId>' | 'watch_<mode>' | 'trapmode'}; LISTO is the usual button.
 import { EV } from '../core/events.js';
-import { ROLES, PICK_ROLES, DEF_PICK_ROLES } from '../config/operators.js';
+import { ROLES } from '../config/operators.js';
 import { BUY, PREP, TRAP, CAMERA } from '../config/balance.js';
 import { controllableUnit } from '../sim/queries.js';
+import { buyableItems } from '../sim/prep.js';
+import { inRecon } from '../session/Session.js';
 import { watchOf, WATCH_MODES } from '../session/watch.js';
 import { el, setText, toggle } from './dom.js';
 import { T } from './texts.js';
 
 /** Which panel the session shows now, or null. */
 function panelFor(sim, session) {
-  if (session.phase === 'prep' && session.team === 'defenders') return 'setup';
+  if (session.phase === 'prep' && session.team === 'defenders') return inRecon(sim, session) ? 'recon' : 'deploy';
   if (session.phase === 'buy' || session.phase === 'prep') return session.phase;
   // Before the first turn ran the attackers may still change their entry.
   // Not in the guided tutorial, which skips the entry choice (SessionController lockedPhases).
@@ -40,7 +43,6 @@ export class PhasePanel {
     this.shown = null; // panel the body was built for
     this.sim = null;
     this.items = []; // buy panel: {u, item, count, sell, points}
-    this.roles = []; // buy panel: {u, role, b, label}
     root.appendChild(this.node);
   }
 
@@ -52,7 +54,7 @@ export class PhasePanel {
     const panel = panelFor(sim, session);
     toggle(this.node, 'hidden', !panel || session.helpOpen);
     toggle(this.node, 'compact', panel === 'entry');
-    toggle(this.node, 'side', panel === 'setup');
+    toggle(this.node, 'side', panel === 'recon' || panel === 'deploy');
     if (!panel) {
       this.shown = null;
       return;
@@ -61,40 +63,29 @@ export class PhasePanel {
       this.shown = panel;
       this.sim = sim;
       if (panel === 'buy') this.buildBuy(sim, session.team);
-      else if (panel === 'setup') this.buildSetup(sim);
+      else if (panel === 'recon') this.buildRecon(sim);
+      else if (panel === 'deploy') this.buildDeploy(sim);
       else this.buildEntries(sim, panel);
     }
-    if (panel === 'buy') this.refreshBuy();
-    else if (panel === 'setup') this.refreshSetup(sim, session);
+    if (panel === 'buy') this.refreshItems();
+    else if (panel === 'recon') this.refreshRecon(sim);
+    else if (panel === 'deploy') this.refreshDeploy(sim, session);
     else for (const b of this.body.children) toggle(b, 'on', b.dataset.entry === sim.entry.id);
   }
 
   buildBuy(sim, team) {
     setText(this.title, T.buy.title);
-    setText(this.note, T.buy.note);
+    setText(this.note, team === 'defenders' ? T.buy.noteDefend : T.buy.note);
     this.body.innerHTML = '';
     this.items = [];
-    this.roles = [];
-    this.team = sim.teams[team];
     for (const u of sim.teams[team]) {
-      const row = el('div', 'pp-row pp-buy', `<b style="color:${u.color}"></b><span class="pp-role"></span><span class="pp-points"></span><div class="pp-classes"></div><div class="pp-items"></div>`);
+      const row = el('div', 'pp-row pp-buy', `<b style="color:${u.color}"></b><span class="pp-role"></span><span class="pp-points"></span><div class="pp-items"></div>`);
       setText(row.children[0], u.name);
-      const label = row.children[1];
-      const points = row.children[2];
-      const classes = row.children[3];
-      const list = row.children[4];
-      for (const role of PICK_ROLES) {
-        const b = el('button', 'btn pp-class');
-        setText(b, ROLES[role].label);
-        b.title = ROLES[role].blurb;
-        b.addEventListener('click', () => this.request(`role_${u.id}_${role}`));
-        classes.appendChild(b);
-        this.roles.push({ u, role, b, label });
-      }
-      for (const item of BUY.items) {
-        const box = el('span', 'pp-item');
-        list.appendChild(this.itemButtons(item, () => u, points));
-      }
+      setText(row.children[1], `${ROLES[u.role].label} · ${u.weapon.name}`);
+      row.children[1].title = ROLES[u.role].blurb;
+      const items = buyableItems(team);
+      row.children[3].style.setProperty('--n', items.length);
+      for (const item of items) row.children[3].appendChild(this.itemButtons(item, () => u, row.children[2]));
       this.body.appendChild(row);
     }
   }
@@ -130,17 +121,6 @@ export class PhasePanel {
     }
   }
 
-  refreshBuy() {
-    for (const r of this.roles) {
-      const mine = r.u.role === r.role;
-      toggle(r.b, 'on', mine);
-      const taken = !mine && ROLES[r.role].unique && this.team.some((o) => o !== r.u && o.role === r.role);
-      if (r.b.disabled !== taken) r.b.disabled = taken;
-      if (mine) setText(r.label, `${ROLES[r.role].label} · ${r.u.weapon.name} — ${ROLES[r.role].blurb}`);
-    }
-    this.refreshItems();
-  }
-
   buildEntries(sim, panel) {
     const t = panel === 'entry' ? T.entryLate : T.prep;
     setText(this.title, t.title);
@@ -155,44 +135,37 @@ export class PhasePanel {
     }
   }
 
-  buildSetup(sim) {
-    const S = T.setup;
-    setText(this.title, S.title);
-    setText(this.note, S.note);
-    this.body.innerHTML = '';
-    const row = (label, cls) => {
-      const r = el('div', `pp-setup ${cls}`, `<span class="pp-label"></span><div class="pp-opts"></div>`);
-      setText(r.children[0], label);
-      this.body.appendChild(r);
-      return r;
-    };
-    const button = (r, text, action, data) => {
-      const b = el('button', 'btn pp-opt');
-      setText(b, text);
-      b.dataset.key = data;
-      b.addEventListener('click', () => this.request(action));
-      r.children[1].appendChild(b);
-      return b;
-    };
-    const sites = row(S.site, 'sites');
-    this.siteButtons = sim.compiled.sites.map((s) => button(sites, S.siteName(s.id), `site_${s.id}`, s.id));
-    this.barRow = row('', 'bars');
-    this.barButtons = sim.compiled.barricadeSlots.map((id) => button(this.barRow, S.doors[id] ?? id, `barricade_${id}`, id));
-    this.camRow = row('', 'cams'); // the mounts are tapped on the map (ui/CameraMounts.js)
-    this.watchRow = row('', 'watch');
-    this.watchButtons = WATCH_MODES.map((m) => button(this.watchRow, S.watch[m], `watch_${m}`, m));
-    this.roleRow = row('', 'roles');
-    this.roleButtons = DEF_PICK_ROLES.map((r) => button(this.roleRow, ROLES[r].label, `defrole_${r}`, r));
-    this.trapRow = row('', 'traps');
-    this.trapButton = button(this.trapRow, S.trapMode, 'trapmode', 'trap');
-    // The selected defender's utility: his class's kit plus what his points buy.
-    this.items = [];
-    this.gearRow = row('', 'gear');
-    const selected = () => controllableUnit(sim, this.selectedId, 'defenders');
-    for (const item of BUY.defenderItems) this.gearRow.children[1].appendChild(this.itemButtons(item, selected, null));
+  /** A row of the defender's panels: a label and its options. */
+  setupRow(label, cls) {
+    const r = el('div', `pp-setup ${cls}`, `<span class="pp-label"></span><div class="pp-opts"></div>`);
+    setText(r.children[0], label);
+    this.body.appendChild(r);
+    return r;
   }
 
-  refreshSetup(sim, session) {
+  setupButton(r, text, action, data) {
+    const b = el('button', 'btn pp-opt');
+    setText(b, text);
+    b.dataset.key = data;
+    b.addEventListener('click', () => this.request(action));
+    r.children[1].appendChild(b);
+    return b;
+  }
+
+  /** The defenders' recon: the bomb's site, the barricades and the cameras (fixed by CONFIRMAR). */
+  buildRecon(sim) {
+    const S = T.setup;
+    setText(this.title, S.reconTitle);
+    setText(this.note, S.reconNote);
+    this.body.innerHTML = '';
+    const sites = this.setupRow(S.site, 'sites');
+    this.siteButtons = sim.compiled.sites.map((s) => this.setupButton(sites, S.siteName(s.id), `site_${s.id}`, s.id));
+    this.camRow = this.setupRow('', 'cams'); // the mounts are tapped on the map (ui/CameraMounts.js)
+    this.barRow = this.setupRow('', 'bars');
+    this.barButtons = sim.compiled.barricadeSlots.map((id) => this.setupButton(this.barRow, S.doors[id] ?? id, `barricade_${id}`, id));
+  }
+
+  refreshRecon(sim) {
     const S = T.setup;
     for (const b of this.siteButtons) toggle(b, 'on', b.dataset.key === sim.site.id);
     let up = 0;
@@ -204,23 +177,27 @@ export class PhasePanel {
     for (const b of this.barButtons) toggle(b, 'off', up >= PREP.barricades && !b.classList.contains('on'));
     setText(this.barRow.children[0], S.barricades(up, PREP.barricades));
     setText(this.camRow.children[0], S.cameras(sim.cameras.length, CAMERA.max));
+  }
+
+  /** The defenders' operators: the selected one's watch order and the Trampero's traps. */
+  buildDeploy(sim) {
+    const S = T.setup;
+    setText(this.title, S.title);
+    setText(this.note, S.note);
+    this.body.innerHTML = '';
+    this.watchRow = this.setupRow('', 'watch');
+    this.watchButtons = WATCH_MODES.map((m) => this.setupButton(this.watchRow, S.watch[m], `watch_${m}`, m));
+    this.trapRow = this.setupRow('', 'traps');
+    this.trapButton = this.setupButton(this.trapRow, S.trapMode, 'trapmode', 'trap');
+  }
+
+  refreshDeploy(sim, session) {
+    const S = T.setup;
     const u = controllableUnit(sim, session.selectedId, session.team);
-    this.selectedId = session.selectedId;
-    setText(this.gearRow.children[0], u ? S.gearOf(u.name, T.buy.points(u.points)) : S.pickGear);
-    this.refreshItems();
     setText(this.watchRow.children[0], u ? S.watchOf(u.name) : S.pickOne);
     const mode = u ? watchOf(u).mode : null;
     for (const b of this.watchButtons) {
       toggle(b, 'on', b.dataset.key === mode);
-      if (b.disabled !== !u) b.disabled = !u;
-    }
-    // The selected defender's class (at most ROLES[id].max of each) and, for the Trampero, his traps.
-    setText(this.roleRow.children[0], u ? S.roleOf(u.name, ROLES[u.role].blurb) : S.pickRole);
-    for (const b of this.roleButtons) {
-      const r = b.dataset.key;
-      const taken = sim.teams.defenders.filter((o) => o !== u && o.role === r).length >= ROLES[r].max;
-      toggle(b, 'on', !!u && u.role === r);
-      toggle(b, 'off', taken);
       if (b.disabled !== !u) b.disabled = !u;
     }
     const trapper = sim.teams.defenders.find((o) => o.role === 'trapper');

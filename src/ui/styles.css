@@ -756,7 +756,6 @@ body.touch .phase-panel .pp-note { display: none; }
 .phase-panel .pp-sell { min-height: 34px; min-width: 30px; padding: 4px 6px; justify-content: center; }
 .phase-panel .pp-sell:disabled { opacity: 0.3; }
 body.touch .phase-panel .pp-buy { grid-template-columns: 1fr auto; flex: 1 1 100%; }
-body.touch .phase-panel .pp-buy .pp-role { display: none; }
 body.touch .phase-panel .pp-buy-btn, body.touch .phase-panel .pp-sell { min-height: 32px; }
 /* First planning: the entry, compact and out of the way. */
 /* The defender's set-up: docked on the right, clear of the building. */
@@ -861,6 +860,15 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
 .title-box .lobby .lb-ready { margin: 0; padding: 13px 44px; }
 .title-box .lobby .lb-ready .key { margin-left: 10px; }
 .title-box .lobby .menu-btn.back { margin: 0; }
+/* The class pick: a tab per side (in a match), a row per operator with his class's blurb under it. */
+.pick .pk-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 12px; }
+.pick .pk-teams { margin-top: 12px; }
+.pick .lb-team { gap: 10px; }
+.pick .lb-slot { display: grid; grid-template-columns: 88px auto; align-items: center; column-gap: 10px; row-gap: 3px; }
+.pick .pk-blurb { grid-column: 2; font-size: 12px; line-height: 1.3; color: #b9c3ca; }
+.pick .lb-actions { flex-wrap: wrap; }
+.pick .lb-players { margin-left: auto; }
+.pick [hidden] { display: none !important; }
 
 /* ------------------------------------------------------------ guided tutorial card (ui/TutorialCard.js) */
 .tut-backdrop { position: absolute; inset: 0; z-index: 38; background: rgba(0, 0, 0, 0.5); pointer-events: auto; }
@@ -929,6 +937,15 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
   .lobby .lb-note { font-size: 11px; }
   .lobby .lb-actions { margin-top: 10px; position: sticky; bottom: 0; padding: 8px 0; background: rgba(0, 0, 0, 0.92); }
   .title-box .lobby .lb-ready { padding: 10px 34px; }
+  .lobby .lb-col { flex-basis: 230px; }
+  .pick .pk-note { display: none; }
+  .pick .pk-head, .pick .pk-teams { margin-top: 6px; }
+  .pick .lb-team { gap: 5px; }
+  .pick .lb-slot { grid-template-columns: 62px auto minmax(0, 1fr); column-gap: 8px; }
+  .pick .pk-blurb { grid-column: 3; font-size: 10.5px; line-height: 1.25; }
+  .pick .lb-actions { flex-wrap: nowrap; }
+  .pick .lb-players { flex-direction: column; gap: 3px; }
+  .pick .lb-player { padding: 4px 8px; font-size: 12px; }
 }
 
 /* Help: close, and the way back to the main menu (the phone's top row has no room for it). */
@@ -985,22 +1002,15 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
 .tbtn.aim { border-color: var(--cyan); color: var(--cyan); animation: tbtn-aim 0.9s ease-in-out infinite alternate; }
 @keyframes tbtn-aim { from { box-shadow: 0 0 0 0 rgba(47, 215, 255, 0.0); } to { box-shadow: 0 0 0 3px rgba(47, 215, 255, 0.35); } }
 
-/* Buy panel: the operator's class (Asaltante / Brecha / Explorador). */
-.phase-panel .pp-classes { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
-.phase-panel .pp-class { min-height: 30px; padding: 3px 10px; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; }
-.phase-panel .pp-class.on { background: var(--cyan-deep); border-color: var(--cyan); color: #fff; }
-.phase-panel .pp-class[disabled] { opacity: 0.35; }
-body.touch .phase-panel .pp-class { min-height: 30px; padding: 2px 8px; font-size: 10.5px; }
-/* Touch buy panel: wider and denser (class chips beside the name, the four items on one line), scrolls if it must. */
+/* Touch buy panel: wider and denser (the class beside the name, the items on one line), scrolls if it must. */
 body.touch .phase-panel:has(.pp-buy) { width: min(600px, calc(100vw - 250px)); max-height: calc(100vh - 70px - var(--sat)); overflow-y: auto; }
 body.touch .phase-panel .pp-buy { grid-template-columns: auto 1fr auto; column-gap: 8px; align-items: center; row-gap: 3px; }
-body.touch .phase-panel .pp-buy .pp-classes { grid-column: 2; grid-row: 1; flex-wrap: nowrap; }
+body.touch .phase-panel .pp-buy .pp-role { grid-column: 2; grid-row: 1; font-size: 11px; color: var(--muted); }
 body.touch .phase-panel .pp-buy .pp-points { grid-column: 3; grid-row: 1; }
 body.touch .phase-panel .pp-items { flex-wrap: nowrap; }
 body.touch .phase-panel .pp-buy-btn { padding: 2px 5px; font-size: 10.5px; letter-spacing: 0.02em; }
 body.touch .phase-panel .pp-buy-btn .p { font-size: 9.5px; }
 body.touch .phase-panel .pp-sell { min-width: 24px; padding: 2px 4px; }
-body.touch .phase-panel .pp-class { min-height: 26px; padding: 1px 6px; font-size: 9.5px; letter-spacing: 0.03em; }
 
 /* Match (best of 7): score line over the result, the pay, and only NEXT ROUND / MENU (no retries). */
 .result .match-line { font-size: 13px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cyan); margin-bottom: 4px; }
@@ -1052,15 +1062,17 @@ body.killcam-on .banner, body.killcam-on .squad, body.killcam-on .feed, body.kil
     left: calc(8px + var(--sal)); right: calc(96px + var(--sar)); top: calc(86px + var(--sat)); width: auto; transform: none;
     max-height: calc(100dvh - 124px - var(--sat) - var(--sab)); overflow-y: auto;
   }
-  body.touch .phase-panel .pp-items { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  body.touch .phase-panel .pp-items { display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: 4px; }
   body.touch .phase-panel .pp-item { min-width: 0; }
   body.touch .phase-panel .pp-buy-btn { flex: 1 1 auto; min-width: 0; min-height: 38px; justify-content: center; overflow: hidden; white-space: nowrap; }
   body.touch .phase-panel .pp-sell { flex: none; min-width: 34px; min-height: 38px; }
-  body.touch .phase-panel .pp-class { min-height: 34px; padding: 2px 8px; font-size: 10.5px; }
 
   /* Defender set-up: a little wider, real targets, scrolls between the squad row and the objective line. */
   body.touch .phase-panel.side { width: 246px; max-height: calc(100dvh - 120px - var(--sat) - var(--sab)); }
   body.touch .phase-panel .pp-opt { min-height: 38px; font-size: 11px; }
+  body.touch .phase-panel.side .pp-title, body.touch .phase-panel:has(.pp-buy) .pp-title { display: none; } /* the banner already names the phase */
+  body.touch .phase-panel:has(.pp-buy) .pp-body { margin-top: 0; }
+  body.touch .phase-panel .pp-setup.bars .pp-opt { min-height: 34px; flex-basis: 40%; }
   /* First planning (entry): touch-size choices. */
   body.touch .phase-panel.compact .pp-entry { min-height: 40px; }
 

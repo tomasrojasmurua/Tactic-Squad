@@ -158,8 +158,9 @@ test('cortar el turno al ver un enemigo: termina antes y el reintento lo repite 
 
 // ------------------------------------------------------------ clases
 
-test('clases: se eligen en la compra, Brecha y Explorador una vez, cada una con su equipo', async () => {
+test('clases: Brecha y Explorador una vez, cada una con su equipo; dentro de la partida no se cambian', async () => {
   const { ROLES } = await import('../src/config/operators.js');
+  const { setRole } = await import('../src/sim/prep.js');
   const sim = new Simulation(MAP, { seed: 1 });
   const [aguila, lobo, zorro] = sim.teams.attackers;
   assert.deepEqual([aguila.role, lobo.role, zorro.role], ['assault', 'entry', 'scout']);
@@ -167,18 +168,18 @@ test('clases: se eligen en la compra, Brecha y Explorador una vez, cada una con 
     sim.enqueue({ team: T, ...c });
     sim.flushCommands();
   };
-  order({ type: 'setRole', unitId: aguila.id, role: 'scout' });
-  order({ type: 'setRole', unitId: aguila.id, role: 'anchor' });
-  assert.deepEqual(rejects(sim), ['roleTaken', 'badRole']);
+  // Las reglas de la selección de clases (antes de la partida).
+  assert.equal(setRole(sim, aguila, 'scout'), 'roleTaken');
+  assert.equal(setRole(sim, aguila, 'anchor'), 'badRole');
   order({ type: 'buy', unitId: zorro.id, item: 'flash', count: 1 });
-  order({ type: 'setRole', unitId: zorro.id, role: 'assault' });
-  assert.deepEqual(rejects(sim), []);
+  assert.equal(setRole(sim, zorro, 'assault'), null);
   assert.equal(zorro.weaponId, ROLES.assault.weapon);
   assert.deepEqual([zorro.gear.flash, zorro.gear.frag, zorro.gear.smoke], [1, 1, 0]);
   assert.equal(zorro.points, BUY.points, 'lo comprado vuelve con la clase anterior: recupera sus puntos');
-  order({ type: 'setRole', unitId: aguila.id, role: 'scout' });
+  assert.equal(setRole(sim, aguila, 'scout'), null);
   assert.equal(aguila.ability, 'scoutPulse');
-  sim.advancePhase();
+  rejects(sim);
+  // Ya en la ronda, ninguna orden cambia la clase.
   order({ type: 'setRole', unitId: aguila.id, role: 'assault' });
   assert.deepEqual(rejects(sim), ['notNow']);
 });

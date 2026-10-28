@@ -1,5 +1,5 @@
 // Camera mounts on the map (sim/cameras.js, map `cameraMounts`): playing the
-// defenders, in the preparation and while the enemy drone flies, each mount
+// defenders, in their recon (the first step of the preparation), each mount
 // is a round button over its spot on the wall. A free one shows a camera and
 // "+": tapping it puts one of your CAMERA.max cameras up there (its view is
 // drawn dashed meanwhile: render/layers/OverlayLayer.js). One with a camera
@@ -11,12 +11,13 @@ import { EV } from '../core/events.js';
 import { CAMERA } from '../config/balance.js';
 import { HUD } from '../config/ui.js';
 import { OVERLAY } from '../config/render.js';
+import { inRecon } from '../session/Session.js';
 import { el, setStyle, toggle } from './dom.js';
 import { ICON } from './icons.js';
 import { T } from './texts.js';
 
-/** Does this screen pick camera mounts now? */
-export const picksMounts = (session) => session.team === 'defenders' && (session.phase === 'prep' || session.phase === 'drone') && !session.helpOpen;
+/** Does this screen pick camera mounts now? Once the recon ends they stay where they are. */
+export const picksMounts = (sim, session) => inRecon(sim, session) && !session.helpOpen;
 
 export class CameraMounts {
   constructor(root, bus) {
@@ -45,7 +46,7 @@ export class CameraMounts {
   }
 
   update(sim, session, camera, occlusion) {
-    const on = picksMounts(session);
+    const on = picksMounts(sim, session);
     toggle(this.node, 'on', on);
     if (!on) return;
     if (this.map !== sim.compiled) this.build(sim);

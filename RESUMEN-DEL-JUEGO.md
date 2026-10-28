@@ -56,9 +56,9 @@ bando; hoy 47 % atacantes en 200 rondas: 49 % en A, 44 % en B).
 
 | Fase | Plazo | Qué pasa |
 | --- | --- | --- |
-| **Compra** | sin límite | Cada atacante elige su **clase** (Asaltante, Brecha, Explorador; Brecha y Explorador, uno solo) y suma utilidad con sus **2 puntos**: flash, granada, humo o carga (1 punto cada una). El equipo de la clase es gratis. |
-| **Preparación** | sin límite | A ciegas y a la vez. El atacante elige una de **3 entradas** (norte, principal, sur); el defensor elige **sitio A o B**, coloca a los suyos, les da vigilancia, suma utilidad con sus **2 puntos** (flash, granada o humo), pone **2 barricadas** y monta **2 cámaras** en los soportes que elija (7 en el mapa). |
-| **Dron** | 15 s | El atacante maneja un dron en tiempo real. Pasa por debajo de las puertas, no por barricadas. Lo que ve queda marcado: defensores, barricadas, cámaras y la bomba. Un defensor que lo vea 0,6 s lo derriba. Mientras vuela, **el defensor todavía puede mover sus cámaras**. |
+| **Compra** | sin límite | Los dos bandos a la vez. Cada operador lleva gratis el equipo de su **clase** (elegida antes de la partida) y suma utilidad con sus **2 puntos**: el atacante flash, granada, humo o carga; el defensor flash, granada o humo (1 punto cada una). |
+| **Preparación** | sin límite | A ciegas y a la vez. El atacante elige una de **3 entradas** (norte, principal, sur); el defensor primero hace su **Reconocimiento**: elige **sitio A o B**, pone **2 barricadas** y monta **2 cámaras** en los soportes que elija (7 en el mapa); al confirmar quedan **fijos toda la ronda**. Después coloca a los suyos y les da vigilancia. |
+| **Dron** | 15 s | El atacante maneja un dron en tiempo real. Pasa por debajo de las puertas, no por barricadas. Lo que ve queda marcado: defensores, barricadas, cámaras y la bomba. Un defensor que lo vea 0,6 s lo derriba. Las cámaras ya no se mueven. |
 | **Planificación** | sin límite | Tiempo detenido. Rutas, miradas, esperas en grupos GO de **color** (violeta, rosa, blanco), cómo entra por cada puerta, a qué paso, y qué lanza. |
 | **Ejecución** | 5 s (menos si ve a alguien) | Todo corre a la vez. La única orden durante el turno es el **GO de un color**: ese grupo sale junto. |
 | **Fin** | 10 s | Resultado, con un "por qué" que explica cómo murió cada uno y qué falló. |
@@ -69,10 +69,12 @@ fase trae una tarjeta que la explica la primera vez. Solo las lecciones del tuto
 
 **Menú y lobby.** JUGAR → CONTRA LA IA (MULTIJUGADOR, próximamente) → el lobby:
 **formato** (una ronda suelta o al mejor de 3, 5 o 7), **con
-qué bando empiezas**, **mapa** (Operación Almacén; más, próximamente) y **tu equipo**: la
-clase de cada puesto al atacar y al defender (en la compra o la preparación se puede
-cambiar ronda a ronda). Abajo, quién está y si está listo; con LISTO empieza (contra la
-IA, la IA siempre lo está). El lobby recuerda lo elegido.
+qué bando empiezas** y **mapa** (Operación Almacén; más, próximamente). ELEGIR CLASES
+lleva a la **selección de clases**, como el pick phase de un MOBA: la clase de cada puesto
+(en una partida, una pestaña para cuando atacas y otra para cuando defiendes), con la
+descripción de cada una. Duran toda la partida: dentro de ella no se cambian. Abajo,
+quién está y si está listo; con CONFIRMAR empieza (contra la IA, la IA elige la suya a
+ciegas). El menú recuerda lo elegido.
 
 **Objetivo.** Los atacantes ganan si desactivan la bomba (7 s quieto al lado) o si
 eliminan a todos los defensores. Los defensores ganan si explota o si eliminan a todos
@@ -163,7 +165,7 @@ marcador cuenta las rondas del jugador contra las de la IA, en los dos bandos.
 | **Merodeador** | defensor (uno) | según el puesto | flash | Fuera del sitio, a la caza del flanco: 12 % más rápido y **sus pasos se oyen a un tercio de distancia**. El pulso del Explorador lo encuentra igual |
 | **Trampero** | defensor (uno) | según el puesto | 2 trampas, humo | Las pone en la preparación. **El que pisa una queda 2 s atrapado, recibe 15 de daño, suena fuerte y los defensores saben dónde está.** Solo se ven yendo con sigilo (a 3,5 m), con el dron o con el pulso del Explorador; una trampa conocida se rompe de un tiro |
 
-El defensor elige las clases en el panel de preparación, a ciegas (no ve las del
+Las clases se eligen antes de la partida, a ciegas (no ve las del
 atacante, y el atacante no ve las suyas). La IA las toma de los puestos del mapa.
 
 **Utilidad del defensor.** Con sus puntos suma flash, granada o humo (las cargas son

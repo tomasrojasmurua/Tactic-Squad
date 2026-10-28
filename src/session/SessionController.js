@@ -22,7 +22,7 @@ import { loadPref, savePref } from './storage.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
 import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors, lastUserIndex, HERE } from '../sim/queries.js';
 import { phaseTick } from '../sim/round.js';
-import { SESSION_PHASE, isDecisionPhase, isPlanningTime, isLivePhase, pilotsDrone, isDefenderSetup } from './Session.js';
+import { SESSION_PHASE, isDecisionPhase, isPlanningTime, isLivePhase, pilotsDrone, isDefenderSetup, inRecon } from './Session.js';
 import { watchOf, watchOrder } from './watch.js';
 import { armOrConfirm } from './confirm.js';
 import { PlanRecorder } from './PlanRecorder.js';
@@ -31,7 +31,7 @@ import { AutoPause } from './AutoPause.js';
 import { Tutorial } from './Tutorial.js';
 
 import { createMatch, matchLoadout, endMatchRound } from './Match.js';
-import { createLobby, savedLobby, lobbySet, lobbyStart } from './Lobby.js';
+import { createLobby, savedLobby, lobbySet, lobbyStart, openPick } from './Lobby.js';
 
 export class SessionController {
   /**
@@ -153,8 +153,6 @@ export class SessionController {
     }
     this.session.replay.exec = false;
     if (!isDecisionPhase(this.session)) return;
-    // Playing the defenders there is nothing to buy: the AI's squad buys when the phase ends.
-    if (sim.phase === 'buy' && sim.controllers.attackers === 'ai') return this.advance();
     const auto = this.recorder.enterPhase((cmd) => this.bus.emit(EV.COMMAND, cmd));
     this.session.replay.pending = this.recorder.pending;
     this.clock.start(sim.phase, auto);
@@ -219,7 +217,7 @@ export class SessionController {
   /** Orders are recorded per phase (a turn only takes GOs; the drone its stick and recall). A new one in a replayed decision phase takes over. */
   record(cmd) {
     const live = isLivePhase(this.session.phase) || this.session.phase === 'paused';
-    const liveOrder = cmd.type === 'go' || cmd.type === 'drone' || cmd.type === 'droneRecall' || (cmd.type === 'camera' && cmd.atTick !== undefined);
+    const liveOrder = cmd.type === 'go' || cmd.type === 'drone' || cmd.type === 'droneRecall';
     if (!isDecisionPhase(this.session) && !(live && liveOrder)) return;
     const dropped = this.recorder.record(cmd);
     this.session.replay.pending = this.recorder.pending;
@@ -323,6 +321,13 @@ export class SessionController {
       else this.command({ type: 'droneRecall', atTick: phaseTick(this.sim) });
       return;
     }
+    if (inRecon(this.sim, this.session)) {
+      // The defender's recon ends: site, barricades and cameras stay; now his operators.
+      this.command({ type: 'endRecon' });
+      this.sim.flushCommands();
+      this.sound('select');
+      return;
+    }
     if (isDecisionPhase(this.session)) {
       // Strict mode (ENTRY.undecided 'stop'): doors still on "?" stop their operators. Say so once; a second LISTO confirms.
       const doors = ENTRY.undecided === 'stop' ? pendingDoors(this.sim, this.session.team) : 0;
@@ -369,7 +374,7 @@ export class SessionController {
         if (session.lobby.view === 'lessons') {
           const next = nextLesson(session.tutorial.lessonsDone);
           if (next) this.handleRequest(`lesson_${next.id}`);
-        } else this.handleRequest({ main: 'play', play: 'vsAi', lobby: 'lobbyReady' }[session.lobby.view]);
+        } else this.handleRequest({ main: 'play', play: 'vsAi', lobby: 'lobbyReady', pick: 'lobbyReady' }[session.lobby.view]);
         return;
       case 'play':
       case 'vsAi':
@@ -382,12 +387,18 @@ export class SessionController {
         return;
       case 'back':
         if (phase !== 'title' || session.lobby.view === 'main') return;
-        session.lobby.view = session.lobby.view === 'lobby' ? 'play' : 'main'; // play and lessons go back to main
+        session.lobby.view = { pick: 'lobby', lobby: 'play' }[session.lobby.view] || 'main'; // play and lessons go back to main
         this.sound('undo');
         return;
       case 'lobbyReady': {
-        // Everyone ready (against the AI: the player; the AI always is): the game starts.
-        if (phase !== 'title' || session.lobby.view !== 'lobby') return;
+        // The conditions set: on to the class pick. There, everyone ready (against the AI: the player; the AI always is): the game starts.
+        if (phase !== 'title') return;
+        if (session.lobby.view === 'lobby') {
+          openPick(session.lobby);
+          this.sound('select');
+          return;
+        }
+        if (session.lobby.view !== 'pick') return;
         if (session.touch) requestFullscreenLandscape();
         session.lobby.ready = true;
         const { mode, team, bestOf } = lobbyStart(session.lobby);
@@ -543,26 +554,17 @@ export class SessionController {
         else if (action.startsWith('lobby_') && phase === 'title') this.lobbySet(action.slice(6));
         else if (action.startsWith('lesson_') && phase === 'title') this.beginLesson(action.slice(7));
         else if (action.startsWith('chooseEntry_') && (phase === 'prep' || phase === 'planning')) this.chooseEntry(action.slice(12));
-        else if (action.startsWith('buy_') && (phase === 'buy' || isDefenderSetup(session))) this.buy(action);
-        else if (action.startsWith('role_') && phase === 'buy') this.setRole(action);
+        else if (action.startsWith('buy_') && phase === 'buy') this.buy(action);
         else if (action.startsWith('mount_')) this.toggleMount(action.slice(6));
         else if (isDefenderSetup(session)) this.setup(action);
     }
   }
 
-  /** Buy panel: role_<unitId>_<role> (the operator's class). */
-  setRole(action) {
-    const [, id, role] = action.split('_');
-    this.command({ type: 'setRole', unitId: +id, role });
-    this.sim.flushCommands();
-    this.sound('select');
-  }
-
   /**
-   * The defender's set-up panel (ui/PhasePanel.js): site_<id> moves the bomb
-   * (the set-up starts over from the map's for it), barricade_<doorId>
-   * toggles one, watch_<mode> changes the selected defender's watch order,
-   * defrole_<role> his class, trapmode switches taps to laying traps.
+   * The defender's set-up panels (ui/PhasePanel.js): in the recon site_<id>
+   * moves the bomb (the set-up starts over from the map's for it) and
+   * barricade_<doorId> toggles one; then watch_<mode> changes the selected
+   * defender's watch order and trapmode switches taps to laying traps.
    */
   setup(action) {
     const sim = this.sim;
@@ -581,16 +583,12 @@ export class SessionController {
       if (!u) return this.notice('pickDefender');
       const w = watchOf(u);
       this.command({ type: 'setWatch', unitId: u.id, watch: watchOrder(arg, w.facing, w.fallback) });
-    } else if (kind === 'defrole') {
-      const u = controllableUnit(sim, this.session.selectedId, this.session.team);
-      if (!u) return this.notice('pickDefender');
-      this.command({ type: 'setDefenderRole', unitId: u.id, role: arg });
     } else return;
     sim.flushCommands();
     this.sound('select');
   }
 
-  /** Buy panel / defender set-up: buy_<unitId>_<item>_<+|-> (one item bought or given back). */
+  /** Buy panel: buy_<unitId>_<item>_<+|-> (one item bought or given back). */
   buy(action) {
     const [, id, item, sign] = action.split('_');
     this.command({ type: 'buy', unitId: +id, item, count: sign === '-' ? -1 : 1 });
@@ -629,23 +627,18 @@ export class SessionController {
 
   /**
    * Defending, a camera mount tapped on the map (ui/CameraMounts.js): a camera
-   * goes up there, or comes down. In the preparation, or live while the enemy
-   * drone flies (stamped with its step, like the stick).
+   * goes up there, or comes down. In the recon only: then they stay put.
    */
   toggleMount(id) {
     const s = this.session;
     const sim = this.sim;
-    if (s.team !== 'defenders' || s.helpOpen) return;
+    if (!inRecon(sim, s) || s.helpOpen) return;
     const on = !sim.cameras.some((c) => c.mount === id);
-    if (s.phase === 'prep') {
-      this.command({ type: 'camera', mount: id, on });
-      sim.flushCommands();
-    } else if (s.phase === 'drone') {
-      if (s.replay.exec) return this.notice('camerasReplay');
-      this.command({ type: 'camera', mount: id, on, atTick: phaseTick(sim) });
-    } else return;
+    this.command({ type: 'camera', mount: id, on });
+    sim.flushCommands();
     this.sound(on ? 'select' : 'undo');
   }
+
 
   /** The round's last kill again (after the round, or VER DE NUEVO on the result). */
   playKillcam() {

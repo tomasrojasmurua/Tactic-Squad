@@ -79,14 +79,9 @@ test('lo que se lleva es lo que se usa en el asalto (sin carga no hay brecha)', 
   assert.ok(rejects(sim).includes('noGear'));
 });
 
-test('el defensor compra granada, humo o flash en su preparación (cargas no); la IA defensora gasta sus puntos', () => {
+test('el defensor compra granada, humo o flash en la compra, a la vez que el atacante (cargas no); la IA defensora gasta sus puntos', () => {
   const sim = new Simulation(MAP, { seed: 2, controllers: BOTH, site: 'A' });
   const d = sim.teams.defenders[1]; // Defensor: su clase trae una flash
-  // En la compra del atacante, el defensor todavía no compra.
-  cmd(sim, DEF, { type: 'buy', unitId: d.id, item: 'frag', count: 1 });
-  sim.flushCommands();
-  assert.equal(rejects(sim).length, 1);
-  sim.advancePhase(); // -> preparación
   const kit = { ...d.gear };
   cmd(sim, DEF, { type: 'buy', unitId: d.id, item: 'breach', count: 1 });
   cmd(sim, DEF, { type: 'buy', unitId: d.id, item: 'smoke', count: 1 });
@@ -94,11 +89,14 @@ test('el defensor compra granada, humo o flash en su preparación (cargas no); l
   assert.deepEqual(rejects(sim), ['badItem']);
   assert.equal(d.gear.smoke, kit.smoke + 1);
   assert.equal(d.points, BUY.points - BUY.prices.smoke);
-  // Un cambio de clase le da el equipo de la nueva y le devuelve los puntos.
+  // En la preparación ya no se compra, y la clase no se cambia dentro de la partida.
+  sim.advancePhase(); // -> preparación
+  cmd(sim, DEF, { type: 'buy', unitId: d.id, item: 'frag', count: 1 });
   cmd(sim, DEF, { type: 'setDefenderRole', unitId: d.id, role: 'anchor' });
   sim.flushCommands();
-  assert.deepEqual([d.role, d.gear.flash, d.gear.frag, d.gear.smoke, d.points], ['anchor', 0, 1, 0, BUY.points]);
-  // La IA defensora compra al entrar en la preparación.
+  assert.deepEqual(rejects(sim), ['notNow', 'notNow']);
+  assert.equal(d.role, 'defender');
+  // La IA defensora compra al terminar la compra.
   const ai = new Simulation(MAP, { seed: 2, site: 'A' });
   ai.advancePhase();
   assert.ok(ai.teams.defenders.every((u) => u.points < BUY.points), 'gasta sus puntos');

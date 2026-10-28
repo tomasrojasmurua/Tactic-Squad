@@ -53,6 +53,7 @@ export const FLOW_TEXTS = Object.freeze({
       n === 1
         ? 'Una ronda suelta: puedes repetir tu plan o probar otra suerte'
         : `Gana el primero en llegar a ${Math.floor(n / 2) + 1}. A la mitad se cambia de bando. Cada ronda empiezas con el equipo de tu clase y ${BUY.points} puntos de utilidad; el que pierde suma uno más en la siguiente`,
+    toPick: 'Elegir clases',
     side: 'Empiezas',
     sides: { attackers: 'Atacando', defenders: 'Defendiendo', attackersTeam: 'Cuando atacas', defendersTeam: 'Cuando defiendes' },
     map: 'Mapa',
@@ -63,10 +64,14 @@ export const FLOW_TEXTS = Object.freeze({
     youReady: 'Listo',
     ai: 'IA',
     aiReady: 'Lista',
-    team: 'Tu equipo',
-    teamNote: 'La clase de cada uno al empezar. En la compra (o la preparación) la puedes cambiar ronda a ronda',
-    ready: 'Listo',
     readyKey: 'Intro',
+  },
+  /** The class pick after the lobby (ui/Menu.js). */
+  pick: {
+    title: 'Selección de clases',
+    note: (both) => (both ? 'Cada uno juega con su clase toda la partida, en ambos bandos. La IA elige la suya a ciegas' : 'Cada uno juega con su clase toda la ronda. La IA elige la suya a ciegas'),
+    aiPicks: 'Elige a ciegas',
+    ready: 'Confirmar',
   },
   rerollButton: 'Nueva tirada',
   /** Help option (ui/Screens.js): the phases before the assault. */
@@ -80,7 +85,6 @@ export const FLOW_TEXTS = Object.freeze({
     replayDiverged: (n) => `Plan cambiado: ${n === 1 ? 'esta fase ya no se repite' : `estas ${n} fases ya no se repiten`}; sigues tú`,
     noPause: `Un turno no se pausa: dura ${TURN} s y luego vuelves a planificar`,
     droneReplay: 'Reintento: el dron repite su recorrido grabado',
-    camerasReplay: 'Reintento: tus cámaras se mueven como la otra vez',
     enemyDrone: 'El dron es del atacante: termina solo (o cuando un defensor lo derriba)',
     pickDefender: 'Primero toca a un defensor',
     goInTurn: 'Los GO se dan durante el turno: pulsa LISTO y luego el GO de color cuando quieras',
@@ -175,10 +179,10 @@ export const FLOW_TEXTS = Object.freeze({
     },
     tips: {
       introBuy: {
-        title: 'Nuevo: clases y compra',
+        title: 'Nuevo: compra',
         text: {
-          touch: `Elige la clase de cada operador: Asaltante (duelos), Brecha (cargas rápidas) o Explorador (detecta defensores cerca al final de cada turno). Cada clase trae su equipo gratis, y cada operador tiene ${BUY.points} puntos (●) para sumar utilidad: toca un objeto para sumar uno (− lo devuelve). Lo que no gastes se pierde. LISTO para seguir.`,
-          desk: `Elige la clase de cada operador: Asaltante (duelos), Brecha (cargas rápidas) o Explorador (detecta defensores cerca al final de cada turno). Cada clase trae su equipo gratis, y cada operador tiene ${BUY.points} puntos (●) para sumar utilidad: haz clic en un objeto para sumar uno (− lo devuelve). Lo que no gastes se pierde. LISTO (Espacio) para seguir.`,
+          touch: `Cada operador juega con su clase: Asaltante (duelos), Brecha (cargas rápidas) o Explorador (detecta defensores cerca al final de cada turno). Cada clase trae su equipo gratis, y cada operador tiene ${BUY.points} puntos (●) para sumar utilidad: toca un objeto para sumar uno (− lo devuelve). Lo que no gastes se pierde. LISTO para seguir.`,
+          desk: `Cada operador juega con su clase: Asaltante (duelos), Brecha (cargas rápidas) o Explorador (detecta defensores cerca al final de cada turno). Cada clase trae su equipo gratis, y cada operador tiene ${BUY.points} puntos (●) para sumar utilidad: haz clic en un objeto para sumar uno (− lo devuelve). Lo que no gastes se pierde. LISTO (Espacio) para seguir.`,
         },
       },
       introPrep: {

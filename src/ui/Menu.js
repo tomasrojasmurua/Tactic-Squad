@@ -4,15 +4,17 @@
 //           recommended, the ones still to come disabled
 //   play    CONTRA LA IA · MULTIJUGADOR (coming soon) · VOLVER
 //   lobby   format (a single round, best of 3 / 5 / 7), starting side, map
-//           (more coming soon), the player's classes per slot for each side,
-//           who is in and ready; LISTO starts once everyone is
+//           (more coming soon); ELEGIR CLASES goes on to
+//   pick    the class pick, like a MOBA's pick phase: each operator's class
+//           for the whole game (a tab per side in a match), who is in and
+//           ready; CONFIRMAR starts once everyone is
 // Emits EV.REQUEST {action: 'play' | 'vsAi' | 'tutorial' | 'lesson_<id>' | 'back' | 'lobbyReady' |
-// 'lobby_bestOf_<n>' | 'lobby_side_<team>' | 'lobby_role_<team>_<i>_<roleId>'}.
+// 'lobby_bestOf_<n>' | 'lobby_side_<team>' | 'lobby_pickSide_<team>' | 'lobby_role_<team>_<i>_<roleId>'}.
 import { EV } from '../core/events.js';
 import { ROLES } from '../config/operators.js';
 import { SQUAD, DEFENDER_NAME } from '../config/squad.js';
 import { MAPS } from '../data/maps/index.js';
-import { BEST_OF, canPick, pickRoles } from '../session/Lobby.js';
+import { BEST_OF, canPick, pickRoles, pickSides } from '../session/Lobby.js';
 import { LESSONS, nextLesson } from '../config/lessons.js';
 import { el, setText, toggle } from './dom.js';
 import { T } from './texts.js';
@@ -59,7 +61,7 @@ export class Menu {
     multi.disabled = true;
     playMenu.append(multi, button('back', M.back, null, 'back'));
 
-    // Lobby
+    // Lobby: the game's conditions
     this.lobby = el(
       'div',
       'menu-view lobby',
@@ -67,11 +69,11 @@ export class Menu {
       <div class="lb-cols">
         <div class="lb-col">
           <div class="lb-row"><span class="lb-l">${L.format}</span><div class="lb-opts bestof"></div><div class="lb-note fmt-note"></div></div>
+        </div>
+        <div class="lb-col">
           <div class="lb-row"><span class="lb-l">${L.side}</span><div class="lb-opts side"></div></div>
           <div class="lb-row"><span class="lb-l">${L.map}</span><div class="lb-opts map"></div></div>
-          <div class="lb-row"><span class="lb-l">${L.players}</span><div class="lb-players"></div></div>
         </div>
-        <div class="lb-col team"><span class="lb-l">${L.team}</span><div class="lb-note">${L.teamNote}</div></div>
       </div>
       <div class="lb-actions"></div>`,
     );
@@ -91,18 +93,33 @@ export class Menu {
     this.mapBtn.classList.add('on');
     const more = opt(q('.map'), L.moreMaps, null, 'soon');
     more.disabled = true;
-    this.players = q('.lb-players');
-    this.youState = null;
-    this.players.innerHTML = `<div class="lb-player you"><b>${L.you}</b><span class="st"></span></div><div class="lb-player ai"><b>${L.ai}</b><span class="st ok">${L.aiReady}</span></div>`;
+    const next = el('button', 'btn primary lb-ready', `${L.toPick}<span class="key desk-only">${L.readyKey}</span>`);
+    next.addEventListener('click', () => this.request('lobbyReady'));
+    q('.lb-actions').append(next, button('back', M.back, null, 'back'));
+
+    // Class pick: each operator's class for the whole game, one side at a time
+    const P = T.flow.pick;
+    this.pick = el(
+      'div',
+      'menu-view lobby pick',
+      `<h2 class="mv-title">${P.title}</h2>
+      <div class="pk-head"><div class="lb-opts pk-sides"></div><div class="lb-note pk-note"></div></div>
+      <div class="pk-teams"></div>
+      <div class="lb-actions"><div class="lb-players"></div></div>`,
+    );
+    const pq = (s) => this.pick.querySelector(s);
+    this.pickNote = pq('.pk-note');
+    this.pickSides = ['attackers', 'defenders'].map((t) => opt(pq('.pk-sides'), L.sides[t === 'attackers' ? 'attackersTeam' : 'defendersTeam'], `lobby_pickSide_${t}`, t));
+    this.players = pq('.lb-players');
+    this.players.innerHTML = `<div class="lb-player you"><b>${L.you}</b><span class="st"></span></div><div class="lb-player ai"><b>${L.ai}</b><span class="st ok">${P.aiPicks}</span></div>`;
     this.youState = this.players.querySelector('.you .st');
-    // The player's classes, per side and slot.
     this.roleButtons = [];
-    const team = q('.lb-col.team');
+    this.teams = {};
+    this.blurbs = [];
     for (const side of ['attackers', 'defenders']) {
-      const box = el('div', `lb-team ${side}`, `<div class="lb-side"></div>`);
-      setText(box.firstChild, L.sides[side === 'attackers' ? 'attackersTeam' : 'defendersTeam']);
+      const box = el('div', `lb-team ${side}`);
       for (let i = 0; i < 3; i++) {
-        const row = el('div', 'lb-slot', `<span class="lb-name"></span><div class="lb-opts"></div>`);
+        const row = el('div', 'lb-slot', `<span class="lb-name"></span><div class="lb-opts"></div><div class="pk-blurb"></div>`);
         const name = row.firstChild;
         setText(name, side === 'attackers' ? SQUAD[i].callsign : `${DEFENDER_NAME} ${i + 1}`);
         if (side === 'attackers') name.style.color = SQUAD[i].color;
@@ -111,16 +128,17 @@ export class Menu {
           b.title = ROLES[id].blurb;
           this.roleButtons.push({ b, side, i, id });
         }
+        this.blurbs.push({ node: row.children[2], side, i });
         box.appendChild(row);
       }
-      team.appendChild(box);
+      this.teams[side] = box;
+      pq('.pk-teams').appendChild(box);
     }
-    const actions = q('.lb-actions');
-    this.ready = el('button', 'btn primary lb-ready', `${L.ready}<span class="key desk-only">${L.readyKey}</span>`);
+    this.ready = el('button', 'btn primary lb-ready', `${P.ready}<span class="key desk-only">${L.readyKey}</span>`);
     this.ready.addEventListener('click', () => this.request('lobbyReady'));
-    actions.append(this.ready, button('back', M.back, null, 'back'));
+    pq('.lb-actions').prepend(this.ready, button('back', M.back, null, 'back'));
 
-    box.append(this.main, this.lessons, this.play, this.lobby);
+    box.append(this.main, this.lessons, this.play, this.lobby, this.pick);
   }
 
   request(action) {
@@ -134,6 +152,7 @@ export class Menu {
     toggle(this.play, 'on', view === 'play');
     toggle(this.lessons, 'on', view === 'lessons');
     toggle(this.lobby, 'on', view === 'lobby');
+    toggle(this.pick, 'on', view === 'pick');
     if (view === 'main') {
       // A first-timer sees it recommended; then how many lessons are done (all: green, styles.css).
       const n = session.tutorial.lessonsDone.length;
@@ -153,17 +172,27 @@ export class Menu {
         setText(badge, state ? T.flow.lessons[state] : '');
       }
     }
-    if (view !== 'lobby') return;
     const L = T.flow.lobby;
-    for (const b of this.bestOf) toggle(b, 'on', +b.dataset.key === lobby.bestOf);
-    setText(this.fmtNote, L.formatNote(lobby.bestOf));
-    for (const b of this.side) toggle(b, 'on', b.dataset.key === lobby.side);
-    setText(this.mapBtn, MAPS[lobby.map].name);
+    if (view === 'lobby') {
+      for (const b of this.bestOf) toggle(b, 'on', +b.dataset.key === lobby.bestOf);
+      setText(this.fmtNote, L.formatNote(lobby.bestOf));
+      for (const b of this.side) toggle(b, 'on', b.dataset.key === lobby.side);
+      setText(this.mapBtn, MAPS[lobby.map].name);
+    }
+    if (view !== 'pick') return;
+    const sides = pickSides(lobby);
+    for (const b of this.pickSides) {
+      toggle(b, 'on', b.dataset.key === lobby.pickSide);
+      b.hidden = sides.length < 2;
+    }
+    setText(this.pickNote, T.flow.pick.note(sides.length > 1));
+    for (const side of ['attackers', 'defenders']) this.teams[side].hidden = side !== lobby.pickSide;
     for (const { b, side, i, id } of this.roleButtons) {
       const mine = lobby.roles[side][i] === id;
       toggle(b, 'on', mine);
       toggle(b, 'off', !mine && !canPick(lobby, side, i, id));
     }
+    for (const { node, side, i } of this.blurbs) setText(node, ROLES[lobby.roles[side][i]].blurb);
     setText(this.youState, lobby.ready ? L.youReady : L.youWaiting);
     toggle(this.youState, 'ok', lobby.ready);
   }
