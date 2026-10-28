@@ -123,3 +123,306 @@ test('oído entrenado: lo que oye el Explorador queda en el punto exacto; lo de 
   assert.notDeepEqual([rough.x, rough.y], [15.3, 15.1]);
   assert.ok(Math.hypot(rough.x - 15.3, rough.y - 15.1) <= NOISE.cell + NOISE.jitter);
 });
+
+// ------------------------------------------------------------ Asaltante
+
+/** First reaction of attacker `role` to a defender straight ahead, having just come through a doorway or not. */
+function firstReaction(role, doorway) {
+  const { sim, a, defs } = atTheDoor();
+  if (a.role !== role) applyRole(a, role);
+  a.x = 12;
+  a.y = 12.7;
+  a.facing = 0;
+  if (doorway) a.doorwayAt = 0;
+  defs[0].x = 16;
+  defs[0].y = 12.7;
+  defs[0].facing = Math.PI;
+  sim.step();
+  assert.equal(a.target, defs[0].id);
+  return a.reaction + sim.dt;
+}
+
+test('Asaltante: corta el ángulo, recién pasada una puerta reacciona más rápido; los demás, más lento', () => {
+  const assault = firstReaction('assault', true);
+  const other = firstReaction('scout', true);
+  assert.ok(assault < other * 0.75, `${assault.toFixed(3)} contra ${other.toFixed(3)}`);
+  assert.ok(firstReaction('scout', false) < other, 'para el resto, la puerta cuesta');
+});
+
+// ------------------------------------------------------------ Brecha
+
+test('Brecha: su carga deja inmóvil al que espera tras la puerta más que la de otro', () => {
+  const stunAfter = (role) => {
+    const { sim, a, b, defs } = atTheDoor();
+    const d0 = defs[0];
+    d0.x = 11.3;
+    d0.y = 12.7;
+    d0.facing = Math.PI;
+    d0.maxHp = d0.hp = 1000; // que sobreviva para medir
+    if (b.role !== role) {
+      applyRole(b, role);
+      b.gear.breach = 1;
+    }
+    a.x = 3;
+    a.y = 18;
+    wp(sim, b, 9.25, 11.75);
+    cmd(sim, { type: 'setHold', unitId: b.id, code: 'A' });
+    cmd(sim, { type: 'setEntry', unitId: b.id, mode: 'breach' });
+    runFor(sim, 6);
+    cmd(sim, { type: 'go' });
+    let stun = 0;
+    const end = sim.tick + 60;
+    while (sim.tick < end) {
+      sim.step();
+      stun = Math.max(stun, d0.stun);
+    }
+    return stun;
+  };
+  const brecha = stunAfter('entry');
+  const other = stunAfter('assault');
+  assert.ok(other > 0, 'toda carga aturde un poco');
+  assert.ok(brecha > other * 2, `${brecha.toFixed(2)} s contra ${other.toFixed(2)} s`);
+});
+
+test('Brecha: corta el alambre con el alicate, sin hacerlo sonar', async () => {
+  const { WIRE } = await import('../src/config/balance.js');
+  const play = (role) => {
+    const sim = new Simulation(MAP, { seed: 3, site: 'A', controllers: STILL });
+    sim.advancePhase();
+    const id = sim.compiled.barricadeSlots[0];
+    sim.enqueue({ team: 'defenders', type: 'wire', door: id, on: true });
+    sim.flushCommands();
+    sim.skipToAssault();
+    sim.drainEvents();
+    const door = sim.doors.find((d) => d.def.id === id);
+    const u = sim.teams.attackers[0];
+    if (u.role !== role) applyRole(u, role);
+    u.x = door.def.cx;
+    u.y = door.def.cy;
+    sim.advancePhase();
+    sim.step();
+    return { events: sim.drainEvents(), door, u, WIRE };
+  };
+  const cut = play('entry');
+  assert.ok(cut.events.some((e) => e.type === EV.WIRE_CUT && e.pliers));
+  assert.ok(!cut.events.some((e) => e.type === EV.WIRE_CROSSED), 'no suena');
+  assert.equal(cut.door.wired, false);
+  assert.ok(cut.u.stun > 0, 'se agacha a cortarlo');
+  const caught = play('assault');
+  assert.ok(caught.events.some((e) => e.type === EV.WIRE_CROSSED));
+  assert.equal(caught.door.wired, true);
+});
+
+// ------------------------------------------------------------ Escudo
+
+/** A defender (unhurt by anything) fires at the squad for `seconds`: hits on each attacker and shots stopped by a shield. */
+function underFire(shieldUp, seconds = 3) {
+  const { sim, a, b, c, defs } = atTheDoor();
+  applyRole(a, 'shield');
+  a.x = 12;
+  a.y = 12.7;
+  a.facing = shieldUp ? 0 : Math.PI; // toward the shooter, or turned away
+  b.x = 11.1; // pegado detrás
+  b.y = 12.7;
+  b.facing = 0;
+  c.x = 3;
+  c.y = 20;
+  for (const u of [a, b]) {
+    u.mag = u.reserve = 0; // they do not shoot back
+    u.maxHp = u.hp = 1e6;
+  }
+  const d = defs[0];
+  d.x = 18;
+  d.y = 12.7;
+  d.facing = Math.PI;
+  d.maxHp = d.hp = 1e6;
+  d.reserve = 1e4;
+  const hits = new Map([[a.id, 0], [b.id, 0]]);
+  let stopped = 0;
+  const end = sim.tick + Math.round(seconds / sim.dt);
+  while (sim.tick < end) {
+    a.facing = shieldUp ? 0 : Math.PI; // he holds his stance
+    sim.step();
+    for (const e of sim.drainEvents()) {
+      if (e.type === EV.HIT && hits.has(e.unitId)) hits.set(e.unitId, hits.get(e.unitId) + 1);
+      if (e.type === EV.SHIELD_HIT) stopped++;
+    }
+  }
+  return { a: hits.get(a.id), b: hits.get(b.id), stopped };
+}
+
+test('Escudo: de frente las balas se quedan en el escudo y no llegan al que va detrás', () => {
+  const up = underFire(true);
+  assert.ok(up.stopped >= 10, `paró ${up.stopped}`);
+  assert.equal(up.b, 0, 'el de atrás, cubierto');
+  assert.ok(up.a <= up.stopped * 0.3, `le llegaron ${up.a} (piernas y brazos)`);
+  const away = underFire(false);
+  assert.equal(away.stopped, 0, 'de espaldas el escudo no sirve');
+  assert.ok(away.a > up.a);
+});
+
+// ------------------------------------------------------------ Ancla
+
+test('Ancla: tras su parapeto recibe menos impactos y menos daño; si se aleja, ya no lo cubre', async () => {
+  const { placeParapets } = await import('../src/sim/parapets.js');
+  const damageTaken = (parapet, step = 0) => {
+    const { sim, a, b, c, defs } = atTheDoor();
+    const d = defs[0];
+    applyRole(d, 'anchor');
+    d.x = 20;
+    d.y = 12.7;
+    d.facing = Math.PI;
+    d.mag = d.reserve = 0;
+    d.maxHp = d.hp = 1e6;
+    placeParapets(sim);
+    if (!parapet) sim.parapets.length = 0;
+    d.x += step;
+    a.x = 14;
+    a.y = 12.7;
+    a.facing = 0;
+    a.reserve = 1e4;
+    for (const o of [b, c]) {
+      o.x = 3;
+      o.y = 20;
+    }
+    let damage = 0;
+    const end = sim.tick + 240;
+    while (sim.tick < end) {
+      sim.step();
+      for (const e of sim.drainEvents()) if (e.type === EV.HIT && e.unitId === d.id) damage += e.damage;
+    }
+    return damage;
+  };
+  const behind = damageTaken(true);
+  const open = damageTaken(false);
+  assert.ok(behind < open * 0.6, `${behind} contra ${open}`);
+  const left = damageTaken(true, 2.5);
+  assert.ok(left > behind * 1.4, 'lejos de su parapeto no lo protege');
+});
+
+// ------------------------------------------------------------ Merodeador
+
+test('Merodeador: con supresor sus disparos se oyen mucho más cerca', () => {
+  const heard = (role) => {
+    const sim = new Simulation(MAP, { seed: 5, site: 'A' });
+    sim.skipToAssault();
+    const d = sim.teams.defenders[0];
+    if (d.role !== role) applyRole(d, role);
+    for (const u of sim.teams.attackers) {
+      u.x = d.x + 18;
+      u.y = d.y;
+    }
+    const from = sim.events.length;
+    sim.emit(EV.SHOT, { unitId: d.id, x: d.x, y: d.y });
+    collectNoise(sim, from);
+    return sim.noise.heard.length > 0;
+  };
+  assert.equal(heard('defender'), true);
+  assert.equal(heard('roamer'), false);
+});
+
+// ------------------------------------------------------------ Vigía
+
+test('Vigía: trae una cámara más; mirando el monitor las cámaras muestran a todos al instante, y él casi no ve', async () => {
+  const { setWatch } = await import('../src/sim/prep.js');
+  const { teamView } = await import('../src/sim/view.js');
+  const { CAMERA } = await import('../src/config/balance.js');
+  const shown = (monitor) => {
+    const sim = new Simulation(MAP, { seed: 3, site: 'A', controllers: STILL, phases: false, roles: { defenders: ['lookout', 'defender', 'anchor'] } });
+    assert.equal(sim.cameras.length, CAMERA.max + 1);
+    const v = sim.teams.defenders[0];
+    v.x = 36;
+    v.y = 24;
+    if (monitor) assert.equal(setWatch(sim, v, { facing: 0, react: true, monitor: true }), null);
+    const cam = sim.cameras[0];
+    const [a, b, c] = sim.teams.attackers;
+    const at = (u, ahead) => {
+      u.x = cam.x + Math.cos(cam.facing) * ahead;
+      u.y = cam.y + Math.sin(cam.facing) * ahead;
+    };
+    at(a, 4);
+    at(b, 7.5); // the corridor, one behind the other
+    c.x = 3;
+    c.y = 20;
+    for (const d of sim.teams.defenders.slice(1)) {
+      d.x = 38;
+      d.y = 25;
+    }
+    sim.step();
+    const ids = teamView(sim, 'defenders').enemies.map((e) => e.id);
+    return { ids, v };
+  };
+  const on = shown(true);
+  assert.equal(on.v.monitor, true);
+  assert.ok(on.v.vision.fov < on.v.roleVision.fov * 0.5, 'mira la pantalla, no su ángulo');
+  assert.equal(on.ids.length, 2, 'las dos al instante');
+  const off = shown(false);
+  assert.ok(off.ids.length < 2, 'sin el monitor, una a la vez y tras un momento');
+});
+
+test('solo el Vigía puede ponerse al monitor', async () => {
+  const { setWatch } = await import('../src/sim/prep.js');
+  const sim = new Simulation(MAP, { seed: 3, site: 'A', controllers: STILL, phases: false });
+  const d = sim.teams.defenders.find((u) => u.ability !== 'monitor');
+  assert.equal(setWatch(sim, d, { facing: 0, react: true, monitor: true }), 'badWatch');
+});
+
+// ------------------------------------------------------------ Granadero
+
+test('Granadero: el gas no mata, pero el que lo respira ve poco, tose y se delata; el atacante lleva máscara', async () => {
+  const { spawnGas } = await import('../src/sim/gas.js');
+  const { sim, a, defs } = atTheDoor();
+  applyRole(a, 'grenadier');
+  const d = defs[0];
+  d.x = 14;
+  d.y = 6;
+  a.x = 13.5;
+  a.y = 6.5;
+  for (const u of sim.units) u.mag = u.reserve = 0; // nobody shoots
+  spawnGas(sim, 14, 6.2, a);
+  const hp = d.hp;
+  const events = runFor(sim, 3);
+  assert.ok(d.gassed > 0);
+  assert.equal(d.hp, hp, 'no hiere');
+  assert.ok(d.vision.range <= ENTRY.gas.vision);
+  assert.ok(events.some((e) => e.type === EV.COUGH && e.unitId === d.id), 'tose');
+  assert.equal(a.gassed, 0, 'con máscara');
+  // Al rato se disipa y vuelve a ver.
+  runFor(sim, ENTRY.gas.seconds + 2);
+  assert.equal(d.gassed, 0);
+  sim.step();
+  assert.equal(d.vision, d.roleVision);
+});
+
+test('Granadero: lanza el gas con el lanzagranadas el doble de lejos; los demás no lo llevan', async () => {
+  const { tossRangeOf } = await import('../src/sim/queries.js');
+  const { sim, a, b } = atTheDoor();
+  applyRole(b, 'grenadier');
+  b.gear = { flash: 0, frag: 0, smoke: 1, breach: 0, molotov: 0, gas: 2 };
+  assert.equal(tossRangeOf(b), ENTRY.tossRange * 2);
+  assert.equal(tossRangeOf(a), ENTRY.tossRange);
+  wp(sim, a, 8.2, 16);
+  cmd(sim, { type: 'setToss', unitId: a.id, item: 'gas', x: 8.2, y: 20 });
+  sim.flushCommands();
+  assert.deepEqual(rejected(sim.drainEvents()), ['noGear']);
+});
+
+// ------------------------------------------------------------ Tirador
+
+test('Tirador: quieto sobre su ángulo dispara primero', () => {
+  const holdReaction = (role) => {
+    const { sim, a, defs } = atTheDoor();
+    if (a.role !== role) applyRole(a, role);
+    a.x = 12;
+    a.y = 12.7;
+    a.facing = 0;
+    a.stillTime = 5;
+    const d = defs[0];
+    d.x = 22;
+    d.y = 12.7;
+    d.facing = Math.PI;
+    sim.step();
+    return a.reaction;
+  };
+  assert.ok(holdReaction('marksman') < holdReaction('assault') * 0.7);
+});
