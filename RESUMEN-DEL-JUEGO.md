@@ -74,7 +74,7 @@ fase trae una tarjeta que la explica la primera vez. Solo las lecciones del tuto
 
 **Menú y lobby.** JUGAR → CONTRA LA IA (MULTIJUGADOR, próximamente) → el lobby:
 **formato** (una ronda suelta o al mejor de 3, 5 o 7), **con
-qué bando empiezas** y **mapa** (Almacén, Hotel o al azar: el azar se sortea al pasar a las clases, para elegirlas sabiendo dónde se juega). ELEGIR CLASES
+qué bando empiezas** y **mapa** (Almacén, Hotel o al azar: el azar se sortea al pasar a las clases, para elegirlas sabiendo dónde se juega). Cada mapa tiene su **ficha**: el plano con sitios y entradas y tres rasgos; tocar A o B muestra la lectura de ese sitio. No sugiere clases: leer el mapa es parte del juego. En la elección de clases, VER PLANO la vuelve a abrir. ELEGIR CLASES
 lleva al **roster**, como el pick phase de un MOBA: un grupo de personajes por bando,
 cada uno con su símbolo y su color, del que se eligen los 3 de tu escuadra (en una
 partida, una pestaña para cuando atacas y otra para cuando defiendes). Al tocar uno se ve

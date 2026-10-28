@@ -66,6 +66,15 @@ export const FLOW_TEXTS = Object.freeze({
     aiReady: 'Lista',
     readyKey: 'Intro',
   },
+  /** The map's card in the lobby and the class pick (ui/MapPreview.js). */
+  mapCard: {
+    reading: 'Lectura del mapa',
+    site: (id, name) => `Sitio ${id}${name ? ` · ${name}` : ''}`,
+    hint: 'Toca A o B en el plano',
+    randomName: 'Al azar',
+    randomSub: 'Se sortea al pasar a las clases, entre:',
+    show: 'Ver plano',
+  },
   /** The roster after the lobby (ui/Roster.js): a pool per side, 3 make the squad. */
   pick: {
     title: 'Elige tu escuadra',

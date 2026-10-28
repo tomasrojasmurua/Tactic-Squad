@@ -4,7 +4,7 @@
 //           recommended, the ones still to come disabled
 //   play    CONTRA LA IA · MULTIJUGADOR (coming soon) · VOLVER
 //   lobby   format (a single round, best of 3 / 5 / 7), starting side, map
-//           (or "al azar"); ELEGIR CLASES goes on to
+//           (or "al azar") with its card (ui/MapPreview.js); ELEGIR CLASES goes on to
 //   pick    the roster (ui/Roster.js), like a MOBA's pick phase: 3
 //           characters from a pool for the whole game (a tab per side in a
 //           match), who is in and ready; CONFIRMAR starts once everyone is
@@ -14,6 +14,7 @@ import { EV } from '../core/events.js';
 import { MAPS } from '../data/maps/index.js';
 import { BEST_OF, MAP_CHOICES } from '../session/Lobby.js';
 import { Roster } from './Roster.js';
+import { MapPreview } from './MapPreview.js';
 import { LESSONS, nextLesson } from '../config/lessons.js';
 import { el, setText, toggle } from './dom.js';
 import { T } from './texts.js';
@@ -89,6 +90,8 @@ export class Menu {
     this.fmtNote = q('.fmt-note');
     this.side = ['attackers', 'defenders'].map((t) => opt(q('.side'), L.sides[t], `lobby_side_${t}`, t));
     this.maps = MAP_CHOICES.map((id) => opt(q('.map'), id === 'random' ? L.randomMap : MAPS[id].name, `lobby_map_${id}`, id));
+    this.mapCard = new MapPreview(); // the chosen map's plan and reading
+    q('.map').parentNode.after(this.mapCard.root);
     const next = el('button', 'btn primary lb-ready', `${L.toPick}<span class="key desk-only">${L.readyKey}</span>`);
     next.addEventListener('click', () => this.request('lobbyReady'));
     q('.lb-actions').append(next, button('back', M.back, null, 'back'));
@@ -137,6 +140,7 @@ export class Menu {
       setText(this.fmtNote, L.formatNote(lobby.bestOf));
       for (const b of this.side) toggle(b, 'on', b.dataset.key === lobby.side);
       for (const b of this.maps) toggle(b, 'on', b.dataset.key === lobby.map);
+      this.mapCard.show(lobby.map);
     }
     if (view === 'pick') this.roster.update(lobby);
   }

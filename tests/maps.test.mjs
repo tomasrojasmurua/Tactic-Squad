@@ -42,6 +42,16 @@ for (const [id, map] of Object.entries(MAPS)) {
     for (const d of sim.compiled.barricadeSlots) assert.ok(T.setup.doors[d], `barricada ${d}`);
   });
 
+  test(`${map.name}: su ficha trae tres rasgos y la lectura de cada sitio, sin nombrar clases`, () => {
+    assert.equal(map.traits.length, 3);
+    const classes = /asaltante|brecha|explorador|escudo|tirador|granadero|ancla|merodeador|trampero|vig[ií]a/i;
+    for (const s of map.sites) {
+      assert.ok(map.siteTraits[s.id]?.length >= 2, `sitio ${s.id}`);
+      assert.ok(map.siteNames[s.id], `nombre del sitio ${s.id}`);
+    }
+    for (const t of [...map.traits, ...Object.values(map.siteTraits).flat()]) assert.doesNotMatch(t, classes, t);
+  });
+
   test(`${map.name}: IA contra IA, las rondas terminan sin órdenes imposibles y nadie gana siempre`, () => {
     let wins = 0;
     const N = 16;

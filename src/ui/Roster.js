@@ -11,6 +11,7 @@ import { UNIT, SCOUT, TRAP } from '../config/balance.js';
 import { SQUAD, DEFENDER_NAME } from '../config/squad.js';
 import { canAdd, freeSlot, pickRoles, pickSides, pickMissing } from '../session/Lobby.js';
 import { MAPS } from '../data/maps/index.js';
+import { MapPreview } from './MapPreview.js';
 import { el, setText, toggle } from './dom.js';
 import { ROLE_EMBLEM, GEAR_ICON, WEAPON_ICONS } from './icons.js';
 import { T } from './texts.js';
@@ -75,7 +76,7 @@ export class Roster {
     this.root = el(
       'div',
       'menu-view lobby pick',
-      `<div class="pk-head"><h2 class="mv-title">${P.title}</h2><span class="pk-map"></span><div class="lb-opts pk-sides"></div></div>
+      `<div class="pk-head"><h2 class="mv-title">${P.title}</h2><button class="btn pk-map"><span class="pk-mn"></span><span class="pk-mv"></span></button><div class="lb-opts pk-sides"></div></div>
       <div class="lb-note pk-note"></div>
       <div class="rs-body">
         <div class="rs-left"><div class="rs-pool"></div><div class="rs-squad"></div></div>
@@ -85,7 +86,17 @@ export class Roster {
     );
     const q = (s) => this.root.querySelector(s);
     this.note = q('.pk-note');
+    // The map in play: its name, and its card (plan and reading) on a tap, to pick the squad reading it.
     this.mapTag = q('.pk-map');
+    setText(this.mapTag.lastChild, T.flow.mapCard.show);
+    this.mapCard = new MapPreview();
+    this.mapCard.root.classList.add('pk-card');
+    this.mapCard.root.hidden = true;
+    this.mapTag.addEventListener('click', () => {
+      this.mapCard.root.hidden = !this.mapCard.root.hidden;
+      toggle(this.mapTag, 'on', !this.mapCard.root.hidden);
+    });
+    q('.pk-head').after(this.mapCard.root);
 
     this.tabs = TEAMS.map((t) => {
       const b = el('button', 'btn lb-opt pk-side', `<span class="pk-sl"></span><span class="pk-n"></span>`);
@@ -202,7 +213,8 @@ export class Roster {
     const side = lobby.pickSide;
     const sides = pickSides(lobby);
     setText(this.note, P.note(sides.length > 1));
-    setText(this.mapTag, MAPS[lobby.drawn] ? P.map(MAPS[lobby.drawn].name, lobby.map === 'random') : '');
+    setText(this.mapTag.firstChild, MAPS[lobby.drawn] ? P.map(MAPS[lobby.drawn].name, lobby.map === 'random') : '');
+    if (!this.mapCard.root.hidden) this.mapCard.show(lobby.drawn);
     for (const { b, n, t } of this.tabs) {
       toggle(b, 'on', t === side);
       b.hidden = sides.length < 2;

@@ -77,8 +77,14 @@ export default {
   // Cream walls with a dark wood baseboard (render only).
   palette: { wall: '#b9ad97', exterior: '#857a6a', baseboard: '#4a3324' },
 
-  // The map's reading, shown before the game (three features, no classes named).
-  traits: ['Pasillo recto de 23 m', 'Sitio A: solo dos puertas', 'Habitaciones comunicadas'],
+  // The map's reading on its card before the game (ui/MapPreview.js): three
+  // features, and per site what tapping it on the plan shows. No class named.
+  traits: ['Pasillo recto de 23 m, casi sin cobertura', 'Habitaciones comunicadas por puertas, sin ventanas', 'Sin un circuito alrededor de los sitios'],
+  siteNames: { A: 'la suite', B: 'la lavandería' },
+  siteTraits: {
+    A: ['Solo dos puertas: la del pasillo, tras un recibidor', 'y la que la comunica con la 705', 'Sofá y sillones: cobertura baja'],
+    B: ['Sin puerta al pasillo', 'Se llega por el oficio o por la 707', 'Secadoras y estanterías tapan la vista'],
+  },
 
   walls: [
     // building exterior
