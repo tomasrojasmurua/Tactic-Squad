@@ -35,6 +35,9 @@
 //                                              MOVE.peekTime s looking at its look (the way he walked in, if
 //                                              none) and goes back to the point before it (or where he
 //                                              stood) facing as he did there. on false: removes both
+//   {type:'setCover', unitId, on, index?}    attackers, "cubrir zona": at the end of his route (index: its last user
+//                                              point) or where he stands (index 'here') he sweeps PREP.sweepArc
+//                                              around his look instead of holding it
 //   {type:'follow', unitId, leaderId, rank}    squad route (sim/follow.js): he walks the leader's route in file
 //                                              (rank 1 right behind) and stacks behind him at his GO holds
 //   {type:'unfollow', unitId}                  back to his own orders (the route he had stays)
@@ -57,8 +60,9 @@
 //   {type:'chooseSite', site}                  recon: the bomb goes to that site and their
 //                                              set-up restarts from the map's layout for it
 //   {type:'placeUnit', unitId, x, y, facing?}  preparation: a defender stands there (their half, walkable)
-//   {type:'setWatch', unitId, watch}           preparation: a defender's watch order
-//                                              ({facing, sweep?: [from, to], react?, fallback?: {to: [x, y], look}})
+//   {type:'setWatch', unitId, watch}           preparation and planning: a defender's watch order
+//                                              ({facing, sweep?: [from, to], react?, fallback?: {to: [x, y], look}});
+//                                              while planning he turns to it during the turn, where his route ends
 //   {type:'barricade', door, on}               recon: puts up / takes down a barricade
 //   {type:'wire', door, on}                    recon: lays / takes up barbed wire (sim/wires.js)
 //   {type:'camera', mount, on}                 recon: a camera up on that map mount (`cameraMounts`; on
@@ -130,7 +134,7 @@ export const REJECT = Object.freeze({
   badFollow: 'badFollow', // follow: no such leader, himself, another side, or a leader who follows someone
 });
 
-const ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'endStroke', 'cancelStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss', 'setPeek', 'follow', 'unfollow'];
+const ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'endStroke', 'cancelStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss', 'setPeek', 'setCover', 'follow', 'unfollow'];
 
 /** Orders on a follower's own route: he leaves the file and keeps the route he had (now his). */
 const OWN_ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss', 'setPeek'];
@@ -140,7 +144,7 @@ const PHASE_ORDERS = Object.freeze({
   buy: ['buy'],
   prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade', 'wire', 'placeTrap', 'camera', 'endRecon'],
   drone: ['drone', 'droneRecall'],
-  plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry'],
+  plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry', 'setWatch'],
   exec: ['go'],
   end: [],
 });
@@ -223,6 +227,8 @@ export function applyCommand(sim, cmd, by = 'human') {
     }
     case 'setPeek':
       return setPeek(sim, unit, cmd.on !== false, cmd.index);
+    case 'setCover':
+      return setCover(sim, unit, cmd.on !== false, cmd.index);
     case 'follow': {
       const leader = sim.units[cmd.leaderId];
       if (!leader || !obeys(sim, leader, cmd, by) || !startFollow(sim, unit, leader, cmd.rank)) return reject(sim, unit, REJECT.badFollow);
@@ -269,6 +275,7 @@ function addWaypoint(sim, unit, { x, y, user = true, quiet = false }, kind = 'ad
   const path = sim.world.nav.findPath(from.x, from.y, p.x, p.y, NAV.snapRadius);
   if (!path || !path.length) return quiet ? undefined : reject(sim, unit, REJECT.unreachable);
   const start = unit.route.length;
+  if (start) unit.route[start - 1].cover = false; // cubrir zona belongs to the end of the route
   const pace = unit.route.length ? from.pace : null; // a new leg keeps the pace of the one before
   path.forEach((q, i) => {
     unit.route.push(routePoint(q.x, q.y, { user: user && i === path.length - 1, pace }));
@@ -279,13 +286,15 @@ function addWaypoint(sim, unit, { x, y, user = true, quiet = false }, kind = 'ad
 
 /**
  * A defender sent somewhere by his player gives up his watch order's
- * movement (patrol, sweep, fallback): from then on he holds where he ends
- * up, facing the look set there, and still turns to noise if he did.
+ * movement (patrol, fallback) but keeps its mode: where he ends up he holds
+ * (or sweeps around) the look set there, and still turns to noise if he did.
+ * The mode itself can change while planning (setWatch).
  */
 function holdOnArrival(unit) {
   const b = unit.behavior;
-  if (!b || (b.type === 'hold' && !b.rotate)) return;
-  unit.behavior = { type: 'hold', reactsToNoise: b.reactsToNoise !== false };
+  if (!b || (b.type !== 'patrol' && !b.rotate)) return;
+  const react = b.reactsToNoise !== false;
+  unit.behavior = b.type === 'scan' ? { type: 'scan', from: b.from, to: b.to, period: b.period, reactsToNoise: react } : { type: 'hold', reactsToNoise: react };
   unit.ai.rotating = null;
 }
 
@@ -755,6 +764,25 @@ function setPeek(sim, unit, on, index) {
   end.look = look;
   for (let j = n; j < r.length; j++) r[j].pace = p.pace; // back as quietly as he went
   changed(sim, unit, 'peek');
+}
+
+/** "Cubrir zona" (attackers): he sweeps around his look where he stands (HERE) or at the end of his route. */
+function setCover(sim, unit, on, index) {
+  if (unit.team !== 'attackers') return;
+  if (index === HERE || !unit.route.length) {
+    unit.cover = on;
+    if (on && unit.idleLook === null) unit.idleLook = unit.facing;
+    return changed(sim, unit, 'cover');
+  }
+  const i = lastUserIndex(unit);
+  if (i < 0 || (index !== undefined && index !== null && index !== i)) return reject(sim, unit, REJECT.noWaypoint);
+  const p = unit.route[i];
+  p.cover = on;
+  if (on && p.look === null) {
+    const prev = i > 0 ? unit.route[i - 1] : unit;
+    p.look = Math.atan2(p.y - prev.y, p.x - prev.x);
+  }
+  changed(sim, unit, 'cover');
 }
 
 function undoWaypoint(sim, unit) {

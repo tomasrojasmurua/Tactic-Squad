@@ -10,7 +10,7 @@
 // which is always enough because ShapeBatch consumes colors immediately.
 import { HEIGHTS, OVERLAY } from '../../config/render.js';
 import { GO_GROUPS } from '../../config/ui.js';
-import { ENTRY, MOVE, ROUND, NOISE, DRONE, CAMERA } from '../../config/balance.js';
+import { ENTRY, MOVE, ROUND, NOISE, DRONE, CAMERA, PREP } from '../../config/balance.js';
 import { teamView } from '../../sim/view.js';
 import { visibilityPolygon } from '../../sim/vision.js';
 import { hexToRgb, lerp, lerpAngle } from '../../core/math.js';
@@ -346,7 +346,7 @@ export class OverlayLayer {
       if (!p.user) continue;
       if (p.entry) this.entryMarker(t, p.x, p.y, p.entry, p.entryDoor, selected, mpp);
       if (p.toss) this.tossMarker(t, p.x, p.y, p.toss.x, p.toss.y, p.toss.item, selected ? 1 : 0.55, mpp, tossDoorway(this.sim.world, p, p.toss.x, p.toss.y));
-      if (p.look !== null) this.lookMarker(t, p.x, p.y, p.look, c, selected ? 1 : 0.6, mpp, u.vision.fov);
+      if (p.look !== null) this.lookMarker(t, p.x, p.y, p.look, c, selected ? 1 : 0.6, mpp, u.vision.fov, p.cover && i === lastUser);
       if (p.hold) {
         this.holdMarker(t, p.x, p.y, r * 1.6, c, mpp, this.goRgb(p.code));
       } else {
@@ -359,7 +359,7 @@ export class OverlayLayer {
     }
     if (this.planning && pts.length >= 4) this.turnReach(t, u, pts, c, mpp, selected);
     if (u.route.length === 0 && u.idleLook !== null && !u.waitingGo) {
-      this.lookMarker(t, pos.x, pos.y, u.idleLook, c, selected ? 0.9 : 0.5, mpp, u.vision.fov);
+      this.lookMarker(t, pos.x, pos.y, u.idleLook, c, selected ? 0.9 : 0.5, mpp, u.vision.fov, u.cover);
     }
     const e = u.entry;
     if (e && e.phase !== 'act' && e.mode === 'toss') this.tossMarker(t, pos.x, pos.y, e.tx, e.ty, e.item, selected ? 1 : 0.55, mpp, e.doorway);
@@ -710,8 +710,14 @@ export class OverlayLayer {
     }
   }
 
-  lookMarker(t, x, y, angle, c, alpha, mpp, fov) {
+  lookMarker(t, x, y, angle, c, alpha, mpp, fov, sweep = false) {
     const half = fov / 2;
+    if (sweep) {
+      // Cubrir zona: the whole arc his look sweeps, wider and further than the cone.
+      const s = PREP.sweepArc / 2;
+      t.wedge(x, y, 2.6, angle - s - half, angle + s + half, withAlpha(c, 0.3 * alpha), withAlpha(c, 0), 28);
+      for (const a of [angle - s, angle + s]) t.arrow(x, y, x + Math.cos(a) * 1.4, y + Math.sin(a) * 1.4, 1.8 * mpp, 0.22, withAlpha(c, 0.7 * alpha));
+    }
     t.wedge(x, y, 1.7, angle - half, angle + half, withAlpha(c, 0.16 * alpha), withAlpha(c, 0), 20);
     const L = OVERLAY.lookArrowLength;
     const x2 = x + Math.cos(angle) * L;

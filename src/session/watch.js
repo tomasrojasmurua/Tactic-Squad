@@ -1,5 +1,6 @@
-// A defender's watch order as the set-up panel shows it (ui/PhasePanel.js)
-// and the order that sets it (sim/prep.js setWatch). Three modes:
+// A defender's watch order as the panel shows it (ui/PhasePanel.js: in the
+// set-up and again while planning each turn of the assault) and the order
+// that sets it (sim/prep.js setWatch). Three modes:
 //   fixed   ángulo fijo: holds his facing, deaf to noise
 //   sweep   barrer: sweeps PREP.sweepArc around his facing, turns to noise
 //   alert   atento: holds his facing, turns to noise
@@ -13,9 +14,11 @@ export const WATCH_MODES = Object.freeze(['fixed', 'sweep', 'alert']);
 export function watchOf(u) {
   const b = u.behavior;
   const fallback = b && b.rotate ? { to: [b.rotate.to[0], b.rotate.to[1]], look: b.rotate.look } : null;
-  if (b && b.type === 'scan') return { mode: 'sweep', facing: (b.from + b.to) / 2, fallback };
+  // Where he looks once still: the look he was given there (sim/orders.js setLook), else the order's.
+  const look = u.idleLook ?? null;
+  if (b && b.type === 'scan') return { mode: 'sweep', facing: look ?? (b.from + b.to) / 2, fallback };
   if (b && b.type === 'patrol') return { mode: 'patrol', facing: u.facing, fallback }; // the map's; any mode replaces it
-  const facing = u.ai ? u.ai.baseFacing : u.facing;
+  const facing = look ?? (u.ai ? u.ai.baseFacing : u.facing);
   return { mode: b && b.reactsToNoise === false ? 'fixed' : 'alert', facing, fallback };
 }
 

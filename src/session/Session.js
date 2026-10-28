@@ -14,7 +14,7 @@
 // The deadlines of the decision phases are session/PhaseClock.js (session.clock).
 
 import { PLAYER_TEAM } from '../config/squad.js';
-import { lastUserIndex } from '../sim/queries.js';
+import { lastUserIndex, controllableUnit } from '../sim/queries.js';
 
 export const PHASES = Object.freeze(['title', 'buy', 'prep', 'drone', 'planning', 'running', 'paused', 'ended']);
 
@@ -97,6 +97,10 @@ export const pilotsDrone = (session) => session.team === 'attackers';
 
 /** The defender's set-up: preparation phase, playing the defenders (place, watch orders, site, barricades). */
 export const isDefenderSetup = (session) => session.phase === 'prep' && session.team === 'defenders';
+
+/** Planning the assault as the defenders with one of them selected: his watch order can change (ui/PhasePanel.js 'watch'). */
+export const watchInPlanning = (sim, session) =>
+  session.phase === 'planning' && session.team === 'defenders' && sim.controllers.defenders === 'human' && !!controllableUnit(sim, session.selectedId, session.team);
 
 /** The defender's recon, the first step of his set-up: site, barricades, cameras (fixed once it ends: sim/prep.js endRecon). */
 export const inRecon = (sim, session) => isDefenderSetup(session) && !sim.reconDone;

@@ -77,6 +77,7 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     blind: 0, // s flashed / stunned: sees nothing, does not shoot
     lookOverride: null, // angle held while walking the current leg
     idleLook: null, // angle to face once the route is done
+    cover: false, // an attacker covering a zone once still: sweeps around idleLook (sim/orders.js setCover)
     stun: 0, // seconds frozen (door breach beat)
     moving: false,
     sneaking: false, // walked a 'sneak' leg this tick (quiet footsteps: MOVE.sneakHearing)
