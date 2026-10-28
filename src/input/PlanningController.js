@@ -18,7 +18,7 @@ import { POINTER, TOUCH, DOOR_TAP } from '../config/input.js';
 import { NAV } from '../config/balance.js';
 import { routeTail, lastUserIndex, controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, teamUnits, doorwayNear, HERE } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
-import { canEditRoutes, targetIndex, isDefenderSetup } from '../session/Session.js';
+import { canEditRoutes, targetIndex, isDefenderSetup, inRecon } from '../session/Session.js';
 import { watchOf, watchOrder } from '../session/watch.js';
 import { unitAt, waypointAt, nearTail, pickRadius, segmentAt } from './picking.js';
 import { RoutePreview } from './RoutePreview.js';
@@ -421,7 +421,9 @@ export class PlanningController {
   endLook() {
     if (!this.look) return;
     const lp = this.session.ui.lookPreview;
-    if (lp && lp.valid && isDefenderSetup(this.session)) {
+    if (lp && lp.valid && inRecon(this.getSim(), this.session)) {
+      // Recon: the operators are placed and aimed after it.
+    } else if (lp && lp.valid && isDefenderSetup(this.session)) {
       // Set-up: the facing of his watch order (same mode, centred on the new angle).
       const u = this.getSim().units[this.look.unitId];
       const w = watchOf(u);
@@ -436,6 +438,7 @@ export class PlanningController {
    * there (or picks his own up).
    */
   place(u, px, py) {
+    if (inRecon(this.getSim(), this.session)) return true; // his operators come after the recon
     const w = this.world(px, py);
     if (this.session.ui.trapMode && u.role === 'trapper') this.command({ type: 'placeTrap', unitId: u.id, x: w.x, y: w.y });
     else this.command({ type: 'placeUnit', unitId: u.id, x: w.x, y: w.y });

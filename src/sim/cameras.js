@@ -1,9 +1,9 @@
 // Defender cameras (Rainbow Six's "cams"): fixed eyes high on the walls, on
 // CAMERA.max of the map's mounts (`cameraMounts`: {id, at, facing}). The AI
 // defenders use the site's `aiCameras[site]`, which is also where a human
-// defender starts; he moves them to other mounts in the preparation and
-// while the enemy drone flies (order `camera`, stamped like the drone's
-// stick: sim/orders.js). A camera that keeps an attacker in sight
+// defender starts; he moves them to other mounts in his recon (the first
+// step of his preparation: sim/prep.js) and once it ends they stay there for
+// the rest of the round, drone included. A camera that keeps an attacker in sight
 // (CAMERA.detect) tells every AI defender where he is: they turn and hold the
 // angle he will come through (sim/ai.js alertAiUnit). Lines of sight are the
 // world's, so doors and smoke blind it too.
@@ -64,7 +64,7 @@ export function placeCameras(sim) {
 
 /**
  * The defenders put a camera up on a mount (on) or take theirs down from it.
- * Before the assault only (preparation, drone). Returns a REJECT code or null.
+ * In their recon only (sim/orders.js). Returns a REJECT code or null.
  */
 export function setCamera(sim, mountId, on) {
   const m = mountById(sim, mountId);

@@ -6,7 +6,7 @@ import { HUD, VIGNETTE, GO_GROUPS } from '../config/ui.js';
 import { teamUnits, enemyTeam, isGoReady, bombKnownTo, codeInUse, codeWaiting, goStatus } from '../sim/queries.js';
 import { TURN_TICKS } from '../sim/round.js';
 import { ENTRY, ROUND, SIM, DRONE } from '../config/balance.js';
-import { isDecisionPhase, pilotsDrone, isDefenderSetup, showCameras } from '../session/Session.js';
+import { isDecisionPhase, pilotsDrone, isDefenderSetup, showCameras, inRecon } from '../session/Session.js';
 import { coachHint } from './coach.js';
 import { el, setText, toggle, formatTime, setStyle, setClassName, setHidden } from './dom.js';
 import { ICON, WEAPON_ICONS } from './icons.js';
@@ -218,7 +218,9 @@ export class Hud {
     const inAssault = sim.turn > 0 && phase !== 'ended';
     // A phone's banner is narrow: the turn goes on the clock line ("TURNO 2 · sin límite").
     const turnOnClock = inAssault && session.touch;
-    setText(this.phaseText, inAssault && !turnOnClock ? `${T.phase[phase]} · ${T.turn(sim.turn)}` : T.phase[phase]);
+    const recon = inRecon(sim, session); // the defender's first step of the preparation has its own name
+    const shown = recon ? 'recon' : phase;
+    setText(this.phaseText, inAssault && !turnOnClock ? `${T.phase[phase]} · ${T.turn(sim.turn)}` : T.phase[shown]);
     const c = session.clock;
     let clock = '';
     let fill = 0;
@@ -245,7 +247,7 @@ export class Hud {
       this.coach = coachHint(sim, session);
     }
     const coach = this.coach;
-    const sub = (session.team === 'defenders' && T.phaseSubDefend[session.touch ? 'touch' : 'desk'][phase]) || (session.touch ? T.phaseSubTouch : T.phaseSub)[phase];
+    const sub = (session.team === 'defenders' && T.phaseSubDefend[session.touch ? 'touch' : 'desk'][shown]) || (session.touch ? T.phaseSubTouch : T.phaseSub)[phase];
     setText(this.subText, coach ? coach.text : sub);
     toggle(this.subText, 'coach', !!coach && coach.strong);
     toggle(this.pauseGlyph, 'on', phase === 'paused');
@@ -283,7 +285,7 @@ export class Hud {
     // Actions: LISTO ends a decision phase; a running turn has no button (it cannot be paused).
     const running = phase === 'running';
     const deciding = isDecisionPhase(session);
-    const label = phase === 'drone' ? T.actions.recall : !deciding ? T.actions.resume : session.confirm.action === 'ready' ? T.flow.confirmReady : T.actions.ready;
+    const label = phase === 'drone' ? T.actions.recall : !deciding ? T.actions.resume : recon ? T.actions.endRecon : session.confirm.action === 'ready' ? T.flow.confirmReady : T.actions.ready;
     setText(this.executeLabel, label);
     setHidden(this.btnExecute, !deciding && phase !== 'paused' && !(phase === 'drone' && pilotsDrone(session)));
     // GO buttons: the groups in use; they can be pressed only while the turn runs (or is paused).

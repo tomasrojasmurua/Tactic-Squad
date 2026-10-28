@@ -19,6 +19,7 @@ export const T = Object.freeze({
   phase: {
     buy: 'COMPRA',
     prep: 'PREPARACIÓN',
+    recon: 'RECONOCIMIENTO', // the defender's first step of the preparation
     drone: 'DRON',
     planning: 'PLANIFICACIÓN',
     paused: 'PAUSA',
@@ -38,13 +39,17 @@ export const T = Object.freeze({
   /** Sub line of the banner playing the defenders (replaces phaseSub / phaseSubTouch where it has the phase). */
   phaseSubDefend: {
     desk: {
-      prep: `Elige el sitio, coloca a cada defensor, oriéntalo, pon 2 barricadas y ${CAMERA.max} cámaras · ESPACIO: listo`,
-      drone: 'El dron enemigo explora: si un defensor lo ve, lo derriba · aún puedes mover tus cámaras',
+      buy: 'Compra el equipo de cada defensor · ESPACIO: listo',
+      recon: `Elige el sitio, pon 2 barricadas y ${CAMERA.max} cámaras · ESPACIO: confirmar (quedan fijas)`,
+      prep: 'Coloca a cada defensor y oriéntalo · ESPACIO: listo',
+      drone: 'El dron enemigo explora: si un defensor lo ve, lo derriba',
       planning: 'Puedes mover defensores (su vigilancia pasa a fija) · ESPACIO: listo',
     },
     touch: {
-      prep: 'Sitio, posiciones, vigilancia, barricadas y cámaras · LISTO',
-      drone: 'Dron enemigo: si un defensor lo ve, lo derriba · aún puedes mover tus cámaras',
+      buy: 'Compra el equipo de cada defensor · LISTO',
+      recon: 'Sitio, barricadas y cámaras · CONFIRMAR las deja fijas',
+      prep: 'Coloca y orienta a cada defensor · LISTO',
+      drone: 'Dron enemigo: si un defensor lo ve, lo derriba',
       planning: 'Mueve defensores si quieres · LISTO',
     },
   },
@@ -90,6 +95,7 @@ export const T = Object.freeze({
   actions: {
     cameras: 'Cámaras',
     ready: 'Listo',
+    endRecon: 'Confirmar', // ends the defender's recon (site, barricades, cameras fixed)
     recall: 'Retirar dron',
     resume: 'Reanudar',
     go: 'GO',
@@ -409,7 +415,8 @@ export const T = Object.freeze({
   /** Buy and preparation panels (ui/PhasePanel.js). */
   buy: {
     title: 'Compra',
-    note: 'Elige la clase de cada uno (Brecha y Explorador, uno solo). Cada clase trae su equipo gratis y cada operador suma utilidad con sus puntos (● = 1 punto; lo que no gastes se pierde). Toca un objeto para sumar uno, − para devolverlo.',
+    note: 'Cada clase trae su equipo gratis y cada operador suma utilidad con sus puntos (● = 1 punto; lo que no gastes se pierde). Toca un objeto para sumar uno, − para devolverlo.',
+    noteDefend: 'El atacante compra a la vez y no ve lo tuyo. Cada clase trae su equipo gratis y cada defensor suma granada, humo o flash con sus puntos (● = 1 punto). Toca un objeto para sumar uno, − para devolverlo.',
     gear: { flash: 'flash', frag: 'granada', smoke: 'humo', breach: 'carga' },
     price: (n) => `${'●'.repeat(n)}`,
     points: (n) => (n > 0 ? '●'.repeat(n) : 'sin puntos'),
@@ -425,8 +432,10 @@ export const T = Object.freeze({
   entryLate: { title: 'Entrada', note: 'Cambiarla ahora borra las rutas.' },
   /** The defender's set-up panel (ui/PhasePanel.js 'setup', session/watch.js). */
   setup: {
-    title: 'Tu defensa',
-    note: 'Toca a un defensor y luego el suelo para moverlo (solo en tu mitad). Clic derecho y arrastra (en el celular, mantén pulsado y arrastra) para orientarlo. Con sus puntos (●) súmale granada, humo o flash para el asalto. El atacante no ve nada de esto.',
+    title: 'Tus defensores',
+    note: 'Toca a un defensor y luego el suelo para moverlo (solo en tu mitad). Clic derecho y arrastra (en el celular, mantén pulsado y arrastra) para orientarlo. El atacante no ve nada de esto.',
+    reconTitle: 'Reconocimiento',
+    reconNote: 'Elige dónde queda la bomba, qué puertas atrancar y dónde van tus cámaras. Al confirmar quedan fijas toda la ronda; después colocas a tus defensores.',
     site: 'Bomba',
     siteName: (id) => `Sitio ${id}`,
     barricades: (n, max) => `Barricadas ${n}/${max}`,
@@ -434,11 +443,7 @@ export const T = Object.freeze({
     watchOf: (n) => `Vigilancia de ${n}`,
     pickOne: 'Vigilancia: toca a un defensor',
     watch: { fixed: 'Ángulo fijo', sweep: 'Barrer', alert: 'Atento' },
-    roleOf: (n, blurb) => `Clase de ${n}: ${blurb}`,
-    pickRole: 'Clase: toca a un defensor',
     traps: (n, max) => `Trampas ${n}/${max}`,
-    gearOf: (n, pts) => `Equipo de ${n} · ${pts}`,
-    pickGear: 'Equipo: toca a un defensor',
     trapMode: 'Poner trampas',
     trapModeOn: 'Poniendo trampas: toca el suelo',
     cameras: (n, max) => `Cámaras ${n}/${max}: toca un soporte en la pared (+ pone, × quita)`,
@@ -466,6 +471,7 @@ export const T = Object.freeze({
     defSelect: { touch: 'Toca a un defensor para colocarlo y darle su vigilancia', desk: 'Selecciona un defensor (clic o 1·2·3·4)' },
     defPlace: { touch: (n) => `Toca el suelo para mover a ${n}; mantén y arrastra para orientarlo`, desk: (n) => `Clic en el suelo: mueve a ${n} · clic derecho y arrastra: hacia dónde mira` },
     defBarricades: (n) => `Te ${n === 1 ? 'queda 1 barricada' : `quedan ${n} barricadas`}: elígelas en el panel`,
+    defCameras: { touch: 'Mueve tus cámaras: toca + en un soporte de la pared · CONFIRMAR las deja fijas', desk: 'Mueve tus cámaras: clic en + en un soporte de la pared · ESPACIO las deja fijas' },
     askWaiting: (n) => `${n} está parado en una puerta sin decidir (?): decídela al planificar`,
     doorsStrict: {
       touch: (n) => `${n === 1 ? 'Una puerta' : `${n} puertas`} sin decidir: toca el ? para elegir cómo y cuándo`,

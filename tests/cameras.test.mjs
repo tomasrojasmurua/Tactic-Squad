@@ -82,24 +82,20 @@ test('el atacante no puede tocar las cámaras, y en el asalto ya no se mueven', 
   assert.equal(sim.cameras.length, CAMERA.max);
 });
 
-test('durante el dron el defensor mueve una cámara en el paso exacto en que lo pidió', () => {
-  const play = () => {
-    const { sim } = prepRound(11);
-    sim.advancePhase(); // al dron
-    assert.equal(sim.phase, 'drone');
-    sim.enqueue({ team: 'defenders', type: 'camera', mount: MAP.aiCameras.A[0], on: false, atTick: 30 });
-    sim.enqueue({ team: 'defenders', type: 'camera', mount: 'nave-norte', on: true, atTick: 31 });
-    let at = -1;
-    for (let i = 0; i < 60 && sim.phase === 'drone'; i++) {
-      sim.step();
-      if (at < 0 && sim.cameras.some((c) => c.mount === 'nave-norte')) at = sim.round.droneTick;
-    }
-    return { at, mounts: sim.cameras.map((c) => c.mount).sort() };
-  };
-  const a = play();
-  assert.ok(a.at > 30 && a.at <= 33, `aplicada en su paso (${a.at})`);
-  assert.deepEqual(a.mounts, [MAP.aiCameras.A[1], 'nave-norte'].sort());
-  assert.deepEqual(play(), a, 'determinista');
+test('al terminar el reconocimiento las cámaras, las barricadas y el sitio quedan fijos, también durante el dron', () => {
+  const { sim, cmd } = prepRound(11);
+  const mounts = sim.cameras.map((c) => c.mount);
+  const reasons = (ev) => ev.filter((e) => e.type === 'orderRejected').map((e) => e.reason);
+  assert.deepEqual(reasons(cmd({ type: 'endRecon' })), []);
+  assert.equal(sim.reconDone, true);
+  assert.deepEqual(reasons(cmd({ type: 'camera', mount: mounts[0], on: false })), ['reconOver']);
+  assert.deepEqual(reasons(cmd({ type: 'chooseSite', site: 'B' })), ['reconOver']);
+  assert.deepEqual(reasons(cmd({ type: 'barricade', door: sim.compiled.barricadeSlots[0], on: true })), ['reconOver']);
+  assert.equal(sim.site.id, 'A');
+  sim.advancePhase(); // al dron
+  assert.equal(sim.phase, 'drone');
+  assert.deepEqual(reasons(cmd({ type: 'camera', mount: mounts[0], on: false, atTick: 0 })), ['notNow']);
+  assert.deepEqual(sim.cameras.map((c) => c.mount), mounts);
 });
 
 test('un soporte que el atacante ya descubrió sigue descubierto aunque la cámara se quite y se vuelva a poner', () => {

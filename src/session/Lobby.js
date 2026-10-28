@@ -4,16 +4,19 @@
 //   main    JUGAR · TUTORIAL
 //   lessons the tutorial's lessons (config/lessons.js)
 //   play    CONTRA LA IA · MULTIJUGADOR (coming soon)
-//   lobby   the game's settings, then LISTO: it starts once everyone is ready
-//           (against the AI only the player; the AI always is)
+//   lobby   the game's conditions (format, starting side, map), then LISTO
+//   pick    the class pick (like a MOBA's pick phase): each operator's class
+//           for the whole game, per side; CONFIRMAR starts once everyone is
+//           ready (against the AI only the player; the AI picks its own, blind)
 //
-//   lobby = {view, bestOf, side, map, roles: {attackers: [roleId x3], defenders: [roleId x3]}, ready}
+//   lobby = {view, bestOf, side, map, roles: {attackers: [roleId x3], defenders: [roleId x3]}, pickSide, ready}
 //   bestOf  1 = a single round (retries allowed), else MATCH.formats (3, 5, 7)
 //   side    the side the player starts on (a match switches at half-time)
-//   roles   the player's classes per slot (Simulation opts.roles); the buy and
-//           the preparation can still change them each round
+//   roles   the player's classes per slot (Simulation opts.roles); they are
+//           not changed inside the game
+//   pickSide the side the pick screen shows (a match picks both)
 //
-// The choices last on the device (session/storage.js), except `view` and `ready`.
+// The choices last on the device (session/storage.js), except `view`, `pickSide` and `ready`.
 import { MATCH } from '../config/balance.js';
 import { ROLES, PICK_ROLES, DEF_PICK_ROLES } from '../config/operators.js';
 import { SQUAD, DEFENDERS } from '../config/squad.js';
@@ -34,6 +37,7 @@ export function createLobby(saved = null) {
     side: s.side === 'defenders' ? 'defenders' : 'attackers',
     map: DEFAULT_MAP,
     roles: { attackers: [...DEFAULT_ROLES.attackers], defenders: [...DEFAULT_ROLES.defenders] },
+    pickSide: 'attackers',
     ready: false,
   };
   for (const team of ['attackers', 'defenders']) {
@@ -57,8 +61,18 @@ export function canPick(lobby, team, i, id, ids = lobby.roles[team]) {
   return team === 'attackers' ? !r.unique || others === 0 : others < r.max;
 }
 
+/** The sides the player picks classes for: both in a match (it switches at half-time), else his own. */
+export const pickSides = (lobby) => (lobby.bestOf === 1 ? [lobby.side] : lobby.side === 'attackers' ? ['attackers', 'defenders'] : ['defenders', 'attackers']);
+
+/** From the lobby to the class pick: it opens on the side he starts on. */
+export function openPick(lobby) {
+  lobby.view = 'pick';
+  lobby.pickSide = lobby.side;
+  lobby.ready = false;
+}
+
 /**
- * One lobby request ('bestOf_<n>' | 'side_<team>' | 'role_<team>_<i>_<id>').
+ * One lobby request ('bestOf_<n>' | 'side_<team>' | 'role_<team>_<i>_<id>' | 'pickSide_<team>').
  * Returns true when it changed something (to save it).
  */
 export function lobbySet(lobby, what) {
@@ -70,6 +84,10 @@ export function lobbySet(lobby, what) {
   } else if (key === 'side') {
     if (rest[0] !== 'attackers' && rest[0] !== 'defenders') return false;
     lobby.side = rest[0];
+  } else if (key === 'pickSide') {
+    if (!pickSides(lobby).includes(rest[0]) || lobby.pickSide === rest[0]) return false;
+    lobby.pickSide = rest[0];
+    return false; // only the screen: nothing to save
   } else if (key === 'role') {
     const [team, i, id] = [rest[0], +rest[1], rest[2]];
     const ids = lobby.roles[team];

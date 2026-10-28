@@ -3,11 +3,12 @@
 //
 //   buy -> prep -> drone -> plan <-> exec -> end
 //
-//   buy   each attacker buys his utility (sim/prep.js)
+//   buy   both sides buy their utility at once (sim/prep.js)
 //   prep  both sides set up blind: the attackers pick their entry and may
-//         sketch routes; the defenders pick the site, place their operators,
-//         give them watch orders and put up barricades (sim/prep.js; an AI
-//         side does it on entering the phase)
+//         sketch routes; the defenders first do their recon (site,
+//         barricades, cameras: fixed once it ends), then place their
+//         operators and give them watch orders (sim/prep.js; an AI side does
+//         it on entering the phase)
 //   drone the attackers drive their recon drone in real time (sim/drone.js,
 //         DRONE.seconds); only the drone and the defenders' eyes run, the
 //         bomb's timer does not. It ends when the time is up, the drone is
@@ -37,7 +38,7 @@ import { ROUND, SIM } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { summarizeNoise } from './noise.js';
 import { launchDrone, droneOver, endDrone } from './drone.js';
-import { aiPrepare } from './prep.js';
+import { aiBuy, aiPrepare } from './prep.js';
 
 export const PHASE = Object.freeze({ buy: 'buy', prep: 'prep', drone: 'drone', plan: 'plan', exec: 'exec', end: 'end' });
 
@@ -81,6 +82,7 @@ export function advancePhase(sim) {
   if (!r.enabled) return;
   const from = r.phase;
   if (from === PHASE.buy) {
+    aiBuy(sim); // still in the buy
     r.phase = PHASE.prep;
     aiPrepare(sim);
   } else if (from === PHASE.prep) {
