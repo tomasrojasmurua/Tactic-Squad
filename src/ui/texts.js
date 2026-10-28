@@ -88,6 +88,7 @@ export const T = Object.freeze({
   ],
 
   actions: {
+    cameras: 'Cámaras',
     ready: 'Listo',
     recall: 'Retirar dron',
     resume: 'Reanudar',
@@ -146,6 +147,13 @@ export const T = Object.freeze({
   squad: { button: 'Escuadra', on: 'En fila' },
   /** Pace of a stretch of route (sim/movement.js): the waypoint menu. */
   pace: { title: 'Paso', normal: 'Normal', sneak: 'Sigilo' },
+  /** "Asomarse y volver" (sim/orders.js setPeek): the waypoint menu and the tag on the map. */
+  peek: {
+    off: 'Asomarse y volver',
+    on: '✓ Se asoma y vuelve',
+    hint: 'Se queda 1,5 s mirando hacia donde marques en el punto y vuelve a su lugar',
+    tag: 'ASOMA',
+  },
   defuse: 'DESACTIVANDO BOMBA',
   reloadTag: 'RECARGANDO',
   tagGo: 'GO',
@@ -297,6 +305,7 @@ export const T = Object.freeze({
     grenade: { flash: '¡Flash!', frag: '¡Granada!', smoke: '¡Humo!' },
     breach: 'Puerta reventada',
     droneContact: 'El dron vio a un defensor',
+    cameraContact: 'Tu cámara vio a un atacante',
     droneDown: 'Dron derribado',
     barricade: 'Barricada a la vista',
     barricadeBroken: 'Barricada rota',
@@ -348,6 +357,7 @@ export const T = Object.freeze({
   },
 
   touch: {
+    cameras: 'Cámaras',
     ready: 'Listo',
     recall: 'Retirar',
     resume: 'Seguir',

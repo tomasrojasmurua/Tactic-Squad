@@ -56,6 +56,9 @@ export const MOVE = Object.freeze({
   // (pushed against a wall): he finds the way to his next point again.
   stuckFraction: 0.15,
   stuckTime: 0.6,
+  // "Asomarse y volver" (waypoint.pause): he stands on the point this long, looking where it says,
+  // then walks back to where he came from (orders.js setPeek).
+  peekTime: 1.5,
 });
 
 export const VISION = Object.freeze({

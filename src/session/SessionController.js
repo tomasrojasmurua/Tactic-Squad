@@ -433,6 +433,9 @@ export class SessionController {
       case 'pace':
         this.planning.togglePace();
         return;
+      case 'peek':
+        this.planning.togglePeek();
+        return;
       case 'pace_sneak':
       case 'pace_normal':
         this.planning.setPace(action === 'pace_sneak' ? 'sneak' : null);
@@ -442,6 +445,9 @@ export class SessionController {
         return;
       case 'overview':
         if (phase !== 'title') this.framing.toggleOverview();
+        return;
+      case 'cameras':
+        this.nextCamera();
         return;
       case 'go':
       case 'go_A':
@@ -578,6 +584,21 @@ export class SessionController {
     if (!u) return;
     this.select(u.id);
     this.session.pointTarget = { unitId: u.id, index: +index };
+    this.sound('select');
+  }
+
+  /**
+   * Defending, while deciding: the view jumps to the next of your working
+   * cameras (its cone and what it reported stay drawn: render/layers/OverlayLayer.js).
+   */
+  nextCamera() {
+    const s = this.session;
+    if (s.team !== 'defenders' || !isPlanningTime(s)) return;
+    const live = this.sim.cameras.filter((c) => c.alive);
+    if (!live.length) return this.notice('noCameras');
+    s.ui.camera = (s.ui.camera + 1) % live.length;
+    const c = live[s.ui.camera];
+    this.framing.centerOn(c.x, c.y);
     this.sound('select');
   }
 

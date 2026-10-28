@@ -101,6 +101,12 @@ export const ICON = {
     `<path d="M3 6.5 L9 4 L15 6.5 L21 4 V17.5 L15 20 L9 17.5 L3 20 Z" fill="none" stroke="currentColor" stroke-width="2.2"
      stroke-linejoin="round"/><path d="M9 4 V17.5 M15 6.5 V20" stroke="currentColor" stroke-width="2"/>`,
   ),
+  // Defender cameras: a wall camera on its arm.
+  camera: svg(
+    '0 0 24 24',
+    `<rect x="3" y="7" width="13" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="2.2"/>
+     <path d="M16 9.5 L21 7 V15 L16 12.5" fill="currentColor"/><path d="M7 15 V19 H3" fill="none" stroke="currentColor" stroke-width="2.2"/>`,
+  ),
   music: svg(
     '0 0 24 24',
     `<path d="M9 18 V5 L20 3 V16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>

@@ -6,7 +6,7 @@ import { HUD, VIGNETTE, GO_GROUPS } from '../config/ui.js';
 import { teamUnits, enemyTeam, isGoReady, bombKnownTo, codeInUse, codeWaiting, goStatus } from '../sim/queries.js';
 import { TURN_TICKS } from '../sim/round.js';
 import { ENTRY, ROUND, SIM, DRONE } from '../config/balance.js';
-import { isDecisionPhase, pilotsDrone, isDefenderSetup } from '../session/Session.js';
+import { isDecisionPhase, pilotsDrone, isDefenderSetup, showCameras } from '../session/Session.js';
 import { coachHint } from './coach.js';
 import { el, setText, toggle, formatTime, setStyle, setClassName, setHidden } from './dom.js';
 import { ICON, WEAPON_ICONS } from './icons.js';
@@ -74,6 +74,7 @@ export class Hud {
       b.style.setProperty('--g', g.color);
       return { code, b, when: b.querySelector('.when'), key: b.querySelector('.key') };
     });
+    this.btnCameras = button('cams', `<span>${T.actions.cameras}</span><span class="key">O</span>`, 'cameras');
     this.btnRestart = button('', `<span>${T.actions.restart}</span><span class="key">R</span>`, 'restart');
     this.btnHelp = button('', `<span>${T.actions.help}</span><span class="key">F1</span>`, 'help');
     this.btnMenu = button('to-menu', `<span>${T.flow.menu.button}</span>`, 'menu');
@@ -138,7 +139,7 @@ export class Hud {
       this.pushKill(killer, victim);
     });
     bus.on(EV.SPOTTED, (e) => {
-      if (e.team === enemyTeam(this.viewer.team)) this.pushInfo(e.byDrone ? T.feed.droneContact : T.feed.contact);
+      if (e.team === enemyTeam(this.viewer.team)) this.pushInfo(e.byDrone ? T.feed.droneContact : e.byCamera ? T.feed.cameraContact : T.feed.contact);
     });
     bus.on(EV.DRONE_DESTROYED, () => this.viewer.team === 'attackers' && this.pushInfo(T.feed.droneDown));
     bus.on(EV.BARRICADE_SPOTTED, () => this.viewer.team === 'attackers' && this.pushInfo(T.feed.barricade));
@@ -295,6 +296,7 @@ export class Hud {
       setText(g.when, ` · ${T.flow.goReady(st.ready, st.total)}`);
       setStyle(g.key, 'display', live ? '' : 'none');
     }
+    setHidden(this.btnCameras, !showCameras(sim, session));
     const armed = session.confirm.action === 'restart';
     setText(this.restartLabel, armed ? T.flow.confirmRestart : T.actions.restart);
     if ((this.btnRestart.dataset.armed || '') !== (armed ? '1' : '')) this.btnRestart.dataset.armed = armed ? '1' : '';

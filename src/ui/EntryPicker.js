@@ -13,12 +13,14 @@
 //   CUÁNDO  right away, or with a GO group (a color: config/ui.js GO_GROUPS)
 //   LANZAR  a flash / grenade / smoke from this point to wherever the player
 //           taps next (session.ui.tossPick); pressing the active one removes it
+//   ASOMARSE  at the end of the route: he stands there MOVE.peekTime s looking
+//           at the point's look and walks back (sim/orders.js setPeek)
 //
-// Emits EV.REQUEST {action: 'entry_<mode>' | 'when_<now|A|B|C>' | 'toss_<item>' | 'pace_<k>' | 'pickerClose'}.
+// Emits EV.REQUEST {action: 'entry_<mode>' | 'when_<now|A|B|C>' | 'toss_<item>' | 'pace_<k>' | 'peek' | 'pickerClose'}.
 import { EV } from '../core/events.js';
 import { ENTRY } from '../config/balance.js';
 import { GO_GROUPS } from '../config/ui.js';
-import { controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode } from '../sim/queries.js';
+import { controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode, lastUserIndex } from '../sim/queries.js';
 import { canEditRoutes, targetIndex } from '../session/Session.js';
 import { el, setText, toggle, setStyle } from './dom.js';
 import { ENTRY_ICON } from './icons.js';
@@ -32,6 +34,12 @@ const RING_R = 64; // px from the door point to the center of each wheel button
 const RING_OUT = RING_R + 34; // px: the wheel's outer radius (button included)
 const SIDE_GAP = 6; // px between the wheel and the panel beside it
 
+/** The user point before route[i] (the peek a way back belongs to), or -1. */
+function anchorBefore(r, i) {
+  for (let j = i - 1; j >= 0; j--) if (r[j].user && !r[j].ask) return j;
+  return -1;
+}
+
 export class EntryPicker {
   constructor(root, bus) {
     this.bus = bus;
@@ -42,7 +50,8 @@ export class EntryPicker {
         `<div class="ep-panel"><div class="ep-head"><span class="ep-title"></span><button class="ep-x" aria-label="${T.entry.close}">×</button></div>` +
         `<div class="ep-when"><span class="ep-wl">${T.entry.when}</span></div>` +
         `<div class="ep-pace"><span class="ep-wl">${T.pace.title}</span></div>` +
-        `<div class="ep-toss"><span class="ep-wl">${T.entry.toss}</span></div></div>`,
+        `<div class="ep-toss"><span class="ep-wl">${T.entry.toss}</span></div>` +
+        `<div class="ep-peek"><button class="wbtn pbtn"></button></div></div>`,
     );
     this.ring = this.node.querySelector('.ep-ring');
     this.panel = this.node.querySelector('.ep-panel');
@@ -92,6 +101,10 @@ export class EntryPicker {
       toss.appendChild(b);
       this.toss.set(item, { b, label: b.querySelector('.tl'), count: b.querySelector('.en') });
     }
+    this.peekRow = this.node.querySelector('.ep-peek');
+    this.peek = this.peekRow.firstChild;
+    this.peek.title = T.peek.hint;
+    this.peek.addEventListener('pointerdown', fire('peek'));
     this.size = null; // measured {w, h} of the panel (re-measured when its content changes)
     this.layoutKey = '';
     root.appendChild(this.node);
@@ -151,7 +164,15 @@ export class EntryPicker {
       setText(count, T.entry.left(Math.max(0, left)));
     }
 
-    const key = `${door}|${aiming}|${session.touch}|${camera.width}`;
+    // Asomarse: the end of the route (or a peek already set, or its way back).
+    const peekAt = p.back ? anchorBefore(u.route, i) : i;
+    const peeking = peekAt >= 0 && u.route[peekAt].pause > 0;
+    const canPeek = peeking || (!p.ask && i === lastUserIndex(u));
+    this.peekRow.hidden = !canPeek;
+    toggle(this.peek, 'active', peeking);
+    setText(this.peek, peeking ? T.peek.on : T.peek.off);
+
+    const key = `${door}|${aiming}|${canPeek}|${session.touch}|${camera.width}`;
     if (!this.size || this.layoutKey !== key) {
       const r = this.panel.getBoundingClientRect();
       // On touch the button column stays usable: the menu keeps to its left.

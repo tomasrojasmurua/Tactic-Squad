@@ -11,12 +11,18 @@
 // to shoot breaks it after CAMERA.shootDelay — one loud shot (defenders within
 // COMBAT.hearingRadius hear it). Deterministic: no randomness.
 //
-//   sim.cameras = [{id, x, y, facing, fov, range, alive, known, watch, lastAlert, aim, aimBy}]
+// What a camera reports, its side sees: while it keeps an attacker in sight
+// after CAMERA.detect he is shown to the defenders (seenByEnemy, their
+// memory: sim/view.js) and the first sight is a contact (EV.SPOTTED byCamera),
+// so a player defending is told, not only the AI.
+//
+//   sim.cameras = [{id, x, y, facing, fov, range, alive, known, watch, seeing, lastAlert, aim, aimBy}]
 import { CAMERA, COMBAT } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { canSee } from './vision.js';
 import { isAiControlled } from './queries.js';
 import { alertAiUnit } from './ai.js';
+import { rememberSeen } from './view.js';
 
 /** The cameras of the current site (a new site in preparation: its own cameras). */
 export function placeCameras(sim) {
@@ -31,6 +37,7 @@ export function placeCameras(sim) {
     alive: true,
     known: false,
     watch: 0, // s it has kept an attacker in sight
+    seeing: -1, // the attacker it reports right now (after CAMERA.detect), else -1
     lastAlert: -Infinity,
     aim: 0, // s an attacker has been aiming at it
     aimBy: -1,
@@ -63,13 +70,25 @@ function watch(sim, c, dt) {
   }
   if (!seen) {
     c.watch = 0;
+    c.seeing = -1;
     return;
   }
   c.watch += dt;
-  if (c.watch < CAMERA.detect || sim.time - c.lastAlert < CAMERA.realert) return;
+  if (c.watch < CAMERA.detect) return;
+  reveal(sim, c, seen);
+  if (sim.time - c.lastAlert < CAMERA.realert) return;
   c.lastAlert = sim.time;
   for (const d of sim.teams.defenders) if (d.alive && isAiControlled(sim, d)) alertAiUnit(d, seen.x, seen.y, CAMERA.alertSeconds);
   sim.emit(EV.CAMERA_SPOT, { cameraId: c.id, unitId: seen.id, x: seen.x, y: seen.y });
+}
+
+/** The defenders see what their camera reports: shown on their map, remembered, a contact the first time. */
+function reveal(sim, c, a) {
+  const first = c.seeing !== a.id && !a.seenByEnemy;
+  c.seeing = a.id;
+  a.seenByEnemy = true;
+  rememberSeen(sim, 'defenders', a);
+  if (first) sim.emit(EV.SPOTTED, { unitId: a.id, team: a.team, x: a.x, y: a.y, byCamera: true });
 }
 
 function attackersSee(sim, c, dt) {

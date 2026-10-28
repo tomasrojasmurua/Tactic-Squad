@@ -58,7 +58,7 @@ export function createRound(phases) {
     execTick: 0, // steps run in the current execution turn
     execTotal: 0, // steps run in every turn so far (the bomb's timer)
     droneTick: 0, // steps run in the drone phase
-    contact: false, // stopOnContact: the attackers saw a new enemy this turn (the turn ends early)
+    contact: false, // stopOnContact: the human side saw a new enemy this turn, or a camera did (the turn ends early)
     cut: false, // the last turn ended early on contact
   };
 }

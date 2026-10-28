@@ -29,6 +29,7 @@ export const KEYS = Object.freeze({
   zoomOut: ['Minus', 'NumpadSubtract'],
   defuse: ['KeyP'],
   overview: ['KeyV'], // see the whole map (again = back)
+  cameras: ['KeyO'], // defending, while deciding: the view jumps to each of your cameras in turn
 });
 
 /** Keys whose browser default is always suppressed (scroll, focus change, help). */

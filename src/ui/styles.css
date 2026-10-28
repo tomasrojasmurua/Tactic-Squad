@@ -872,6 +872,9 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
 
 /* Waypoint menu, LANZAR row: a throw from this point to a tapped spot (ui/EntryPicker.js). */
 .entry-picker .ep-toss { display: flex; align-items: center; gap: 4px; }
+.entry-picker .ep-peek { display: flex; }
+.entry-picker .ep-peek[hidden] { display: none; }
+.entry-picker .pbtn { flex: 1; }
 .tbtn { position: relative; gap: 4px; }
 .tbtn .en { font-size: 9.5px; color: var(--amber); }
 .tbtn[disabled] { opacity: 0.32; cursor: default; }

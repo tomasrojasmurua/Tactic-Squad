@@ -19,7 +19,7 @@ import { applyCommand } from './orders.js';
 import { updatePerception } from './perception.js';
 import { updateAiUnit } from './ai.js';
 import { createAttackAi, attackAiDecide, attackAiTick } from './aiAttack.js';
-import { isAiControlled } from './queries.js';
+import { isAiControlled, humanTeam } from './queries.js';
 import { updateFacing, updateMovement } from './movement.js';
 import { resolveCollisions } from './collisions.js';
 import { updateCombat } from './combat.js';
@@ -248,9 +248,11 @@ export class Simulation {
     updatePerception(this);
     updateCameras(this, dt);
     updateTraps(this, dt);
-    if (this.stopOnContact) for (let i = firstEvent; i < this.events.length; i++) {
+    // Contact: the human side saw a new enemy (with its eyes or, defending, a camera). Either side.
+    const watcher = this.stopOnContact ? humanTeam(this) : null;
+    if (watcher) for (let i = firstEvent; i < this.events.length; i++) {
       const e = this.events[i];
-      if (e.type === EV.SPOTTED && e.team === 'defenders' && !e.byDrone) this.round.contact = true;
+      if (e.type === EV.SPOTTED && e.team !== watcher && !e.byDrone) this.round.contact = true;
     }
     updateMemory(this);
     for (const u of this.teams.attackers) if (u.alive && u.blind <= 0) spotBarricades(this, u, u.vision.fov);

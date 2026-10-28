@@ -12,21 +12,23 @@ export function createMemory() {
   return m;
 }
 
+/** Side `team` sees enemy e now: remembered where it is. */
+export function rememberSeen(sim, team, e) {
+  const mem = sim.memory[team];
+  let k = mem.get(e.id);
+  if (!k) mem.set(e.id, (k = { id: e.id, x: 0, y: 0, tick: 0, alive: true }));
+  k.x = e.x;
+  k.y = e.y;
+  k.tick = sim.tick;
+  k.alive = e.alive;
+}
+
 /** After perception: every enemy a side sees now is remembered where it is. */
 export function updateMemory(sim) {
   for (const team of TEAMS) {
-    const mem = sim.memory[team];
     for (const u of sim.teams[team]) {
       if (!u.alive) continue;
-      for (const id of u.visibleEnemies) {
-        const e = sim.units[id];
-        let k = mem.get(id);
-        if (!k) mem.set(id, (k = { id, x: 0, y: 0, tick: 0, alive: true }));
-        k.x = e.x;
-        k.y = e.y;
-        k.tick = sim.tick;
-        k.alive = e.alive;
-      }
+      for (const id of u.visibleEnemies) rememberSeen(sim, team, sim.units[id]);
     }
   }
 }
@@ -51,6 +53,7 @@ export function knownBarricades(sim, team) {
 export function teamView(sim, team) {
   const seen = new Set();
   for (const u of sim.teams[team]) if (u.alive) for (const id of u.visibleEnemies) seen.add(id);
+  if (team === 'defenders') for (const c of sim.cameras) if (c.alive && c.seeing >= 0) seen.add(c.seeing); // what their cameras show
   const enemies = [];
   for (const e of sim.teams[enemyTeam(team)]) {
     if (seen.has(e.id)) enemies.push({ id: e.id, x: e.x, y: e.y, facing: e.facing, alive: e.alive, name: e.name });

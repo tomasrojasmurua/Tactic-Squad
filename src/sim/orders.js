@@ -25,6 +25,10 @@
 //                                              'sneak' (MOVE.sneakFactor, quiet) or normally (null)
 //   {type:'setToss', unitId, item, x, y, index?}  from that user waypoint (default: last) he throws a flash /
 //                                              grenade / smoke (ENTRY.tossItems) to (x, y); item null: no throw
+//   {type:'setPeek', unitId, on, index?}       "asomarse y volver" on the last user waypoint: he stands there
+//                                              MOVE.peekTime s looking at its look (the way he walked in, if
+//                                              none) and goes back to the point before it (or where he
+//                                              stood) facing as he did there. on false: removes both
 //   {type:'follow', unitId, leaderId, rank}    squad route (sim/follow.js): he walks the leader's route in file
 //                                              (rank 1 right behind) and stacks behind him at his GO holds
 //   {type:'unfollow', unitId}                  back to his own orders (the route he had stays)
@@ -68,7 +72,7 @@
 // applyCommand's `by` = 'ai': they only reach a side whose controller is 'ai'.
 // Rejections are reported as EV.ORDER_REJECTED with a REJECT code; the UI
 // turns codes into text (ui/texts.js T.rejectReason), the sim never does.
-import { NAV, ENTRY } from '../config/balance.js';
+import { NAV, ENTRY, MOVE } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode, codeInUse, humanTeam, ASK_CODE } from './queries.js';
 import { segmentCrossesDoorway } from './doors.js';
@@ -108,10 +112,10 @@ export const REJECT = Object.freeze({
   badFollow: 'badFollow', // follow: no such leader, himself, another side, or a leader who follows someone
 });
 
-const ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'endStroke', 'cancelStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss', 'follow', 'unfollow'];
+const ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'endStroke', 'cancelStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss', 'setPeek', 'follow', 'unfollow'];
 
 /** Orders on a follower's own route: he leaves the file and keeps the route he had (now his). */
-const OWN_ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss'];
+const OWN_ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss', 'setPeek'];
 
 /** Orders each round phase takes (sim/round.js PHASE; literal keys: round.js imports this module). */
 const PHASE_ORDERS = Object.freeze({
@@ -192,6 +196,8 @@ export function applyCommand(sim, cmd, by = 'human') {
       return setPace(sim, unit, cmd.pace === 'sneak' ? 'sneak' : null, cmd.index);
     case 'setToss':
       return setToss(sim, unit, cmd.item ?? null, cmd.x, cmd.y, cmd.index);
+    case 'setPeek':
+      return setPeek(sim, unit, cmd.on !== false, cmd.index);
     case 'follow': {
       const leader = sim.units[cmd.leaderId];
       if (!leader || !obeys(sim, leader, cmd, by) || !startFollow(sim, unit, leader, cmd.rank)) return reject(sim, unit, REJECT.badFollow);
@@ -230,7 +236,7 @@ function changed(sim, unit, kind) {
   if (!sim.round.enabled || sim.round.phase !== 'exec') rebuildFollowers(sim, unit);
 }
 
-function addWaypoint(sim, unit, { x, y, user = true, quiet = false }) {
+function addWaypoint(sim, unit, { x, y, user = true, quiet = false }, kind = 'add') {
   if (unit.route.length >= NAV.maxRoutePoints) return quiet ? undefined : reject(sim, unit, REJECT.routeTooLong);
   if (unit.team === 'defenders') holdOnArrival(unit);
   const from = routeTail(unit);
@@ -243,7 +249,7 @@ function addWaypoint(sim, unit, { x, y, user = true, quiet = false }) {
     unit.route.push(routePoint(q.x, q.y, { user: user && i === path.length - 1, pace }));
   });
   markDoors(sim, unit, start);
-  changed(sim, unit, 'add');
+  if (kind) changed(sim, unit, kind);
 }
 
 /**
@@ -536,6 +542,47 @@ function setPace(sim, unit, pace, index) {
   const from = anchorBefore(r, i);
   for (let j = from + 1; j <= i; j++) r[j].pace = pace;
   changed(sim, unit, 'pace');
+}
+
+/**
+ * "Asomarse y volver": user point i (the last one, or the one a return
+ * point follows) gets a pause and a way back to the point before it.
+ */
+function setPeek(sim, unit, on, index) {
+  const r = unit.route;
+  let i = userIndex(unit, index);
+  if (i >= 0 && r[i].back) i = anchorBefore(r, i); // the way back stands for its peek
+  if (i < 0) return reject(sim, unit, REJECT.noWaypoint);
+  const back = anchorAfter(r, i);
+  const peeking = r[i].pause > 0;
+  if (!on) {
+    if (!peeking) return;
+    r[i].pause = 0;
+    if (back >= 0 && r[back].back && back === lastUserIndex(unit)) r.length = i + 1;
+    return changed(sim, unit, 'peek');
+  }
+  if (peeking) return;
+  if (back >= 0) return reject(sim, unit, REJECT.noWaypoint); // only the end of the route
+  const a = anchorBefore(r, i);
+  const from = a >= 0 ? r[a] : unit;
+  const look = a >= 0 ? r[a].look : unit.idleLook ?? unit.facing;
+  const p = r[i];
+  if (p.look === null) {
+    const prev = i > 0 ? r[i - 1] : unit;
+    p.look = Math.atan2(p.y - prev.y, p.x - prev.x);
+  }
+  p.pause = MOVE.peekTime;
+  const n = r.length;
+  addWaypoint(sim, unit, { x: from.x, y: from.y }, null); // one change, 'peek', below
+  if (r.length === n) {
+    p.pause = 0; // no way back (refused: route too long)
+    return;
+  }
+  const end = r[r.length - 1];
+  end.back = true;
+  end.look = look;
+  for (let j = n; j < r.length; j++) r[j].pace = p.pace; // back as quietly as he went
+  changed(sim, unit, 'peek');
 }
 
 function undoWaypoint(sim, unit) {
