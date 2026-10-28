@@ -584,8 +584,10 @@ export class OverlayLayer {
 
   /**
    * Trampero's traps (sim/traps.js): the defenders see theirs, the attackers
-   * the ones they found — a toothed orange ring on the floor; a sprung or
-   * broken one is a dark ring with a cross.
+   * the ones they found. A cepo seen from above: two open steel jaws toothed
+   * inward around the pressure plate, the spring bar across them with its
+   * coils and a chain to a stake, on a soft orange halo so it stands out on
+   * the floor. A sprung or broken one lies with its jaws shut, dark.
    */
   traps(t, sim, own, mpp) {
     const C = OVERLAY.trap;
@@ -593,19 +595,78 @@ export class OverlayLayer {
     const s = C.size;
     for (const trap of sim.traps) {
       if (own === 'attackers' && !trap.known) continue;
-      const col = trap.alive ? rgba(c[0], c[1], c[2], 1) : rgba(0.3, 0.3, 0.32, 0.9);
-      t.ring(trap.x, trap.y, s, 3.4 * mpp, BLACK(0.6), 18);
-      t.ring(trap.x, trap.y, s, 2 * mpp, col, 18);
-      if (trap.alive) {
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * Math.PI * 2;
-          t.line(trap.x + Math.cos(a) * s * 0.45, trap.y + Math.sin(a) * s * 0.45, trap.x + Math.cos(a) * s, trap.y + Math.sin(a) * s, 1.6 * mpp, col);
+      const x = trap.x;
+      const y = trap.y;
+      const a = trap.id * 2.1 + 0.6; // the hinge axis: fixed per trap, varied between them
+      const ux = Math.cos(a);
+      const uy = Math.sin(a);
+      if (!trap.alive) {
+        // Jaws shut: a toothed seam along the axis, the bar beyond it.
+        t.line(x - ux * s * 1.4, y - uy * s * 1.4, x + ux * s * 1.4, y + uy * s * 1.4, 2.4 * mpp, rgba(0.18, 0.18, 0.2, 0.9));
+        t.line(x - ux * s, y - uy * s, x + ux * s, y + uy * s, 5 * mpp, BLACK(0.6));
+        t.line(x - ux * s, y - uy * s, x + ux * s, y + uy * s, 3 * mpp, rgba(0.36, 0.36, 0.38, 0.95));
+        for (let k = -3; k <= 3; k++) {
+          const px = x + ux * s * 0.28 * k;
+          const py = y + uy * s * 0.28 * k;
+          const e = (k % 2 ? 1 : -1) * s * 0.14;
+          t.line(px, py, px - uy * e, py + ux * e, 1.4 * mpp, rgba(0.3, 0.3, 0.32, 0.95));
         }
-        t.circle(trap.x, trap.y, s * 0.22, col, 8);
-      } else {
-        t.line(trap.x - s * 0.7, trap.y - s * 0.7, trap.x + s * 0.7, trap.y + s * 0.7, 2 * mpp, col);
-        t.line(trap.x - s * 0.7, trap.y + s * 0.7, trap.x + s * 0.7, trap.y - s * 0.7, 2 * mpp, col);
+        continue;
       }
+      const steel = rgba(C.steel[0], C.steel[1], C.steel[2], 1);
+      const L = s * 2.1; // the spring levers reach this far along the axis
+      t.circle(x, y, L, rgba(c[0], c[1], c[2], 0.26), 28, rgba(c[0], c[1], c[2], 0));
+      // Chain from the end of one lever to its stake.
+      const cx = x + ux * L;
+      const cy = y + uy * L;
+      const kx = cx + (ux - uy) * s * 0.6;
+      const ky = cy + (uy + ux) * s * 0.6;
+      for (let i = 0; i < 4; i++) {
+        const f0 = i / 4;
+        const f1 = (i + 0.7) / 4;
+        t.line(cx + (kx - cx) * f0, cy + (ky - cy) * f0, cx + (kx - cx) * f1, cy + (ky - cy) * f1, 1.6 * mpp, rgba(0.25, 0.25, 0.27, 1));
+      }
+      t.circle(kx, ky, s * 0.13, rgba(0.15, 0.13, 0.11, 1), 8);
+      t.circle(x, y, s, BLACK(0.4), 20); // the pit the jaws sit around
+      // The base bar under the jaws, and a long folded spring lever out of each hinge.
+      t.line(x - ux * s, y - uy * s, x + ux * s, y + uy * s, 3.6 * mpp, BLACK(0.55));
+      t.line(x - ux * s, y - uy * s, x + ux * s, y + uy * s, 1.8 * mpp, steel);
+      const w = s * 0.16;
+      for (const e of SIDES) {
+        const hx = x + ux * s * 0.9 * e;
+        const hy = y + uy * s * 0.9 * e;
+        const ex = x + ux * L * e;
+        const ey = y + uy * L * e;
+        for (const pass of [0, 1]) {
+          const col = pass ? steel : BLACK(0.6);
+          const lw = (pass ? 1.8 : 3.6) * mpp;
+          t.line(hx - uy * w, hy + ux * w, ex - uy * w, ey + ux * w, lw, col);
+          t.line(hx + uy * w, hy - ux * w, ex + uy * w, ey - ux * w, lw, col);
+          t.arc(ex, ey, w, lw, a + (e > 0 ? -Math.PI / 2 : Math.PI / 2), a + (e > 0 ? Math.PI / 2 : (3 * Math.PI) / 2), col, 16);
+        }
+      }
+      // Two jaws, each half a ring between the hinges, a few long teeth pointing in.
+      for (const e of SIDES) {
+        const a0 = a + (e > 0 ? 0 : Math.PI) + 0.3;
+        const a1 = a0 + Math.PI - 0.6;
+        t.arc(x, y, s, 4.6 * mpp, a0, a1, BLACK(0.65), 32);
+        t.arc(x, y, s, 2.6 * mpp, a0, a1, steel, 32);
+        const teeth = 4;
+        const half = (a1 - a0) / teeth / 2;
+        for (let i = 0; i < teeth; i++) {
+          const m = a0 + half * (2 * i + 1);
+          const r0 = s * 0.97;
+          t.tri(
+            x + Math.cos(m - half * 0.45) * r0, y + Math.sin(m - half * 0.45) * r0,
+            x + Math.cos(m + half * 0.45) * r0, y + Math.sin(m + half * 0.45) * r0,
+            x + Math.cos(m) * s * 0.62, y + Math.sin(m) * s * 0.62,
+            steel,
+          );
+        }
+      }
+      // The pressure plate, in the trap's colour.
+      t.circle(x, y, s * 0.3, BLACK(0.6), 12);
+      t.circle(x, y, s * 0.24, rgba(c[0], c[1], c[2], 1), 12);
     }
   }
 
