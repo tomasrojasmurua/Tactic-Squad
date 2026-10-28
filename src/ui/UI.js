@@ -9,6 +9,7 @@ import { Cursor } from './Cursor.js';
 import { TouchBar } from './TouchBar.js';
 import { EntryPicker } from './EntryPicker.js';
 import { PhasePanel } from './PhasePanel.js';
+import { CameraMounts } from './CameraMounts.js';
 import { DroneStick } from './DroneStick.js';
 import { HudOcclusion } from './HudOcclusion.js';
 import { GfxNotice } from './GfxNotice.js';
@@ -22,6 +23,7 @@ export class UI {
   constructor(root, bus, input, session) {
     this.root = root;
     this.labels = new WorldLabels(root, bus);
+    this.mounts = new CameraMounts(root, bus);
     this.hud = new Hud(root, bus, session);
     this.squad = new SquadPanel(root, bus);
     this.screens = new Screens(root, bus);
@@ -51,6 +53,7 @@ export class UI {
     this.squad.update(sim, session);
     this.screens.update(sim, session);
     this.labels.update(sim, session, camera, poseOf, this.occlusion);
+    this.mounts.update(sim, session, camera, this.occlusion);
     this.gfx.update(session);
     this.cursor.update(session);
     this.touchBar.update(sim, session);

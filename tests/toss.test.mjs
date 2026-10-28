@@ -6,7 +6,7 @@ import { Simulation } from '../src/sim/Simulation.js';
 import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
 import { ENTRY } from '../src/config/balance.js';
 import { lineOfSight, solidLineOfSight } from '../src/sim/vision.js';
-import { gearLeft } from '../src/sim/queries.js';
+import { gearLeft, tossDoorway, tossLanding } from '../src/sim/queries.js';
 
 const MAP = MAPS[DEFAULT_MAP];
 const T = 'attackers';
@@ -72,4 +72,72 @@ test('una puerta y un lanzamiento no conviven en el mismo punto', () => {
   assert.equal(a.route[i].toss, null);
   cmd({ type: 'setToss', unitId: a.id, item: 'rock', x: 1, y: 1, index: i });
   assert.deepEqual(rejects(sim), ['badItem']);
+});
+
+test('lanzar desde una puerta cerrada: la abre, lanza adentro, no se hiere y espera la explosión', () => {
+  const { sim, cmd, squad } = round();
+  const [a] = squad;
+  a.gear.frag = 1;
+  cmd({ type: 'addWaypoint', unitId: a.id, x: 14, y: 12.7, user: true });
+  const i = a.route.findIndex((p) => p.ask);
+  cmd({ type: 'setToss', unitId: a.id, item: 'frag', x: 13, y: 12.7, index: i });
+  const p = a.route[i];
+  const k = tossDoorway(sim.world, p, 13, 12.7);
+  assert.ok(k >= 0, 'el lanzamiento pasa por la puerta del punto');
+  const land = tossLanding(sim.world, p.x, p.y, 13, 12.7, {}, k);
+  assert.ok(land.reach > 3, `cae adentro, no contra la puerta (${land.reach.toFixed(2)} m)`);
+  sim.drainEvents();
+  sim.advancePhase();
+  let thrownAt = -1;
+  let boomAt = -1;
+  let movedAt = -1;
+  let stand = null;
+  for (let n = 0; n < 900 && movedAt < 0; n++) {
+    if (sim.phase !== 'exec') sim.advancePhase();
+    sim.step();
+    for (const e of sim.drainEvents()) {
+      if (e.type === 'grenadeThrown') {
+        thrownAt = n;
+        stand = { x: a.x, y: a.y };
+      }
+      if (e.type === 'grenadeDetonate') boomAt = n;
+    }
+    if (stand && movedAt < 0 && Math.hypot(a.x - stand.x, a.y - stand.y) > 0.05) movedAt = n;
+  }
+  assert.ok(thrownAt >= 0 && boomAt > thrownAt, 'lanzó y explotó');
+  assert.ok(sim.doors[k].open, 'abrió la puerta para lanzar');
+  assert.ok(movedAt >= boomAt, 'no se movió antes de la explosión');
+  assert.ok(a.alive && a.hp === a.maxHp, 'el que lanza queda detrás del marco');
+});
+
+test('lanzar desde donde está: sin moverse lanza, espera la explosión y después sigue su ruta', () => {
+  const { sim, cmd, squad } = round();
+  const [a] = squad;
+  a.gear.smoke = 1;
+  const start = { x: a.x, y: a.y };
+  cmd({ type: 'setToss', unitId: a.id, item: 'smoke', x: a.x, y: a.y + 5, index: 'here' });
+  assert.deepEqual(rejects(sim), []);
+  assert.equal(a.route.length, 1, 'un punto donde está');
+  assert.ok(a.route[0].user && a.route[0].toss && Math.hypot(a.route[0].x - start.x, a.route[0].y - start.y) < 1e-9);
+  // Con la ruta ya trazada, el lanzamiento queda antes de lo que camina.
+  cmd({ type: 'addWaypoint', unitId: a.id, x: 4.6, y: 20, user: true });
+  cmd({ type: 'setToss', unitId: a.id, item: 'smoke', x: a.x, y: a.y + 5, index: 'here' });
+  assert.equal(a.route.filter((p) => p.toss).length, 1, 'el mismo punto, no otro');
+  assert.ok(a.route[0].toss);
+  sim.drainEvents();
+  sim.advancePhase();
+  let thrownAt = -1;
+  let boomAt = -1;
+  let movedAt = -1;
+  for (let n = 0; n < 900 && movedAt < 0; n++) {
+    if (sim.phase !== 'exec') sim.advancePhase();
+    sim.step();
+    for (const e of sim.drainEvents()) {
+      if (e.type === 'grenadeThrown') thrownAt = n;
+      if (e.type === 'grenadeDetonate') boomAt = n;
+    }
+    if (movedAt < 0 && Math.hypot(a.x - start.x, a.y - start.y) > 0.05) movedAt = n;
+  }
+  assert.ok(thrownAt >= 0, 'lanzó');
+  assert.ok(boomAt > thrownAt && movedAt >= boomAt, 'lanzó sin moverse y avanzó después de que saliera');
 });

@@ -6,13 +6,15 @@
 // side is revealed inside his cone, not behind his back. A doorway coming up
 // on the route is aimed THROUGH (MOVE.doorPeek past it). When the route ends
 // he keeps facing the way he arrived (or the look the player set there).
-import { MOVE, NAV, ENTRY } from '../config/balance.js';
+import { MOVE, NAV, ENTRY, PREP } from '../config/balance.js';
 import { EV } from '../core/events.js';
-import { angleDiff, angleTo, approachAngle } from '../core/math.js';
+import { angleDiff, angleTo, approachAngle, TAU } from '../core/math.js';
 import { tryOpenDoors, segmentCrossesDoorway } from './doors.js';
 import { armEntry, armToss } from './entries.js';
-import { isAiControlled, holdCode, ASK_CODE } from './queries.js';
+import { isAiControlled, holdCode, ASK_CODE, doorClaimed } from './queries.js';
 import { routePoint } from './routePoint.js';
+import { wireFactor } from './wires.js';
+import { inFire } from './fire.js';
 
 const carrot = { x: 0, y: 0 };
 
@@ -32,6 +34,12 @@ function desiredFacing(sim, u) {
     if ((p.x - u.x) ** 2 + (p.y - u.y) ** 2 > 1e-6) return angleTo(u.x, u.y, p.x, p.y);
   }
   if (u.waitingGo && u.lookOverride !== null) return u.lookOverride;
+  if (isAiControlled(sim, u) && u.behavior && u.behavior.type === 'scan') return u.ai.baseFacing; // sweeps around his idle look (sim/ai.js)
+  if (u.cover && u.idleLook !== null && !u.route.length && !u.waitingGo) {
+    // Cubrir zona (sim/orders.js setCover): the same sweep as a defender's "barrer".
+    const k = 0.5 - 0.5 * Math.cos((sim.time / PREP.sweepPeriod) * TAU + u.id);
+    return u.idleLook + (k - 0.5) * PREP.sweepArc;
+  }
   if (u.idleLook !== null) return u.idleLook;
   if (isAiControlled(sim, u)) return u.ai.baseFacing;
   return u.facing;
@@ -68,7 +76,7 @@ function lookAheadPoint(sim, u, out) {
     travelled += len;
     ax = p.x;
     ay = p.y;
-    if (p.hold || (p.user && p.look !== null)) break; // he stops / turns there: don't look past it
+    if (p.hold || p.pause > 0 || (p.user && p.look !== null)) break; // he stops / turns there: don't look past it
   }
   if (travelled < MOVE.lookAhead * 0.25) return false;
   out.x = ax;
@@ -93,7 +101,15 @@ export function updateMovement(sim, u, dt) {
     u.stun -= dt;
     return;
   }
+  if (u.pause > 0) {
+    u.pause = Math.max(0, u.pause - dt); // peeking: he holds the look of the point, then walks on
+    return resetStuck(u);
+  }
   if (u.waitingGo || u.entry || u.bash || u.goDelay > 0 || !u.route.length) return resetStuck(u);
+  if (u.waitDoor >= 0) {
+    if (doorClaimed(sim, u, u.waitDoor)) return resetStuck(u); // a teammate is still to go through it: after him
+    u.waitDoor = -1;
+  }
 
   let speed = (u.behavior && u.behavior.type === 'patrol' ? MOVE.patrolSpeed : MOVE.speed) * u.mods.speed;
   if (u.target >= 0) speed *= MOVE.engageFactor;
@@ -103,7 +119,9 @@ export function updateMovement(sim, u, dt) {
   const sneaking = p0.pace === 'sneak';
   if (sneaking) speed *= MOVE.sneakFactor; // the leg he walks is a quiet one
   speed *= followFactor(sim, u, Math.cos(moveDir), Math.sin(moveDir));
+  speed *= wireFactor(sim, u); // barbed wire in the doorway (sim/wires.js)
   if (speed > 0 && doorwayBusy(sim, u)) speed = 0; // queue: an ally is still in the doorway ahead
+  if (speed > 0 && fireAhead(sim, u, moveDir)) speed = 0; // an AI attacker waits for the fire to burn down
 
   u.speedFraction = speed / MOVE.speed;
   let budget = speed * dt;
@@ -267,6 +285,12 @@ function stopAtAsk(sim, u, p) {
 function arriveAt(sim, u, p) {
   if (!p.user) return;
   u.lookOverride = p.look;
+  if (p.pause > 0) u.pause = p.pause;
+  if (p.waitDoor >= 0) {
+    u.waitDoor = p.waitDoor;
+    const d = sim.world.doorways[p.waitDoor];
+    if (p.look === null) u.lookOverride = angleTo(u.x, u.y, d.cx, d.cy); // covering the doorway
+  }
   if (p.hold) {
     u.waitingGo = true;
     u.waitCode = holdCode(p);
@@ -278,6 +302,16 @@ function arriveAt(sim, u, p) {
     // End of the plan: hold the angle set there, or keep facing the way he came.
     // (A defender on patrol goes back to his watch's facing: sim/ai.js.)
     u.idleLook = p.look !== null ? p.look : isAiControlled(sim, u) && u.behavior && u.behavior.type === 'patrol' ? null : u.heading;
+    u.cover = !!p.cover;
     u.lookOverride = null;
   }
 }
+
+/** An attacker of an AI-commanded side about to step into a fire (sim/fire.js) holds; already in one, he gets out. */
+function fireAhead(sim, u, dir) {
+  if (u.team !== 'attackers' || sim.controllers.attackers !== 'ai' || !sim.fires.length) return false;
+  if (inFire(sim, u.x, u.y)) return false;
+  return inFire(sim, u.x + Math.cos(dir) * FIRE_LOOK, u.y + Math.sin(dir) * FIRE_LOOK);
+}
+
+const FIRE_LOOK = 0.6; // m ahead

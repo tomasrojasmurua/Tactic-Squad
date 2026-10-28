@@ -53,7 +53,7 @@ export class AudioDirector {
     on(EV.BARRICADE_BROKEN, (ev) => ev.how === 'bash' && this.at('door.slam', ev.x, ev.y, L.doorSlam, 'door'));
     on(EV.DRONE_DESTROYED, () => this.ui('undo'));
     on(EV.GRENADE_THROWN, (ev) => this.at('grenade.pin', ev.x, ev.y, L.grenadePin, 'foley'));
-    on(EV.GRENADE_DETONATE, (ev) => (ev.kind === 'smoke' ? this.at('smoke', ev.x, ev.y, L.smoke, 'door') : this.bang(ev.kind === 'flash' ? 'flashbang' : 'blast', ev.x, ev.y)));
+    on(EV.GRENADE_DETONATE, (ev) => (ev.kind === 'smoke' || ev.kind === 'molotov' ? this.at('smoke', ev.x, ev.y, L.smoke, 'door') : this.bang(ev.kind === 'flash' ? 'flashbang' : 'blast', ev.x, ev.y)));
     on(EV.CHARGE_BLAST, (ev) => this.bang('blast', ev.x, ev.y));
     on(EV.CHARGE_READY, () => this.ui('hold', 0.7));
     on(EV.CHARGE_FIRE, () => this.ui('plant', 1));
@@ -75,7 +75,7 @@ export class AudioDirector {
     on(EV.BOMB_DEFUSED, () => this.ui('planted'));
     on(EV.BOMB_EXPLODED, (ev) => this.bang('blast', ev.x, ev.y));
     on(EV.ORDER_REJECTED, () => this.ui('error'));
-    on(EV.ROUND_END, (ev) => this.music.stinger(ev.winner === this.viewer.team));
+    on(EV.ROUND_END, (ev) => !ev.replay && this.music.stinger(ev.winner === this.viewer.team)); // not again in the kill cam
     on(EV.UI_SOUND, (ev) => this.ui(ev.name));
     on(EV.SELECT, (ev) => this.select(ev.unitId));
     on(EV.ROUTE_CHANGED, (ev) => this.route(ev.kind));
@@ -110,6 +110,11 @@ export class AudioDirector {
 
   get musicOn() {
     return this.music.enabled;
+  }
+
+  /** The simulation whose places and units the sounds refer to (the kill cam's copy while it plays). */
+  watch(sim) {
+    this.sim = sim;
   }
 
   onRoundReset(sim) {

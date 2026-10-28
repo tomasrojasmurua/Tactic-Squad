@@ -16,12 +16,18 @@ export const EV = Object.freeze({
   GO_CODE: 'goCode', // {released, code}
   ENTRY_CHOSEN: 'entryChosen', // {entry}: the attackers start from another entry (preparation)
   // Buy and defender set-up (sim/prep.js)
-  ROLE_CHANGED: 'roleChanged', // {unitId, role, money}: an attacker changed class in the buy phase
+  ROLE_CHANGED: 'roleChanged', // {unitId, role, points}: an operator changed class (buy phase / preparation)
   SCOUT_PULSE: 'scoutPulse', // {unitId, x, y, radius, found}: an Explorador's turn-end sweep (found: defenders detected)
-  GEAR_CHANGED: 'gearChanged', // {unitId, item, count, money}: bought or sold in the buy phase
+  GEAR_CHANGED: 'gearChanged', // {unitId, item, count, points}: bought or given back (buy phase / preparation)
   SITE_CHOSEN: 'siteChosen', // {site}: the defenders moved the bomb (and reset their set-up to that site's)
   SETUP_CHANGED: 'setupChanged', // {unitId, kind:'place'|'watch'}: a defender placed or given a watch order
   BARRICADE_SET: 'barricadeSet', // {doorId, on}
+  FIRE_START: 'fireStart', // {id, x, y, unitId}: an incendiaria went off (sim/fire.js)
+  FIRE_OUT: 'fireOut', // {id, x, y, why:'smoke'|'burnt'}
+  WIRE_SET: 'wireSet', // {doorId, on}: barbed wire laid / taken up in the preparation (sim/wires.js)
+  WIRE_SPOTTED: 'wireSpotted', // {doorId, x, y}: the attackers found one
+  WIRE_CROSSED: 'wireCrossed', // {unitId, doorId, x, y}: an attacker stepped into it (noise)
+  WIRE_CUT: 'wireCut', // {unitId, doorId, x, y}: a blast cleared it
   // Barricades in the assault (sim/barricades.js)
   BARRICADE_SPOTTED: 'barricadeSpotted', // {doorId, x, y}: the attackers found one
   BARRICADE_HIT: 'barricadeHit', // {unitId, doorId, x, y}: a blow while breaking it
@@ -44,6 +50,7 @@ export const EV = Object.freeze({
   CAMERA_FOUND: 'cameraFound', // {cameraId, x, y, byDrone}: the attackers know where a defender camera is
   CAMERA_SPOT: 'cameraSpot', // {cameraId, unitId, x, y}: a camera saw an attacker and told the defenders
   CAMERA_DESTROYED: 'cameraDestroyed', // {cameraId, unitId, x, y}: an attacker shot it
+  CAMERA_SET: 'cameraSet', // {mount, on}: the defenders put a camera up on a mount (or took it down)
   BOMB_SPOTTED: 'bombSpotted', // {unitId, site, x, y}: the attackers found the bomb
   DEFUSE_START: 'defuseStart', // {unitId, x, y}
   DEFUSE_ABORT: 'defuseAbort', // {unitId}
@@ -52,7 +59,7 @@ export const EV = Object.freeze({
   ROUND_END: 'roundEnd', // {winner, reason}
   ROUND_PHASE: 'roundPhase', // {phase: sim/round.js PHASE, previous, turn}: the round changed phase
   ORDER_REJECTED: 'orderRejected', // {unitId, reason: REJECT code (sim/orders.js)}
-  ROUTE_CHANGED: 'routeChanged', // {unitId, kind}
+  ROUTE_CHANGED: 'routeChanged', // {unitId, kind, moved?: {from, to}} (moved: the decided point is at another index now)
 
   // --- session / UI ---
   COMMAND: 'command', // a sim command object, queued for the simulation

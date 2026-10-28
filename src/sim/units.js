@@ -66,14 +66,18 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     strokeStart: 0, // route length when the current freehand stroke began (orders.js)
     waitingGo: false,
     waitCode: null, // GO code he waits for (ENTRY.goCodes)
+    waitDoor: -1, // doorway whose teammate's entry he waits for (route point waitDoor), -1 = none
+    pause: 0, // s still standing on a peek point (waypoint.pause) before walking on
     goDelay: 0, // s released but still holding: a teammate's grenade / charge goes off first
     entry: null, // door entry in progress (sim/entries.js)
-    gear: { flash: 0, frag: 0, smoke: 0, breach: 0, ...r.role.gear }, // utility left (spent by entries / throws)
-    money: 0, // $ left to buy with (attackers, buy phase: sim/prep.js)
+    gear: { flash: 0, frag: 0, smoke: 0, breach: 0, molotov: 0, ...r.role.gear }, // utility left (spent by entries / throws)
+    wireDoor: -1, // the wired door he stands in (sim/wires.js), -1: none
+    points: 0, // utility points left to buy with (buy phase / preparation: sim/prep.js)
     bash: null, // breaking a barricade: {door, t, next} (sim/barricades.js)
     blind: 0, // s flashed / stunned: sees nothing, does not shoot
     lookOverride: null, // angle held while walking the current leg
     idleLook: null, // angle to face once the route is done
+    cover: false, // an attacker covering a zone once still: sweeps around idleLook (sim/orders.js setCover)
     stun: 0, // seconds frozen (door breach beat)
     moving: false,
     sneaking: false, // walked a 'sneak' leg this tick (quiet footsteps: MOVE.sneakHearing)
@@ -82,6 +86,7 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     heading: facing, // direction of the last step taken
     speedFraction: 0, // current walking speed / MOVE.speed (scales the moving spread)
     stillTime: 0, // s standing still without turning (aim set after MOVE.settleTime)
+    doorwayAt: -Infinity, // sim.time he last walked through a doorway (COMBAT.doorwayPenalty)
     stepAccum: 0,
     distanceWalked: 0,
     stuck: { t: 0, want: 0, x, y }, // walking without getting anywhere (pushed against a wall): sim/movement.js re-paths
@@ -113,7 +118,7 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
 /**
  * Changes an operator's class (buy phase, sim/prep.js setRole): stats,
  * vision, ability, health and the class's weapon (full) — the gear is the
- * caller's business (it is bought).
+ * caller's business (sim/prep.js: the class's kit and the points back).
  */
 export function applyRole(u, roleId) {
   const r = resolveRole(roleId, u.team);
@@ -134,5 +139,5 @@ export function applyRole(u, roleId) {
 
 /** The gear a class starts with (counts per item). */
 export function roleGear(roleId) {
-  return { flash: 0, frag: 0, smoke: 0, breach: 0, ...ROLES[roleId].gear };
+  return { flash: 0, frag: 0, smoke: 0, breach: 0, molotov: 0, ...ROLES[roleId].gear };
 }

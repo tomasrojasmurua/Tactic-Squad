@@ -101,6 +101,16 @@ export const ICON = {
     `<path d="M3 6.5 L9 4 L15 6.5 L21 4 V17.5 L15 20 L9 17.5 L3 20 Z" fill="none" stroke="currentColor" stroke-width="2.2"
      stroke-linejoin="round"/><path d="M9 4 V17.5 M15 6.5 V20" stroke="currentColor" stroke-width="2"/>`,
   ),
+  // Defender cameras: a security camera on its wall arm (body tilted down, lens on the left, hood over it).
+  camera: svg(
+    '0 0 24 24',
+    `<path d="M21.5 4 V14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+     <path d="M21.5 9 H17.5 L15.6 11.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+     <path d="M4.6 7.4 L16.2 4.3 a1.3 1.3 0 0 1 1.6 .9 L19 9.6 a1.3 1.3 0 0 1 -.9 1.6 L7.3 14 Z" fill="currentColor"/>
+     <path d="M2.2 7.2 L8.6 5.5 L9.1 7.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+     <circle cx="6" cy="10.8" r="2.6" fill="currentColor"/><circle cx="6" cy="10.8" r="1.25" fill="#000" opacity=".55"/>
+     <path d="M3 17 L5.5 14.6 M5.6 19 L7.4 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".6"/>`,
+  ),
   music: svg(
     '0 0 24 24',
     `<path d="M9 18 V5 L20 3 V16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>
@@ -167,3 +177,70 @@ export const CURSOR_SVG = svg(
    <circle cx="24" cy="24" r="3.2" fill="currentColor"/>
    <circle cx="24" cy="24" r="17.5" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="1.2"/>`,
 );
+
+// Roster emblems (ui/Roster.js): one symbol per character, so each reads apart at a glance.
+const ring = (n, r0, r1, w) =>
+  Array.from({ length: n }, (_, k) => {
+    const a = (k / n) * Math.PI * 2;
+    const p = (r, d) => `${(24 + Math.cos(a + d) * r).toFixed(1)} ${(24 + Math.sin(a + d) * r).toFixed(1)}`;
+    return `M${p(r0, -w)} L${p(r1, 0)} L${p(r0, w)}Z`;
+  }).join(' ');
+const burst = Array.from({ length: 16 }, (_, k) => {
+  const a = (k / 16) * Math.PI * 2 - Math.PI / 2;
+  const r = k % 2 ? 9 : 21;
+  return `${(24 + Math.cos(a) * r).toFixed(1)} ${(24 + Math.sin(a) * r).toFixed(1)}`;
+}).join(' L');
+
+export const ROLE_EMBLEM = {
+  // Asaltante: a spearhead of two chevrons
+  assault: svg('0 0 48 48', `<g fill="currentColor"><path d="M24 4 L42 22 L33 22 L24 13 L15 22 L6 22 Z"/><path d="M24 21 L42 39 L33 39 L24 30 L15 39 L6 39 Z" opacity=".65"/></g>`),
+  // Brecha: a blast
+  entry: svg('0 0 48 48', `<path fill="currentColor" d="M${burst}Z"/><circle cx="24" cy="24" r="5" fill="#0a0c0e"/>`),
+  // Explorador: a radar sweep
+  scout: svg(
+    '0 0 48 48',
+    `<g fill="none" stroke="currentColor" stroke-width="3"><circle cx="24" cy="24" r="19" opacity=".45"/><circle cx="24" cy="24" r="11"/></g>
+     <path d="M24 24 L24 5 A19 19 0 0 1 41 15.5 Z" fill="currentColor" opacity=".5"/><circle cx="24" cy="24" r="3.5" fill="currentColor"/><circle cx="33" cy="12" r="2.6" fill="currentColor"/>`,
+  ),
+  // Defensor: a battlemented shield
+  defender: svg('0 0 48 48', `<path fill="currentColor" d="M8 6 H15 V12 H20.5 V6 H27.5 V12 H33 V6 H40 V22 C40 32 33 39 24 44 C15 39 8 32 8 22 Z"/><path d="M24 17 V36 M16 24 H32" stroke="#0a0c0e" stroke-width="3"/>`),
+  // Ancla: an anchor
+  anchor: svg(
+    '0 0 48 48',
+    `<g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"><circle cx="24" cy="9" r="4.5"/><path d="M24 14 V42 M15 20 H33"/>
+     <path d="M8 29 C9 37 16 42 24 42 C32 42 39 37 40 29"/></g><path fill="currentColor" d="M3 31 L8 22 L13 31 Z M35 31 L40 22 L45 31 Z"/>`,
+  ),
+  // Merodeador: a paw print
+  roamer: svg(
+    '0 0 48 48',
+    `<g fill="currentColor"><path d="M24 24 C31 24 37 31 37 36 C37 41 32 42 28 41 C26 40.5 22 40.5 20 41 C16 42 11 41 11 36 C11 31 17 24 24 24 Z"/>
+     <ellipse cx="9.5" cy="20" rx="4.2" ry="5.5" transform="rotate(-25 9.5 20)"/><ellipse cx="18" cy="10.5" rx="4.4" ry="6"/>
+     <ellipse cx="30" cy="10.5" rx="4.4" ry="6"/><ellipse cx="38.5" cy="20" rx="4.2" ry="5.5" transform="rotate(25 38.5 20)"/></g>`,
+  ),
+  // Trampero: the jaws of a trap
+  trapper: svg('0 0 48 48', `<circle cx="24" cy="24" r="19" fill="none" stroke="currentColor" stroke-width="4"/><path fill="currentColor" d="${ring(12, 18, 9, 0.2)}"/><circle cx="24" cy="24" r="3" fill="currentColor"/>`),
+  // Coming later (the design's other classes)
+  shield: svg('0 0 48 48', `<path fill="currentColor" d="M10 5 H38 V30 C38 37 31 42 24 44 C17 42 10 37 10 30 Z"/><rect x="15" y="12" width="18" height="4.5" rx="1.5" fill="#0a0c0e"/>`),
+  marksman: svg(
+    '0 0 48 48',
+    `<g fill="none" stroke="currentColor" stroke-width="3.2"><circle cx="24" cy="24" r="16"/><path d="M24 2 V15 M24 33 V46 M2 24 H15 M33 24 H46"/></g><circle cx="24" cy="24" r="3" fill="currentColor"/>`,
+  ),
+  grenadier: svg(
+    '0 0 48 48',
+    `<circle cx="22" cy="29" r="14" fill="currentColor"/><path d="M10 25h24M10 33h24M18 16c-2 8-2 18 0 26M26 16c2 8 2 18 0 26" stroke="#0a0c0e" stroke-width="2" fill="none"/>
+     <rect x="17" y="9" width="10" height="6" fill="currentColor"/><path d="M26 11 L34 5 L42 8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>`,
+  ),
+  lookout: svg(
+    '0 0 48 48',
+    `<path d="M3 24 C10 12 17 9 24 9 C31 9 38 12 45 24 C38 36 31 39 24 39 C17 39 10 36 3 24 Z" fill="none" stroke="currentColor" stroke-width="3.5"/><circle cx="24" cy="24" r="8" fill="currentColor"/><circle cx="24" cy="24" r="3" fill="#0a0c0e"/>`,
+  ),
+};
+
+/** Utility in a class's kit (the roster's detail). */
+export const GEAR_ICON = {
+  flash: ENTRY_ICON.flash,
+  frag: ENTRY_ICON.frag,
+  breach: ENTRY_ICON.breach,
+  smoke: svg('0 0 24 24', `<g fill="currentColor"><circle cx="8" cy="15" r="5"/><circle cx="15" cy="13" r="6"/><circle cx="11" cy="8" r="4.5" opacity=".7"/><rect x="4" y="18" width="16" height="3" rx="1.5"/></g>`),
+  molotov: svg('0 0 24 24', `<path fill="currentColor" d="M10 2 H14 V7 C17 8.5 18 11 18 13 V21 C18 22 17 23 16 23 H8 C7 23 6 22 6 21 V13 C6 11 7 8.5 10 7 Z"/><path d="M12 0.5 C13.5 2 13 3 12 4 C11 3 10.5 2 12 0.5Z" fill="#ff7a1a"/>`),
+};

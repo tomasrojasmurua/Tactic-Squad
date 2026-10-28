@@ -3,7 +3,7 @@ import { VISION, COMBAT, ENTRY } from '../config/balance.js';
 import { angleDiff, angleTo } from '../core/math.js';
 import { canSee } from './vision.js';
 import { EV } from '../core/events.js';
-import { isAiControlled, peekEye } from './queries.js';
+import { peekEye } from './queries.js';
 
 export function updatePerception(sim) {
   const { units, world } = sim;
@@ -75,22 +75,26 @@ function selectTarget(sim, u) {
 }
 
 /**
- * Time before the first shot at a newly seen enemy. Whoever already aims at
- * the angle wins the duel: inside the focus cone the base is cut by
- * COMBAT.focusFactor; outside it every radian to turn costs time, and so
- * does walking. An alerted AI unit is a bit sharper.
+ * Time before the first shot at a newly seen enemy — the same rules for both
+ * sides: the posture decides. Whoever already aims at the angle wins the
+ * duel: inside the focus cone the base is cut by COMBAT.focusFactor, and by
+ * COMBAT.holdFactor too if he has held it still (COMBAT.holdTime); outside it
+ * every radian to turn costs time, and so does walking. Having just come
+ * through a doorway costs a moment; an alerted unit is a bit sharper.
  */
 function reactionTime(sim, u, e) {
   const off = Math.abs(angleDiff(u.facing, angleTo(u.x, u.y, e.x, e.y)));
   const focused = off <= COMBAT.focusAngle;
   u.focused = focused;
-  let r = COMBAT.reaction[u.team] * (focused ? COMBAT.focusFactor : 1);
+  let r = COMBAT.reaction * (focused ? COMBAT.focusFactor : 1);
+  if (focused && !u.moving && u.stillTime >= COMBAT.holdTime) r *= COMBAT.holdFactor;
   r += sim.rng.next() * COMBAT.reactionJitter;
   if (!focused) {
     r += (off - COMBAT.focusAngle) * COMBAT.reactionPerRadian;
     if (u.moving) r += COMBAT.movingReaction;
   }
-  if (isAiControlled(sim, u) && (u.alertTimer > 0 || (u.lastKnown && u.lastKnown.until > sim.time))) r *= COMBAT.alertFactor;
+  if (sim.time - u.doorwayAt < COMBAT.doorwayTime) r += COMBAT.doorwayPenalty;
+  if (u.alertTimer > 0 || (u.lastKnown && u.lastKnown.until > sim.time)) r *= COMBAT.alertFactor;
   return r * u.mods.reaction;
 }
 

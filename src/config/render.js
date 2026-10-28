@@ -92,6 +92,7 @@ export const WEAPON_MODELS = Object.freeze({
 export const HEIGHTS = Object.freeze({
   wall: 2.2,
   fence: 1.15,
+  sill: 0.95, // window sill (map `windows`): below the muzzle, you shoot over it
   door: 1.95,
   muzzle: 1.2, // z of tracers / muzzle flashes (matches the scaled gun height)
   label: 1.45, // z used to place DOM labels over units (just above the head at CHARACTER_SCALE)
@@ -197,10 +198,15 @@ export const OVERLAY = Object.freeze({
     prep: 0.47, // progress arc of an entry being prepared (cracking a door, planting a charge)
   }),
   // Door entries: dashed link waypoint -> doorway and a marker on the doorway, per mode (rgb).
-  entryColors: Object.freeze({ kick: [1, 1, 1], slow: [0.6, 0.85, 1], flash: [1, 0.96, 0.62], frag: [0.72, 0.85, 0.45], breach: [1, 0.69, 0.18], smoke: [0.78, 0.8, 0.82] }),
+  entryColors: Object.freeze({ kick: [1, 1, 1], slow: [0.6, 0.85, 1], flash: [1, 0.96, 0.62], frag: [0.72, 0.85, 0.45], breach: [1, 0.69, 0.18], smoke: [0.78, 0.8, 0.82], molotov: [1, 0.45, 0.15] }),
   smokeColor: [0.72, 0.74, 0.76], // a smoke cloud (sim/smoke.js)
-  camera: Object.freeze({ size: 0.2, color: [1, 0.33, 0.3], coneAlpha: 0.1, spotPulse: 1.2 }), // defender cameras (sim/cameras.js)
-  trap: Object.freeze({ size: 0.28, color: [1, 0.62, 0.18] }), // Trampero's traps (sim/traps.js)
+  // Defender cameras (sim/cameras.js), seen from above and to scale: a wall plate, a short arm and the
+  // body with its lens toward `facing`. length / width: m. What makes them easy to find is the red
+  // recording light: it blinks (blink: s per on/off) with a halo that grows to haloPx, and is never
+  // drawn smaller than ledPx (screen px). coneAlpha / edgeAlpha: its field of view on the floor
+  // (fill, outline); ghost: a free mount's dashed outline while the defender picks (ui/CameraMounts.js).
+  camera: Object.freeze({ length: 0.42, width: 0.2, ledPx: 2.6, haloPx: 9, blink: 0.6, color: [1, 0.33, 0.3], coneAlpha: 0.13, edgeAlpha: 0.6, ghostAlpha: 0.45, spotPulse: 1.2 }),
+  trap: Object.freeze({ size: 0.28, color: [1, 0.62, 0.18], steel: [0.78, 0.8, 0.83] }), // Trampero's traps (sim/traps.js)
   entryMarker: 0.2, // m, half-size of the doorway marker
   grenadeRadius: 0.09, // m, a grenade in flight / on the floor
 });

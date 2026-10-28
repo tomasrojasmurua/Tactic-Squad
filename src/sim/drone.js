@@ -22,6 +22,7 @@ import { droneSeesTraps } from './traps.js';
 import { alertAiUnit } from './ai.js';
 import { isAiControlled } from './queries.js';
 import { barricadeBoxes, spotBarricades } from './barricades.js';
+import { spotWires } from './wires.js';
 
 /** Launches the drone in front of the attackers' entry door, facing it (a player or the attacking AI drives it). */
 export function launchDrone(sim) {
@@ -137,6 +138,7 @@ function look(sim, d) {
     if (!u.seenByEnemyPrev) sim.emit(EV.SPOTTED, { unitId: u.id, team: u.team, x: u.x, y: u.y, byDrone: true });
   }
   spotBarricades(sim, d, DRONE.fov);
+  spotWires(sim, d, DRONE.fov);
   droneSeesCameras(sim, d, eyeCfg);
   droneSeesTraps(sim, d, eyeCfg);
   const bomb = sim.bomb;

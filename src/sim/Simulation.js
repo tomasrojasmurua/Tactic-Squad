@@ -4,15 +4,16 @@
 import { Rng } from '../core/rng.js';
 import { EV } from '../core/events.js';
 import { SIM, ROUND } from '../config/balance.js';
-import { SQUAD, DEFENDER_NAME, DEFENDER_COLOR, TEAMS, CONTROLLERS } from '../config/squad.js';
-import { DEFAULT_DEFENDER_ROLE } from '../config/operators.js';
+import { SQUAD, DEFENDERS, DEFENDER_NAME, DEFENDER_COLOR, TEAMS, CONTROLLERS } from '../config/squad.js';
+import { DEFAULT_DEFENDER_ROLE, ROLES } from '../config/operators.js';
 import { initAbilities, updateAbilities } from './abilities/index.js';
 import { compileMap } from './mapCompiler.js';
 import { World } from './World.js';
 import { createUnit, applyRole, roleGear } from './units.js';
-import { createDoorState, updateDoors } from './doors.js';
+import { createDoorState, updateDoors, markDoorwayCrossings } from './doors.js';
 import { updateEntries } from './entries.js';
 import { updateSmokes } from './smoke.js';
+import { updateFires } from './fire.js';
 import { placeCameras, updateCameras } from './cameras.js';
 import { layTraps, updateTraps } from './traps.js';
 import { applyCommand } from './orders.js';
@@ -20,7 +21,7 @@ import { updatePerception } from './perception.js';
 import { updateAiUnit } from './ai.js';
 import { createAttackAi, attackAiDecide, attackAiTick } from './aiAttack.js';
 import { createDefendAi, defendAiTick } from './aiDefend.js';
-import { isAiControlled } from './queries.js';
+import { isAiControlled, humanTeam } from './queries.js';
 import { updateFacing, updateMovement } from './movement.js';
 import { resolveCollisions } from './collisions.js';
 import { updateCombat } from './combat.js';
@@ -28,9 +29,10 @@ import { createBomb, updateObjectives, endRound } from './objectives.js';
 import { createRound, advancePhase, canStep, afterTick, phaseTick, isLive, PHASE } from './round.js';
 import { createNoise, collectNoise } from './noise.js';
 import { createMemory, updateMemory } from './view.js';
-import { initMoney } from './prep.js';
+import { initPoints } from './prep.js';
 import { updateDrone } from './drone.js';
 import { createIntel, updateBash, spotBarricades } from './barricades.js';
+import { spotWires, updateWires } from './wires.js';
 
 export class Simulation {
   /**
@@ -39,17 +41,21 @@ export class Simulation {
    *                    A human defender may move it in the preparation (sim/prep.js chooseSite).
    * @param opts.entry attacker entry id (map `entries`); omitted, the map's default entry.
    *                    The attackers may change it during the preparation (chooseEntry order).
-   * @param opts.defenders which slots of the site's `defense` layout get a defender (indices; omitted: all).
+   * @param opts.defenders which slots of the site's `defense` layout get a defender (indices; omitted: the first DEFENDERS).
    *                    Fewer defenders = an easier round (the guided tutorial: config/ui.js TUTORIAL).
    * @param opts.phases true: the round goes through its phases (sim/round.js, starts at 'buy');
    *                    false: no phases, it always runs and takes orders (mechanics tests).
    * @param opts.stopOnContact the execution turn ends early (ROUND.minContactSeconds at the earliest)
    *                    when the attackers see a new enemy: the player gets to react (against the AI).
-   * @param opts.loadout per attacker slot {money, gear?, role?} carried over from the last round of a
-   *                    match (session/Match.js); omitted: BUY.startMoney and the role's gear.
+   * @param opts.roles   the class of each slot the lobby chose ({attackers?: [roleId], defenders?: [roleId | null]};
+   *                      null or an invalid pick: the default, the squad's or the map post's). A loadout's role wins.
+   * @param opts.loadout per attacker slot {role} carried over from the last round of a match (session/Match.js).
+   * @param opts.lossBonus the side that lost the last round of a match ('attackers' | 'defenders' | null):
+   *                    BUY.lossBonus more utility points each (sim/prep.js pointsFor).
    */
-  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, defenders = null, phases = true, stopOnContact = false, loadout = null } = {}) {
+  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, defenders = null, phases = true, stopOnContact = false, loadout = null, roles = null, lossBonus = null } = {}) {
     this.seed = seed;
+    this.lossBonus = lossBonus;
     this.stopOnContact = stopOnContact;
     this.loadout = loadout;
     this.controllers = controllers;
@@ -65,6 +71,7 @@ export class Simulation {
     this.entry = this.compiled.entries.find((e) => e.id === (entry || this.compiled.defaultEntry));
     if (!this.entry) throw new Error(`Entrada desconocida: ${entry}`);
     this.defenderSlots = defenders;
+    this.roles = validRoles(roles); // also kept for a new site's layout (sim/prep.js applyLayout)
     this.world = new World(this.compiled);
     this.doors = this.compiled.doors.map(createDoorState);
     this.world.updateDoorSegments(this.doors);
@@ -76,6 +83,8 @@ export class Simulation {
     this.goCount = 0;
     this.grenades = []; // thrown, not yet detonated (sim/entries.js)
     this.smokes = []; // smoke clouds standing (sim/smoke.js)
+    this.fires = []; // incendiaria pools burning (sim/fire.js)
+    this.fireSeq = 0;
     this.smokeDirty = false;
     this.grenadeSeq = 0;
     this.outcome = null;
@@ -94,31 +103,32 @@ export class Simulation {
     for (const t of TEAMS) this.teams[t] = this.units.filter((u) => u.team === t);
     this.bomb = createBomb(this.site);
     this.cameras = [];
+    this.knownMounts = new Set(); // camera mounts the attackers found (sim/cameras.js)
+    this.reconDone = false; // the defenders' recon is over: site, barricades and cameras fixed (sim/prep.js)
     placeCameras(this); // sim/cameras.js: the defenders' cameras on this site
     this.traps = [];
     layTraps(this); // sim/traps.js: the Trampero's traps of the map's layout
-    if (loadout) this.applyLoadout(loadout); // a match: class, money and gear carried over
-    else if (phases) initMoney(this); // the buy phase: each attacker's money after his role's gear
+    if (loadout) this.applyLoadout(loadout); // a match: the class carried over
+    if (phases) initPoints(this); // the buy phase / preparation: each operator's utility points
     initAbilities(this);
     this.attackAi = createAttackAi(this); // sim/aiAttack.js: the commander of an AI attacking side
     this.defendAi = createDefendAi(this); // sim/aiDefend.js: sends an AI defending side's rotations
   }
 
-  /** Per attacker slot {role?, money, gear?} (session/Match.js): who he is and what he brings. */
+  /** Per attacker slot {role?} (session/Match.js): his class, with its kit full again. */
   applyLoadout(loadout) {
     this.teams.attackers.forEach((u, i) => {
       const l = loadout[i];
       if (!l) return;
       if (l.role && l.role !== u.role) applyRole(u, l.role);
-      u.gear = { ...roleGear(u.role), ...(l.gear || {}) };
-      u.money = l.money;
+      u.gear = roleGear(u.role);
     });
   }
 
   spawnUnits() {
     const attackers = this.entry.spawns;
     const layout = this.compiled.defense[this.site.id];
-    const defenders = this.defenderSlots ? this.defenderSlots.map((i) => layout[i]).filter(Boolean) : layout;
+    const defenders = this.defenderSlots ? this.defenderSlots.map((i) => layout[i]).filter(Boolean) : layout.slice(0, DEFENDERS);
     attackers.forEach((s, i) => {
       const op = SQUAD[i % SQUAD.length];
       this.units.push(
@@ -131,8 +141,8 @@ export class Simulation {
           x: s.at[0],
           y: s.at[1],
           facing: s.facing,
-          role: op.role,
-          weaponId: op.weapon, // optional override of the role's weapon
+          role: this.roles.attackers[i] || op.role,
+          weaponId: this.roles.attackers[i] ? undefined : op.weapon, // optional override of the role's weapon
         }),
       );
     });
@@ -147,7 +157,7 @@ export class Simulation {
           x: s.at[0],
           y: s.at[1],
           facing: s.facing,
-          role: s.role || DEFAULT_DEFENDER_ROLE,
+          role: this.roles.defenders[i] || s.role || DEFAULT_DEFENDER_ROLE,
           weaponId: s.weapon,
           behavior: s.behavior,
         }),
@@ -189,6 +199,7 @@ export class Simulation {
       u.facing = u.prevFacing = u.heading = u.ai.baseFacing = s.facing;
       u.route.length = 0;
       u.idleLook = null;
+      u.cover = false;
       u.waitingGo = false;
       u.waitCode = null;
     }
@@ -247,15 +258,22 @@ export class Simulation {
     for (const u of this.units) if (u.alive && u.bash) updateBash(this, u, dt);
     updateEntries(this, dt);
     updateSmokes(this, dt);
+    updateFires(this, dt);
     updatePerception(this);
     updateCameras(this, dt);
     updateTraps(this, dt);
-    if (this.stopOnContact) for (let i = firstEvent; i < this.events.length; i++) {
+    // Contact: the human side saw a new enemy (with its eyes or, defending, a camera). Either side.
+    const watcher = this.stopOnContact ? humanTeam(this) : null;
+    if (watcher) for (let i = firstEvent; i < this.events.length; i++) {
       const e = this.events[i];
-      if (e.type === EV.SPOTTED && e.team === 'defenders' && !e.byDrone) this.round.contact = true;
+      if (e.type === EV.SPOTTED && e.team !== watcher && !e.byDrone) this.round.contact = true;
     }
     updateMemory(this);
-    for (const u of this.teams.attackers) if (u.alive && u.blind <= 0) spotBarricades(this, u, u.vision.fov);
+    for (const u of this.teams.attackers) {
+      if (!u.alive || u.blind > 0) continue;
+      spotBarricades(this, u, u.vision.fov);
+      spotWires(this, u, u.vision.fov);
+    }
     defendAiTick(this);
     for (const u of this.units) {
       if (!u.alive) continue;
@@ -264,6 +282,8 @@ export class Simulation {
       updateMovement(this, u, dt);
     }
     resolveCollisions(this);
+    markDoorwayCrossings(this);
+    updateWires(this); // sim/wires.js: an attacker stepping into barbed wire rattles it
     for (const u of this.units) if (u.alive) updateCombat(this, u, dt);
     updateAbilities(this, dt);
     updateObjectives(this, dt);
@@ -288,4 +308,30 @@ export class Simulation {
     this.tick++;
     this.time += dt;
   }
+}
+
+/**
+ * The lobby's classes, checked per side: every attacker slot a buy-phase class
+ * (one Brecha, one Explorador), every defender slot a preparation class (at
+ * most ROLES[id].max of each). A side with a missing or impossible pick keeps
+ * its defaults whole (mixing them could repeat a one-per-side class).
+ */
+function validRoles(roles) {
+  const out = { attackers: [], defenders: [] };
+  const sides = [
+    ['attackers', SQUAD.length, (r, n) => r.pick && (!r.unique || n === 0)],
+    ['defenders', DEFENDERS, (r, n) => r.defPick && n < r.max],
+  ];
+  for (const [team, size, ok] of sides) {
+    const ids = (roles && roles[team]) || [];
+    const count = {};
+    const fine = ids.length >= size && ids.slice(0, size).every((id) => {
+      const r = ROLES[id];
+      if (!r || !ok(r, count[id] || 0)) return false;
+      count[id] = (count[id] || 0) + 1;
+      return true;
+    });
+    if (fine) out[team] = ids.slice(0, size);
+  }
+  return out;
 }

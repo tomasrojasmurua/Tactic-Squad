@@ -18,19 +18,21 @@
 // entered right after it: "flash and clear". Everything here is
 // deterministic (no RNG at all) and driven by orders: it works the same in
 // real time and in We-Go turns.
-import { ENTRY, COMBAT } from '../config/balance.js';
+import { ENTRY, COMBAT, WIRE } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { angleTo } from '../core/math.js';
 import { rayCast } from '../core/geom.js';
 import { solidLineOfSight } from './vision.js';
 import { spawnSmoke } from './smoke.js';
+import { spawnFire } from './fire.js';
 import { openDoor, crackDoor, destroyDoor } from './doors.js';
 import { alertAiUnit } from './ai.js';
 import { applyBlast } from './combat.js';
-import { isAiControlled, ENTRY_GEAR, tossLanding } from './queries.js';
+import { isAiControlled, ENTRY_GEAR, tossLanding, tossDoorway } from './queries.js';
 
-const LAND = { x: 0, y: 0, reach: 0 };
+const LAND = { x: 0, y: 0, reach: 0, viaX: 0, viaY: 0, leg1: 0, leg2: 0 };
 import { startBash, breakBarricade } from './barricades.js';
+import { cutWiresNear } from './wires.js';
 
 /** Seconds each mode works on arrival before it is armed (0 = armed at once). */
 const PREP = Object.freeze({ slow: ENTRY.slow.prepTime, breach: ENTRY.breach.prepTime });
@@ -38,12 +40,18 @@ const PREP = Object.freeze({ slow: ENTRY.slow.prepTime, breach: ENTRY.breach.pre
 /**
  * Called when a unit reaches a waypoint with a throw (waypoint.toss: {item,
  * x, y}): he turns to the target and, on the release (right away, or the GO
- * of the hold there), throws it there — a flash, a grenade or smoke.
+ * of the hold there), throws it there — a flash, a grenade or smoke. When the
+ * point is at a door and the target beyond it (tossDoorway), he opens the
+ * door first and throws through the doorway. Either way he stays put until
+ * it goes off (step 'wait'), then follows his route.
  */
 export function armToss(sim, u, p) {
   const t = p.toss;
-  const look = angleTo(u.x, u.y, t.x, t.y);
-  u.entry = { mode: 'toss', item: t.item, tx: t.x, ty: t.y, doorway: -1, side: 1, look, phase: 'armed', t: 0, spent: false, step: null, grenade: null };
+  const k = tossDoorway(sim.world, p, t.x, t.y);
+  const d = k >= 0 ? sim.world.doorways[k] : null;
+  const look = d ? angleTo(u.x, u.y, d.cx, d.cy) : angleTo(u.x, u.y, t.x, t.y);
+  const side = d ? farSide(d, u, u.route[0]) : 1;
+  u.entry = { mode: 'toss', item: t.item, tx: t.x, ty: t.y, doorway: k, side, look, phase: 'armed', t: 0, spent: false, step: null, grenade: null };
 }
 
 /** Called when a unit reaches a waypoint carrying an entry (sim/movement.js arriveAt). */
@@ -129,7 +137,7 @@ function finishPrep(sim, u, e) {
 /** The GO (or no hold at all): do the entry. */
 function release(sim, u, e) {
   const d = sim.world.doorways[e.doorway];
-  const door = doorOf(sim, e.doorway);
+  const door = e.doorway >= 0 ? doorOf(sim, e.doorway) : null;
   switch (e.mode) {
     case 'kick':
       if (door && !door.open) {
@@ -143,6 +151,8 @@ function release(sim, u, e) {
       return;
     case 'toss':
       if ((u.gear[e.item] || 0) <= 0) return reject(sim, u, e);
+      if (door && door.barricaded) return startBash(sim, door, u); // through a door: break it first, then throw
+      if (door && !door.open) openDoor(sim, door, u, 'push');
       e.phase = 'act';
       e.step = 'throw';
       e.t = ENTRY.throwDelay;
@@ -245,20 +255,20 @@ function throwPath(sim, u, e) {
 
 /**
  * A toss to the point the player picked: straight from the thrower, at most
- * ENTRY.tossRange away and short of the first wall on the way (ENTRY.wallMargin).
+ * ENTRY.tossRange away and short of the first wall on the way (ENTRY.wallMargin),
+ * through the doorway of the point when it was armed at a door (armToss).
  */
 function tossPath(sim, u, e) {
-  const land = tossLanding(sim.world, u.x, u.y, e.tx, e.ty, LAND);
-  const reach = land.reach;
+  const land = tossLanding(sim.world, u.x, u.y, e.tx, e.ty, LAND, e.doorway);
   path.fromX = u.x;
   path.fromY = u.y;
   path.x = land.x;
   path.y = land.y;
-  path.viaX = (u.x + path.x) / 2;
-  path.viaY = (u.y + path.y) / 2;
-  path.leg1 = reach / 2;
-  path.leg2 = reach / 2;
-  path.flight = reach / ENTRY.throwSpeed;
+  path.viaX = land.viaX;
+  path.viaY = land.viaY;
+  path.leg1 = land.leg1;
+  path.leg2 = land.leg2;
+  path.flight = land.reach / ENTRY.throwSpeed;
   return path;
 }
 
@@ -285,6 +295,8 @@ function throwGrenade(sim, u, e) {
     flight: p.flight,
     fuse: p.flight + ENTRY[item].fuse, // from the throw
     age: 0,
+    // Thrown through a doorway: the thrower and whoever stacks with him are behind the frame.
+    cover: e.doorway >= 0 && e.mode === 'toss' ? { d: sim.world.doorways[e.doorway], side: e.side } : null,
   };
   e.grenade = g;
   sim.grenades.push(g);
@@ -308,7 +320,11 @@ function detonate(sim, g) {
   sim.emit(EV.GRENADE_DETONATE, { id: g.id, kind: g.kind, unitId: g.ownerId, x: g.x, y: g.y });
   if (g.kind === 'flash') flashAt(sim, g);
   else if (g.kind === 'smoke') spawnSmoke(sim, g.x, g.y);
-  else blastAt(sim, g.x, g.y, ENTRY.frag.radius, ENTRY.frag.damage, ENTRY.frag.minDamage, 0, owner, null);
+  else if (g.kind === 'molotov') spawnFire(sim, g.x, g.y, owner);
+  else {
+    blastAt(sim, g.x, g.y, ENTRY.frag.radius, ENTRY.frag.damage, ENTRY.frag.minDamage, 0, owner, g.cover);
+    cutWiresNear(sim, g.x, g.y, WIRE.fragCut, owner); // barbed wire (sim/wires.js)
+  }
   alertNear(sim, owner, g.x, g.y, ENTRY[g.kind].hearing, true);
 }
 
@@ -360,6 +376,7 @@ function detonateBreach(sim, u, e) {
   const door = doorOf(sim, e.doorway);
   if (door && door.barricaded) breakBarricade(sim, door, u, 'breach');
   else if (door) destroyDoor(sim, door);
+  cutWiresNear(sim, d.cx, d.cy, ENTRY.breach.radius, u);
   const x = d.cx + d.normalX * e.side * B.depth;
   const y = d.cy + d.normalY * e.side * B.depth;
   sim.emit(EV.CHARGE_BLAST, { unitId: u.id, doorId: d.id, x: d.cx, y: d.cy, dirX: d.normalX * e.side, dirY: d.normalY * e.side });

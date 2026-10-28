@@ -10,11 +10,11 @@
 // which is always enough because ShapeBatch consumes colors immediately.
 import { HEIGHTS, OVERLAY } from '../../config/render.js';
 import { GO_GROUPS } from '../../config/ui.js';
-import { ENTRY, MOVE, ROUND, NOISE, DRONE } from '../../config/balance.js';
+import { ENTRY, MOVE, ROUND, NOISE, DRONE, CAMERA, PREP } from '../../config/balance.js';
 import { teamView } from '../../sim/view.js';
 import { visibilityPolygon } from '../../sim/vision.js';
 import { hexToRgb, lerp, lerpAngle } from '../../core/math.js';
-import { grenadeAt, tossLanding } from '../../sim/queries.js';
+import { grenadeAt, tossLanding, tossDoorway, HERE } from '../../sim/queries.js';
 import { ShaderProgram } from '../gl/ShaderProgram.js';
 import { ShapeBatch } from '../gl/ShapeBatch.js';
 import { FLAT_VS, FLAT_FS } from '../shaders/flat.js';
@@ -24,7 +24,11 @@ import { rgba, BLACK, WHITE, withAlpha } from './overlayColors.js';
 
 const LOOK_PREVIEW_RGB = [1, 1, 1];
 const DRONE_RGB = hexToRgb('#8fe36b');
+const TOSS_DANGER_RGB = [1, 0.33, 0.3]; // a grenade that would reach its own thrower
 const BARRICADE_RGBA = [1, 0.69, 0.18, 0.95];
+const WIRE_RGB = [0.8, 0.84, 0.88]; // barbed wire: steel grey (the far half of each loop darker)
+const WIRE_BARB_RGBA = [0.93, 0.95, 0.97, 1];
+const WIRE_LOOP = Object.freeze({ radius: 0.24, pitch: 0.17, steps: 24, barb: 0.04 }); // m (steps per loop: a multiple of 8)
 const SIDES = [-1, 1];
 
 export class OverlayLayer {
@@ -39,9 +43,15 @@ export class OverlayLayer {
     this.pose = { x: 0, y: 0, facing: 0 }; // scratch interpolated pose
     this.gpos = { x: 0, y: 0, k: 0 }; // scratch grenade position
     this.land = { x: 0, y: 0, reach: 0 }; // scratch throw landing (tossMarker)
-    this.camPoly = null; // scratch camera field of view (cameras)
+    this.camPoly = []; // scratch camera fields of view (cameras), one per camera
+    this.ghosts = []; // free camera mounts' fields of view (cached: mountGhosts)
+    this.ghostKey = '';
+    this.ghostSim = null;
     this.routePts = []; // scratch flat polyline
     this.linkPts = [0, 0, 0, 0]; // scratch entry link
+    this.wirePt = [0, 0, 0]; // scratch point on a wire's coil (x, y, near side)
+    this.tossPts = []; // scratch throw path (2 or 3 points)
+    this.conePts = []; // scratch outline of a camera's view
     this.routeOrder = []; // own operators, selected last
     this.pings = new OverlayPings();
     this.lastSelected = -1;
@@ -153,12 +163,14 @@ export class OverlayLayer {
     for (const u of sim.teams[own]) if (u.alive && u.id === selected) order.push(u);
     for (const u of order) this.route(t, u, unitLayer.poseInto(u, frame.alpha, this.pose), mpp, time, u.id === selected);
 
-    this.cameras(t, g, sim, own, mpp, time);
+    this.cameras(t, g, sim, own, mpp, time, own === 'defenders' && (session.phase === 'prep' || session.phase === 'drone'));
     this.traps(t, sim, own, mpp);
+    this.fires(t, sim, frame);
     this.smokes(t, sim, frame);
     this.grenades(t, sim, frame, mpp);
     if (own === 'attackers') this.drone(t, g, sim, vision, frame, mpp, time);
     this.barricades(t, sim, own, mpp);
+    this.wires(t, sim, own, mpp);
     if (session.phase !== 'title') this.noise(g, teamView(sim, own), sim.turn, mpp, time);
     if (editable) this.planningPreview(t, sim, session, mpp);
     this.markers.contacts(t, sim, unitLayer, frame, mpp, own);
@@ -221,6 +233,72 @@ export class OverlayLayer {
     }
   }
 
+  /**
+   * Barbed wire the viewer's side knows of (sim/wires.js): a concertina coil
+   * seen from above, overlapping loops lit on their near side, barbs knotted
+   * along it and a picket at each end, with its shadow on the floor.
+   */
+  wires(t, sim, own, mpp) {
+    for (const door of sim.doors) {
+      if (!door.wired || (own === 'attackers' && !sim.intel.wires.has(door.def.index))) continue;
+      const d = door.def;
+      const tx = d.normalY; // along the wall
+      const ty = -d.normalX;
+      const h = d.length / 2 + 0.14;
+      const loops = Math.max(4, Math.round((2 * h) / WIRE_LOOP.pitch));
+      const r = WIRE_LOOP.radius;
+      // Prolate cycloid: the axis walks 2h while the wire turns `loops` times around it.
+      const n = loops * WIRE_LOOP.steps;
+      const pt = (k) => {
+        const a = (k / n) * loops * Math.PI * 2;
+        const s = -h + r * 0.55 + ((2 * h - r * 1.1) * k) / n - Math.sin(a) * r * 0.55;
+        const o = Math.cos(a) * r;
+        this.wirePt[0] = d.cx + tx * s + d.normalX * o;
+        this.wirePt[1] = d.cy + ty * s + d.normalY * o;
+        this.wirePt[2] = Math.sin(a); // > 0: the near half of the loop
+        return this.wirePt;
+      };
+      // Pickets at both ends and the coil's shadow first, then the wire over them.
+      for (const e of SIDES) {
+        const px = d.cx + tx * h * e;
+        const py = d.cy + ty * h * e;
+        t.circle(px + 0.04, py + 0.05, 0.075, BLACK(0.35), 10);
+        t.circle(px, py, 0.06, rgba(0.2, 0.17, 0.13, 1), 10);
+        t.ring(px, py, 0.06, 1.2 * mpp, BLACK(0.7), 10);
+      }
+      for (let pass = 0; pass < 2; pass++) {
+        let p = pt(0);
+        let x0 = p[0];
+        let y0 = p[1];
+        for (let k = 1; k <= n; k++) {
+          p = pt(k);
+          const x = p[0];
+          const y = p[1];
+          if (pass === 0) {
+            t.line(x0 + 0.05, y0 + 0.07, x + 0.05, y + 0.07, 3 * mpp, BLACK(0.28));
+          } else {
+            const lit = 0.45 + 0.55 * Math.max(0, p[2]);
+            t.line(x0, y0, x, y, 3.4 * mpp, BLACK(0.6));
+            t.line(x0, y0, x, y, 1.7 * mpp, rgba(WIRE_RGB[0] * lit, WIRE_RGB[1] * lit, WIRE_RGB[2] * lit, 1));
+          }
+          x0 = x;
+          y0 = y;
+        }
+      }
+      // Barbs: a short twisted cross every 3/8 of a turn, so they spread all over the loops.
+      const b = WIRE_LOOP.barb;
+      for (let k = WIRE_LOOP.steps / 8; k < n; k += (WIRE_LOOP.steps * 3) / 8) {
+        const p = pt(k);
+        const x = p[0];
+        const y = p[1];
+        t.line(x - b, y - b, x + b, y + b, 1.3 * mpp, BLACK(0.75));
+        t.line(x - b, y + b, x + b, y - b, 1.3 * mpp, BLACK(0.75));
+        t.line(x - b * 0.8, y - b * 0.8, x + b * 0.8, y + b * 0.8, 0.8 * mpp, WIRE_BARB_RGBA);
+        t.line(x - b * 0.8, y + b * 0.8, x + b * 0.8, y - b * 0.8, 0.8 * mpp, WIRE_BARB_RGBA);
+      }
+    }
+  }
+
   coneEdges(t, poly, c, selected, fov) {
     const half = fov / 2;
     const L = OVERLAY.coneEdgeLength;
@@ -267,8 +345,8 @@ export class OverlayLayer {
       const p = u.route[i];
       if (!p.user) continue;
       if (p.entry) this.entryMarker(t, p.x, p.y, p.entry, p.entryDoor, selected, mpp);
-      if (p.toss) this.tossMarker(t, p.x, p.y, p.toss.x, p.toss.y, p.toss.item, selected ? 1 : 0.55, mpp);
-      if (p.look !== null) this.lookMarker(t, p.x, p.y, p.look, c, selected ? 1 : 0.6, mpp, u.vision.fov);
+      if (p.toss) this.tossMarker(t, p.x, p.y, p.toss.x, p.toss.y, p.toss.item, selected ? 1 : 0.55, mpp, tossDoorway(this.sim.world, p, p.toss.x, p.toss.y));
+      if (p.look !== null) this.lookMarker(t, p.x, p.y, p.look, c, selected ? 1 : 0.6, mpp, u.vision.fov, p.cover && i === lastUser);
       if (p.hold) {
         this.holdMarker(t, p.x, p.y, r * 1.6, c, mpp, this.goRgb(p.code));
       } else {
@@ -281,10 +359,10 @@ export class OverlayLayer {
     }
     if (this.planning && pts.length >= 4) this.turnReach(t, u, pts, c, mpp, selected);
     if (u.route.length === 0 && u.idleLook !== null && !u.waitingGo) {
-      this.lookMarker(t, pos.x, pos.y, u.idleLook, c, selected ? 0.9 : 0.5, mpp, u.vision.fov);
+      this.lookMarker(t, pos.x, pos.y, u.idleLook, c, selected ? 0.9 : 0.5, mpp, u.vision.fov, u.cover);
     }
     const e = u.entry;
-    if (e && e.phase !== 'act' && e.mode === 'toss') this.tossMarker(t, pos.x, pos.y, e.tx, e.ty, e.item, selected ? 1 : 0.55, mpp);
+    if (e && e.phase !== 'act' && e.mode === 'toss') this.tossMarker(t, pos.x, pos.y, e.tx, e.ty, e.item, selected ? 1 : 0.55, mpp, e.doorway);
     else if (e && e.phase !== 'act') this.entryMarker(t, pos.x, pos.y, e.mode, e.doorway, selected, mpp);
     if (e && e.phase === 'prep') {
       // Progress of the crack / the plant around the operator.
@@ -370,62 +448,146 @@ export class OverlayLayer {
     t.quad(d.cx, d.cy - r, d.cx + r, d.cy, d.cx, d.cy + r, d.cx - r, d.cy, rgba(c[0], c[1], c[2], a));
   }
 
-  /** A planned throw: a dashed line from the point to where it lands (sim/queries.js tossLanding) and a ring there. */
-  tossMarker(t, x, y, tx, ty, item, alpha, mpp) {
-    const c = OVERLAY.entryColors[item] || LOOK_PREVIEW_RGB;
-    const land = tossLanding(this.sim.world, x, y, tx, ty, this.land);
+  /**
+   * A planned throw: a dashed line from the point to where it lands
+   * (sim/queries.js tossLanding; through doorway k, a bend at its center)
+   * and a ring there. A grenade that would reach the thrower himself
+   * (straight throw, too close) is drawn red.
+   */
+  tossMarker(t, x, y, tx, ty, item, alpha, mpp, k = -1) {
+    const land = tossLanding(this.sim.world, x, y, tx, ty, this.land, k);
     const ex = land.x;
     const ey = land.y;
-    const pts = this.linkPts;
-    pts[0] = x;
-    pts[1] = y;
-    pts[2] = ex;
-    pts[3] = ey;
+    const self = item === 'frag' && k < 0 && ENTRY.frag.damage * (1 - Math.hypot(ex - x, ey - y) / ENTRY.frag.radius) >= ENTRY.frag.minDamage;
+    const c = self ? TOSS_DANGER_RGB : OVERLAY.entryColors[item] || LOOK_PREVIEW_RGB;
+    const pts = this.tossPts;
+    pts.length = 0;
+    pts.push(x, y);
+    if (k >= 0) pts.push(land.viaX, land.viaY);
+    pts.push(ex, ey);
     t.dashed(pts, 3.6 * mpp, 0.12, 0.12, 0, BLACK(0.55 * alpha));
     t.dashed(pts, 2 * mpp, 0.12, 0.12, 0, rgba(c[0], c[1], c[2], 0.95 * alpha));
-    const r = item === 'smoke' ? ENTRY.smoke.radius : item === 'frag' ? ENTRY.frag.radius : 0.45;
+    const r = item === 'smoke' ? ENTRY.smoke.radius : item === 'frag' ? ENTRY.frag.radius : item === 'molotov' ? ENTRY.molotov.radius : 0.45;
     t.ring(ex, ey, r, 3.4 * mpp, BLACK(0.35 * alpha), 32);
     t.ring(ex, ey, r, 2 * mpp, rgba(c[0], c[1], c[2], 0.8 * alpha), 32);
     t.circle(ex, ey, 0.12, rgba(c[0], c[1], c[2], alpha), 12);
   }
 
   /**
-   * Defender cameras (sim/cameras.js): the attackers see the ones they know of
-   * — a small red box with its field of view on the floor, pulsing while it
-   * reports someone; a broken one is a dark box with a cross.
+   * Defender cameras (sim/cameras.js): the defenders see theirs, the attackers
+   * the ones they know of. Each is drawn as a wall camera seen from above (a
+   * plate on the wall, an arm, the body and its lens toward where it looks)
+   * with its field of view on the floor — filled and outlined, cut by walls,
+   * doors and smoke — pulsing while it reports someone. A broken one is a
+   * dark body with a cross. While the defender picks mounts (preparation,
+   * drone) every free mount shows the view a camera there would have, dashed.
    */
-  cameras(t, g, sim, own, mpp, time) {
+  cameras(t, g, sim, own, mpp, time, picking) {
     const C = OVERLAY.camera;
     const c = C.color;
+    if (picking) this.mountGhosts(t, sim, mpp, time);
+    let k = 0;
     for (const cam of sim.cameras) {
       if (own === 'attackers' && !cam.known) continue;
-      const s = C.size;
       if (cam.alive) {
         const hot = sim.time - cam.lastAlert < C.spotPulse;
-        const a = hot ? 0.18 + 0.12 * Math.sin(time * 14) : C.coneAlpha;
-        // What it sees, cut by walls, doors and smoke (a fan from the lens).
-        const poly = (this.camPoly = visibilityPolygon(sim.world, cam.x, cam.y, cam.facing, cam.fov, cam.range, this.camPoly));
-        const col = rgba(c[0], c[1], c[2], a);
-        for (let i = 0; i + 3 < poly.length; i += 2) g.tri(cam.x, cam.y, poly[i], poly[i + 1], poly[i + 2], poly[i + 3], col);
-        t.circle(cam.x, cam.y, s + 2 * mpp, BLACK(0.85), 12);
-        t.circle(cam.x, cam.y, s, rgba(c[0], c[1], c[2], 1), 12);
-        const lx = cam.x + Math.cos(cam.facing) * s * 0.9;
-        const ly = cam.y + Math.sin(cam.facing) * s * 0.9;
-        t.circle(lx, ly, s * 0.45, BLACK(0.9), 10);
-        t.circle(lx, ly, s * 0.22, hot ? WHITE(1) : rgba(1, 0.85, 0.85, 0.8), 8);
-      } else {
-        t.circle(cam.x, cam.y, s + 2 * mpp, BLACK(0.85), 12);
-        t.circle(cam.x, cam.y, s, rgba(0.25, 0.25, 0.27, 1), 12);
-        t.line(cam.x - s, cam.y - s, cam.x + s, cam.y + s, 2.4 * mpp, rgba(c[0], c[1], c[2], 0.9));
-        t.line(cam.x - s, cam.y + s, cam.x + s, cam.y - s, 2.4 * mpp, rgba(c[0], c[1], c[2], 0.9));
+        const pulse = hot ? 0.5 + 0.5 * Math.sin(time * 14) : 0;
+        const poly = this.camPoly[k] = visibilityPolygon(sim.world, cam.x, cam.y, cam.facing, cam.fov, cam.range, this.camPoly[k]);
+        k++;
+        const fill = rgba(c[0], c[1], c[2], C.coneAlpha + 0.12 * pulse);
+        for (let i = 0; i + 3 < poly.length; i += 2) g.tri(cam.x, cam.y, poly[i], poly[i + 1], poly[i + 2], poly[i + 3], fill);
+        const pts = this.coneOutline(cam, poly);
+        t.polyline(pts, 3.4 * mpp, BLACK(0.3), false);
+        t.polyline(pts, 1.6 * mpp, rgba(c[0], c[1], c[2], C.edgeAlpha + 0.4 * pulse), false);
       }
+      this.cameraBody(t, cam.x, cam.y, cam.facing, mpp, cam.alive ? 1 : 0, time, cam.alive && sim.time - cam.lastAlert < C.spotPulse);
     }
+  }
+
+  /** [lens, ...edge of the view, lens]: the outline of a camera's field of view. */
+  coneOutline(cam, poly) {
+    const pts = this.conePts;
+    pts.length = 0;
+    pts.push(cam.x, cam.y);
+    for (let i = 0; i < poly.length; i++) pts.push(poly[i]);
+    pts.push(cam.x, cam.y);
+    return pts;
+  }
+
+  /** The free mounts' views, dashed (their polygons only change with the doors: cached per barricade set-up). */
+  mountGhosts(t, sim, mpp, time) {
+    const C = OVERLAY.camera;
+    const c = C.color;
+    let key = sim.site.id;
+    for (const d of sim.doors) key += d.barricaded ? 'b' : d.destroyed || d.open ? 'o' : d.cracked ? 'c' : '-';
+    if (this.ghostKey !== key || this.ghostSim !== sim) {
+      this.ghostKey = key;
+      this.ghostSim = sim;
+      this.ghosts = sim.compiled.cameraMounts.map((m) => visibilityPolygon(sim.world, m.at[0], m.at[1], m.facing, m.fov ?? CAMERA.fov, m.range ?? CAMERA.range));
+    }
+    const full = sim.cameras.length >= CAMERA.max;
+    sim.compiled.cameraMounts.forEach((m, i) => {
+      if (sim.cameras.some((cam) => cam.mount === m.id)) return;
+      const a = full ? C.ghostAlpha * 0.45 : C.ghostAlpha;
+      const pts = this.coneOutline({ x: m.at[0], y: m.at[1] }, this.ghosts[i]);
+      t.dashed(pts, 1.6 * mpp, 0.25, 0.2, -time * 0.4, rgba(c[0], c[1], c[2], a));
+    });
+  }
+
+  /**
+   * A wall camera from above at (x, y) looking `facing`: the plate on the
+   * wall behind, an arm, the body and a hood over the lens. `alive` 0: broken
+   * (dark, crossed). `hot`: it is reporting someone (the lens flashes).
+   */
+  cameraBody(t, x, y, facing, mpp, alive, time, hot) {
+    const C = OVERLAY.camera;
+    const c = C.color;
+    const L = C.length;
+    const W = C.width * 0.5;
+    const ux = Math.cos(facing);
+    const uy = Math.sin(facing);
+    const vx = -uy;
+    const vy = ux;
+    // A box along the facing from a0 to a1 (m from the plate), half width h.
+    const box = (a0, a1, h, col) =>
+      t.quad(x + ux * a0 + vx * h, y + uy * a0 + vy * h, x + ux * a1 + vx * h, y + uy * a1 + vy * h, x + ux * a1 - vx * h, y + uy * a1 - vy * h, x + ux * a0 - vx * h, y + uy * a0 - vy * h, col);
+    const ol = Math.min(mpp, 0.03); // outline
+    const body = alive ? rgba(0.88, 0.9, 0.92, 1) : rgba(0.3, 0.3, 0.32, 1); // a white housing, like a real one
+    // Wall plate and arm.
+    box(-0.04 * L, 0.1 * L, W * 1.15, BLACK(0.9));
+    t.line(x + ux * 0.06 * L, y + uy * 0.06 * L, x + ux * 0.3 * L, y + uy * 0.3 * L, W * 0.55, BLACK(0.9));
+    // Body (outlined), then the hood over the lens, a bit wider.
+    box(0.26 * L - ol, 0.86 * L + ol, W + ol, BLACK(0.9));
+    box(0.26 * L, 0.86 * L, W, body);
+    box(0.8 * L, 1.0 * L, W * 1.2, alive ? rgba(0.1, 0.11, 0.12, 1) : body);
+    if (!alive) {
+      const k = W * 1.6;
+      const mx = x + ux * 0.6 * L;
+      const my = y + uy * 0.6 * L;
+      t.line(mx - k, my - k, mx + k, my + k, 1.6 * mpp, rgba(c[0], c[1], c[2], 0.9));
+      t.line(mx - k, my + k, mx + k, my - k, 1.6 * mpp, rgba(c[0], c[1], c[2], 0.9));
+      return;
+    }
+    t.circle(x + ux * 0.9 * L, y + uy * 0.9 * L, W * 0.62, hot ? WHITE(1) : rgba(0.55, 0.85, 1, 0.95), 12);
+    // The recording light: blinks on the body, with a halo that grows while it is on (it is what you spot).
+    const lx = x + ux * 0.55 * L;
+    const ly = y + uy * 0.55 * L;
+    const phase = (time / C.blink) % 2; // 0..1 on, 1..2 off
+    const on = hot || phase < 1;
+    if (on) {
+      const k = hot ? (time * 3) % 1 : phase;
+      t.ring(lx, ly, (3 + (C.haloPx - 3) * k) * mpp, 1.4 * mpp, rgba(1, 0.2, 0.15, 0.75 * (1 - k)), 16);
+      t.circle(lx, ly, Math.max(W * 0.35, C.ledPx * mpp) * 1.8, rgba(1, 0.2, 0.15, 0.3), 12, rgba(1, 0.2, 0.15, 0));
+    }
+    t.circle(lx, ly, Math.max(W * 0.35, C.ledPx * mpp), on ? rgba(1, 0.22, 0.16, 1) : rgba(0.45, 0.08, 0.06, 1), 10);
   }
 
   /**
    * Trampero's traps (sim/traps.js): the defenders see theirs, the attackers
-   * the ones they found — a toothed orange ring on the floor; a sprung or
-   * broken one is a dark ring with a cross.
+   * the ones they found. A cepo seen from above: two open steel jaws toothed
+   * inward around the pressure plate, the spring bar across them with its
+   * coils and a chain to a stake, on a soft orange halo so it stands out on
+   * the floor. A sprung or broken one lies with its jaws shut, dark.
    */
   traps(t, sim, own, mpp) {
     const C = OVERLAY.trap;
@@ -433,23 +595,95 @@ export class OverlayLayer {
     const s = C.size;
     for (const trap of sim.traps) {
       if (own === 'attackers' && !trap.known) continue;
-      const col = trap.alive ? rgba(c[0], c[1], c[2], 1) : rgba(0.3, 0.3, 0.32, 0.9);
-      t.ring(trap.x, trap.y, s, 3.4 * mpp, BLACK(0.6), 18);
-      t.ring(trap.x, trap.y, s, 2 * mpp, col, 18);
-      if (trap.alive) {
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * Math.PI * 2;
-          t.line(trap.x + Math.cos(a) * s * 0.45, trap.y + Math.sin(a) * s * 0.45, trap.x + Math.cos(a) * s, trap.y + Math.sin(a) * s, 1.6 * mpp, col);
+      const x = trap.x;
+      const y = trap.y;
+      const a = trap.id * 2.1 + 0.6; // the hinge axis: fixed per trap, varied between them
+      const ux = Math.cos(a);
+      const uy = Math.sin(a);
+      if (!trap.alive) {
+        // Jaws shut: a toothed seam along the axis, the bar beyond it.
+        t.line(x - ux * s * 1.4, y - uy * s * 1.4, x + ux * s * 1.4, y + uy * s * 1.4, 2.4 * mpp, rgba(0.18, 0.18, 0.2, 0.9));
+        t.line(x - ux * s, y - uy * s, x + ux * s, y + uy * s, 5 * mpp, BLACK(0.6));
+        t.line(x - ux * s, y - uy * s, x + ux * s, y + uy * s, 3 * mpp, rgba(0.36, 0.36, 0.38, 0.95));
+        for (let k = -3; k <= 3; k++) {
+          const px = x + ux * s * 0.28 * k;
+          const py = y + uy * s * 0.28 * k;
+          const e = (k % 2 ? 1 : -1) * s * 0.14;
+          t.line(px, py, px - uy * e, py + ux * e, 1.4 * mpp, rgba(0.3, 0.3, 0.32, 0.95));
         }
-        t.circle(trap.x, trap.y, s * 0.22, col, 8);
-      } else {
-        t.line(trap.x - s * 0.7, trap.y - s * 0.7, trap.x + s * 0.7, trap.y + s * 0.7, 2 * mpp, col);
-        t.line(trap.x - s * 0.7, trap.y + s * 0.7, trap.x + s * 0.7, trap.y - s * 0.7, 2 * mpp, col);
+        continue;
       }
+      const steel = rgba(C.steel[0], C.steel[1], C.steel[2], 1);
+      const L = s * 2.1; // the spring levers reach this far along the axis
+      t.circle(x, y, L, rgba(c[0], c[1], c[2], 0.26), 28, rgba(c[0], c[1], c[2], 0));
+      // Chain from the end of one lever to its stake.
+      const cx = x + ux * L;
+      const cy = y + uy * L;
+      const kx = cx + (ux - uy) * s * 0.6;
+      const ky = cy + (uy + ux) * s * 0.6;
+      for (let i = 0; i < 4; i++) {
+        const f0 = i / 4;
+        const f1 = (i + 0.7) / 4;
+        t.line(cx + (kx - cx) * f0, cy + (ky - cy) * f0, cx + (kx - cx) * f1, cy + (ky - cy) * f1, 1.6 * mpp, rgba(0.25, 0.25, 0.27, 1));
+      }
+      t.circle(kx, ky, s * 0.13, rgba(0.15, 0.13, 0.11, 1), 8);
+      t.circle(x, y, s, BLACK(0.4), 20); // the pit the jaws sit around
+      // The base bar under the jaws, and a long folded spring lever out of each hinge.
+      t.line(x - ux * s, y - uy * s, x + ux * s, y + uy * s, 3.6 * mpp, BLACK(0.55));
+      t.line(x - ux * s, y - uy * s, x + ux * s, y + uy * s, 1.8 * mpp, steel);
+      const w = s * 0.16;
+      for (const e of SIDES) {
+        const hx = x + ux * s * 0.9 * e;
+        const hy = y + uy * s * 0.9 * e;
+        const ex = x + ux * L * e;
+        const ey = y + uy * L * e;
+        for (const pass of [0, 1]) {
+          const col = pass ? steel : BLACK(0.6);
+          const lw = (pass ? 1.8 : 3.6) * mpp;
+          t.line(hx - uy * w, hy + ux * w, ex - uy * w, ey + ux * w, lw, col);
+          t.line(hx + uy * w, hy - ux * w, ex + uy * w, ey - ux * w, lw, col);
+          t.arc(ex, ey, w, lw, a + (e > 0 ? -Math.PI / 2 : Math.PI / 2), a + (e > 0 ? Math.PI / 2 : (3 * Math.PI) / 2), col, 16);
+        }
+      }
+      // Two jaws, each half a ring between the hinges, a few long teeth pointing in.
+      for (const e of SIDES) {
+        const a0 = a + (e > 0 ? 0 : Math.PI) + 0.3;
+        const a1 = a0 + Math.PI - 0.6;
+        t.arc(x, y, s, 4.6 * mpp, a0, a1, BLACK(0.65), 32);
+        t.arc(x, y, s, 2.6 * mpp, a0, a1, steel, 32);
+        const teeth = 4;
+        const half = (a1 - a0) / teeth / 2;
+        for (let i = 0; i < teeth; i++) {
+          const m = a0 + half * (2 * i + 1);
+          const r0 = s * 0.97;
+          t.tri(
+            x + Math.cos(m - half * 0.45) * r0, y + Math.sin(m - half * 0.45) * r0,
+            x + Math.cos(m + half * 0.45) * r0, y + Math.sin(m + half * 0.45) * r0,
+            x + Math.cos(m) * s * 0.62, y + Math.sin(m) * s * 0.62,
+            steel,
+          );
+        }
+      }
+      // The pressure plate, in the trap's colour.
+      t.circle(x, y, s * 0.3, BLACK(0.6), 12);
+      t.circle(x, y, s * 0.24, rgba(c[0], c[1], c[2], 1), 12);
     }
   }
 
   /** Smoke clouds (sim/smoke.js): a soft gray disc, denser in the middle; it fills the sight cone's gap. */
+  /** Incendiaria pools (sim/fire.js): flickering orange discs that shrink as they burn down. */
+  fires(t, sim, frame) {
+    const M = ENTRY.molotov;
+    for (const f of sim.fires) {
+      if (f.age >= M.seconds) continue;
+      const left = 1 - f.age / M.seconds;
+      const r = M.radius * (0.75 + 0.25 * Math.min(1, left * 4));
+      const flick = 0.06 * Math.sin(frame.time * 9 + f.x * 3) + 0.04 * Math.sin(frame.time * 13 + f.y * 5);
+      t.circle(f.x, f.y, r * (1 + flick), rgba(1, 0.42, 0.1, 0.55), 28, rgba(1, 0.3, 0.05, 0.25));
+      t.circle(f.x, f.y, r * 0.55 * (1 - flick), rgba(1, 0.8, 0.3, 0.6), 20, rgba(1, 0.55, 0.15, 0));
+    }
+  }
+
   smokes(t, sim, frame) {
     const c = OVERLAY.smokeColor;
     for (const s of sim.smokes) {
@@ -476,8 +710,14 @@ export class OverlayLayer {
     }
   }
 
-  lookMarker(t, x, y, angle, c, alpha, mpp, fov) {
+  lookMarker(t, x, y, angle, c, alpha, mpp, fov, sweep = false) {
     const half = fov / 2;
+    if (sweep) {
+      // Cubrir zona: the whole arc his look sweeps, wider and further than the cone.
+      const s = PREP.sweepArc / 2;
+      t.wedge(x, y, 2.6, angle - s - half, angle + s + half, withAlpha(c, 0.3 * alpha), withAlpha(c, 0), 28);
+      for (const a of [angle - s, angle + s]) t.arrow(x, y, x + Math.cos(a) * 1.4, y + Math.sin(a) * 1.4, 1.8 * mpp, 0.22, withAlpha(c, 0.7 * alpha));
+    }
     t.wedge(x, y, 1.7, angle - half, angle + half, withAlpha(c, 0.16 * alpha), withAlpha(c, 0), 20);
     const L = OVERLAY.lookArrowLength;
     const x2 = x + Math.cos(angle) * L;
@@ -549,14 +789,20 @@ export class OverlayLayer {
     }
     // Aiming a throw (menu "Lanzar", then a tap): from the point to the cursor.
     const tp = ui.tossPick;
-    if (tp && tp.unitId === u.id && tp.index < u.route.length && ui.cursorWorld) {
-      const p = u.route[tp.index];
-      this.tossMarker(t, p.x, p.y, ui.cursorWorld.x, ui.cursorWorld.y, tp.item, 0.8, mpp);
+    if (tp && tp.unitId === u.id && (tp.index === HERE || tp.index < u.route.length) && ui.cursorWorld) {
+      const p = tp.index === HERE ? u : u.route[tp.index]; // HERE: from where he stands
+      const { x: cx, y: cy } = ui.cursorWorld;
+      const k = tossDoorway(this.sim.world, p, cx, cy);
+      // How far it can go: from the point, or from the doorway it is thrown through.
+      const d = k >= 0 ? this.sim.world.doorways[k] : null;
+      const reach = d ? ENTRY.tossRange - Math.hypot(d.cx - p.x, d.cy - p.y) : ENTRY.tossRange;
+      t.ring(d ? d.cx : p.x, d ? d.cy : p.y, reach, 1.6 * mpp, WHITE(0.28), 64);
+      this.tossMarker(t, p.x, p.y, cx, cy, tp.item, 0.8, mpp, k);
     }
     // The waypoint the player tapped (door picker, ESPERAR, sigilo act on it): a white ring.
     const tg = session.pointTarget;
-    if (tg && tg.unitId === u.id && tg.index < u.route.length) {
-      const p = u.route[tg.index];
+    if (tg && tg.unitId === u.id && (tg.index === HERE || tg.index < u.route.length)) {
+      const p = tg.index === HERE ? u : u.route[tg.index];
       t.ring(p.x, p.y, OVERLAY.waypointRadiusPx * mpp * 2.1, 2.2 * mpp, WHITE(0.9), 24);
     }
   }

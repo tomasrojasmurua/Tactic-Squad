@@ -1,13 +1,16 @@
 // What each side does before the assault, as plain state changes driven by
 // orders (sim/orders.js) or, for an AI side, by aiPrepare:
 //
-//   buy   (attackers) each operator buys the utility he carries with his own
-//         money (BUY); he starts with his role's gear, already paid for.
-//   prep  (defenders) pick the site (the bomb never moves once the
-//         preparation ends), place each operator in their half of the map,
-//         give each one a watch order and put up PREP.barricades barricades.
-//         Each defender has a class (Defensor / Ancla / Merodeador / Trampero,
-//         at most ROLES[id].max each); the Trampero lays his traps (sim/traps.js).
+//   buy   (both sides, at once) each operator carries his class's kit (free)
+//         and adds utility with his points (BUY). The classes were picked
+//         before the game (Simulation opts.roles); the rules of a pick are
+//         setRole / setDefenderRole.
+//   prep  (defenders) first the recon: pick the site (the bomb never moves
+//         once it ends), put up PREP.barricades barricades, PREP.wires barbed
+//         wire (sim/wires.js) and the cameras
+//         (sim/cameras.js); endRecon fixes them for the rest of the round.
+//         Then place each operator in their half of the map and give each
+//         one a watch order; the Trampero lays his traps (sim/traps.js).
 //
 // Watch orders ({facing, sweep, react, fallback}) become the AI behaviors of
 // sim/ai.js, so they keep working on their own during the assault:
@@ -20,62 +23,74 @@
 // pick hashes the seed), so a set-up cannot shift the rest of the round.
 import { placeCameras } from './cameras.js';
 import { layTraps, dropOrphanTraps, placeTrap as layTrap } from './traps.js';
-import { BUY, PREP, NAV } from '../config/balance.js';
+import { BUY, PREP, NAV, AI_UTILITY } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { pointInBox } from '../core/geom.js';
 import { WEAPONS } from '../config/weapons.js';
 import { ROLES, DEFAULT_DEFENDER_ROLE } from '../config/operators.js';
 import { applyRole, roleGear } from './units.js';
 import { createBomb } from './objectives.js';
+import { setWire } from './wires.js';
 
 // ------------------------------------------------------------ buy
 
-/** What a set of gear costs. */
-export function gearCost(gear) {
-  let c = 0;
-  for (const item of BUY.items) c += (gear[item] || 0) * BUY.prices[item];
-  return c;
+/** The phase each side buys in: both in the buy phase. */
+const BUY_PHASE = Object.freeze({ attackers: 'buy', defenders: 'buy' });
+
+/** What a side may buy (BUY.items / BUY.defenderItems). */
+export const buyableItems = (team) => (team === 'attackers' ? BUY.items : BUY.defenderItems);
+
+/** The utility points an operator of `team` gets this round: BUY.points, plus BUY.lossBonus if his side lost the last round of a match. */
+export function pointsFor(sim, team) {
+  return BUY.points + (sim.lossBonus === team ? BUY.lossBonus : 0);
 }
 
-/** Phased rounds: every attacker's money is what is left after his role's gear (never below 0). */
-export function initMoney(sim) {
-  for (const u of sim.teams.attackers) u.money = Math.max(0, BUY.startMoney - gearCost(u.gear));
+/** Phased rounds: every operator starts with his points (his class's kit is free). */
+export function initPoints(sim) {
+  for (const u of sim.units) u.points = pointsFor(sim, u.team);
 }
 
-/** Buys (count +1) or sells back (-1) one item. Returns a REJECT code or null. */
+/**
+ * Buys (count +1) or gives back (-1) one item for its points. The class's kit
+ * cannot be given back (it costs nothing). Returns a REJECT code or null.
+ */
 export function buyItem(sim, u, item, count) {
-  if (u.team !== 'attackers' || !BUY.items.includes(item) || (count !== 1 && count !== -1)) return 'badItem';
+  if (!buyableItems(u.team).includes(item) || (count !== 1 && count !== -1)) return 'badItem';
+  if (sim.phase !== BUY_PHASE[u.team]) return 'badItem';
   const have = u.gear[item] || 0;
   const price = BUY.prices[item];
   if (count > 0) {
     if (have >= BUY.max[item]) return 'gearFull';
-    if (u.money < price) return 'noMoney';
+    if (u.points < price) return 'noPoints';
     u.gear[item] = have + 1;
-    u.money -= price;
+    u.points -= price;
   } else {
-    if (have <= 0) return 'noGear';
+    if (have <= (roleGear(u.role)[item] || 0)) return 'noGear';
     u.gear[item] = have - 1;
-    u.money += price;
+    u.points += price;
   }
-  sim.emit(EV.GEAR_CHANGED, { unitId: u.id, item, count: u.gear[item], money: u.money });
+  sim.emit(EV.GEAR_CHANGED, { unitId: u.id, item, count: u.gear[item], points: u.points });
   return null;
 }
 
+/** A new class: its kit, and the points back (what he bought goes back with the old class). */
+function resetGear(sim, u) {
+  u.gear = roleGear(u.role);
+  u.points = pointsFor(sim, u.team);
+}
+
 /**
- * An attacker changes class (buy phase): his gear goes back for its price,
- * he takes the new class's stats, weapon and gear and pays for that gear
- * (whatever is left; never below 0). Brecha and Explorador: one per squad.
+ * An attacker changes class (buy phase): he takes the new class's stats,
+ * weapon and kit, and gets his points back. Brecha and Explorador: one per squad.
  */
 export function setRole(sim, u, roleId) {
   const role = ROLES[roleId];
   if (u.team !== 'attackers' || !role || !role.pick) return 'badRole';
   if (u.role === roleId) return null;
   if (role.unique && sim.teams.attackers.some((o) => o !== u && o.role === roleId)) return 'roleTaken';
-  const refund = gearCost(u.gear);
   applyRole(u, roleId);
-  u.gear = roleGear(roleId);
-  u.money = Math.max(0, u.money + refund - gearCost(u.gear));
-  sim.emit(EV.ROLE_CHANGED, { unitId: u.id, role: roleId, money: u.money });
+  resetGear(sim, u);
+  sim.emit(EV.ROLE_CHANGED, { unitId: u.id, role: roleId, points: u.points });
   return null;
 }
 
@@ -110,8 +125,11 @@ export function applyLayout(sim, layout) {
   sim.teams.defenders.forEach((u, i) => {
     const s = layout[(sim.defenderSlots ? sim.defenderSlots[i] : i) % layout.length];
     moveTo(u, s.at[0], s.at[1], s.facing);
-    const role = s.role || DEFAULT_DEFENDER_ROLE;
-    if (role !== u.role) applyRole(u, role); // an anchor slot makes him an Ancla (config/operators.js)
+    const role = sim.roles.defenders[i] || s.role || DEFAULT_DEFENDER_ROLE; // the lobby's class, else the post's
+    if (role !== u.role) {
+      applyRole(u, role); // an anchor slot makes him an Ancla (config/operators.js)
+      resetGear(sim, u); // and gives him the Ancla's kit
+    }
     if (s.weapon && s.weapon !== u.weaponId) setWeapon(u, s.weapon);
     setBehavior(u, s.behavior || null);
   });
@@ -138,7 +156,8 @@ export function placeDefender(sim, u, px, py, facing = u.facing) {
 /**
  * A defender changes class (preparation): stats and health of the new class;
  * his weapon is his post's. At most ROLES[id].max of a class per side. A
- * Trampero who stops being one takes his traps with him.
+ * Trampero who stops being one takes his traps with him. He takes the new
+ * class's kit and gets his points back.
  */
 export function setDefenderRole(sim, u, roleId) {
   const role = ROLES[roleId];
@@ -148,8 +167,9 @@ export function setDefenderRole(sim, u, roleId) {
   const weaponId = u.weaponId;
   applyRole(u, roleId);
   if (weaponId !== u.weaponId) setWeapon(u, weaponId);
+  resetGear(sim, u);
   dropOrphanTraps(sim);
-  sim.emit(EV.ROLE_CHANGED, { unitId: u.id, role: roleId, money: 0 });
+  sim.emit(EV.ROLE_CHANGED, { unitId: u.id, role: roleId, points: u.points });
   return null;
 }
 
@@ -158,7 +178,12 @@ export function placeTrap(sim, u, x, y) {
   return layTrap(sim, u, x, y, (px, py) => inDefenderHalf(sim, px, py));
 }
 
-/** A watch order (see the header) -> the unit's behavior. Returns a REJECT code or null. */
+/**
+ * A watch order (see the header) -> the unit's behavior. Returns a REJECT code or null.
+ * In the preparation he turns to it at once; while planning (the assault) only
+ * the mode changes: he turns to it during the turn, where his route ends, and
+ * keeps the rest of his state (a fallback under way, his idle look).
+ */
 export function setWatch(sim, u, watch) {
   if (!watch || typeof watch.facing !== 'number') return 'badWatch';
   const fb = watch.fallback || null;
@@ -168,11 +193,25 @@ export function setWatch(sim, u, watch) {
   const behavior = watch.sweep
     ? { type: 'scan', from: watch.sweep[0], to: watch.sweep[1], period: PREP.sweepPeriod, reactsToNoise: react, rotate }
     : { type: 'hold', reactsToNoise: react, rotate };
+  if (sim.round.enabled && sim.round.phase === 'plan') {
+    u.behavior = behavior;
+    if (!u.route.length && u.idleLook === null) u.ai.baseFacing = watch.facing;
+    sim.emit(EV.SETUP_CHANGED, { unitId: u.id, kind: 'watch' });
+    return null;
+  }
   u.facing = u.prevFacing = watch.facing;
+  u.idleLook = null;
   setBehavior(u, behavior);
   u.ai.baseFacing = watch.facing;
   sim.emit(EV.SETUP_CHANGED, { unitId: u.id, kind: 'watch' });
   return null;
+}
+
+/** The defenders' recon is over: site, barricades and cameras stay as they are this round. */
+export function endRecon(sim) {
+  if (sim.reconDone) return;
+  sim.reconDone = true;
+  sim.emit(EV.SETUP_CHANGED, { unitId: -1, kind: 'recon' });
 }
 
 /** Doors barricaded now (indices into sim.doors). */
@@ -187,6 +226,7 @@ export function setBarricade(sim, doorId, on) {
   const door = sim.doors.find((d) => d.def.id === doorId);
   if (!door || !sim.compiled.barricadeSlots.includes(doorId)) return 'badDoor';
   if (door.barricaded === !!on) return null;
+  if (on && door.wired) return 'doorTaken';
   if (on && barricadedDoors(sim).length >= PREP.barricades) return 'tooManyBarricades';
   door.barricaded = !!on;
   sim.emit(EV.BARRICADE_SET, { doorId, on: !!on });
@@ -196,9 +236,25 @@ export function setBarricade(sim, doorId, on) {
 // ------------------------------------------------------------ AI
 
 /**
+ * As the buy ends: an AI defending side buys an incendiaria for
+ * AI_UTILITY.molotovs defenders (who react to noise, closest to the bomb), then AI_UTILITY.buy with
+ * what each one's points still reach.
+ */
+export function aiBuy(sim) {
+  if (sim.controllers.defenders !== 'ai') return;
+  // Those who turn to noise first (an angle held deaf never throws), then the closest to the bomb.
+  const deaf = (u) => (u.behavior && u.behavior.reactsToNoise === false ? 1 : 0);
+  const d2 = (u) => (u.x - sim.bomb.x) ** 2 + (u.y - sim.bomb.y) ** 2;
+  const byBomb = sim.teams.defenders.slice().sort((a, b) => deaf(a) - deaf(b) || d2(a) - d2(b) || a.id - b.id);
+  for (const u of byBomb.slice(0, AI_UTILITY.molotovs)) buyItem(sim, u, 'molotov', 1);
+  for (const u of sim.teams.defenders) for (const item of AI_UTILITY.buy) buyItem(sim, u, item, 1); // what the points reach
+}
+
+/**
  * On entering the preparation: an AI defending side sets up (for now its
  * plan is the map's: the site rolled from the seed, that site's layout and
- * PREP.barricades of the site's `aiBarricades`, picked by a hash of the seed).
+ * PREP.barricades of the site's `aiBarricades`, picked by a hash of the seed,
+ * then PREP.wires of barbed wire on the options left).
  */
 export function aiPrepare(sim) {
   if (sim.controllers.defenders !== 'ai') return;
@@ -208,6 +264,12 @@ export function aiPrepare(sim) {
     h = Math.imul(h ^ (h >>> 13), 0x2c1b3c6d) >>> 0;
     const [id] = options.splice(h % options.length, 1);
     setBarricade(sim, id, true);
+  }
+  // Barbed wire on the options left (sim/wires.js).
+  for (let n = 0; n < PREP.wires && options.length; n++) {
+    h = Math.imul(h ^ (h >>> 13), 0x2c1b3c6d) >>> 0;
+    const [id] = options.splice(h % options.length, 1);
+    setWire(sim, id, true);
   }
 }
 

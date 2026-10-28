@@ -21,8 +21,12 @@ export class ShortcutController {
     const code = e.code;
     if (this.session.phase === 'title') {
       if (matches(KEYS.execute, code) || matches(KEYS.pause, code)) return this.request('start');
+      if (matches(KEYS.deselect, code)) return this.request('back');
       return false;
     }
+    // The last kill shown again: Space, Enter or Esc go straight to the result.
+    const kc = this.session.killcam;
+    if (kc && kc.playing && (matches(KEYS.pause, code) || matches(KEYS.execute, code) || matches(KEYS.deselect, code))) return this.request('skipKillcam');
     if (matches(KEYS.help, code)) return this.request('help');
     if (this.session.helpOpen && matches(KEYS.deselect, code)) return this.request('help');
     if (matches(KEYS.pause, code)) return this.request('toggle');
@@ -38,6 +42,7 @@ export class ShortcutController {
     if (matches(KEYS.focus, code)) return this.request('focus');
     if (matches(KEYS.defuse, code)) return this.request('defuse');
     if (matches(KEYS.overview, code)) return this.request('overview');
+    if (matches(KEYS.cameras, code)) return this.request('cameras');
     return false;
   }
 }

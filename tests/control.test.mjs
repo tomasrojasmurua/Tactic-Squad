@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
 import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
-import { MOVE, NOISE } from '../src/config/balance.js';
+import { MOVE, NOISE, BUY } from '../src/config/balance.js';
 
 const MAP = MAPS[DEFAULT_MAP];
 const T = 'attackers';
@@ -158,8 +158,9 @@ test('cortar el turno al ver un enemigo: termina antes y el reintento lo repite 
 
 // ------------------------------------------------------------ clases
 
-test('clases: se eligen en la compra, Brecha y Explorador una vez, el equipo se reembolsa', async () => {
+test('clases: Brecha y Explorador una vez, cada una con su equipo; dentro de la partida no se cambian', async () => {
   const { ROLES } = await import('../src/config/operators.js');
+  const { setRole } = await import('../src/sim/prep.js');
   const sim = new Simulation(MAP, { seed: 1 });
   const [aguila, lobo, zorro] = sim.teams.attackers;
   assert.deepEqual([aguila.role, lobo.role, zorro.role], ['assault', 'entry', 'scout']);
@@ -167,18 +168,18 @@ test('clases: se eligen en la compra, Brecha y Explorador una vez, el equipo se 
     sim.enqueue({ team: T, ...c });
     sim.flushCommands();
   };
-  order({ type: 'setRole', unitId: aguila.id, role: 'scout' });
-  order({ type: 'setRole', unitId: aguila.id, role: 'anchor' });
-  assert.deepEqual(rejects(sim), ['roleTaken', 'badRole']);
-  const before = zorro.money;
-  order({ type: 'setRole', unitId: zorro.id, role: 'assault' });
-  assert.deepEqual(rejects(sim), []);
+  // Las reglas de la selección de clases (antes de la partida).
+  assert.equal(setRole(sim, aguila, 'scout'), 'roleTaken');
+  assert.equal(setRole(sim, aguila, 'anchor'), 'badRole');
+  order({ type: 'buy', unitId: zorro.id, item: 'flash', count: 1 });
+  assert.equal(setRole(sim, zorro, 'assault'), null);
   assert.equal(zorro.weaponId, ROLES.assault.weapon);
   assert.deepEqual([zorro.gear.flash, zorro.gear.frag, zorro.gear.smoke], [1, 1, 0]);
-  assert.equal(zorro.money, before + 200 + 300 - 200 - 300, 'devuelve flash + humo, paga flash + granada');
-  order({ type: 'setRole', unitId: aguila.id, role: 'scout' });
+  assert.equal(zorro.points, BUY.points, 'lo comprado vuelve con la clase anterior: recupera sus puntos');
+  assert.equal(setRole(sim, aguila, 'scout'), null);
   assert.equal(aguila.ability, 'scoutPulse');
-  sim.advancePhase();
+  rejects(sim);
+  // Ya en la ronda, ninguna orden cambia la clase.
   order({ type: 'setRole', unitId: aguila.id, role: 'assault' });
   assert.deepEqual(rejects(sim), ['notNow']);
 });
@@ -201,4 +202,45 @@ test('Explorador: al terminar el turno detecta a los defensores cerca, con pared
   for (const e of sim.drainEvents()) if (e.type === 'scoutPulse') pulse = e;
   assert.ok(pulse && pulse.found >= 1, 'lo detectó');
   assert.ok(sim.memory.attackers.has(d.id), 'queda marcado para el plan');
+});
+
+test('cubrir zona: el atacante barre alrededor de su mirada al final de la ruta o donde está', async () => {
+  const { Simulation } = await import('../src/sim/Simulation.js');
+  const { MAPS, DEFAULT_MAP } = await import('../src/data/maps/index.js');
+  const { PREP } = await import('../src/config/balance.js');
+  const sim = new Simulation(MAPS[DEFAULT_MAP], { seed: 3, phases: false });
+  const a = sim.teams.attackers[0];
+  const c = (x) => { sim.enqueue({ team: 'attackers', ...x }); sim.flushCommands(); };
+  c({ type: 'setCover', unitId: a.id, on: true, index: 'here' });
+  assert.ok(a.cover && a.idleLook !== null);
+  const center = a.idleLook;
+  const seen = [];
+  for (let i = 0; i < 400; i++) { sim.step(); if (a.target < 0) seen.push(a.facing); }
+  const off = seen.map((f) => Math.atan2(Math.sin(f - center), Math.cos(f - center)));
+  assert.ok(Math.max(...off) - Math.min(...off) > PREP.sweepArc * 0.6, 'barre');
+  assert.ok(off.every((o) => Math.abs(o) <= PREP.sweepArc / 2 + 0.05));
+  c({ type: 'setCover', unitId: a.id, on: false, index: 'here' });
+  assert.equal(a.cover, false);
+  // Al final de la ruta: queda marcado en el punto y se aplica al llegar.
+  c({ type: 'addWaypoint', unitId: a.id, x: a.x + 2, y: a.y, user: true });
+  c({ type: 'setCover', unitId: a.id, on: true });
+  assert.ok(a.route[a.route.length - 1].cover);
+  for (let i = 0; i < 600 && a.route.length; i++) sim.step();
+  assert.equal(a.route.length, 0);
+  assert.ok(a.cover);
+  // Los defensores no la usan (tienen su vigilancia).
+  const d = sim.teams.defenders[0];
+  sim.enqueue({ team: 'defenders', type: 'setCover', unitId: d.id, on: true, index: 'here' });
+  sim.flushCommands();
+  assert.equal(d.cover, false);
+});
+
+test('cubrir zona queda solo en el final de la ruta', () => {
+  const sim = new Simulation(MAPS[DEFAULT_MAP], { seed: 3, phases: false });
+  const a = sim.teams.attackers[0];
+  const c = (x) => { sim.enqueue({ team: 'attackers', ...x }); sim.flushCommands(); };
+  c({ type: 'addWaypoint', unitId: a.id, x: a.x + 2, y: a.y, user: true });
+  c({ type: 'setCover', unitId: a.id, on: true });
+  c({ type: 'addWaypoint', unitId: a.id, x: a.x + 3, y: a.y, user: true });
+  assert.equal(a.route.filter((p) => p.cover).length, 0);
 });

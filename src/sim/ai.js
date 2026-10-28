@@ -6,17 +6,24 @@
 // hold the angle the threat must come through: the first corner or doorway
 // on the walking path toward the noise — not the noise itself, which is
 // usually behind a wall. This is what makes them dangerous rather than
-// random: they pre-aim the entry the attackers have to use.
-import { TAU } from '../core/math.js';
-import { AI, COMBAT, NAV, MOVE } from '../config/balance.js';
+// random: they pre-aim the entry the attackers have to use. Defenders of a
+// side the AI commands also throw their utility there (AI_UTILITY): a grenade
+// into the doorway before the attackers come through it, or smoke to shut it.
+import { TAU, angleTo } from '../core/math.js';
+import { AI, AI_UTILITY, COMBAT, ENTRY, NAV, MOVE } from '../config/balance.js';
 import { lineOfSight } from './vision.js';
 import { enemyTeam } from './queries.js';
 import { barricadeBoxes } from './barricades.js';
+import { inFire } from './fire.js';
 
 /** One AI-controlled unit (any side whose controller is 'ai'). */
 export function updateAiUnit(sim, u, dt) {
   listenForFootsteps(sim, u);
-  if (u.alertTimer > 0 && u.target < 0) updateWatchPoint(sim, u, dt);
+  burnDefuse(sim, u);
+  if (u.alertTimer > 0 && u.target < 0) {
+    updateWatchPoint(sim, u, dt);
+    throwAtWatchPoint(sim, u);
+  }
 
   const b = u.behavior;
   if (!b) return;
@@ -24,9 +31,13 @@ export function updateAiUnit(sim, u, dt) {
   const busy = u.target >= 0 || u.alertTimer > 0 || (u.lastKnown && u.lastKnown.until > sim.time);
 
   if (b.type === 'scan') {
+    // Centred on the look he was given where he stands (moved or turned while
+    // planning: sim/orders.js), else on the order's own arc.
     const phase = (sim.time / b.period) * TAU + u.id;
     const k = 0.5 - 0.5 * Math.cos(phase);
-    u.ai.baseFacing = b.from + (b.to - b.from) * k;
+    const half = (b.to - b.from) / 2;
+    const c = u.idleLook !== null && !u.route.length ? u.idleLook : b.from + half;
+    u.ai.baseFacing = c - half + 2 * half * k;
   }
 
   if (b.type === 'patrol') {
@@ -85,6 +96,46 @@ function updateWatchPoint(sim, u, dt) {
     u.alertY = p.y + (next.y - p.y) * k;
     return;
   }
+}
+
+/**
+ * An alerted AI defender, not fighting, throws the first AI_UTILITY.throws
+ * item he carries at the spot he watches, when it is in sight and in reach
+ * and a grenade would hurt none of his own (him included). Through the usual
+ * entry machine (sim/entries.js): he stays put until it goes off.
+ */
+function throwAtWatchPoint(sim, u) {
+  if (u.team !== 'defenders' || sim.controllers.defenders !== 'ai' || u.entry) return;
+  if (sim.time < (u.ai.throwAt || 0)) return;
+  const item = AI_UTILITY.throws.find((i) => (u.gear[i] || 0) > 0);
+  if (!item) return;
+  const tx = u.alertX;
+  const ty = u.alertY;
+  const d = Math.hypot(tx - u.x, ty - u.y);
+  if (d < AI_UTILITY.minRange || d > ENTRY.tossRange) return;
+  if (!lineOfSight(sim.world, u.x, u.y, tx, ty)) return;
+  if (item === 'frag') {
+    const r2 = (ENTRY.frag.radius + AI_UTILITY.friendlyMargin) ** 2;
+    for (const o of sim.teams.defenders) if (o.alive && (o.x - tx) ** 2 + (o.y - ty) ** 2 < r2) return;
+  }
+  u.entry = { mode: 'toss', item, tx, ty, doorway: -1, side: 1, look: angleTo(u.x, u.y, tx, ty), phase: 'armed', t: 0, spent: false, step: null, grenade: null };
+  u.ai.throwAt = sim.time + AI_UTILITY.cooldown;
+}
+
+/**
+ * An AI defender carrying an incendiaria throws it on the bomb while an
+ * attacker defuses it, if it is in reach and in sight and none of his own
+ * stands there (sim/fire.js).
+ */
+function burnDefuse(sim, u) {
+  if (u.team !== 'defenders' || sim.controllers.defenders !== 'ai' || u.entry || !(u.gear.molotov > 0)) return;
+  const bomb = sim.bomb;
+  if (bomb.defuserId < 0 || inFire(sim, bomb.x, bomb.y)) return;
+  if (Math.hypot(bomb.x - u.x, bomb.y - u.y) > ENTRY.tossRange) return;
+  if (!lineOfSight(sim.world, u.x, u.y, bomb.x, bomb.y)) return;
+  const r2 = (ENTRY.molotov.radius + AI_UTILITY.friendlyMargin) ** 2;
+  for (const o of sim.teams.defenders) if (o.alive && (o.x - bomb.x) ** 2 + (o.y - bomb.y) ** 2 < r2) return;
+  u.entry = { mode: 'toss', item: 'molotov', tx: bomb.x, ty: bomb.y, doorway: -1, side: 1, look: angleTo(u.x, u.y, bomb.x, bomb.y), phase: 'armed', t: 0, spent: false, step: null, grenade: null };
 }
 
 /**

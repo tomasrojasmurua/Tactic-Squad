@@ -43,7 +43,7 @@ las capas de presentación solo pueden importar de `sim/` los lectores puros
 | `src/config/` | 1.380 | Todos los números y fichas: `balance.js`, `weapons.js`, `operators.js`, `squad.js`, `render.js`, `audio.js`, `ui.js`, `input.js`, `materials.js` | Ningún número de juego vive en el código de la sim |
 | `src/data/` | 333 | Mapas (`maps/warehouse.js`) y catálogo de muebles, como datos puros | Un mapa nuevo = un archivo + una línea en `maps/index.js` |
 | `src/sim/` | 5.271 | Estado autoritativo y determinista de la ronda | Sin DOM, WebGL, audio ni reloj real. Solo avanza con `step(dt)` |
-| `src/session/` | 1.219 | Lo que no es de la sim: fases en pantalla, plazos de reloj de pared, tutorial, grabación de planes, partida al mejor de 7 | En el online, el servidor hará de `PhaseClock` |
+| `src/session/` | 1.219 | Lo que no es de la sim: fases en pantalla, plazos de reloj de pared, tutorial, grabación de planes, menú y lobby, partidas al mejor de 3/5/7 | En el online, el servidor hará de `PhaseClock` |
 | `src/input/` | 1.330 | Mouse, teclado, táctil, dron; trazado de rutas | Nunca muta la sim: emite órdenes al bus |
 | `src/render/` | 5.116 | Renderer WebGL2 propio por capas, shaders GLSL ES 3.0, geometría, efectos | Solo lee la sim |
 | `src/ui/` | 2.400 | HUD en DOM, pantallas, textos en español | Todos los strings en `ui/texts.js` y `ui/flowTexts.js` |
@@ -146,11 +146,13 @@ canStep?  (en fases de decisión el tiempo no corre)
 | `doors.js` | Puertas con bisagra: abrir, entreabrir, patear, volar. La geometría de la hoja alimenta LOS y balas |
 | `entries.js` | Entradas a puerta estilo Door Kickers: `kick`, `slow` (entreabrir), `flash`, `frag`, `breach`, armadas en un punto de ruta y liberadas con un GO. Una puerta sin decidir se abre al pasar (`ENTRY.undecided = 'open'`). También el **lanzamiento libre** (`armToss`, modo `toss`): flash, granada o humo a un punto, cortado por `queries.tossLanding` |
 | `smoke.js` | Nubes de humo: crecen, duran y se disipan; `World.updateSmokeSegments` las convierte en polígonos que tapan la vista |
-| `cameras.js` | Cámaras del defensor (`aiCameras` del mapa, por sitio): ven atacantes y alertan a la IA, se descubren (operadores, dron) y se rompen de un tiro |
+| `cameras.js` | Cámaras del defensor (`CAMERA.max` en los `cameraMounts` del mapa; la IA y el inicio: `aiCameras[sitio]`; orden `camera` en preparación y dron): ven atacantes y alertan a la IA, se descubren (operadores, dron) y se rompen de un tiro |
 | `traps.js` | Trampas del Trampero (`aiTraps` del mapa, orden `placeTrap`): atrapan al atacante que las pisa y lo delatan; se descubren con sigilo, dron o pulso del Explorador y se rompen de un tiro |
 | `barricades.js` | Barricadas: bloquean cuerpo, vista, balas y dron; romperlas a golpes o volarlas con carga. `sim.intel` = qué barricadas conocen los atacantes |
+| `fire.js` | Incendiaria del defensor: fuego que quema a quien esté adentro, se apaga con humo o al consumirse (`sim.fires`) |
+| `wires.js` | Alambre de púas del defensor: frena al atacante que lo cruza y suena; una granada o una carga lo corta. `sim.intel.wires` = los que conocen los atacantes |
 | `drone.js` | Dron de reconocimiento del atacante (fase `drone`): se maneja en tiempo real con órdenes selladas por paso; pasa bajo las puertas, no por barricadas |
-| `prep.js` | Compra (dinero por operador), **clase** (`setRole`: reembolsa el equipo, aplica la clase, cobra su equipo) y preparación del defensor: elegir sitio, colocar, vigilancia, barricadas, cámaras del sitio. `applyLayout` aplica el rol de cada puesto (`role: 'anchor'`) |
+| `prep.js` | Compra con **puntos de utilidad** (`BUY`; atacantes en la compra, defensores en la preparación; el equipo de la clase es gratis y no se devuelve), **clase** (`setRole` / `setDefenderRole`: aplica la clase, su equipo y devuelve los puntos) y preparación del defensor: elegir sitio, colocar, vigilancia, barricadas, cámaras del sitio. `applyLayout` aplica el rol de cada puesto (`role: 'anchor'`) |
 | `objectives.js` | La bomba, encontrarla, desactivarla (7 s quieto) y el resultado de la ronda |
 | `noise.js` | Qué oye cada bando del otro. Se lee de los eventos que el paso emitió, así que ningún sistema necesita saber del ruido. Al final del turno los ruidos oídos se vuelven pulsos aproximados en el mapa del que escucha |
 | `view.js` | `teamView(sim, bando)`: **lo que un bando puede saber**. Es el filtro que aplicará el servidor online antes de mandar un frame |
@@ -175,11 +177,12 @@ es el trabajo pendiente para que el servidor online no mande lo que el jugador n
 | Módulo | Responsabilidad |
 | --- | --- |
 | `Session.js` | Estado de "esta sesión de juego": fase de pantalla, selección, estado transitorio de UI. Las fases espejan las de la ronda y agregan `title`, `paused` y `ended` |
-| `SessionController.js` | El **único** lugar que decide qué significa cada petición del jugador en cada fase: cierra fases de decisión, corre el bucle solo mientras un turno se ejecuta, sella los GO y el mando del dron. Decide qué fases previas están **bloqueadas** para este jugador (`FLOW.unlockAfterRounds`, fijo por intento para que el reintento no se desincronice) y las salta con valores por defecto. Lleva el modo (`play` / `tutorial` / `match`) |
+| `SessionController.js` | El **único** lugar que decide qué significa cada petición del jugador en cada fase: cierra fases de decisión, corre el bucle solo mientras un turno se ejecuta, sella los GO y el mando del dron. Salta con valores por defecto las fases previas que una lección no usa (`scenario.skip` de `config/lessons.js`); toda ronda del lobby es completa. Lleva el modo (`play` / `tutorial` / `match`) |
 | `PhaseClock.js` | Plazos de reloj de pared de las fases de decisión. La sim nunca ve este reloj; online, lo tendrá el servidor. Se detiene mientras el jugador no puede planificar (ayuda abierta, página oculta, celular en vertical, tutorial) |
-| `Match.js` | Partida al mejor de 7 contra la IA: reglas puras (`createMatch`, `matchLoadout`, `endMatchRound`). Marcador del jugador contra la IA, cambio de bando tras `MATCH.switchAfter` rondas (`match.team`, que el flujo copia a `session.team`), ingresos (`MATCH`), y qué pasa a la ronda siguiente (clase, dinero, equipo de los vivos) como `opts.loadout` de la próxima `Simulation` |
+| `Lobby.js` | El menú antes de jugar, reglas puras: vista (`main` / `play` / `lobby`), formato, bando inicial, clases del jugador por puesto (`opts.roles` de la `Simulation`, validadas también allí), "listo". Lo elegido se guarda en el dispositivo |
+| `Match.js` | Partida al mejor de 3, 5 o 7 contra la IA: reglas puras (`createMatch(team, bestOf)`, `matchLoadout`, `endMatchRound`). Marcador del jugador contra la IA, cambio de bando tras `match.switchAfter` rondas (la mitad de la serie) (`match.team`, que el flujo copia a `session.team`), el punto extra del bando que perdió (`match.lossBonus` → `opts.lossBonus`) y la clase de cada atacante como `opts.loadout` de la próxima `Simulation` |
 | `PlanRecorder.js` | Todas las órdenes de un intento, agrupadas por fase. Es exactamente la lista de paquetes de turno We-Go: lo que mandaría una partida online y lo que necesita un replay. Sostiene el "reintentar" |
-| `Tutorial.js` | Tutorial guiado: una ronda real paso a paso (solo el asalto), y las tarjetas de presentación de compra, entrada y dron la primera vez que aparecen (`PHASE_INTROS`) |
+| `Tutorial.js` | Motor de las lecciones del tutorial: las lecciones son datos en `config/lessons.js` (escenario y pasos); cada paso "hacé" tiene su comprobación aquí (`stepDone`). Las lecciones hechas se guardan en el dispositivo. También las tarjetas de presentación de compra, entrada y dron la primera vez que aparecen (`PHASE_INTROS`) |
 | `AutoPause.js` | Pausa de sistema cuando el jugador no puede seguir el turno (página oculta, foco perdido, contexto WebGL perdido). Nunca por contacto |
 | `confirm.js` | Confirmación en dos pasos para lo que borra el plan |
 | `storage.js` | Preferencias por dispositivo en `localStorage`, con cada acceso envuelto: sin almacenamiento el juego se comporta igual |
@@ -291,7 +294,7 @@ de piso, y los datos de la ronda: `sites` (A y B, con el punto de la bomba), `en
 (norte, principal, sur: la puerta y las posiciones de inicio), `deployment` (línea y
 mitad de cada bando), `defense` (la disposición de la IA defensora para cada sitio, con
 el comportamiento de cada puesto y su `role`), `aiBarricades`, `aiEntries` (con pesos),
-`aiCameras` (las cámaras del defensor por sitio: `{at, facing, fov?, range?}`) y `camera`
+`cameraMounts` (los soportes de cámara: `{id, at, facing, fov?, range?}`), `aiCameras` (los soportes que usa la IA en cada sitio) y `camera`
 (el encuadre inicial de la vista).
 
 ---
@@ -339,8 +342,8 @@ El código ya está ordenado para la versión en red, aunque no haya nada de red
 - El render lee la sim completa en vez de `teamView` (ver arriba). Es la pieza que
   bloquea el online y la que más cuesta. Las cámaras y el humo se dibujan leyendo
   `sim.cameras` / `sim.smokes` (filtrando por `known` para el atacante).
-- Un solo mapa, y la cantidad de operadores por bando la fija el mapa (hoy 3 atacantes
-  contra 4 defensores), no una configuración de partida.
+- Un solo mapa. La ronda es 3 contra 3 (`config/squad.js` `DEFENDERS`, los primeros puestos de
+  `defense`); el 5 contra 5 necesita más puestos en el mapa.
 - Faltan las clases Escudo, Tirador, Granadero y Vigía.
 - Varios comentarios del código mencionan `docs/BRIEF.md` y `tests/sim-plans.mjs`, que
   no venían en el zip original y no existen en el repo.
@@ -354,7 +357,8 @@ Una revisión de jugabilidad en tres fases, cada una en sus commits.
 **Fase 1 — claridad**
 - GO por **colores** (`config/ui.js GO_GROUPS`): violeta, rosa, blanco; teclas Z / X / C. Internamente siguen siendo `'A' / 'B' / 'C'`.
 - Puertas **abiertas por defecto** (`ENTRY.undecided = 'open'`; `'stop'` restaura el freno anterior).
-- Menú del punto como popover anclado (`ui/EntryPicker.js`): puerta (3 + "Más"), cuándo, paso y lanzar.
+- Soportes de cámara (`ui/CameraMounts.js`): jugando de defensor, en la preparación y durante el dron enemigo, un botón redondo sobre cada soporte del mapa (+ pone la cámara, × la quita). Pide `mount_<id>`; durante el dron la orden `camera` va sellada con el paso, como el mando del dron.
+- Menú del punto (`ui/EntryPicker.js`): en una puerta, rueda con las seis entradas alrededor del punto y un panel al lado (cuándo, paso, lanzar); lejos de puertas, popover anclado. Tocar una puerta apila al operador junto a ella y abre la rueda (`PlanningController.stackAt`, `config/input.js` `DOOR_TAP`).
 - ESPERAR (táctil) abre los colores (`session.ui.holdMenu`).
 - Primera partida directo a planificar; compra, entrada y dron se desbloquean (`FLOW.unlockAfterRounds`), con tarjeta la primera vez.
 - Un solo canal de "qué hago ahora" (el banner): se quitaron la línea de GO del feed y la barra de pistas duplicada.
@@ -371,6 +375,6 @@ Una revisión de jugabilidad en tres fases, cada una en sus commits.
 - Lanzar flash / granada / humo a cualquier punto (`setToss`) y humo que tapa la vista (`sim/smoke.js`).
 - Cámaras del defensor (`sim/cameras.js`, `aiCameras`).
 - Clases Asaltante / Brecha / Explorador / Ancla (`config/operators.js`, `setRole`, `abilities/scoutPulse.js`).
-- Partida al mejor de 7 con economía (`session/Match.js`, `MATCH`).
+- Partida al mejor de 7 con puntos de utilidad (`session/Match.js`, `BUY`).
 
 **Paredes blandas destructibles: descartadas.** Tomás decidió no implementarlas (27 oct 2026). No proponerlas como trabajo pendiente.

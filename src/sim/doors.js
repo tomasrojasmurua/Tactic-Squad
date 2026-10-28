@@ -14,7 +14,7 @@ import { startBash } from './barricades.js';
  * barricaded: shut for good until the barricade is broken.
  */
 export function createDoorState(def) {
-  return { def, angle: 0, target: 0, speed: DOORS.swingSpeed, open: false, cracked: false, destroyed: false, barricaded: false };
+  return { def, angle: 0, target: 0, speed: DOORS.swingSpeed, open: false, cracked: false, destroyed: false, barricaded: false, wired: false };
 }
 
 export function updateDoors(sim, dt) {
@@ -59,6 +59,20 @@ function routeCrossesDoor(unit, def) {
     ay = p.y;
   }
   return false;
+}
+
+/** After movement: whoever walked through a doorway this tick is marked (unit.doorwayAt; sim/perception.js). */
+export function markDoorwayCrossings(sim) {
+  const ds = sim.world.doorways;
+  for (const u of sim.units) {
+    if (!u.alive || (u.x === u.prevX && u.y === u.prevY)) continue;
+    for (let k = 0; k < ds.length; k++) {
+      if (segmentCrossesDoorway(u.prevX, u.prevY, u.x, u.y, ds[k]) >= 0) {
+        u.doorwayAt = sim.time;
+        break;
+      }
+    }
+  }
 }
 
 /**

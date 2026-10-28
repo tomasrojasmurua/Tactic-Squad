@@ -30,5 +30,12 @@ export const SQUAD = Object.freeze([
   { callsign: 'ZORRO', color: '#9be15d', role: 'scout' },
 ]);
 
+/**
+ * Defenders per round: as many as attackers (3 vs 3), so neither side starts
+ * ahead. A map's `defense` layout may list more posts: the first DEFENDERS
+ * are used (Simulation opts.defenders picks others).
+ */
+export const DEFENDERS = 3;
+
 export const DEFENDER_NAME = 'Defensor';
 export const DEFENDER_COLOR = '#e0443a';

@@ -27,6 +27,7 @@ import { ShortcutController } from './input/ShortcutController.js';
 import { TouchController } from './input/TouchController.js';
 import { DroneController } from './input/DroneController.js';
 import { UI } from './ui/UI.js';
+import { createKillCam, stepKillCam } from './session/KillCam.js';
 
 export class Game {
   constructor(canvas, uiRoot) {
@@ -34,6 +35,8 @@ export class Game {
     this.mapDef = MAPS[DEFAULT_MAP];
     this.session = createSession({ touch: matchMedia('(pointer: coarse)').matches });
     this.sim = null;
+    this.roundArgs = null; // what the round's Simulation was built with (the kill cam plays it again)
+    this.killcam = null; // the last kill shown again (session/KillCam.js), or null
     this.attempt = 0;
 
     // Presentation (subscribes to the bus in their constructors).
@@ -69,6 +72,7 @@ export class Game {
       audio: this.audioDirector,
       getSim,
       restart: (seed) => this.newRound(seed),
+      killcam: { start: (kill) => this.startKillcam(kill), stop: () => this.stopKillcam() },
     });
     this.bus.on(EV.COMMAND, (cmd) => this.sim.enqueue(cmd));
     this.drone = new DroneController({ input: this.input, bus: this.bus, session: this.session, steer: (dir) => this.flow.steerDrone(dir) });
@@ -97,7 +101,9 @@ export class Game {
    * (tutorial round, stop on contact, a match's loadout) come from the session flow.
    */
   newRound(seed = SIM.seed) {
-    this.sim = new Simulation(this.mapDef, { seed, controllers: controllersFor(this.session.team), ...this.flow.roundOptions() });
+    this.stopKillcam();
+    this.roundArgs = { seed, controllers: controllersFor(this.session.team), ...this.flow.roundOptions() };
+    this.sim = new Simulation(this.mapDef, this.roundArgs);
     this.attempt++;
     this.flow.onRoundStart();
     resetSessionPreviews(this.session);
@@ -109,6 +115,7 @@ export class Game {
   // ------------------------------------------------------------ loop
 
   step(dt) {
+    if (this.killcam) return this.stepKillcam();
     this.drone.update(); // the drone's stick, stamped with the step about to run
     this.sim.step(dt);
     this.flushEvents();
@@ -120,6 +127,63 @@ export class Game {
     for (const ev of this.sim.drainEvents()) this.bus.emit(ev.type, ev);
   }
 
+  // ------------------------------------------------------------ kill cam
+
+  /**
+   * The round is over: its last kill again, on a copy of the round played up
+   * to just before it (session/KillCam.js). The screen shows the copy — its
+   * shots, sounds and effects (events flagged `replay`: the HUD's feed and
+   * the session ignore them) — and the killer even if he was never seen.
+   */
+  startKillcam(kill) {
+    this.stopKillcam();
+    const kc = createKillCam(this.mapDef, this.roundArgs, this.flow.recorder.segments, kill);
+    this.killcam = kc;
+    this.renderer.setSimulation(kc.sim);
+    this.audioDirector.watch(kc.sim);
+    // Who the shot keeps on screen: killer and victim, then whoever joins the exchange.
+    kc.cast = new Set([kill.unitId, kill.killerId].filter((id) => kc.sim.units[id]));
+    this.framing.followPoints(this.killcamPoints(), 0, true);
+    this.loop.setSimulating(true);
+  }
+
+  stepKillcam() {
+    const kc = this.killcam;
+    const reveal = kc.sim.units[kc.kill.killerId];
+    const going = stepKillCam(kc, (sim) => {
+      if (reveal) reveal.seenByEnemy = true;
+      for (const ev of sim.drainEvents()) {
+        this.joinKillcam(ev);
+        this.bus.emit(ev.type, { ...ev, replay: true });
+      }
+    });
+    if (!going) this.flow.killcamDone();
+  }
+
+  /** A shot or hit between someone and the killer or the victim brings them into the shot. */
+  joinKillcam(ev) {
+    const kc = this.killcam;
+    const a = ev.type === EV.SHOT ? ev.unitId : ev.type === EV.HIT ? ev.attackerId : -1;
+    const b = ev.type === EV.SHOT ? ev.victimId : ev.type === EV.HIT ? ev.unitId : -1;
+    if (a < 0 || b < 0 || !kc.sim.units[a] || !kc.sim.units[b]) return;
+    const core = [kc.kill.unitId, kc.kill.killerId];
+    if (core.includes(a) || core.includes(b)) kc.cast.add(a).add(b);
+  }
+
+  killcamPoints() {
+    const units = this.killcam.sim.units;
+    return [...this.killcam.cast].map((id) => [units[id].x, units[id].y]);
+  }
+
+  /** Back to the real round (its end screen). */
+  stopKillcam() {
+    if (!this.killcam) return;
+    this.killcam = null;
+    this.renderer.setSimulation(this.sim);
+    this.audioDirector.watch(this.sim);
+    this.loop.setSimulating(false);
+  }
+
   frame(dt, alpha) {
     this.flow.update(dt);
     if (!this.loop.simulating) {
@@ -128,11 +192,12 @@ export class Game {
       this.flushEvents();
     }
     const droning = this.session.phase === 'drone' && pilotsDrone(this.session);
-    this.cameraCtl.enabled = !this.session.helpOpen && !droning; // WASD drive the drone
+    this.cameraCtl.enabled = !this.session.helpOpen && !droning && !this.killcam; // WASD drive the drone; the kill cam directs its own shot
     this.cameraCtl.update(dt);
     if (droning) this.framing.followDrone(this.sim, dt);
+    if (this.killcam) this.framing.followPoints(this.killcamPoints(), dt);
     this.planning.update(dt); // edge pan while drawing (inside the game loop, no own rAF)
-    this.renderer.render(this.sim, this.session, dt, alpha, this.loop.simulating);
+    this.renderer.render(this.killcam ? this.killcam.sim : this.sim, this.session, dt, alpha, this.loop.simulating);
     this.audioDirector.update(dt, this.session.phase === 'paused');
     this.ui.update(this.sim, this.session, dt, this.camera, (u) => this.renderer.units.pose(u, alpha));
   }

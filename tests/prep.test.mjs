@@ -41,38 +41,66 @@ function putDrone(sim, x, y, facing = 0) {
 
 // ------------------------------------------------------------ compra
 
-test('cada atacante empieza con $800 menos el equipo de su rol, compra y vende con su dinero', () => {
+test('cada operador lleva el equipo de su clase gratis y suma utilidad con sus puntos', () => {
   const sim = new Simulation(MAP, { seed: 1 });
   const [aguila, lobo] = sim.teams.attackers;
-  assert.equal(aguila.money, BUY.startMoney - BUY.prices.flash - BUY.prices.frag);
-  assert.equal(lobo.money, 0, 'la Brecha gastó todo en flash y dos cargas');
-  cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'flash', count: 1 });
-  sim.flushCommands();
-  assert.deepEqual(rejects(sim), ['noMoney']);
+  assert.deepEqual([aguila.points, lobo.points], [BUY.points, BUY.points], 'el equipo de la clase no se descuenta');
+  assert.deepEqual([lobo.gear.flash, lobo.gear.breach], [1, 2]);
+  // El equipo de la clase no se devuelve.
   cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'breach', count: -1 });
-  cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'flash', count: 1 });
   sim.flushCommands();
-  assert.deepEqual([lobo.gear.breach, lobo.gear.flash, lobo.money], [1, 2, BUY.prices.breach - BUY.prices.flash]);
+  assert.deepEqual(rejects(sim), ['noGear']);
+  cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'flash', count: 1 });
+  cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'smoke', count: 1 });
+  cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'frag', count: 1 });
+  sim.flushCommands();
+  assert.deepEqual(rejects(sim), ['noPoints']);
+  assert.deepEqual([lobo.gear.flash, lobo.gear.smoke, lobo.points], [2, 1, 0]);
+  // Lo comprado sí se devuelve, por sus puntos.
+  cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'smoke', count: -1 });
   cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'flash', count: 1 });
   sim.flushCommands();
   assert.deepEqual(rejects(sim), ['gearFull']);
+  assert.deepEqual([lobo.gear.smoke, lobo.points], [0, BUY.prices.smoke]);
   // Fuera de la compra no se compra.
   sim.advancePhase();
   cmd(sim, ATK, { type: 'buy', unitId: aguila.id, item: 'flash', count: 1 });
   sim.flushCommands();
-  assert.deepEqual(rejects(sim), ['notNow']);
+  assert.ok(rejects(sim).length === 1);
 });
 
-test('lo comprado es lo que se lleva al asalto (sin carga no hay brecha)', () => {
+test('lo que se lleva es lo que se usa en el asalto (sin carga no hay brecha)', () => {
   const sim = new Simulation(MAP, { seed: 1 });
-  const lobo = sim.teams.attackers[1];
-  cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'breach', count: -1 });
-  cmd(sim, ATK, { type: 'buy', unitId: lobo.id, item: 'breach', count: -1 });
+  const aguila = sim.teams.attackers[0]; // Asaltante: su clase no trae cargas
   sim.skipToAssault();
-  cmd(sim, ATK, { type: 'addWaypoint', unitId: lobo.id, x: 8.6, y: 12.7 });
-  cmd(sim, ATK, { type: 'setEntry', unitId: lobo.id, mode: 'breach' });
+  cmd(sim, ATK, { type: 'addWaypoint', unitId: aguila.id, x: 8.6, y: 12.7 });
+  cmd(sim, ATK, { type: 'setEntry', unitId: aguila.id, mode: 'breach' });
   sim.flushCommands();
   assert.ok(rejects(sim).includes('noGear'));
+});
+
+test('el defensor compra granada, humo o flash en la compra, a la vez que el atacante (cargas no); la IA defensora gasta sus puntos', () => {
+  const sim = new Simulation(MAP, { seed: 2, controllers: BOTH, site: 'A' });
+  const d = sim.teams.defenders[1]; // Defensor: su clase trae una flash
+  const kit = { ...d.gear };
+  cmd(sim, DEF, { type: 'buy', unitId: d.id, item: 'breach', count: 1 });
+  cmd(sim, DEF, { type: 'buy', unitId: d.id, item: 'smoke', count: 1 });
+  sim.flushCommands();
+  assert.deepEqual(rejects(sim), ['badItem']);
+  assert.equal(d.gear.smoke, kit.smoke + 1);
+  assert.equal(d.points, BUY.points - BUY.prices.smoke);
+  // En la preparación ya no se compra, y la clase no se cambia dentro de la partida.
+  sim.advancePhase(); // -> preparación
+  cmd(sim, DEF, { type: 'buy', unitId: d.id, item: 'frag', count: 1 });
+  cmd(sim, DEF, { type: 'setDefenderRole', unitId: d.id, role: 'anchor' });
+  sim.flushCommands();
+  assert.deepEqual(rejects(sim), ['notNow', 'notNow']);
+  assert.equal(d.role, 'defender');
+  // La IA defensora compra al terminar la compra.
+  const ai = new Simulation(MAP, { seed: 2, site: 'A' });
+  ai.advancePhase();
+  assert.ok(ai.teams.defenders.every((u) => u.points < BUY.points), 'gasta sus puntos');
+  assert.ok(ai.teams.defenders.some((u) => u.gear.frag > 0), 'el Ancla trae su granada');
 });
 
 // ------------------------------------------------------------ preparación del defensor
@@ -118,7 +146,7 @@ test('los defensores se colocan solo en su mitad, sin encimarse', () => {
 });
 
 test('las cuatro órdenes de vigilancia se vuelven comportamientos de la IA', () => {
-  const sim = new Simulation(MAP, { seed: 2, controllers: BOTH, site: 'A' });
+  const sim = new Simulation(MAP, { seed: 2, controllers: BOTH, site: 'A', defenders: [0, 1, 2, 3] }); // un defensor por orden
   sim.advancePhase();
   const [a, b, c, d] = sim.teams.defenders;
   const watch = (u, w) => cmd(sim, DEF, { type: 'setWatch', unitId: u.id, watch: w });
@@ -182,6 +210,7 @@ function atBarricade(mode = null) {
   const u = sim.teams.attackers[1];
   u.x = u.prevX = 20.55;
   u.y = u.prevY = 12.7;
+  u.hp = 1000; // lo que se prueba es la barricada, no el tiroteo con el ancla de la sala
   cmd(sim, ATK, { type: 'addWaypoint', unitId: u.id, x: 20.55, y: 16 });
   sim.flushCommands();
   // La ruta cruza una puerta cerrada: "?" antes de ella. Se decide cómo.
@@ -310,4 +339,23 @@ test('la entrada se puede cambiar en la primera planificación, no después del 
   sim.flushCommands();
   assert.deepEqual(rejects(sim), ['entryLocked']);
   assert.equal(sim.entry.id, 'sur');
+});
+
+test('la IA defensora lanza su utilidad a la puerta por donde oye venir al atacante, sin herir a los suyos', () => {
+  let thrown = 0;
+  for (let seed = 1; seed <= 12; seed++) {
+    const sim = new Simulation(MAP, { seed, controllers: { attackers: 'ai', defenders: 'ai' } });
+    for (let g = 0; sim.phase !== 'end' && g < 40000; g++) {
+      if (sim.phase === 'buy' || sim.phase === 'prep' || sim.phase === 'plan') sim.advancePhase();
+      else sim.step();
+      for (const e of sim.drainEvents()) {
+        if (e.type !== EV.GRENADE_THROWN || sim.units[e.unitId].team !== DEF) continue;
+        thrown++;
+        if (e.kind !== 'frag') continue;
+        const r = 4.2; // ENTRY.frag.radius
+        for (const o of sim.teams.defenders) if (o.alive) assert.ok(Math.hypot(o.x - e.toX, o.y - e.toY) > r, 'ningún defensor dentro de la explosión al lanzar');
+      }
+    }
+  }
+  assert.ok(thrown > 0, 'algún defensor lanzó');
 });

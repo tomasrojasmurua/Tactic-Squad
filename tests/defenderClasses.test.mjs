@@ -1,5 +1,5 @@
 // Clases del defensor: Merodeador (rápido y silencioso) y Trampero (trampas
-// que atrapan y delatan al atacante), elegidas en la preparación con un tope
+// que atrapan y delatan al atacante), elegidas antes de la partida con un tope
 // por clase.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,12 +10,15 @@ import { ROLES } from '../src/config/operators.js';
 import { TRAP, NOISE } from '../src/config/balance.js';
 import { EV } from '../src/core/events.js';
 import { collectNoise } from '../src/sim/noise.js';
+import { setDefenderRole } from '../src/sim/prep.js';
 
+// Las clases se prueban con los cuatro puestos del mapa (en una ronda normal se usan los 3 primeros).
+const ALL_POSTS = [0, 1, 2, 3];
 const MAP = MAPS[DEFAULT_MAP];
 
 /** A human defender in the preparation. */
 function setup(site = 'A') {
-  const sim = new Simulation(MAP, { seed: 3, site, controllers: controllersFor('defenders') });
+  const sim = new Simulation(MAP, { seed: 3, site, controllers: controllersFor('defenders'), defenders: ALL_POSTS });
   while (sim.phase !== 'prep') sim.advancePhase();
   sim.drainEvents();
   const cmd = (c) => {
@@ -26,9 +29,16 @@ function setup(site = 'A') {
   return { sim, cmd, defs: sim.teams.defenders };
 }
 
+/** The rules of the class pick (before the game: Simulation opts.roles); no order changes a class in a round. */
+const pick = (sim, u, role) => {
+  const r = setDefenderRole(sim, u, role);
+  sim.drainEvents();
+  return r ? [r] : [];
+};
+
 /** An assault with an attacker placed by hand. `clear`: the defenders wait far away, in the kitchen. */
 function assault(site = 'A', clear = false) {
-  const sim = new Simulation(MAP, { seed: 3, site });
+  const sim = new Simulation(MAP, { seed: 3, site, defenders: ALL_POSTS });
   sim.skipToAssault();
   if (clear) {
     sim.teams.defenders.forEach((d, i) => {
@@ -72,18 +82,19 @@ test('cambiar de sitio vuelve a poner las trampas del mapa para ese sitio', () =
 
 test('la clase del defensor se elige con tope por clase y conserva el arma del puesto', () => {
   const { sim, cmd, defs } = setup('A');
+  assert.deepEqual(cmd({ type: 'setDefenderRole', unitId: defs[0].id, role: 'roamer' }), ['notNow'], 'no se cambia dentro de la ronda');
   const anchors = () => defs.filter((u) => u.role === 'anchor').length;
   const free = defs.find((u) => u.role === 'defender');
-  assert.deepEqual(cmd({ type: 'setDefenderRole', unitId: free.id, role: 'anchor' }), []);
+  assert.deepEqual(pick(sim, free, 'anchor'), []);
   assert.equal(anchors(), 2);
   assert.equal(free.maxHp, ROLES.anchor.maxHp);
   const roamer = defs.find((u) => u.role === 'roamer');
   const weapon = roamer.weaponId;
-  assert.deepEqual(cmd({ type: 'setDefenderRole', unitId: roamer.id, role: 'anchor' }), ['roleTaken'], 'no hay tercer Ancla');
-  assert.deepEqual(cmd({ type: 'setDefenderRole', unitId: free.id, role: 'roamer' }), ['roleTaken'], 'un solo Merodeador');
-  assert.deepEqual(cmd({ type: 'setDefenderRole', unitId: roamer.id, role: 'defender' }), []);
+  assert.deepEqual(pick(sim, roamer, 'anchor'), ['roleTaken'], 'no hay tercer Ancla');
+  assert.deepEqual(pick(sim, free, 'roamer'), ['roleTaken'], 'un solo Merodeador');
+  assert.deepEqual(pick(sim, roamer, 'defender'), []);
   assert.equal(roamer.weaponId, weapon, 'el arma es la del puesto');
-  assert.deepEqual(cmd({ type: 'setDefenderRole', unitId: free.id, role: 'assault' }), ['badRole'], 'clase de atacante');
+  assert.deepEqual(pick(sim, free, 'assault'), ['badRole'], 'clase de atacante');
 });
 
 test('el Trampero pone y levanta sus trampas; al dejar de serlo se las lleva', () => {
@@ -98,7 +109,7 @@ test('el Trampero pone y levanta sus trampas; al dejar de serlo se las lleva', (
   assert.deepEqual(cmd({ type: 'placeTrap', unitId: trapper.id, x: 5, y: 10 }), ['outsideHalf']);
   assert.deepEqual(cmd({ type: 'placeTrap', unitId: trapper.id, x: 32, y: 10 }), []);
   assert.equal(sim.traps.length, TRAP.perTrapper);
-  assert.deepEqual(cmd({ type: 'setDefenderRole', unitId: trapper.id, role: 'defender' }), []);
+  assert.deepEqual(pick(sim, trapper, 'defender'), []);
   assert.equal(sim.traps.length, 0, 'sin Trampero no hay trampas');
 });
 

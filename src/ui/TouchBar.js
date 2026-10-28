@@ -4,7 +4,7 @@
 import { EV } from '../core/events.js';
 import { canOrderDefuse, isGoReady, codeInUse, codeWaiting, goStatus, lastUserIndex, holdCode } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
-import { isDecisionPhase, pilotsDrone } from '../session/Session.js';
+import { isDecisionPhase, pilotsDrone, showCameras, inRecon } from '../session/Session.js';
 import { HUD, GO_GROUPS } from '../config/ui.js';
 import { el, setText, toggle, setHidden } from './dom.js';
 import { ICON } from './icons.js';
@@ -68,6 +68,7 @@ export class TouchBar {
     this.defuse = mk(this.row, 'plant', ICON.bomb, T.touch.defuse, 'defuse');
     this.restart = mk(this.row, 'restart', ICON.restart, T.touch.restart, 'restart'); // set apart from the utilities (CSS)
     this.overview = mk(this.row, 'overview', ICON.overview, T.flow.overview, 'overview');
+    this.cams = mk(this.row, 'cams', ICON.camera, T.touch.cameras, 'cameras');
     this.full = mk(this.row, '', ICON.fullscreen, T.touch.fullscreen, 'fullscreen');
     this.music = mk(this.row, 'music', ICON.music, T.touch.music, 'music');
     this.help = mk(this.row, '', ICON.help, T.touch.help, 'help');
@@ -87,7 +88,7 @@ export class TouchBar {
     const phase = session.phase;
     const deciding = isDecisionPhase(session);
     // LISTO ends a decision phase; a running turn cannot be paused (no button), a system pause resumes here.
-    setText(this.execLabel, phase === 'drone' ? T.touch.recall : !deciding ? T.touch.resume : session.confirm.action === 'ready' ? T.flow.confirmReady : T.touch.ready);
+    setText(this.execLabel, phase === 'drone' ? T.touch.recall : !deciding ? T.touch.resume : inRecon(sim, session) ? T.actions.endRecon : session.confirm.action === 'ready' ? T.flow.confirmReady : T.touch.ready);
     setHidden(this.exec, !deciding && phase !== 'paused' && !(phase === 'drone' && pilotsDrone(session)));
 
     const sel = sim.units[session.selectedId];
@@ -119,6 +120,7 @@ export class TouchBar {
     if (g) this.hold.style.setProperty('--g', g.color);
     toggle(this.holdMenu, 'on', show && session.ui.holdMenu && !disabled);
     toggle(this.hold, 'active', session.ui.holdMenu);
+    setHidden(this.restart, session.mode !== 'tutorial'); // only a lesson starts over
     setText(this.restartLabel, session.confirm.action === 'restart' ? T.flow.confirmRestart : T.touch.restart);
     // The planning clock is running out: LISTO asks for attention (amber pulse: styles.css [data-attn]).
     const attn = deciding && !session.clock.unlimited && session.clock.left <= HUD.clockWarnSeconds ? '1' : '';
@@ -126,6 +128,7 @@ export class TouchBar {
     const armed = session.confirm.action === 'restart' ? '1' : '';
     if ((this.restart.dataset.armed || '') !== armed) this.restart.dataset.armed = armed;
     setHidden(this.defuse, phase !== 'planning' || !canOrderDefuse(sim));
+    setHidden(this.cams, !showCameras(sim, session));
     toggle(this.music, 'off', !session.musicOn);
   }
 }

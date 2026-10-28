@@ -16,6 +16,7 @@ export function bakeShadowCanvas(compiled) {
     const height = wall.kind === 'fence' ? HEIGHTS.fence : HEIGHTS.wall;
     casters.push({ box: wall.box, k: height / HEIGHTS.wall, ao: true });
   }
+  for (const win of compiled.windows || []) casters.push({ box: win.box, k: HEIGHTS.sill / HEIGHTS.wall, ao: true });
   for (const p of compiled.props) {
     if (p.h < 0.3) continue;
     casters.push({ box: p.box, k: Math.min(1, p.h / HEIGHTS.wall) * 0.85, ao: p.h > 0.7 });

@@ -241,6 +241,25 @@ function holdAhead(u, code) {
 export const holdCode = (p) => p.code || ENTRY.goCodes[0];
 
 /** unit.waitCode of an operator stopped at a "?" door point (no GO releases it: a decision does). */
+/**
+ * Has a teammate of u decided how to go through doorway k, and not done it
+ * yet? (an entry, a throw or a GO wait on a point at it, or the entry he is
+ * doing now). Whoever else crosses it waits for him (route point waitDoor).
+ */
+export function doorClaimed(sim, u, k) {
+  for (const a of sim.teams[u.team]) {
+    if (a === u || !a.alive) continue;
+    if (a.entry && a.entry.doorway === k) return true;
+    for (const p of a.route) {
+      if (p.user && !p.ask && p.waitDoor < 0 && (p.entryDoor === k || p.door === k)) return true;
+    }
+  }
+  return false;
+}
+
+/** The `index` of an order (setToss, setHold) on the spot the unit stands on: sim/orders.js pointIndex. */
+export const HERE = 'here';
+
 export const ASK_CODE = '?';
 
 /** "?" door points of the side still undecided (operators already stopped at one included). */
@@ -315,9 +334,11 @@ export function gearLeft(u, item, skip = -1) {
 
 /**
  * The eye of an operator looking through a door he cracked ajar ("entreabrir"):
- * on the doorway's center line just past the cracked slab, facing into the
- * room (a head poked through the gap: a real 30° gap shows almost nothing). Writes {x, y, facing} into `out`;
- * false when he is not peeking (door still swinging, opened, or no such entry).
+ * his face at the gap, just outside the wall (ENTRY.slow.peekBack), looking
+ * through it. Lines of sight still go through the world, so the cracked slab
+ * and the jamb frame what he sees: a wedge of the room past the latch side,
+ * not the whole room. Writes {x, y, facing} into `out`; false when he is not
+ * peeking (door still swinging, opened, or no such entry).
  */
 export function peekEye(sim, u, out) {
   const e = u.entry;
@@ -325,10 +346,17 @@ export function peekEye(sim, u, out) {
   const door = sim.doors[e.doorway];
   if (!door.cracked || door.angle !== door.target) return false;
   const d = sim.world.doorways[e.doorway];
-  const depth = (d.length / 2) * Math.tan(DOORS.crackAngle) + ENTRY.slow.peekDepth;
-  out.x = d.cx + d.normalX * e.side * depth;
-  out.y = d.cy + d.normalY * e.side * depth;
-  out.facing = Math.atan2(d.normalY * e.side, d.normalX * e.side);
+  const { hingeX, hingeY, closedAngle, length } = door.def;
+  // The gap: between the latch jamb (where the closed door ends) and the slab's free end.
+  const a = closedAngle + door.angle;
+  const gx = hingeX + (Math.cos(closedAngle) + Math.cos(a)) * length * 0.5;
+  const gy = hingeY + (Math.sin(closedAngle) + Math.sin(a)) * length * 0.5;
+  // Its point on the wall plane, then back out on his side.
+  const across = (gx - d.cx) * d.normalX + (gy - d.cy) * d.normalY;
+  const back = across + ENTRY.slow.peekBack * e.side;
+  out.x = gx - d.normalX * back;
+  out.y = gy - d.normalY * back;
+  out.facing = Math.atan2(gy - out.y, gx - out.x);
   return true;
 }
 
@@ -351,21 +379,58 @@ export function grenadeAt(g, age, out) {
 }
 
 /**
+ * The doorway a throw from route point p toward (tx, ty) goes through: the
+ * one next to the point (ENTRY.doorRange) when the target is across it — he
+ * opens the door and throws through the doorway — else -1 (a straight throw).
+ */
+export function tossDoorway(world, p, tx, ty) {
+  const k = p.door >= 0 ? p.door : entryDoorwayAt(world, p.x, p.y);
+  if (k < 0) return -1;
+  const d = world.doorways[k];
+  const from = (p.x - d.cx) * d.normalX + (p.y - d.cy) * d.normalY;
+  const to = (tx - d.cx) * d.normalX + (ty - d.cy) * d.normalY;
+  return from * to < 0 ? k : -1;
+}
+
+/**
  * Where a throw from (x, y) toward (tx, ty) lands: at most ENTRY.tossRange
  * away and short of the first wall / closed door on the way (ENTRY.wallMargin).
- * Writes {x, y, reach} into `out`. Shared by the sim (entries.js) and the plan preview.
+ * Through doorway k (tossDoorway) it flies to the doorway center first and
+ * from there toward the target, ignoring that doorway's own door (he opens
+ * it to throw). Writes {x, y, reach, viaX, viaY, leg1, leg2} into `out`.
+ * Shared by the sim (entries.js) and the plan preview.
  */
-export function tossLanding(world, x, y, tx, ty, out = {}) {
-  const dx = tx - x;
-  const dy = ty - y;
+export function tossLanding(world, x, y, tx, ty, out = {}, k = -1) {
+  const d = k >= 0 ? world.doorways[k] : null;
+  const ox = d ? d.cx : x;
+  const oy = d ? d.cy : y;
+  const leg1 = d ? Math.hypot(d.cx - x, d.cy - y) : 0;
+  const dx = tx - ox;
+  const dy = ty - oy;
   const len = Math.hypot(dx, dy) || 1;
-  const want = Math.min(len, ENTRY.tossRange);
+  const want = Math.max(0, Math.min(len, ENTRY.tossRange - leg1));
   const nx = dx / len;
   const ny = dy / len;
-  const hit = rayCast(world.segments, world.solidCount, x, y, nx, ny, want + ENTRY.wallMargin);
-  const reach = Math.max(0, Math.min(want, hit - ENTRY.wallMargin));
-  out.x = x + nx * reach;
-  out.y = y + ny * reach;
-  out.reach = reach;
+  const segs = world.segments;
+  const max = want + ENTRY.wallMargin;
+  let hit;
+  const slab = d ? world.staticSegmentCount + k * 4 : -1;
+  if (slab >= 0 && slab < world.solidCount) hit = Math.min(rayCast(segs, slab, ox, oy, nx, ny, max), rayCast(segs, world.solidCount, ox, oy, nx, ny, max, slab + 4));
+  else hit = rayCast(segs, world.solidCount, ox, oy, nx, ny, max);
+  const leg2 = Math.max(0, Math.min(want, hit - ENTRY.wallMargin));
+  out.x = ox + nx * leg2;
+  out.y = oy + ny * leg2;
+  if (d) {
+    out.viaX = ox;
+    out.viaY = oy;
+    out.leg1 = leg1;
+    out.leg2 = leg2;
+  } else {
+    out.viaX = (x + out.x) / 2;
+    out.viaY = (y + out.y) / 2;
+    out.leg1 = leg2 / 2;
+    out.leg2 = leg2 / 2;
+  }
+  out.reach = leg1 + leg2;
   return out;
 }

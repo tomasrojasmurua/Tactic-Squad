@@ -10,9 +10,13 @@
 //   {type:'promoteLast', unitId}               last point becomes a user waypoint
 //   {type:'setLook', unitId, angle, index?}    facing at a user waypoint (default: last; none: idle facing)
 //   {type:'toggleHold', unitId}                last user waypoint waits for a GO code: none -> A -> B -> C -> none
-//   {type:'setHold', unitId, code, index?}     that waypoint (default: last) waits for `code` ('A'|'B'|'C'; null: no hold)
+//   {type:'setHold', unitId, code, index?}     that waypoint (default: last) waits for `code` ('A'|'B'|'C'; null: no hold;
+//                                              index 'here' as for setToss)
 //   {type:'setEntry', unitId, mode, index?}    how he goes through the doorway next to that waypoint (default: last):
-//                                              ENTRY.modes ('kick'|'slow'|'flash'|'frag'|'breach') or null (just walk through)
+//                                              ENTRY.modes ('kick'|'slow'|'flash'|'frag'|'breach') or null (just walk through).
+//                                              A throw or a charge moves the point beside the frame (ENTRY.beside),
+//                                              the others back in front of the door: its index may change
+//                                              (EV.ROUTE_CHANGED moved)
 //
 // A route drawn through a closed door gets a "?" point just before it
 // (waypoint.ask, .door = the doorway): the operator stops there until the
@@ -24,7 +28,16 @@
 //   {type:'setPace', unitId, pace, index?}     the leg ending at that user waypoint (default: last) is walked
 //                                              'sneak' (MOVE.sneakFactor, quiet) or normally (null)
 //   {type:'setToss', unitId, item, x, y, index?}  from that user waypoint (default: last) he throws a flash /
-//                                              grenade / smoke (ENTRY.tossItems) to (x, y); item null: no throw
+//                                              grenade / smoke (ENTRY.tossItems) to (x, y); item null: no throw.
+//                                              index 'here': from where he stands now (a user point is put
+//                                              there, first on his route: he throws, then walks on)
+//   {type:'setPeek', unitId, on, index?}       "asomarse y volver" on the last user waypoint: he stands there
+//                                              MOVE.peekTime s looking at its look (the way he walked in, if
+//                                              none) and goes back to the point before it (or where he
+//                                              stood) facing as he did there. on false: removes both
+//   {type:'setCover', unitId, on, index?}    attackers, "cubrir zona": at the end of his route (index: its last user
+//                                              point) or where he stands (index 'here') he sweeps PREP.sweepArc
+//                                              around his look instead of holding it
 //   {type:'follow', unitId, leaderId, rank}    squad route (sim/follow.js): he walks the leader's route in file
 //                                              (rank 1 right behind) and stacks behind him at his GO holds
 //   {type:'unfollow', unitId}                  back to his own orders (the route he had stays)
@@ -40,16 +53,22 @@
 //                                              the attackers start from another entry (map `entries`)
 //
 // Buy and set-up (sim/prep.js):
-//   {type:'setRole', unitId, role}             buy: an attacker changes class (config/operators.js PICK_ROLES)
-//   {type:'buy', unitId, item, count}          buy: an attacker buys (count 1) or sells back (-1) one
-//                                              BUY.items item with his own money
-//   {type:'chooseSite', site}                  preparation, defenders: the bomb goes to that site and their
+// (The classes are picked before the game, Simulation opts.roles: no order changes them.)
+//   {type:'buy', unitId, item, count}          buy, both sides: buys (count 1) or gives back (-1) one
+//                                              BUY.items / BUY.defenderItems item for his utility points
+// The defenders' preparation has two steps: the recon (site, barricades, cameras), then their operators.
+//   {type:'chooseSite', site}                  recon: the bomb goes to that site and their
 //                                              set-up restarts from the map's layout for it
 //   {type:'placeUnit', unitId, x, y, facing?}  preparation: a defender stands there (their half, walkable)
-//   {type:'setWatch', unitId, watch}           preparation: a defender's watch order
-//                                              ({facing, sweep?: [from, to], react?, fallback?: {to: [x, y], look}})
-//   {type:'barricade', door, on}               preparation, defenders: puts up / takes down a barricade
-//   {type:'setDefenderRole', unitId, role}     preparation: a defender's class (config/operators.js DEF_PICK_ROLES)
+//   {type:'setWatch', unitId, watch}           preparation and planning: a defender's watch order
+//                                              ({facing, sweep?: [from, to], react?, fallback?: {to: [x, y], look}});
+//                                              while planning he turns to it during the turn, where his route ends
+//   {type:'barricade', door, on}               recon: puts up / takes down a barricade
+//   {type:'wire', door, on}                    recon: lays / takes up barbed wire (sim/wires.js)
+//   {type:'camera', mount, on}                 recon: a camera up on that map mount (`cameraMounts`; on
+//                                              false: taken down)
+//   {type:'endRecon'}                          the recon is over: site, barricades and cameras stay as they
+//                                              are for the rest of the round
 //   {type:'placeTrap', unitId, x, y}           preparation: the Trampero lays a trap there (or picks his own up)
 // Recon drone (sim/drone.js), during the drone phase, stamped like a GO:
 //   {type:'drone', dir, atTick}                the stick: one of DRONE.directions headings, -1 = stop
@@ -68,13 +87,15 @@
 // applyCommand's `by` = 'ai': they only reach a side whose controller is 'ai'.
 // Rejections are reported as EV.ORDER_REJECTED with a REJECT code; the UI
 // turns codes into text (ui/texts.js T.rejectReason), the sim never does.
-import { NAV, ENTRY } from '../config/balance.js';
+import { NAV, ENTRY, MOVE } from '../config/balance.js';
 import { EV } from '../core/events.js';
-import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode, codeInUse, humanTeam, ASK_CODE } from './queries.js';
+import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode, codeInUse, humanTeam, ASK_CODE, tossDoorway, doorClaimed, HERE } from './queries.js';
 import { segmentCrossesDoorway } from './doors.js';
 import { startDefuse } from './objectives.js';
 import { cancelEntry, releaseDelay } from './entries.js';
-import { buyItem, setRole, chooseSite, placeDefender, setWatch, setBarricade, setDefenderRole, placeTrap } from './prep.js';
+import { setWire } from './wires.js';
+import { setCamera } from './cameras.js';
+import { buyItem, chooseSite, placeDefender, setWatch, setBarricade, placeTrap, endRecon } from './prep.js';
 import { steerDrone, endDrone } from './drone.js';
 import { routePoint } from './routePoint.js';
 import { startFollow, rebuildFollowers } from './follow.js';
@@ -92,7 +113,7 @@ export const REJECT = Object.freeze({
   badEntry: 'badEntry', // chooseEntry with an entry the map does not have
   entryLocked: 'entryLocked', // chooseEntry after the first turn ran (the squad already left)
   // Buy and set-up (sim/prep.js)
-  noMoney: 'noMoney',
+  noPoints: 'noPoints',
   gearFull: 'gearFull', // he already carries BUY.max of it
   badItem: 'badItem',
   badRole: 'badRole', // not a class to pick
@@ -103,28 +124,36 @@ export const REJECT = Object.freeze({
   badWatch: 'badWatch',
   badDoor: 'badDoor', // a barricade where the map allows none
   tooManyBarricades: 'tooManyBarricades', // PREP.barricades already up
+  tooManyWires: 'tooManyWires', // PREP.wires already laid
+  doorTaken: 'doorTaken', // barricade and wire never share a doorway
   notTrapper: 'notTrapper', // placeTrap for a defender who is not the Trampero
   tooManyTraps: 'tooManyTraps', // TRAP.perTrapper already laid
+  badMount: 'badMount', // a camera on a mount the map does not have
+  tooManyCameras: 'tooManyCameras', // CAMERA.max already up
+  reconOver: 'reconOver', // site, barricade or camera after the defenders' recon ended
   badFollow: 'badFollow', // follow: no such leader, himself, another side, or a leader who follows someone
 });
 
-const ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'endStroke', 'cancelStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss', 'follow', 'unfollow'];
+const ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'endStroke', 'cancelStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss', 'setPeek', 'setCover', 'follow', 'unfollow'];
 
 /** Orders on a follower's own route: he leaves the file and keeps the route he had (now his). */
-const OWN_ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss'];
+const OWN_ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'promoteLast', 'setLook', 'toggleHold', 'setHold', 'setEntry', 'undoWaypoint', 'clearRoute', 'moveWaypoint', 'insertWaypoint', 'setPace', 'setToss', 'setPeek'];
 
 /** Orders each round phase takes (sim/round.js PHASE; literal keys: round.js imports this module). */
 const PHASE_ORDERS = Object.freeze({
-  buy: ['buy', 'setRole'],
-  prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade', 'setDefenderRole', 'placeTrap'],
+  buy: ['buy'],
+  prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade', 'wire', 'placeTrap', 'camera', 'endRecon'],
   drone: ['drone', 'droneRecall'],
-  plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry'],
+  plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry', 'setWatch'],
   exec: ['go'],
   end: [],
 });
 
 /** Orders a side gives as a whole (no unit): which side must be human to give them. */
-const SIDE_ORDERS = Object.freeze({ chooseSite: 'defenders', barricade: 'defenders', drone: 'attackers', droneRecall: 'attackers' });
+const SIDE_ORDERS = Object.freeze({ chooseSite: 'defenders', barricade: 'defenders', wire: 'defenders', camera: 'defenders', endRecon: 'defenders', drone: 'attackers', droneRecall: 'attackers' });
+
+/** The defenders' recon orders: refused once it is over (sim.reconDone). */
+const RECON_ORDERS = Object.freeze(['chooseSite', 'barricade', 'wire', 'camera']);
 
 /** May the side that sent `cmd` command this unit? (`by`: who gives it, 'human' | 'ai') */
 function obeys(sim, unit, cmd, by) {
@@ -145,8 +174,12 @@ export function applyCommand(sim, cmd, by = 'human') {
   const side = SIDE_ORDERS[cmd.type];
   if (side) {
     if (sideOf(sim, cmd) !== side || sim.controllers[side] !== by) return;
+    if (RECON_ORDERS.includes(cmd.type) && sim.reconDone) return refuse(sim, -1, REJECT.reconOver);
+    if (cmd.type === 'endRecon') return endRecon(sim);
     if (cmd.type === 'chooseSite') return refuse(sim, -1, chooseSite(sim, cmd.site));
     if (cmd.type === 'barricade') return refuse(sim, -1, setBarricade(sim, cmd.door, cmd.on !== false));
+    if (cmd.type === 'wire') return refuse(sim, -1, setWire(sim, cmd.door, cmd.on !== false));
+    if (cmd.type === 'camera') return refuse(sim, -1, setCamera(sim, cmd.mount, cmd.on !== false));
     if (cmd.type === 'drone') return steerDrone(sim, cmd.dir);
     return endDrone(sim, 'recalled');
   }
@@ -156,16 +189,12 @@ export function applyCommand(sim, cmd, by = 'human') {
   switch (cmd.type) {
     case 'buy':
       return refuse(sim, unit.id, buyItem(sim, unit, cmd.item, cmd.count ?? 1));
-    case 'setRole':
-      return refuse(sim, unit.id, setRole(sim, unit, cmd.role));
     case 'placeUnit':
       if (unit.team !== 'defenders') return;
       return refuse(sim, unit.id, placeDefender(sim, unit, cmd.x, cmd.y, cmd.facing ?? unit.facing));
     case 'setWatch':
       if (unit.team !== 'defenders') return;
       return refuse(sim, unit.id, setWatch(sim, unit, cmd.watch));
-    case 'setDefenderRole':
-      return refuse(sim, unit.id, setDefenderRole(sim, unit, cmd.role));
     case 'placeTrap':
       if (unit.team !== 'defenders') return;
       return refuse(sim, unit.id, placeTrap(sim, unit, cmd.x, cmd.y));
@@ -178,8 +207,10 @@ export function applyCommand(sim, cmd, by = 'human') {
       return setLook(sim, unit, cmd.angle, cmd.index);
     case 'toggleHold':
       return toggleHold(sim, unit);
-    case 'setHold':
-      return setHold(sim, unit, cmd.code ?? null, cmd.index);
+    case 'setHold': {
+      const i = pointIndex(sim, unit, cmd.index);
+      return i === FULL ? reject(sim, unit, REJECT.routeTooLong) : setHold(sim, unit, cmd.code ?? null, i);
+    }
     case 'setEntry':
       return setEntry(sim, unit, cmd.mode ?? null, cmd.index);
     case 'undoWaypoint':
@@ -190,8 +221,14 @@ export function applyCommand(sim, cmd, by = 'human') {
       return insertWaypoint(sim, unit, cmd.index, cmd.x, cmd.y);
     case 'setPace':
       return setPace(sim, unit, cmd.pace === 'sneak' ? 'sneak' : null, cmd.index);
-    case 'setToss':
-      return setToss(sim, unit, cmd.item ?? null, cmd.x, cmd.y, cmd.index);
+    case 'setToss': {
+      const i = pointIndex(sim, unit, cmd.index);
+      return i === FULL ? reject(sim, unit, REJECT.routeTooLong) : setToss(sim, unit, cmd.item ?? null, cmd.x, cmd.y, i);
+    }
+    case 'setPeek':
+      return setPeek(sim, unit, cmd.on !== false, cmd.index);
+    case 'setCover':
+      return setCover(sim, unit, cmd.on !== false, cmd.index);
     case 'follow': {
       const leader = sim.units[cmd.leaderId];
       if (!leader || !obeys(sim, leader, cmd, by) || !startFollow(sim, unit, leader, cmd.rank)) return reject(sim, unit, REJECT.badFollow);
@@ -218,19 +255,19 @@ export function applyCommand(sim, cmd, by = 'human') {
   }
 }
 
-function changed(sim, unit, kind) {
+function changed(sim, unit, kind, moved = null) {
   // Waiting on a "?" point that is gone (undone, cleared): nothing to wait for.
   if (unit.waitingGo && unit.waitCode === ASK_CODE && !(unit.route.length && unit.route[0].ask)) {
     unit.waitingGo = false;
     unit.waitCode = null;
   }
-  sim.emit(EV.ROUTE_CHANGED, { unitId: unit.id, kind });
+  sim.emit(EV.ROUTE_CHANGED, moved ? { unitId: unit.id, kind, moved } : { unitId: unit.id, kind });
   // A leader's plan changed: his file follows it (sim/follow.js). Only while deciding: during a
   // turn (a late GO drops a hold) the followers keep walking what they have.
   if (!sim.round.enabled || sim.round.phase !== 'exec') rebuildFollowers(sim, unit);
 }
 
-function addWaypoint(sim, unit, { x, y, user = true, quiet = false }) {
+function addWaypoint(sim, unit, { x, y, user = true, quiet = false }, kind = 'add') {
   if (unit.route.length >= NAV.maxRoutePoints) return quiet ? undefined : reject(sim, unit, REJECT.routeTooLong);
   if (unit.team === 'defenders') holdOnArrival(unit);
   const from = routeTail(unit);
@@ -238,23 +275,26 @@ function addWaypoint(sim, unit, { x, y, user = true, quiet = false }) {
   const path = sim.world.nav.findPath(from.x, from.y, p.x, p.y, NAV.snapRadius);
   if (!path || !path.length) return quiet ? undefined : reject(sim, unit, REJECT.unreachable);
   const start = unit.route.length;
+  if (start) unit.route[start - 1].cover = false; // cubrir zona belongs to the end of the route
   const pace = unit.route.length ? from.pace : null; // a new leg keeps the pace of the one before
   path.forEach((q, i) => {
     unit.route.push(routePoint(q.x, q.y, { user: user && i === path.length - 1, pace }));
   });
   markDoors(sim, unit, start);
-  changed(sim, unit, 'add');
+  if (kind) changed(sim, unit, kind);
 }
 
 /**
  * A defender sent somewhere by his player gives up his watch order's
- * movement (patrol, sweep, fallback): from then on he holds where he ends
- * up, facing the look set there, and still turns to noise if he did.
+ * movement (patrol, fallback) but keeps its mode: where he ends up he holds
+ * (or sweeps around) the look set there, and still turns to noise if he did.
+ * The mode itself can change while planning (setWatch).
  */
 function holdOnArrival(unit) {
   const b = unit.behavior;
-  if (!b || (b.type === 'hold' && !b.rotate)) return;
-  unit.behavior = { type: 'hold', reactsToNoise: b.reactsToNoise !== false };
+  if (!b || (b.type !== 'patrol' && !b.rotate)) return;
+  const react = b.reactsToNoise !== false;
+  unit.behavior = b.type === 'scan' ? { type: 'scan', from: b.from, to: b.to, period: b.period, reactsToNoise: react } : { type: 'hold', reactsToNoise: react };
   unit.ai.rotating = null;
 }
 
@@ -345,8 +385,11 @@ function toggleHold(sim, unit) {
 function setHold(sim, unit, code, index) {
   const i = userIndex(unit, index);
   if (i < 0) return reject(sim, unit, REJECT.noWaypoint);
-  applyHold(unit.route[i], ENTRY.goCodes.includes(code) ? code : null);
+  const p = unit.route[i];
+  const asked = p.ask;
+  applyHold(p, ENTRY.goCodes.includes(code) ? code : null);
   settleAsk(unit, i);
+  if (asked && p.door >= 0) waitOnOwner(sim, unit, p.door); // "open it on GO" decides the door too
   changed(sim, unit, 'hold');
 }
 
@@ -358,6 +401,7 @@ function setHold(sim, unit, code, index) {
  */
 function markDoors(sim, unit, from) {
   const r = unit.route;
+  const waiters = [];
   for (let i = Math.max(0, from); i < r.length; i++) {
     const a = i > 0 ? r[i - 1] : unit;
     const b = r[i];
@@ -383,12 +427,19 @@ function markDoors(sim, unit, from) {
         ask.y = d.cy + d.normalY * side * ENTRY.askDistance;
         if (i > 0 && !a.user) {
           r[i - 1] = ask; // that corner is replaced by the stack point
+          if (doorClaimed(sim, unit, k)) waiters.push(ask);
           continue;
         }
       }
       r.splice(i, 0, ask);
+      if (doorClaimed(sim, unit, k)) waiters.push(ask);
       break; // the leg after the new point is checked next
     }
+  }
+  // A door a teammate already decided: no "?", he waits for that entry beside the frame.
+  for (const ask of waiters) {
+    const i = r.indexOf(ask);
+    if (i >= 0) toWaiter(sim, unit, i, ask.door);
   }
 }
 
@@ -397,7 +448,7 @@ function stackedOn(sim, r, i, k) {
   for (let j = i - 1; j >= 0; j--) {
     const q = r[j];
     if (!q.user) continue;
-    if (!(q.ask || q.entry || q.hold)) return false;
+    if (!(q.ask || q.entry || q.hold || q.toss || q.waitDoor >= 0)) return false;
     return (q.door >= 0 ? q.door : entryDoorwayAt(sim.world, q.x, q.y)) === k;
   }
   return false;
@@ -419,6 +470,22 @@ function applyHold(p, code) {
   p.code = code;
 }
 
+const FULL = -2;
+
+/**
+ * The index an order names; HERE: a user point where the unit stands, first
+ * on his route (put there if there is none) — a throw or a hold "from here",
+ * before what he walks next. FULL when there is no room for it.
+ */
+function pointIndex(sim, unit, index) {
+  if (index !== HERE) return index;
+  const r = unit.route;
+  if (r.length && r[0].user && Math.hypot(r[0].x - unit.x, r[0].y - unit.y) < 0.05) return 0;
+  if (r.length >= NAV.maxRoutePoints) return FULL;
+  r.unshift(routePoint(unit.x, unit.y, { user: true }));
+  return 0;
+}
+
 /** A valid user waypoint index (given, else the last one), or -1. */
 function userIndex(unit, index) {
   if (index !== undefined && index !== null && index >= 0) return index < unit.route.length && unit.route[index].user ? index : -1;
@@ -433,8 +500,12 @@ function setEntry(sim, unit, mode, index) {
   if (mode === null) {
     p.entry = null;
     p.entryDoor = -1;
+    p.toss = null; // "just open it" also replaces a throw from here
+    const k = p.door;
     settleAsk(unit, i); // "just open it and go" is a decision too
-    return changed(sim, unit, 'entry');
+    stackInFront(sim, unit, i);
+    if (k >= 0 && p.waitDoor < 0) waitOnOwner(sim, unit, k);
+    return changed(sim, unit, 'entry', movedFrom(unit, i, p));
   }
   const k = p.door >= 0 ? p.door : entryDoorwayAt(sim.world, p.x, p.y);
   if (!entryModeFits(sim, k, mode)) return reject(sim, unit, REJECT.noDoor);
@@ -442,9 +513,119 @@ function setEntry(sim, unit, mode, index) {
   if (item && gearLeft(unit, item, i) <= 0) return reject(sim, unit, REJECT.noGear);
   p.entry = mode;
   p.entryDoor = k;
+  p.waitDoor = -1; // he does it himself now
   p.toss = null; // one action per point: the door entry replaces a throw
   settleAsk(unit, i);
-  changed(sim, unit, 'entry');
+  waitOnOwner(sim, unit, k);
+  if (ENTRY.beside.modes.includes(mode)) stackBeside(sim, unit, i, k);
+  else stackInFront(sim, unit, i);
+  changed(sim, unit, 'entry', movedFrom(unit, i, p));
+}
+
+/** {from, to} when point p (once at index i) moved to another index, else null. */
+function movedFrom(unit, i, p) {
+  const j = unit.route.indexOf(p);
+  return j >= 0 && j !== i ? { from: i, to: j } : null;
+}
+
+/**
+ * Throwing through a door or blowing it, he stacks beside the frame
+ * (ENTRY.beside), out of the line of fire the open doorway leaves: the point
+ * moves there (the legs to it and from it are found again). None walkable:
+ * he stays where he was.
+ */
+function stackBeside(sim, unit, i, k) {
+  const r = unit.route;
+  const p = r[i];
+  if (p.beside) return;
+  const spot = besideSpot(sim, unit, k, p, anchorBefore(r, i) >= 0 ? r[anchorBefore(r, i)] : unit);
+  if (!spot) return;
+  const keep = { entry: p.entry, entryDoor: p.entryDoor, toss: p.toss };
+  if (moveWaypoint(sim, unit, i, spot.x, spot.y, true) === false) return;
+  Object.assign(p, keep, { beside: true, door: k });
+}
+
+/**
+ * The spot beside doorway k's frame on the side of the wall `near` is on:
+ * ENTRY.beside.jamb past the jamb, as close to the wall as one can walk. Of
+ * the two jambs, the one closer to `from` that no teammate stacks on; null
+ * when neither is walkable (or reaches `near` in a straight line).
+ */
+function besideSpot(sim, unit, k, near, from) {
+  const d = sim.world.doorways[k];
+  const side = (near.x - d.cx) * d.normalX + (near.y - d.cy) * d.normalY >= 0 ? 1 : -1;
+  const B = ENTRY.beside;
+  const nav = sim.world.nav;
+  let best = null;
+  for (const s of [-1, 1]) {
+    const along = s * (d.length / 2 + B.jamb);
+    // Hugging the wall: the closest walkable spot off it (cells of NAV.cellSize).
+    let x = 0;
+    let y = 0;
+    let ok = false;
+    for (let w = NAV.cellSize; w <= B.wall && !ok; w += NAV.cellSize / 2) {
+      x = d.cx + d.normalX * side * w + d.normalY * along;
+      y = d.cy + d.normalY * side * w - d.normalX * along;
+      ok = nav.walkable(x, y);
+    }
+    if (!ok || !nav.lineWalkable(x, y, near.x, near.y)) continue;
+    const cost = Math.hypot(x - from.x, y - from.y) + (stackTaken(sim, unit, x, y) ? 100 : 0);
+    if (!best || cost < best.cost) best = { x, y, cost };
+  }
+  return best;
+}
+
+/** Back from beside the frame (an entry done standing in the doorway: open, kick, crack): to its center line. */
+function stackInFront(sim, unit, i) {
+  const p = unit.route[i];
+  if (!p.beside) return;
+  const d = sim.world.doorways[p.door];
+  const side = (p.x - d.cx) * d.normalX + (p.y - d.cy) * d.normalY >= 0 ? 1 : -1;
+  const keep = { entry: p.entry, entryDoor: p.entryDoor, toss: p.toss };
+  if (moveWaypoint(sim, unit, i, d.cx + d.normalX * side * ENTRY.askDistance, d.cy + d.normalY * side * ENTRY.askDistance, true) === false) return;
+  Object.assign(p, keep, { beside: false });
+}
+
+/** Does a teammate of u already stack on (x, y), or stand there? */
+function stackTaken(sim, u, x, y) {
+  for (const a of sim.teams[u.team]) {
+    if (a === u || !a.alive) continue;
+    if (Math.hypot(a.x - x, a.y - y) < 0.3) return true;
+    for (const q of a.route) if (q.user && Math.hypot(q.x - x, q.y - y) < 0.3) return true;
+  }
+  return false;
+}
+
+/**
+ * Door k was just decided by `owner` (how he goes through it): a teammate
+ * whose route still asks "?" there does not decide it again — he waits for
+ * that entry, stacked beside the frame (the free side), and goes through
+ * after it (point.waitDoor; sim/movement.js).
+ */
+function waitOnOwner(sim, owner, k) {
+  for (const t of sim.teams[owner.team]) {
+    if (t === owner || !t.alive) continue;
+    const r = t.route;
+    const i = r.findIndex((q) => q.ask && q.door === k);
+    if (i < 0) continue;
+    toWaiter(sim, t, i, k);
+    changed(sim, t, 'wait');
+  }
+}
+
+/** Turns "?" point i (door k) into a wait for the teammate who decided it, beside the frame when there is room. */
+function toWaiter(sim, unit, i, k) {
+  const r = unit.route;
+  const p = r[i];
+  p.ask = false;
+  p.waitDoor = k;
+  p.door = k;
+  if (unit.waitingGo && unit.waitCode === ASK_CODE && i === 0) {
+    unit.waitingGo = false;
+    unit.waitCode = null;
+  }
+  const spot = besideSpot(sim, unit, k, p, anchorBefore(r, i) >= 0 ? r[anchorBefore(r, i)] : unit);
+  if (spot && moveWaypoint(sim, unit, i, spot.x, spot.y, true) !== false) p.beside = true;
 }
 
 /** Index of the user point (not a "?") before / after route index i, or -1. */
@@ -463,20 +644,21 @@ function anchorAfter(r, i) {
  * marked again). Its look, hold and pace stay; an entry stays only if a
  * doorway it fits is still next to it.
  */
-function moveWaypoint(sim, unit, i, x, y) {
+function moveWaypoint(sim, unit, i, x, y, quiet = false) {
   const r = unit.route;
-  if (!(i >= 0 && i < r.length && r[i].user && !r[i].ask)) return reject(sim, unit, REJECT.noWaypoint);
+  const fail = (reason) => (quiet ? false : reject(sim, unit, reason));
+  if (!(i >= 0 && i < r.length && r[i].user && !r[i].ask)) return fail(REJECT.noWaypoint);
   const pa = anchorBefore(r, i);
   const na = anchorAfter(r, i);
   const from = pa >= 0 ? r[pa] : unit;
   const target = snapToDoorway(sim.world, x, y);
   const nav = sim.world.nav;
   const toPoint = nav.findPath(from.x, from.y, target.x, target.y, NAV.snapRadius);
-  if (!toPoint || !toPoint.length) return reject(sim, unit, REJECT.unreachable);
+  if (!toPoint || !toPoint.length) return fail(REJECT.unreachable);
   const end = toPoint[toPoint.length - 1];
   const next = na >= 0 ? r[na] : null;
   const onward = next ? nav.findPath(end.x, end.y, next.x, next.y, NAV.snapRadius) : [];
-  if (!onward) return reject(sim, unit, REJECT.unreachable);
+  if (!onward) return fail(REJECT.unreachable);
   const moved = r[i];
   moved.x = end.x;
   moved.y = end.y;
@@ -494,11 +676,11 @@ function moveWaypoint(sim, unit, i, x, y) {
     for (let j = 0; j < onward.length - 1; j++) out.push(routePoint(onward[j].x, onward[j].y, { pace: next.pace }));
     for (let j = na; j < r.length; j++) out.push(r[j]);
   }
-  if (out.length > NAV.maxRoutePoints) return reject(sim, unit, REJECT.routeTooLong);
+  if (out.length > NAV.maxRoutePoints) return fail(REJECT.routeTooLong);
   r.length = 0;
   for (const p of out) r.push(p);
   markDoors(sim, unit, pa + 1);
-  changed(sim, unit, 'move');
+  if (!quiet) changed(sim, unit, 'move');
 }
 
 /** A new user point on the leg that ends at route[index] (dragging a stretch of the route). */
@@ -524,7 +706,13 @@ function setToss(sim, unit, item, x, y, index) {
   p.entry = null; // one action per point: the throw replaces a door entry
   p.entryDoor = -1;
   settleAsk(unit, i);
-  changed(sim, unit, 'toss');
+  const k = tossDoorway(sim.world, p, x, y);
+  if (k >= 0) {
+    p.waitDoor = -1;
+    stackBeside(sim, unit, i, k); // through a door: from beside its frame
+    waitOnOwner(sim, unit, k);
+  }
+  changed(sim, unit, 'toss', movedFrom(unit, i, p));
 }
 
 /** Pace of the leg ending at user point `index` (default: the last one): every point since the user point before. */
@@ -535,6 +723,66 @@ function setPace(sim, unit, pace, index) {
   const from = anchorBefore(r, i);
   for (let j = from + 1; j <= i; j++) r[j].pace = pace;
   changed(sim, unit, 'pace');
+}
+
+/**
+ * "Asomarse y volver": user point i (the last one, or the one a return
+ * point follows) gets a pause and a way back to the point before it.
+ */
+function setPeek(sim, unit, on, index) {
+  const r = unit.route;
+  let i = userIndex(unit, index);
+  if (i >= 0 && r[i].back) i = anchorBefore(r, i); // the way back stands for its peek
+  if (i < 0) return reject(sim, unit, REJECT.noWaypoint);
+  const back = anchorAfter(r, i);
+  const peeking = r[i].pause > 0;
+  if (!on) {
+    if (!peeking) return;
+    r[i].pause = 0;
+    if (back >= 0 && r[back].back && back === lastUserIndex(unit)) r.length = i + 1;
+    return changed(sim, unit, 'peek');
+  }
+  if (peeking) return;
+  if (back >= 0) return reject(sim, unit, REJECT.noWaypoint); // only the end of the route
+  const a = anchorBefore(r, i);
+  const from = a >= 0 ? r[a] : unit;
+  const look = a >= 0 ? r[a].look : unit.idleLook ?? unit.facing;
+  const p = r[i];
+  if (p.look === null) {
+    const prev = i > 0 ? r[i - 1] : unit;
+    p.look = Math.atan2(p.y - prev.y, p.x - prev.x);
+  }
+  p.pause = MOVE.peekTime;
+  const n = r.length;
+  addWaypoint(sim, unit, { x: from.x, y: from.y }, null); // one change, 'peek', below
+  if (r.length === n) {
+    p.pause = 0; // no way back (refused: route too long)
+    return;
+  }
+  const end = r[r.length - 1];
+  end.back = true;
+  end.look = look;
+  for (let j = n; j < r.length; j++) r[j].pace = p.pace; // back as quietly as he went
+  changed(sim, unit, 'peek');
+}
+
+/** "Cubrir zona" (attackers): he sweeps around his look where he stands (HERE) or at the end of his route. */
+function setCover(sim, unit, on, index) {
+  if (unit.team !== 'attackers') return;
+  if (index === HERE || !unit.route.length) {
+    unit.cover = on;
+    if (on && unit.idleLook === null) unit.idleLook = unit.facing;
+    return changed(sim, unit, 'cover');
+  }
+  const i = lastUserIndex(unit);
+  if (i < 0 || (index !== undefined && index !== null && index !== i)) return reject(sim, unit, REJECT.noWaypoint);
+  const p = unit.route[i];
+  p.cover = on;
+  if (on && p.look === null) {
+    const prev = i > 0 ? unit.route[i - 1] : unit;
+    p.look = Math.atan2(p.y - prev.y, p.x - prev.x);
+  }
+  changed(sim, unit, 'cover');
 }
 
 function undoWaypoint(sim, unit) {

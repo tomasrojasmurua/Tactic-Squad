@@ -10,7 +10,7 @@
 // doors with `barricade: true` are the gaps defenders may block (only those
 // touching their half count: sim/mapCompiler.js barricadeSlots).
 //
-// Walls are axis-aligned center lines; doors/openings cut gaps automatically.
+// Walls are axis-aligned center lines; doors/openings/windows cut gaps automatically.
 // Door `at` is the center of the opening; `axis` is the wall direction
 // ('v' = wall runs along y). `hinge` picks which end the door pivots on.
 
@@ -56,6 +56,13 @@ export default {
 
   // Doorless gaps.
   openings: [{ id: 'arco-cocina', at: [28, 5.0], axis: 'v', width: 2.0 }],
+
+  // Windows (sim/mapCompiler.js compileWindow): you see, shoot and throw through
+  // them, nobody walks through. The office and the bathroom look out on the yard.
+  windows: [
+    { id: 'ventana-oficina', at: [10, 7.2], axis: 'v', width: 1.6 },
+    { id: 'ventana-banio', at: [10, 17.6], axis: 'v', width: 1.6 },
+  ],
 
   // Named areas for the round debrief ("fell in the kitchen"); first match
   // wins, so the site comes before the hall that contains it. Display names
@@ -161,8 +168,8 @@ export default {
     { type: 'officeChair', at: [16.2, 4.85], rot: 160 },
     { type: 'desk', at: [17.6, 9.1], rot: 90 },
     { type: 'officeChair', at: [16.7, 9.2], rot: 90 },
-    { type: 'cabinet', at: [10.55, 7.0], rot: 90 },
-    { type: 'cabinet', at: [10.55, 7.65], rot: 90 },
+    { type: 'cabinet', at: [10.55, 3.6], rot: 90 },
+    { type: 'cabinet', at: [10.55, 4.25], rot: 90 },
     { type: 'bookshelf', at: [14.4, 2.45], rot: 0 },
     { type: 'plant', at: [18.4, 10.8], rot: 0 },
     { type: 'plant', at: [10.65, 10.75], rot: 0 },
@@ -251,7 +258,7 @@ export default {
       // bathroom door. Blind to the hall door behind him: that is the flank.
       { at: [25.9, 21.6], facing: -147 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
       // Second anchor in the far corner, pre-aiming the corridor door from below.
-      { at: [17.0, 23.2], facing: -75 * DEG, weapon: 'smg', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
+      { at: [17.0, 23.2], facing: -75 * DEG, weapon: 'smg', behavior: { type: 'hold', reactsToNoise: false } },
       // Hall guard watching the corridor door; on the first firefight he rotates
       // through the hall door into the lounge, behind the anchor.
       { at: [30.4, 16.8], facing: 175 * DEG, weapon: 'rifle', role: 'roamer', behavior: { type: 'scan', from: 125 * DEG, to: 228 * DEG, period: 6, reactsToNoise: true, rotate: { to: [27.0, 23.6], look: -160 * DEG } } },
@@ -268,11 +275,6 @@ export default {
     B: ['banio-sala', 'ofi-cocina', 'sitio-pasillo'],
   },
 
-  // Defender cameras for each site (sim/cameras.js): a fixed eye that tells
-  // the defenders where it saw an attacker. Both can be found by the drone,
-  // shot, or blinded with smoke. A: the corridor seen from its east end
-  // (whoever comes in through the main door). B: the lounge from its far
-  // corner (the corridor door, the bathroom door and the site).
   // The Trampero's traps for each site (sim/traps.js): just past the doors into it.
   // A: the corridor door and the lounge door of the hall. B: the corridor door and the bathroom door.
   aiTraps: {
@@ -280,9 +282,25 @@ export default {
     B: [[20.55, 15.3], [17.3, 19.5]],
   },
 
+  // Where the defenders can mount their cameras (sim/cameras.js): a fixed eye
+  // high on a wall that tells them where it saw an attacker. In the
+  // preparation (and while the enemy drone flies) a human defender picks
+  // CAMERA.max of these; the drone can find them, an attacker shoots them,
+  // smoke blinds them. `facing` is where the lens points (fixed by the mount).
+  cameraMounts: [
+    { id: 'pasillo-este', at: [27.55, 11.7], facing: 177 * DEG }, // the corridor from its east end (the main door)
+    { id: 'pasillo-oeste', at: [18.7, 11.7], facing: 172 * DEG }, // the west corridor: main, office and bathroom doors (close to them: found early)
+    { id: 'cocina', at: [27.55, 8.0], facing: 160 * DEG }, // the kitchen: the office door and the corridor door
+    { id: 'sala-norte', at: [27.55, 14.45], facing: 145 * DEG }, // the lounge from the hall door: corridor door, bathroom door, site B
+    { id: 'sala-sur', at: [27.6, 25.6], facing: -142 * DEG }, // the lounge from its far corner (corridor door, bathroom door, site B)
+    { id: 'nave-norte', at: [38.55, 2.45], facing: 140 * DEG }, // the hall from the north: the kitchen arch and site A
+    { id: 'nave-sur', at: [38.55, 25.55], facing: -135 * DEG }, // the hall from the south: the lounge door and site A
+  ],
+
+  // The mounts the AI defenders use for each site (and a human's starting pick).
   aiCameras: {
-    A: [{ at: [27.55, 11.7], facing: 177 * DEG }],
-    B: [{ at: [27.6, 25.6], facing: -142 * DEG }],
+    A: ['pasillo-este', 'nave-sur'],
+    B: ['sala-sur', 'sala-norte'],
   },
 
   // Entries the attacking AI (sim/aiAttack.js) goes for each site through, with

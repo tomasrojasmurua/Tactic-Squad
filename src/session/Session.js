@@ -3,8 +3,9 @@
 // Owned by session/SessionController; read by render, input and ui.
 //
 // Phases mirror the round's (sim/round.js) plus what only the screen has:
-//   title              the main menu (play against the AI / guided tutorial)
-//   buy, prep          the round's first decision phases (time stopped)
+//   title              the menu: main, JUGAR, the lobby (session.lobby: session/Lobby.js)
+//   buy, prep          the round's first decision phases (time stopped); a
+//                      defender's prep has two steps: the recon (inRecon), then his operators
 //   drone              the attackers drive their recon drone (real time, like a turn)
 //   planning           a turn's planning: orders apply instantly (routes update live)
 //   running            a turn's execution: the fixed-step simulation advances, no orders
@@ -13,7 +14,7 @@
 // The deadlines of the decision phases are session/PhaseClock.js (session.clock).
 
 import { PLAYER_TEAM } from '../config/squad.js';
-import { lastUserIndex } from '../sim/queries.js';
+import { lastUserIndex, controllableUnit } from '../sim/queries.js';
 
 export const PHASES = Object.freeze(['title', 'buy', 'prep', 'drone', 'planning', 'running', 'paused', 'ended']);
 
@@ -29,7 +30,7 @@ export const isDecisionPhase = (session) => session.phase === 'buy' || session.p
 export function createSession({ touch }) {
   return {
     phase: 'title',
-    mode: 'play', // 'play' (against the AI) | 'tutorial' (the guided round: config/ui.js TUTORIAL)
+    mode: 'play', // 'play' (a single round against the AI) | 'match' (a series) | 'tutorial' (the guided round: config/ui.js TUTORIAL)
     team: PLAYER_TEAM, // the side this player commands (orders are stamped with it); the menu picks it, the AI plays the other
     selectedId: -1, // unit id of the player's side, -1 = none
     // The waypoint the player tapped ({unitId, index}: a "?" door, a tag, a waypoint): the door
@@ -39,13 +40,16 @@ export function createSession({ touch }) {
     pauseReason: null,
     resumePhase: 'running', // what a pause goes back to: 'running' | 'drone'
     confirm: { action: null, until: 0 }, // destructive request armed until `until` (performance.now ms)
+    lastKill: null, // the round's last EV.DEATH {tick, unitId, killerId} (the kill cam shows it again)
+    killcam: null, // after the round, until its last kill was shown: {tick, unitId, killerId, playing}
     replay: { pending: 0, attempt: 0, exec: false }, // recorded phases still to replay; retries of this plan; this turn is a replayed one
     clock: { left: 0, total: 0, unlimited: false, auto: false }, // session/PhaseClock.js (decision phases)
     tutorial: { active: false, step: 0, id: null, info: false, card: false, count: 0, done: false }, // session/Tutorial.js
-    // Per-device progress (session/storage.js): finished rounds unlock the phases before the assault.
-    progress: { roundsDone: 0, fullRound: false, stopOnContact: true },
-    match: null, // a best-of-7 against the AI (session/Match.js), mode 'match'
-    locked: [], // round phases skipped in this attempt ('buy' | 'prep' | 'drone'), set by SessionController
+    // Per-device options (session/storage.js).
+    progress: { stopOnContact: true },
+    lobby: null, // the menu and the game's settings (session/Lobby.js), set by SessionController
+    match: null, // a best of 3/5/7 against the AI (session/Match.js), mode 'match'
+    locked: [], // round phases skipped in this attempt (the tutorial's 'buy' | 'prep' | 'drone'), set by SessionController
     hoverUnitId: -1,
     helpOpen: false,
     musicOn: true, // mirrors the audio (set by SessionController); the UI shows it
@@ -57,8 +61,9 @@ export function createSession({ touch }) {
       movePreview: null, // {unitId, index, insert, x, y} while dragging a waypoint (or a new one out of a leg)
       cursorWorld: null, // pointer position on the floor
       holdMenu: false, // the touch ESPERAR chooser (GO colors) is open
-      moreEntries: false, // the door picker shows every entry, not only the main three
       tossPick: null, // {unitId, index, item}: the next tap on the map is where that point throws it
+      wheelAt: null, // {unitId, x, y}: a tap on a door stacked him there; the door wheel opens once the point is added
+      camera: -1, // defending: the last of your cameras the view jumped to (CÁMARAS / O)
       trapMode: false, // defender set-up: taps lay (or pick up) the selected Trampero's traps
     },
   };
@@ -66,7 +71,7 @@ export function createSession({ touch }) {
 
 /** Clears the transient planning previews (new round). */
 export function resetSessionPreviews(session) {
-  Object.assign(session.ui, { hoverPath: null, drawing: false, lookPreview: null, movePreview: null, holdMenu: false, moreEntries: false, tossPick: null, trapMode: false });
+  Object.assign(session.ui, { hoverPath: null, drawing: false, lookPreview: null, movePreview: null, holdMenu: false, tossPick: null, wheelAt: null, camera: -1, trapMode: false });
 }
 
 /** Phases where routes can be edited (orders are taken only while deciding: sim/orders.js). */
@@ -92,6 +97,16 @@ export const pilotsDrone = (session) => session.team === 'attackers';
 
 /** The defender's set-up: preparation phase, playing the defenders (place, watch orders, site, barricades). */
 export const isDefenderSetup = (session) => session.phase === 'prep' && session.team === 'defenders';
+
+/** Planning the assault as the defenders with one of them selected: his watch order can change (ui/PhasePanel.js 'watch'). */
+export const watchInPlanning = (sim, session) =>
+  session.phase === 'planning' && session.team === 'defenders' && sim.controllers.defenders === 'human' && !!controllableUnit(sim, session.selectedId, session.team);
+
+/** The defender's recon, the first step of his set-up: site, barricades, cameras (fixed once it ends: sim/prep.js endRecon). */
+export const inRecon = (sim, session) => isDefenderSetup(session) && !sim.reconDone;
+
+/** The CÁMARAS button: defending, while deciding, with a camera still working. */
+export const showCameras = (sim, session) => session.team === 'defenders' && isPlanningTime(session) && sim.cameras.some((c) => c.alive);
 
 /** Phases where time is stopped and the player is planning. */
 export const isPlanningTime = (session) => session.phase === 'prep' || session.phase === 'planning';

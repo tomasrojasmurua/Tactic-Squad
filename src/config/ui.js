@@ -59,6 +59,26 @@ export const HUD_OCCLUSION = Object.freeze({
 });
 
 /**
+ * The last kill, again, when the round is over (session/KillCam.js): from
+ * `before` s before it to `after` s after, the `slowWindow` s around the
+ * shot at `slow` speed. The camera keeps everyone in the exchange on screen
+ * (killer, victim and whoever shoots at or is shot by them): `padM` m around
+ * them inside `insets` (px; only the clip's bar is on screen), never closer
+ * than `height` m, catching up at `follow` (1/s).
+ */
+export const KILLCAM = Object.freeze({
+  before: 3.5,
+  after: 1.2,
+  slow: 0.4,
+  slowWindow: 0.6,
+  height: 13,
+  padM: 3,
+  follow: 3,
+  insets: Object.freeze({ top: 84, right: 16, bottom: 16, left: 16 }),
+  minDelay: 0.4,
+});
+
+/**
  * Session flow tuning (owner: gameplay — what happens and when, not how it looks).
  *   confirmSeconds   a destructive request (wipe the plan) must be repeated within this time
  *   replayPhaseSeconds  on a retry, each recorded decision phase replays and ends by itself
@@ -70,24 +90,7 @@ export const FLOW = Object.freeze({
   framePaddingM: 1.0, // m of map kept around a framed rectangle ("see all", first shot)
   overviewTapMs: 320, // a two-finger tap (both fingers up within this, barely moving)...
   overviewTapPx: 14, // ...toggles the whole-map view
-  storageKeys: Object.freeze({ tutorialDone: 'ts.tutorialDone', roundsDone: 'ts.roundsDone', fullRound: 'ts.fullRound', introsSeen: 'ts.introsSeen', stopOnContact: 'ts.stopOnContact' }),
-  // The phases before the assault come in as the player learns: a round's buy / prep / drone is
-  // skipped (defaults) until this many rounds were finished on the device. The guided tutorial
-  // skips them all (it teaches the assault); "Ronda completa" in the help turns them all on.
-  unlockAfterRounds: Object.freeze({ buy: 2, prep: 1, drone: 2 }),
+  storageKeys: Object.freeze({ tutorialDone: 'ts.tutorialDone', lessonsDone: 'ts.lessonsDone', introsSeen: 'ts.introsSeen', stopOnContact: 'ts.stopOnContact', lobby: 'ts.lobby' }),
   droneCameraHeight: 14, // m: the camera follows the recon drone from this height...
   droneFollow: 7, // ...catching up at this rate (1/s)
-});
-
-/**
- * The guided tutorial's round (session/Tutorial.js): always the same, and
- * easier than a normal one. Owner: gameplay.
- *   seed       fixed: the same defenders' set-up and barricades every time
- *   site       where the bomb is
- *   defenders  which slots of that site's `defense` layout are manned (data/maps/warehouse.js)
- */
-export const TUTORIAL = Object.freeze({
-  seed: 1,
-  site: 'B',
-  defenders: Object.freeze([0, 2]), // the site's anchor and the hall guard who rotates
 });

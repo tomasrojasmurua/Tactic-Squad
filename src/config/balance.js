@@ -56,6 +56,9 @@ export const MOVE = Object.freeze({
   // (pushed against a wall): he finds the way to his next point again.
   stuckFraction: 0.15,
   stuckTime: 0.6,
+  // "Asomarse y volver" (waypoint.pause): he stands on the point this long, looking where it says,
+  // then walks back to where he came from (orders.js setPeek).
+  peekTime: 1.5,
 });
 
 export const VISION = Object.freeze({
@@ -69,16 +72,22 @@ export const VISION = Object.freeze({
 });
 
 export const COMBAT = Object.freeze({
-  // Reaction = time from first sight to first shot. Whoever is already
-  // watching the angle wins: a target inside the shooter's focus cone is
-  // engaged much faster; every radian to turn and walking add time.
-  reaction: { attackers: 0.2, defenders: 0.36 }, // s, base before modifiers (the squad is elite)
+  // Reaction = time from first sight to first shot. The same for both sides:
+  // the posture decides, never the side. Whoever is already watching the
+  // angle wins: a target inside the shooter's focus cone is engaged much
+  // faster; holding that angle still is faster yet; every radian to turn,
+  // walking and having just come through a doorway add time.
+  reaction: 0.24, // s, base before modifiers
   reactionJitter: 0.04, // s, uniform random extra (low: the same plan should give a recognizable result)
   focusAngle: 14 * DEG, // half-angle of the "already aiming there" cone
   focusFactor: 0.5, // reaction multiplier when the target appears inside the focus cone
   reactionPerRadian: 0.2, // s per radian the shooter must turn
   movingReaction: 0.07, // s extra when the shooter is walking and NOT already aiming there
-  alertFactor: 0.8, // reaction multiplier for a defender already alerted
+  alertFactor: 0.8, // reaction multiplier for a unit already alerted (heard / took fire / remembers a target)
+  holdFactor: 0.75, // reaction multiplier for a focused shooter who holds the angle (still, aim set, holdTime)
+  holdTime: 0.6, // s standing still without turning before the angle counts as held
+  doorwayPenalty: 0.05, // s extra for a shooter who came through a doorway less than doorwayTime ago
+  doorwayTime: 0.8, // s
   aimTolerance: 5 * DEG, // must be this well aligned to shoot
   targetTurnCost: 2.5, // m: picking a target, one radian of turning weighs like this much distance
   settledSpread: 0.75, // spread multiplier when standing with the aim set (MOVE.settleTime) or pre-aimed (focused)
@@ -96,7 +105,7 @@ export const COMBAT = Object.freeze({
   maxRecoil: 4.5 * DEG,
   flinchRecoil: 3 * DEG, // aim punch: spread added to a wounded shooter (decays like recoil)
   flinchDelay: 0.12, // s added to a wounded unit's pending reaction (he had not fired yet)
-  accuracy: { attackers: 1.0, defenders: 1.1 }, // spread multiplier per team
+  accuracy: 1.0, // spread multiplier (the same for both sides)
   hearingRadius: 15, // defenders turn toward gunfire within this distance
   footstepHearing: 4.2, // m: defenders hear attackers walking this close (even through walls)
   alertDuration: 6, // s a defender keeps watching where a noise / pain came from
@@ -146,7 +155,7 @@ export const AI_DEFEND = Object.freeze({
  * side through the same orders as a player (used when the player defends).
  */
 export const AI_ATTACK = Object.freeze({
-  buyFlashes: 1, // flashbangs each operator tries to buy (as long as his money lasts)
+  buy: Object.freeze(['flash', 'frag', 'flash', 'smoke']), // each operator buys these in order while his points last
   droneReach: 0.35, // m: a point of the drone's path counts as reached this close
   droneStuck: 0.6, // s without moving (a barricade, a prop) before it gives up on that point
   choiceSlack: 0.15, // entries / sites up to this much longer than the best are as good (the seed picks)
@@ -169,7 +178,7 @@ export const DOORS = Object.freeze({
   thickness: 0.12,
   routeLookahead: 4, // route points checked for "does my path cross this doorway?" (stops at GO holds)
   crossingSlack: 0.2, // m beyond the door half-width still counted as crossing it
-  crackAngle: 32 * DEG, // "entreabrir": the slab stops this far open (a crack to look through)
+  crackAngle: 20 * DEG, // "entreabrir": the slab stops this far open (a crack to look through)
   crackSpeed: 50 * DEG, // rad/s: a cracked door opens slowly and quietly
 });
 
@@ -189,14 +198,18 @@ export const ENTRY = Object.freeze({
   // and goes through — the "?" only offers a better entry) or 'stop' (strict: he waits for a decision).
   undecided: 'open',
   lookPast: 1.6, // m past the doorway a stacked operator aims (through the crack / at the room)
+  // Throwing through a door or blowing it, he stacks beside the frame, not in front of the opening:
+  // `jamb` m past the door jamb, as close to the wall as he can walk (`wall` m from the wall plane at
+  // most), on the side his route comes from (sim/orders.js stackBeside). He steps in after the bang.
+  beside: { modes: Object.freeze(['flash', 'frag', 'breach']), wall: 1, jamb: 0.6 },
   followGap: 0.12, // s after the grenade / charge goes off before the rest of the code moves in
   // De golpe: the door bursts open (no breach pause), loud, and whoever stands right behind it reels.
   kick: { hearing: 12, dazeRadius: 1.4, daze: 0.45 },
   // Entreabrir: on arrival the door is cracked (DOORS.crackAngle) and he waits; GO opens it fully.
-  // While the door stays ajar he looks through the gap: an extra eye just past the cracked slab, facing
-  // into the room with this field of view (it only reveals: no shooting through a closed door).
-  // peekDepth: m beyond the point where the slab crosses the doorway's center line.
-  slow: { prepTime: 0.7, hearing: 2.2, peekFov: 70 * DEG, peekDepth: 0.08 },
+  // While the door stays ajar he looks through the gap: an extra eye at the gap, peekBack m outside
+  // the wall plane, facing through it (it only reveals: no shooting through a closed door). The slab
+  // and the jamb frame the view: a wedge of the room, not all of it (sim/queries.js peekEye).
+  slow: { prepTime: 0.7, hearing: 2.2, peekFov: 90 * DEG, peekBack: 0.45 },
   // Grenades go through the doorway: open it first (if closed), then throw `throwDistance` inside.
   throwDelay: 0.3, // s from the release (door opening) to the throw
   throwDistance: 3.2, // m past the doorway, along its normal (short of a wall)
@@ -207,10 +220,12 @@ export const ENTRY = Object.freeze({
   // Carga de brecha: planted on arrival (prepTime), fired by the release. The door is destroyed.
   breach: { prepTime: 1.8, fuse: 0.35, radius: 3.0, damage: 75, blind: 1.8, hearing: 22, depth: 0.25 },
   // Thrown from any waypoint to a point the player picks (waypoint.toss; not only through a door).
-  tossItems: Object.freeze(['flash', 'frag', 'smoke']),
+  tossItems: Object.freeze(['flash', 'frag', 'smoke', 'molotov']),
   tossRange: 9, // m at most from the thrower (short of the first wall on the way)
   // Humo: a cloud that blocks sight (not bullets) for `seconds`, growing to `radius` in `grow` s,
   // thinning out over the last `fade` s. Up to `max` clouds at once (the oldest clears first).
+  // Incendiaria (defenders only, sim/fire.js): a pool `radius` wide burning `seconds`, `dps` to whoever is in it.
+  molotov: { fuse: 0.5, hearing: 10, radius: 1.8, seconds: 7, dps: 22, tick: 0.25 },
   smoke: { fuse: 0.6, hearing: 6, radius: 2.6, grow: 1.4, seconds: 14, fade: 2, sides: 8, max: 4 },
 });
 
@@ -244,29 +259,68 @@ export const NOISE = Object.freeze({
   jitter: 0.9, // ...and shifted up to this much (deterministic, from the seed)
   keepTurns: 3, // a pulse stays on the map this many turns, fading
   // Radius heard (m) by kind; the loudest kind of a cell names its pulse.
-  radius: Object.freeze({ sneak: 2, step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, trap: 14, flash: 18, frag: 22, breach: 22 }),
-  rank: Object.freeze(['sneak', 'step', 'crack', 'door', 'plant', 'defuse', 'kick', 'bash', 'trap', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
+  radius: Object.freeze({ wire: 10, sneak: 2, step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, trap: 14, flash: 18, frag: 22, breach: 22 }),
+  rank: Object.freeze(['sneak', 'step', 'crack', 'door', 'wire', 'plant', 'defuse', 'kick', 'bash', 'trap', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
 });
 
 /**
- * Buying (sim/prep.js, buy phase): every attacker has his own money and buys
- * the utility he carries. Starts with his role's gear (config/operators.js),
- * already paid for. The round economy (win / loss income) comes later.
+ * Utility points (sim/prep.js): every operator carries his class's kit
+ * (config/operators.js `gear`), free and full again every round, and gets
+ * `points` to add utility on top of it: the attackers in the buy phase, the
+ * defenders in the preparation. Unspent points are lost: nothing but the
+ * class carries over to the next round. In a match the side that lost the
+ * last round gets `lossBonus` more each (session/Match.js).
  */
 export const BUY = Object.freeze({
-  startMoney: 800, // $ per operator
-  prices: Object.freeze({ flash: 200, frag: 300, smoke: 300, breach: 300 }),
-  max: Object.freeze({ flash: 2, frag: 1, smoke: 1, breach: 2 }), // carried at most
-  items: Object.freeze(['flash', 'frag', 'smoke', 'breach']), // order of the buy panel
+  points: 2, // per operator and round
+  lossBonus: 1, // each, for the side that lost the last round of a match
+  prices: Object.freeze({ flash: 1, frag: 1, smoke: 1, breach: 1, molotov: 2 }), // points
+  max: Object.freeze({ flash: 2, frag: 1, smoke: 1, breach: 2, molotov: 1 }), // carried at most (kit included)
+  items: Object.freeze(['flash', 'frag', 'smoke', 'breach']), // the attackers' panel, in order
+  defenderItems: Object.freeze(['flash', 'frag', 'smoke', 'molotov']), // the defenders' (no charges; the incendiaria is theirs only)
+});
+
+/**
+ * AI defenders' utility (sim/prep.js aiPrepare, sim/ai.js; only a side the AI
+ * commands: a player's defenders throw what he plans): what they buy, in
+ * order while their points last, and when they throw it during the assault.
+ * An alerted defender who is not fighting throws at the doorway / corner the
+ * noise will come through (the spot he watches) once it is in reach and in
+ * sight, with no teammate within `friendlyMargin` of the blast: a grenade
+ * first, else smoke to shut that way. An incendiaria goes on the bomb while an
+ * attacker defuses it, when it is in reach and in sight.
+ */
+export const AI_UTILITY = Object.freeze({
+  buy: Object.freeze(['flash']), // a grenade or smoke more per defender left the attackers at 39 % / 56 % (scripts/balance.mjs)
+  throws: Object.freeze(['frag', 'molotov', 'smoke']), // what an alerted defender throws, first one he carries
+  minRange: 3, // m: closer than this to the spot, he fights instead (a grenade: never within its radius of him)
+  friendlyMargin: 1.2, // m added to a grenade's blast radius around him and his teammates
+  cooldown: 6, // s between two throws of the same defender
+  molotovs: 1, // defenders who buy an incendiaria (the closest to the bomb first) and burn a defuse with it
 });
 
 /** Defender preparation (sim/prep.js): set-up rules and the watch orders. */
 export const PREP = Object.freeze({
   barricades: 2, // per round (free for now)
+  wires: 1, // barbed wire per round (sim/wires.js)
   barricadeReach: 0.5, // m: a door counts as in the defenders' half this close to it
   sweepPeriod: 6, // s of a full sweep (watch order "barrer")
   sweepArc: 70 * DEG, // the sweep a player gives covers this much, centred on the facing he set
   minSpacing: 0.7, // m between two defenders placed in the set-up
+});
+
+/**
+ * Barbed wire (sim/wires.js): across a doorway, it slows the attackers who
+ * cross it (within `radius` of its center) to `slow` and rattles when one
+ * steps in (AI defenders within `hearing` turn to it). A grenade or a breach
+ * charge clears it. Seen like a barricade within `spotRange`.
+ */
+export const WIRE = Object.freeze({
+  radius: 0.9, // m from the doorway's center
+  slow: 0.5, // 0.35 left the attackers at 43 % (scripts/balance.mjs)
+  hearing: 12, // m
+  spotRange: 12, // m
+  fragCut: 2.5, // m: a grenade this close clears it
 });
 
 /** Barricades (sim/barricades.js): block bodies, sight and the drone until broken or blown. */
@@ -318,22 +372,24 @@ export const MAP_FORMAT = Object.freeze({
 });
 
 /**
- * Defender cameras (sim/cameras.js, map `aiCameras[site]`): a fixed eye on a
- * wall. While it keeps an attacker in sight for `detect` s every AI defender
- * is told where he is (as if they heard him, COMBAT.alertDuration). The
+ * Defender cameras (sim/cameras.js, map `cameraMounts`): a fixed eye on a
+ * wall, `max` of them on the mounts the defenders pick. While it keeps an
+ * attacker in sight for `detect` s every AI defender is told where he is (as if they heard him, COMBAT.alertDuration). The
  * attackers see it like an enemy (their cones, the drone) and whoever has it
  * in sight within `shootRange` and nothing else to shoot breaks it in
  * `shootDelay` s (one loud shot).
  */
 export const CAMERA = Object.freeze({
+  max: 2, // cameras a side mounts (map `cameraMounts`; the AI: `aiCameras[site]`)
   fov: (80 * Math.PI) / 180,
   range: 15, // m
-  detect: 0.5, // s in sight before it reports
+  detect: 0.3, // s in sight before it reports
   realert: 2, // s between two reports while it keeps seeing someone
   alertSeconds: 6, // s the defenders watch the reported spot
-  shootRange: 16, // m (beyond its range: a camera you know of, you break before it sees you)
-  shootDelay: 0.7, // s the attacker spends finding and aiming at it
-  shootDelayKnown: 0.2, // s when it was already known (the drone found it): he walks in aiming at it
+  spot: 9, // m: small and high on the wall, an attacker notices one he did not know of only this close (the drone: anywhere in its cone)
+  shootRange: 12, // m (inside its range: even a known camera sees you coming before you can break it)
+  shootDelay: 1.2, // s the attacker spends finding and aiming at it
+  shootDelayKnown: 0.6, // s when it was already known (the drone found it): he walks in aiming at it
 });
 
 /** Explorador (sim/abilities/scoutPulse.js): at each turn's end, defenders this close (and traps) are detected through walls. */
@@ -360,12 +416,10 @@ export const TRAP = Object.freeze({
 });
 
 /**
- * Match against the AI (session/Match.js): first to `toWin` rounds (best of 7).
- * Each operator carries his class, his money and — if he lived — his unused
- * gear into the next round, and earns per round: `win` or `loss` (+`lossBonus`
- * per round lost in a row, up to `lossBonusMax` rounds), `kill` per defender
- * he downed, `defuse` if he defused. Money is capped at `cap`. The player
- * attacks the first `switchAfter` rounds and then defends; the new attackers
- * start over from the first round's money.
+ * Match against the AI (session/Match.js): best of `bestOf` (3, 5 or 7, the lobby's choice;
+ * this is the default), so first to bestOf/2 + 1 rounds. Each attacker keeps
+ * his class into the next round; the side that lost a round gets
+ * BUY.lossBonus more utility points in the next one. The player switches
+ * sides after half the series (3 rounds of a best of 7).
  */
-export const MATCH = Object.freeze({ toWin: 4, switchAfter: 3, win: 600, loss: 300, lossBonus: 100, lossBonusMax: 3, kill: 100, defuse: 200, cap: 2000 });
+export const MATCH = Object.freeze({ bestOf: 7, formats: Object.freeze([3, 5, 7]) });

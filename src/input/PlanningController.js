@@ -14,11 +14,11 @@
 // turns out to be a pinch can remove it whole (cancelStroke).
 // Helpers: input/picking.js (what is under a screen point), input/RoutePreview.js (hover leg).
 import { EV } from '../core/events.js';
-import { POINTER, TOUCH } from '../config/input.js';
+import { POINTER, TOUCH, DOOR_TAP } from '../config/input.js';
 import { NAV } from '../config/balance.js';
-import { routeTail, lastUserIndex, controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, teamUnits } from '../sim/queries.js';
+import { routeTail, lastUserIndex, controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, teamUnits, doorwayNear, HERE } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
-import { canEditRoutes, targetIndex, isDefenderSetup } from '../session/Session.js';
+import { canEditRoutes, targetIndex, isDefenderSetup, inRecon } from '../session/Session.js';
 import { watchOf, watchOrder } from '../session/watch.js';
 import { unitAt, waypointAt, nearTail, pickRadius, segmentAt } from './picking.js';
 import { RoutePreview } from './RoutePreview.js';
@@ -139,11 +139,68 @@ export class PlanningController {
     const u = this.selectedUnit();
     if (!u) return false;
     if (isDefenderSetup(this.session)) return this.place(u, px, py);
-    if (g.kind === 'unit') return true; // tapping the selected operator again changes nothing
+    if (g.kind === 'unit') {
+      // Tapping the selected operator: his menu on the spot he stands on (throw / wait from here).
+      this.request(`door_${u.id}_${HERE}`);
+      return true;
+    }
     // A second tap on the last point (double tap, shaky finger) adds nothing.
     if (u.route.length && this.nearTail(px, py, touch ? TOUCH.duplicatePointPx : POINTER.duplicatePointPx)) return true;
     const w = this.world(px, py);
+    const k = this.doorAt(w.x, w.y, touch);
+    if (k >= 0) return this.stackAt(u, k);
     this.command({ type: 'addWaypoint', unitId: u.id, x: w.x, y: w.y, user: true });
+    return true;
+  }
+
+  /** Index of the doorway (with a door) a tap on the floor at (x, y) lands on, or -1. */
+  doorAt(x, y, touch) {
+    const sim = this.getSim();
+    const d = doorwayNear(sim.world, x, y, 2);
+    if (!d) return -1;
+    const k = sim.world.doorways.indexOf(d);
+    if (k >= sim.doors.length) return -1; // an open passage: a tap there is just a point
+    const across = Math.abs((x - d.cx) * d.normalX + (y - d.cy) * d.normalY);
+    const along = Math.abs((x - d.cx) * d.normalY - (y - d.cy) * d.normalX);
+    const slack = touch ? DOOR_TAP.touch : DOOR_TAP.pointer;
+    return across <= slack && along <= d.length / 2 + slack * 0.5 ? k : -1;
+  }
+
+  /**
+   * A tap on a door: he stacks on the near side of it (ENTRY.askDistance from
+   * the wall, the side his route reaches first) and the door wheel opens on
+   * that point. Already stacked there: the wheel just opens.
+   */
+  stackAt(u, k) {
+    const sim = this.getSim();
+    const d = sim.world.doorways[k];
+    const tail = routeTail(u);
+    const last = lastUserIndex(u);
+    let best = null;
+    for (const side of [-1, 1]) {
+      const x = d.cx + d.normalX * side * ENTRY.askDistance;
+      const y = d.cy + d.normalY * side * ENTRY.askDistance;
+      if (last >= 0 && Math.hypot(u.route[last].x - x, u.route[last].y - y) < 0.3) {
+        this.request(`door_${u.id}_${last}`);
+        return true;
+      }
+      const path = sim.world.nav.findPath(tail.x, tail.y, x, y, NAV.snapRadius);
+      if (!path || !path.length) continue;
+      let len = 0;
+      let a = tail;
+      for (const q of path) {
+        len += Math.hypot(q.x - a.x, q.y - a.y);
+        a = q;
+      }
+      if (!best || len < best.len) best = { x, y, len };
+    }
+    if (!best) {
+      this.command({ type: 'addWaypoint', unitId: u.id, x: d.cx, y: d.cy, user: true }); // rejected: tells why
+      return true;
+    }
+    // The wheel opens on the new point once the sim reports it added (SessionController, EV.ROUTE_CHANGED).
+    this.session.ui.wheelAt = { unitId: u.id, x: best.x, y: best.y };
+    this.command({ type: 'addWaypoint', unitId: u.id, x: best.x, y: best.y, user: true });
     return true;
   }
 
@@ -269,6 +326,33 @@ export class PlanningController {
     return true;
   }
 
+  /** Menu "Asomarse y volver" on the targeted point (or the way back of one): on <-> off. */
+  togglePeek() {
+    const u = this.selectedUnit();
+    if (!u || !this.canEdit) return true;
+    const i = targetIndex(this.session, u);
+    if (i < 0) return true;
+    let k = i;
+    if (u.route[i].back) for (k = i - 1; k >= 0 && !(u.route[k].user && !u.route[k].ask); k--);
+    const on = !(k >= 0 && u.route[k].pause > 0);
+    // The menu stays on the peek point (the way back is added after it).
+    this.session.pointTarget = { unitId: u.id, index: k >= 0 ? k : i };
+    this.command({ type: 'setPeek', unitId: u.id, on, index: i });
+    return true;
+  }
+
+  /** Cubrir zona (attackers): where he stands (the menu on himself) or at the end of his route. */
+  toggleCover() {
+    const u = this.selectedUnit();
+    if (!u || !this.canEdit) return true;
+    const t = this.session.pointTarget;
+    const here = (t && t.unitId === u.id && t.index === HERE) || !u.route.length;
+    const i = lastUserIndex(u);
+    const on = !(here ? u.cover : i >= 0 && u.route[i].cover);
+    this.command({ type: 'setCover', unitId: u.id, on, index: here ? HERE : i });
+    return true;
+  }
+
   /** Pace of the targeted leg: 'sneak' or null (normal). */
   setPace(pace) {
     const u = this.selectedUnit();
@@ -288,6 +372,12 @@ export class PlanningController {
   pickToss(item) {
     const u = this.selectedUnit();
     if (!u || !this.canEdit) return true;
+    if (this.here(u)) {
+      const ui = this.session.ui;
+      ui.tossPick = ui.tossPick && ui.tossPick.item === item ? null : { unitId: u.id, index: HERE, item };
+      if (ui.tossPick) this.request('tossAim');
+      return true;
+    }
     const i = targetIndex(this.session, u);
     if (i < 0) return true;
     const p = u.route[i];
@@ -302,6 +392,12 @@ export class PlanningController {
     return true;
   }
 
+  /** Esc / the menu's × while aiming: no throw is set, the menu is back. */
+  cancelToss() {
+    this.session.ui.tossPick = null;
+    return true;
+  }
+
   /** The tap after "Lanzar": that is where the throw lands (sim keeps it within ENTRY.tossRange). */
   placeToss(px, py) {
     const ui = this.session.ui;
@@ -310,7 +406,7 @@ export class PlanningController {
     const u = this.getSim().units[tp.unitId];
     if (!u || !u.alive || tp.index >= u.route.length) return true;
     const w = this.world(px, py);
-    this.session.pointTarget = { unitId: u.id, index: tp.index };
+    this.session.pointTarget = { unitId: u.id, index: tp.index === HERE ? 0 : tp.index }; // "here" is his first point now
     this.command({ type: 'setToss', unitId: u.id, item: tp.item, x: w.x, y: w.y, index: tp.index });
     return true;
   }
@@ -337,7 +433,9 @@ export class PlanningController {
   endLook() {
     if (!this.look) return;
     const lp = this.session.ui.lookPreview;
-    if (lp && lp.valid && isDefenderSetup(this.session)) {
+    if (lp && lp.valid && inRecon(this.getSim(), this.session)) {
+      // Recon: the operators are placed and aimed after it.
+    } else if (lp && lp.valid && isDefenderSetup(this.session)) {
       // Set-up: the facing of his watch order (same mode, centred on the new angle).
       const u = this.getSim().units[this.look.unitId];
       const w = watchOf(u);
@@ -352,6 +450,7 @@ export class PlanningController {
    * there (or picks his own up).
    */
   place(u, px, py) {
+    if (inRecon(this.getSim(), this.session)) return true; // his operators come after the recon
     const w = this.world(px, py);
     if (this.session.ui.trapMode && u.role === 'trapper') this.command({ type: 'placeTrap', unitId: u.id, x: w.x, y: w.y });
     else this.command({ type: 'placeUnit', unitId: u.id, x: w.x, y: w.y });
@@ -468,11 +567,23 @@ export class PlanningController {
   setWhen(code) {
     const u = this.selectedUnit();
     if (!u || !this.canEdit) return true;
+    if (this.here(u)) {
+      if (code === null) return true; // "now" from where he stands: nothing to set
+      this.session.pointTarget = { unitId: u.id, index: 0 };
+      this.command({ type: 'setHold', unitId: u.id, code, index: HERE });
+      return true;
+    }
     const i = targetIndex(this.session, u);
     if (i < 0) return true;
     this.keepTarget(u, i, u.route[i]);
     this.command({ type: 'setHold', unitId: u.id, code, index: i });
     return true;
+  }
+
+  /** Is the menu on the spot u stands on (a tap on him), not on a point of his route? */
+  here(u) {
+    const t = this.session.pointTarget;
+    return !!t && t.unitId === u.id && t.index === HERE;
   }
 
   /** Deciding on a tapped point (a "?" stops being one): the menu stays on it, not on the last waypoint. */
