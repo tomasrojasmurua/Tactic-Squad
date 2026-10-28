@@ -14,7 +14,7 @@ import { ENTRY, MOVE, ROUND, NOISE, DRONE } from '../../config/balance.js';
 import { teamView } from '../../sim/view.js';
 import { visibilityPolygon } from '../../sim/vision.js';
 import { hexToRgb, lerp, lerpAngle } from '../../core/math.js';
-import { grenadeAt, tossLanding, tossDoorway } from '../../sim/queries.js';
+import { grenadeAt, tossLanding, tossDoorway, HERE } from '../../sim/queries.js';
 import { ShaderProgram } from '../gl/ShaderProgram.js';
 import { ShapeBatch } from '../gl/ShapeBatch.js';
 import { FLAT_VS, FLAT_FS } from '../shaders/flat.js';
@@ -557,8 +557,8 @@ export class OverlayLayer {
     }
     // Aiming a throw (menu "Lanzar", then a tap): from the point to the cursor.
     const tp = ui.tossPick;
-    if (tp && tp.unitId === u.id && tp.index < u.route.length && ui.cursorWorld) {
-      const p = u.route[tp.index];
+    if (tp && tp.unitId === u.id && (tp.index === HERE || tp.index < u.route.length) && ui.cursorWorld) {
+      const p = tp.index === HERE ? u : u.route[tp.index]; // HERE: from where he stands
       const { x: cx, y: cy } = ui.cursorWorld;
       const k = tossDoorway(this.sim.world, p, cx, cy);
       // How far it can go: from the point, or from the doorway it is thrown through.
@@ -569,8 +569,8 @@ export class OverlayLayer {
     }
     // The waypoint the player tapped (door picker, ESPERAR, sigilo act on it): a white ring.
     const tg = session.pointTarget;
-    if (tg && tg.unitId === u.id && tg.index < u.route.length) {
-      const p = u.route[tg.index];
+    if (tg && tg.unitId === u.id && (tg.index === HERE || tg.index < u.route.length)) {
+      const p = tg.index === HERE ? u : u.route[tg.index];
       t.ring(p.x, p.y, OVERLAY.waypointRadiusPx * mpp * 2.1, 2.2 * mpp, WHITE(0.9), 24);
     }
   }

@@ -20,7 +20,7 @@ import { FLOW } from '../config/ui.js';
 import { lessonById, nextLesson } from '../config/lessons.js';
 import { loadPref, savePref } from './storage.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
-import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors, lastUserIndex } from '../sim/queries.js';
+import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors, lastUserIndex, HERE } from '../sim/queries.js';
 import { phaseTick } from '../sim/round.js';
 import { SESSION_PHASE, isDecisionPhase, isPlanningTime, isLivePhase, pilotsDrone, isDefenderSetup } from './Session.js';
 import { watchOf, watchOrder } from './watch.js';
@@ -579,14 +579,17 @@ export class SessionController {
     this.sound(sign === '-' ? 'undo' : 'select');
   }
 
-  /** A tapped "?" door point (door_<unitId>_<index>): its operator is selected and the picker edits that point. */
+  /**
+   * A tapped "?" door point (door_<unitId>_<index>): its operator is selected and the picker edits that point.
+   * door_<unitId>_here: the spot he stands on (a throw or a GO wait from there, before he walks on).
+   */
   targetDoor(action) {
     if (!isPlanningTime(this.session)) return;
     const [, id, index] = action.split('_');
     const u = controllableUnit(this.sim, +id, this.session.team);
     if (!u) return;
     this.select(u.id);
-    this.session.pointTarget = { unitId: u.id, index: +index };
+    this.session.pointTarget = { unitId: u.id, index: index === HERE ? HERE : +index };
     this.sound('select');
   }
 

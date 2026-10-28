@@ -109,3 +109,35 @@ test('lanzar desde una puerta cerrada: la abre, lanza adentro, no se hiere y esp
   assert.ok(movedAt >= boomAt, 'no se movió antes de la explosión');
   assert.ok(a.alive && a.hp === a.maxHp, 'el que lanza queda detrás del marco');
 });
+
+test('lanzar desde donde está: sin moverse lanza, espera la explosión y después sigue su ruta', () => {
+  const { sim, cmd, squad } = round();
+  const [a] = squad;
+  a.gear.smoke = 1;
+  const start = { x: a.x, y: a.y };
+  cmd({ type: 'setToss', unitId: a.id, item: 'smoke', x: a.x, y: a.y + 5, index: 'here' });
+  assert.deepEqual(rejects(sim), []);
+  assert.equal(a.route.length, 1, 'un punto donde está');
+  assert.ok(a.route[0].user && a.route[0].toss && Math.hypot(a.route[0].x - start.x, a.route[0].y - start.y) < 1e-9);
+  // Con la ruta ya trazada, el lanzamiento queda antes de lo que camina.
+  cmd({ type: 'addWaypoint', unitId: a.id, x: 4.6, y: 20, user: true });
+  cmd({ type: 'setToss', unitId: a.id, item: 'smoke', x: a.x, y: a.y + 5, index: 'here' });
+  assert.equal(a.route.filter((p) => p.toss).length, 1, 'el mismo punto, no otro');
+  assert.ok(a.route[0].toss);
+  sim.drainEvents();
+  sim.advancePhase();
+  let thrownAt = -1;
+  let boomAt = -1;
+  let movedAt = -1;
+  for (let n = 0; n < 900 && movedAt < 0; n++) {
+    if (sim.phase !== 'exec') sim.advancePhase();
+    sim.step();
+    for (const e of sim.drainEvents()) {
+      if (e.type === 'grenadeThrown') thrownAt = n;
+      if (e.type === 'grenadeDetonate') boomAt = n;
+    }
+    if (movedAt < 0 && Math.hypot(a.x - start.x, a.y - start.y) > 0.05) movedAt = n;
+  }
+  assert.ok(thrownAt >= 0, 'lanzó');
+  assert.ok(boomAt > thrownAt && movedAt >= boomAt, 'lanzó sin moverse y avanzó después de que saliera');
+});

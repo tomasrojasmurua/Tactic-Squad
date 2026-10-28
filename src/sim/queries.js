@@ -257,6 +257,9 @@ export function doorClaimed(sim, u, k) {
   return false;
 }
 
+/** The `index` of an order (setToss, setHold) on the spot the unit stands on: sim/orders.js pointIndex. */
+export const HERE = 'here';
+
 export const ASK_CODE = '?';
 
 /** "?" door points of the side still undecided (operators already stopped at one included). */
