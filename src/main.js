@@ -3,6 +3,9 @@
 import { Game } from './Game.js';
 import { WebGL2UnavailableError } from './render/gl/context.js';
 import { showFatal } from './ui/Screens.js';
+import { installZoomGuard } from './ui/device.js';
+
+installZoomGuard();
 
 const canvas = document.getElementById('view');
 const uiRoot = document.getElementById('ui');
