@@ -144,6 +144,8 @@ export class Hud {
     bus.on(EV.DRONE_DESTROYED, () => this.viewer.team === 'attackers' && this.pushInfo(T.feed.droneDown));
     bus.on(EV.BARRICADE_SPOTTED, () => this.viewer.team === 'attackers' && this.pushInfo(T.feed.barricade));
     bus.on(EV.BARRICADE_BROKEN, (e) => this.pushInfo(e.how === 'breach' ? T.feed.barricadeBlown : T.feed.barricadeBroken));
+    bus.on(EV.WIRE_SPOTTED, () => this.viewer.team === 'attackers' && this.pushInfo(T.feed.wire));
+    bus.on(EV.WIRE_CUT, () => this.pushInfo(T.feed.wireCut));
     bus.on(EV.GRENADE_THROWN, (e) => {
       const u = this.sim && this.sim.units[e.unitId];
       if (u && u.team === this.viewer.team) this.pushInfo(T.feed.grenade[e.kind]);

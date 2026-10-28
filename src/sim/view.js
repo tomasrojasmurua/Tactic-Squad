@@ -44,6 +44,17 @@ export function knownBarricades(sim, team) {
   return out;
 }
 
+/** Barbed wire a side knows of: the defenders all theirs; the attackers what they have seen or walked into (sim/wires.js). */
+export function knownWires(sim, team) {
+  const out = [];
+  for (const d of sim.doors) {
+    if (!d.wired) continue;
+    if (team === 'attackers' && !sim.intel.wires.has(d.def.index)) continue;
+    out.push({ door: d.def.id, index: d.def.index, x: d.def.cx, y: d.def.cy });
+  }
+  return out;
+}
+
 /**
  * The view of the round for `team`: its own units in full; of the enemy only
  * who is in sight now, where the rest were last seen, the noise heard, the
@@ -70,6 +81,7 @@ export function teamView(sim, team) {
     lastKnown: [...sim.memory[team].values()].filter((k) => !seen.has(k.id)).map((k) => ({ ...k })),
     pulses: sim.noise.pulses[team],
     barricades: knownBarricades(sim, team),
+    wires: knownWires(sim, team),
     drone: team === 'attackers' && sim.drone ? { x: sim.drone.x, y: sim.drone.y, facing: sim.drone.facing, active: sim.drone.active, left: sim.drone.left } : null,
     bomb: bombKnown ? { site: b.site, x: b.x, y: b.y, progress: b.progress, defused: b.defused } : null,
   };

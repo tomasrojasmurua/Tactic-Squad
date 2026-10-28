@@ -8,7 +8,7 @@
 //             (placing and aiming him are map gestures: input/PlanningController.js)
 //   planning  first turn only, compact: the entry can still change
 // Emits EV.REQUEST {action: 'buy_<unitId>_<item>_<+|->' | 'role_<unitId>_<role>' | 'chooseEntry_<id>' |
-// 'site_<id>' | 'barricade_<doorId>' | 'watch_<mode>' | 'defrole_<role>' | 'trapmode'}; LISTO is the usual button.
+// 'site_<id>' | 'barricade_<doorId>' | 'wire_<doorId>' | 'watch_<mode>' | 'defrole_<role>' | 'trapmode'}; LISTO is the usual button.
 import { EV } from '../core/events.js';
 import { ROLES, PICK_ROLES, DEF_PICK_ROLES } from '../config/operators.js';
 import { BUY, PREP, TRAP } from '../config/balance.js';
@@ -176,6 +176,8 @@ export class PhasePanel {
     this.siteButtons = sim.compiled.sites.map((s) => button(sites, S.siteName(s.id), `site_${s.id}`, s.id));
     this.barRow = row('', 'bars');
     this.barButtons = sim.compiled.barricadeSlots.map((id) => button(this.barRow, S.doors[id] ?? id, `barricade_${id}`, id));
+    this.wireRow = row('', 'bars');
+    this.wireButtons = sim.compiled.barricadeSlots.map((id) => button(this.wireRow, S.doors[id] ?? id, `wire_${id}`, id));
     this.watchRow = row('', 'watch');
     this.watchButtons = WATCH_MODES.map((m) => button(this.watchRow, S.watch[m], `watch_${m}`, m));
     this.roleRow = row('', 'roles');
@@ -198,8 +200,17 @@ export class PhasePanel {
       if (on) up++;
       toggle(b, 'on', on);
     }
-    for (const b of this.barButtons) toggle(b, 'off', up >= PREP.barricades && !b.classList.contains('on'));
+    const doorOf = (id) => sim.doors.find((d) => d.def.id === id);
+    for (const b of this.barButtons) toggle(b, 'off', (up >= PREP.barricades || doorOf(b.dataset.key).wired) && !b.classList.contains('on'));
     setText(this.barRow.children[0], S.barricades(up, PREP.barricades));
+    let wired = 0;
+    for (const b of this.wireButtons) {
+      const on = doorOf(b.dataset.key).wired;
+      if (on) wired++;
+      toggle(b, 'on', on);
+    }
+    for (const b of this.wireButtons) toggle(b, 'off', (wired >= PREP.wires || doorOf(b.dataset.key).barricaded) && !b.classList.contains('on'));
+    setText(this.wireRow.children[0], S.wires(wired, PREP.wires));
     const u = controllableUnit(sim, session.selectedId, session.team);
     this.selectedId = session.selectedId;
     setText(this.gearRow.children[0], u ? S.gearOf(u.name, T.buy.points(u.points)) : S.pickGear);

@@ -26,6 +26,7 @@ const LOOK_PREVIEW_RGB = [1, 1, 1];
 const DRONE_RGB = hexToRgb('#8fe36b');
 const TOSS_DANGER_RGB = [1, 0.33, 0.3]; // a grenade that would reach its own thrower
 const BARRICADE_RGBA = [1, 0.69, 0.18, 0.95];
+const WIRE_RGBA = [0.78, 0.82, 0.86, 0.95]; // barbed wire: steel grey
 const SIDES = [-1, 1];
 
 export class OverlayLayer {
@@ -161,6 +162,7 @@ export class OverlayLayer {
     this.grenades(t, sim, frame, mpp);
     if (own === 'attackers') this.drone(t, g, sim, vision, frame, mpp, time);
     this.barricades(t, sim, own, mpp);
+    this.wires(t, sim, own, mpp);
     if (session.phase !== 'title') this.noise(g, teamView(sim, own), sim.turn, mpp, time);
     if (editable) this.planningPreview(t, sim, session, mpp);
     this.markers.contacts(t, sim, unitLayer, frame, mpp, own);
@@ -219,6 +221,30 @@ export class OverlayLayer {
         const cx = d.cx + tx * h * 0.6 * k;
         const cy = d.cy + ty * h * 0.6 * k;
         t.line(cx - nx - tx * 0.12, cy - ny - ty * 0.12, cx + nx + tx * 0.12, cy + ny + ty * 0.12, 3 * mpp, BARRICADE_RGBA);
+      }
+    }
+  }
+
+  /** Barbed wire the viewer's side knows of: a zigzag coil across the doorway (sim/wires.js). */
+  wires(t, sim, own, mpp) {
+    for (const door of sim.doors) {
+      if (!door.wired || (own === 'attackers' && !sim.intel.wires.has(door.def.index))) continue;
+      const d = door.def;
+      const tx = d.normalY; // along the wall
+      const ty = -d.normalX;
+      const h = d.length / 2 + 0.1;
+      const n = 7;
+      let px = d.cx - tx * h;
+      let py = d.cy - ty * h;
+      for (let k = 1; k <= n; k++) {
+        const s = -h + (2 * h * k) / n;
+        const off = (k % 2 ? 1 : -1) * 0.22;
+        const x = d.cx + tx * s + d.normalX * off;
+        const y = d.cy + ty * s + d.normalY * off;
+        t.line(px, py, x, y, 5 * mpp, BLACK(0.55));
+        t.line(px, py, x, y, 2.4 * mpp, WIRE_RGBA);
+        px = x;
+        py = y;
       }
     }
   }

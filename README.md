@@ -34,7 +34,9 @@ Para agregar una clase de operador: una entrada en `config/operators.js` (`ROLES
 
 ## Menú y tutorial guiado
 
-Al abrir el juego aparece el menú principal con cuatro opciones: **Atacar** y **Defender** (una ronda contra la IA, que juega el otro bando), **Partida al mejor de 7** (`session/Match.js`: rondas seguidas, el primero en ganar 4; el jugador ataca las 3 primeras y después defiende; el bando que pierde una ronda tiene un punto de utilidad más en la siguiente) y **Tutorial guiado** (siempre de atacante).
+Al abrir el juego aparece el menú principal con cuatro opciones: **Atacar** y **Defender** (una ronda contra la IA, que juega el otro bando), **Alambre de púas** (`sim/wires.js`, `WIRE`). El defensor pone `PREP.wires` (1) por ronda en una puerta de `barricadeSlots` sin barricada. El atacante que lo cruza va a `WIRE.slow` (50 %) y hace ruido; el defensor pasa libre; una granada o una carga cerca lo corta. El atacante lo conoce al verlo o pisarlo (`sim.intel.wires`).
+
+**Partida al mejor de 7** (`session/Match.js`: rondas seguidas, el primero en ganar 4; el jugador ataca las 3 primeras y después defiende; el bando que pierde una ronda tiene un punto de utilidad más en la siguiente) y **Tutorial guiado** (siempre de atacante).
 
 **Fases que se suman.** La primera partida va directo a planificar; la entrada se suma en la 2.ª ronda y la compra y el dron en la 3.ª (`FLOW.unlockAfterRounds` en `config/ui.js`), cada una con una tarjeta la primera vez. La opción "Ronda completa" de la Ayuda las muestra siempre; la partida al mejor de 7 se juega siempre completa. Intro ataca. Desde la partida se vuelve al menú con el botón MENÚ (en escritorio, en la barra de abajo; en el celular, dentro de Ayuda; también al final de la ronda). Si ya hay un plan, pide una segunda pulsación para confirmar.
 

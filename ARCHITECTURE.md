@@ -149,6 +149,7 @@ canStep?  (en fases de decisión el tiempo no corre)
 | `cameras.js` | Cámaras del defensor (`aiCameras` del mapa, por sitio): ven atacantes y alertan a la IA, se descubren (operadores, dron) y se rompen de un tiro |
 | `traps.js` | Trampas del Trampero (`aiTraps` del mapa, orden `placeTrap`): atrapan al atacante que las pisa y lo delatan; se descubren con sigilo, dron o pulso del Explorador y se rompen de un tiro |
 | `barricades.js` | Barricadas: bloquean cuerpo, vista, balas y dron; romperlas a golpes o volarlas con carga. `sim.intel` = qué barricadas conocen los atacantes |
+| `wires.js` | Alambre de púas del defensor: frena al atacante que lo cruza y suena; una granada o una carga lo corta. `sim.intel.wires` = los que conocen los atacantes |
 | `drone.js` | Dron de reconocimiento del atacante (fase `drone`): se maneja en tiempo real con órdenes selladas por paso; pasa bajo las puertas, no por barricadas |
 | `prep.js` | Compra con **puntos de utilidad** (`BUY`; atacantes en la compra, defensores en la preparación; el equipo de la clase es gratis y no se devuelve), **clase** (`setRole` / `setDefenderRole`: aplica la clase, su equipo y devuelve los puntos) y preparación del defensor: elegir sitio, colocar, vigilancia, barricadas, cámaras del sitio. `applyLayout` aplica el rol de cada puesto (`role: 'anchor'`) |
 | `objectives.js` | La bomba, encontrarla, desactivarla (7 s quieto) y el resultado de la ronda |

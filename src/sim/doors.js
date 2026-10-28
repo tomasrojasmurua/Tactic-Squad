@@ -14,7 +14,7 @@ import { startBash } from './barricades.js';
  * barricaded: shut for good until the barricade is broken.
  */
 export function createDoorState(def) {
-  return { def, angle: 0, target: 0, speed: DOORS.swingSpeed, open: false, cracked: false, destroyed: false, barricaded: false };
+  return { def, angle: 0, target: 0, speed: DOORS.swingSpeed, open: false, cracked: false, destroyed: false, barricaded: false, wired: false };
 }
 
 export function updateDoors(sim, dt) {

@@ -30,6 +30,7 @@ import { createMemory, updateMemory } from './view.js';
 import { initPoints } from './prep.js';
 import { updateDrone } from './drone.js';
 import { createIntel, updateBash, spotBarricades } from './barricades.js';
+import { spotWires, updateWires } from './wires.js';
 
 export class Simulation {
   /**
@@ -259,7 +260,11 @@ export class Simulation {
       if (e.type === EV.SPOTTED && e.team !== watcher && !e.byDrone) this.round.contact = true;
     }
     updateMemory(this);
-    for (const u of this.teams.attackers) if (u.alive && u.blind <= 0) spotBarricades(this, u, u.vision.fov);
+    for (const u of this.teams.attackers) {
+      if (!u.alive || u.blind > 0) continue;
+      spotBarricades(this, u, u.vision.fov);
+      spotWires(this, u, u.vision.fov);
+    }
     for (const u of this.units) {
       if (!u.alive) continue;
       if (isAiControlled(this, u)) updateAiUnit(this, u, dt);
@@ -268,6 +273,7 @@ export class Simulation {
     }
     resolveCollisions(this);
     markDoorwayCrossings(this);
+    updateWires(this); // sim/wires.js: an attacker stepping into barbed wire rattles it
     for (const u of this.units) if (u.alive) updateCombat(this, u, dt);
     updateAbilities(this, dt);
     updateObjectives(this, dt);

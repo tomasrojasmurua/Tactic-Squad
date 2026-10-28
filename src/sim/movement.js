@@ -13,6 +13,7 @@ import { tryOpenDoors, segmentCrossesDoorway } from './doors.js';
 import { armEntry, armToss } from './entries.js';
 import { isAiControlled, holdCode, ASK_CODE } from './queries.js';
 import { routePoint } from './routePoint.js';
+import { wireFactor } from './wires.js';
 
 const carrot = { x: 0, y: 0 };
 
@@ -107,6 +108,7 @@ export function updateMovement(sim, u, dt) {
   const sneaking = p0.pace === 'sneak';
   if (sneaking) speed *= MOVE.sneakFactor; // the leg he walks is a quiet one
   speed *= followFactor(sim, u, Math.cos(moveDir), Math.sin(moveDir));
+  speed *= wireFactor(sim, u); // barbed wire in the doorway (sim/wires.js)
   if (speed > 0 && doorwayBusy(sim, u)) speed = 0; // queue: an ally is still in the doorway ahead
 
   u.speedFraction = speed / MOVE.speed;

@@ -17,7 +17,7 @@ import { isAiControlled } from './queries.js';
 import { destroyDoor } from './doors.js';
 
 export function createIntel() {
-  return { barricades: new Set() }; // door indices the attackers know are barricaded
+  return { barricades: new Set(), wires: new Set() }; // door indices the attackers know are barricaded / wired (sim/wires.js)
 }
 
 /** Closed boxes of the barricaded doors (what stops the drone). */

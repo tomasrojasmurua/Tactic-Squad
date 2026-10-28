@@ -240,8 +240,8 @@ export const NOISE = Object.freeze({
   jitter: 0.9, // ...and shifted up to this much (deterministic, from the seed)
   keepTurns: 3, // a pulse stays on the map this many turns, fading
   // Radius heard (m) by kind; the loudest kind of a cell names its pulse.
-  radius: Object.freeze({ sneak: 2, step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, trap: 14, flash: 18, frag: 22, breach: 22 }),
-  rank: Object.freeze(['sneak', 'step', 'crack', 'door', 'plant', 'defuse', 'kick', 'bash', 'trap', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
+  radius: Object.freeze({ wire: 10, sneak: 2, step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, trap: 14, flash: 18, frag: 22, breach: 22 }),
+  rank: Object.freeze(['sneak', 'step', 'crack', 'door', 'wire', 'plant', 'defuse', 'kick', 'bash', 'trap', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
 });
 
 /**
@@ -281,10 +281,25 @@ export const AI_UTILITY = Object.freeze({
 /** Defender preparation (sim/prep.js): set-up rules and the watch orders. */
 export const PREP = Object.freeze({
   barricades: 2, // per round (free for now)
+  wires: 1, // barbed wire per round (sim/wires.js)
   barricadeReach: 0.5, // m: a door counts as in the defenders' half this close to it
   sweepPeriod: 6, // s of a full sweep (watch order "barrer")
   sweepArc: 70 * DEG, // the sweep a player gives covers this much, centred on the facing he set
   minSpacing: 0.7, // m between two defenders placed in the set-up
+});
+
+/**
+ * Barbed wire (sim/wires.js): across a doorway, it slows the attackers who
+ * cross it (within `radius` of its center) to `slow` and rattles when one
+ * steps in (AI defenders within `hearing` turn to it). A grenade or a breach
+ * charge clears it. Seen like a barricade within `spotRange`.
+ */
+export const WIRE = Object.freeze({
+  radius: 0.9, // m from the doorway's center
+  slow: 0.5, // 0.35 left the attackers at 43 % (scripts/balance.mjs)
+  hearing: 12, // m
+  spotRange: 12, // m
+  fragCut: 2.5, // m: a grenade this close clears it
 });
 
 /** Barricades (sim/barricades.js): block bodies, sight and the drone until broken or blown. */

@@ -27,6 +27,7 @@ import { WEAPONS } from '../config/weapons.js';
 import { ROLES, DEFAULT_DEFENDER_ROLE } from '../config/operators.js';
 import { applyRole, roleGear } from './units.js';
 import { createBomb } from './objectives.js';
+import { setWire } from './wires.js';
 
 // ------------------------------------------------------------ buy
 
@@ -203,6 +204,7 @@ export function setBarricade(sim, doorId, on) {
   const door = sim.doors.find((d) => d.def.id === doorId);
   if (!door || !sim.compiled.barricadeSlots.includes(doorId)) return 'badDoor';
   if (door.barricaded === !!on) return null;
+  if (on && door.wired) return 'doorTaken';
   if (on && barricadedDoors(sim).length >= PREP.barricades) return 'tooManyBarricades';
   door.barricaded = !!on;
   sim.emit(EV.BARRICADE_SET, { doorId, on: !!on });
@@ -214,7 +216,8 @@ export function setBarricade(sim, doorId, on) {
 /**
  * On entering the preparation: an AI defending side sets up (for now its
  * plan is the map's: the site rolled from the seed, that site's layout and
- * PREP.barricades of the site's `aiBarricades`, picked by a hash of the seed)
+ * PREP.barricades of the site's `aiBarricades`, picked by a hash of the seed,
+ * then PREP.wires of barbed wire on the options left)
  * and buys AI_UTILITY.buy with each defender's points.
  */
 export function aiPrepare(sim) {
@@ -226,6 +229,12 @@ export function aiPrepare(sim) {
     h = Math.imul(h ^ (h >>> 13), 0x2c1b3c6d) >>> 0;
     const [id] = options.splice(h % options.length, 1);
     setBarricade(sim, id, true);
+  }
+  // Barbed wire on the options left (sim/wires.js).
+  for (let n = 0; n < PREP.wires && options.length; n++) {
+    h = Math.imul(h ^ (h >>> 13), 0x2c1b3c6d) >>> 0;
+    const [id] = options.splice(h % options.length, 1);
+    setWire(sim, id, true);
   }
 }
 

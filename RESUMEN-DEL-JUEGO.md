@@ -57,7 +57,7 @@ bando; hoy 47 % atacantes en 200 rondas: 49 % en A, 44 % en B).
 | Fase | Plazo | Qué pasa |
 | --- | --- | --- |
 | **Compra** | sin límite | Cada atacante elige su **clase** (Asaltante, Brecha, Explorador; Brecha y Explorador, uno solo) y suma utilidad con sus **2 puntos**: flash, granada, humo o carga (1 punto cada una). El equipo de la clase es gratis. |
-| **Preparación** | sin límite | A ciegas y a la vez. El atacante elige una de **3 entradas** (norte, principal, sur); el defensor elige **sitio A o B**, coloca a los suyos, les da vigilancia, suma utilidad con sus **2 puntos** (flash, granada o humo) y pone **2 barricadas**. Cada sitio trae **una cámara**. |
+| **Preparación** | sin límite | A ciegas y a la vez. El atacante elige una de **3 entradas** (norte, principal, sur); el defensor elige **sitio A o B**, coloca a los suyos, les da vigilancia, suma utilidad con sus **2 puntos** (flash, granada o humo), pone **2 barricadas** y **1 alambre de púas**. Cada sitio trae **una cámara**. |
 | **Dron** | 15 s | El atacante maneja un dron en tiempo real. Pasa por debajo de las puertas, no por barricadas. Lo que ve queda marcado: defensores, barricadas, cámaras y la bomba. Un defensor que lo vea 0,6 s lo derriba. |
 | **Planificación** | sin límite | Tiempo detenido. Rutas, miradas, esperas en grupos GO de **color** (violeta, rosa, blanco), cómo entra por cada puerta, a qué paso, y qué lanza. |
 | **Ejecución** | 5 s (menos si ve a alguien) | Todo corre a la vez. La única orden durante el turno es el **GO de un color**: ese grupo sale junto. |
@@ -155,6 +155,8 @@ marcador cuenta las rondas del jugador contra las de la IA, en los dos bandos.
 
 El defensor elige las clases en el panel de preparación, a ciegas (no ve las del
 atacante, y el atacante no ve las suyas). La IA las toma de los puestos del mapa.
+
+**Alambre de púas.** Solo del defensor: uno por ronda, en una puerta que podría atrancar (nunca junto a una barricada). No para a nadie ni hace daño: el atacante que lo cruza va a la mitad de velocidad y **suena** (los defensores cercanos se giran hacia ahí). El defensor pasa libre. Una granada o una carga cerca lo quita. El atacante lo ve como una barricada: a la vista, con el dron o al pisarlo. La IA pone el suyo en una de sus puertas sin barricada.
 
 **Utilidad del defensor.** Con sus puntos suma flash, granada o humo (las cargas son
 solo del atacante). Un jugador defensor la lanza planificando, como el atacante. La IA

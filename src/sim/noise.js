@@ -42,6 +42,8 @@ function kindOf(ev) {
       return 'bash';
     case EV.TRAP_SPRUNG:
       return 'trap';
+    case EV.WIRE_CROSSED:
+      return 'wire';
     default:
       return null;
   }
