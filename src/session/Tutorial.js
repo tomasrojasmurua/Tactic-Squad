@@ -28,7 +28,6 @@ export const PHASE_INTROS = Object.freeze({ buy: 'introBuy', prep: 'introPrep', 
 export const TUTORIAL_TIPS = Object.freeze(['barricade', 'defuse']);
 
 const hasUserPoint = (u) => u.route.some((p) => p.user);
-const moneyOf = (sim, team) => teamUnits(sim, team).reduce((s, u) => s + (u.money || 0), 0);
 
 /** Lessons done on this device (the old single tutorial counts as the first). */
 function loadDone() {
@@ -87,7 +86,6 @@ export class Tutorial {
       count: 0,
       lessonsDone,
       done: lessonsDone.length > 0, // the first lesson at least (the menu stops recommending it)
-      money: 0, // the squad's money when the buy step began
       entryChosen: false,
       tips: [], // tips already shown
       tip: null, // the tip on screen
@@ -108,7 +106,6 @@ export class Tutorial {
   begin(sim, id = this.session.tutorial.lesson) {
     const steps = lessonById(id).steps;
     Object.assign(this.session.tutorial, { active: true, lesson: id, step: 0, count: steps.length, id: steps[0].id, info: !!steps[0].info, card: false, entryChosen: false, tips: [], tip: null });
-    this.session.tutorial.money = moneyOf(sim, this.session.team);
   }
 
   /** Ends the guided part (completed or skipped) and remembers it. Returns true if it was running. */

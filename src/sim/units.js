@@ -71,7 +71,7 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     goDelay: 0, // s released but still holding: a teammate's grenade / charge goes off first
     entry: null, // door entry in progress (sim/entries.js)
     gear: { flash: 0, frag: 0, smoke: 0, breach: 0, ...r.role.gear }, // utility left (spent by entries / throws)
-    money: 0, // $ left to buy with (attackers, buy phase: sim/prep.js)
+    points: 0, // utility points left to buy with (buy phase / preparation: sim/prep.js)
     bash: null, // breaking a barricade: {door, t, next} (sim/barricades.js)
     blind: 0, // s flashed / stunned: sees nothing, does not shoot
     lookOverride: null, // angle held while walking the current leg
@@ -116,7 +116,7 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
 /**
  * Changes an operator's class (buy phase, sim/prep.js setRole): stats,
  * vision, ability, health and the class's weapon (full) — the gear is the
- * caller's business (it is bought).
+ * caller's business (sim/prep.js: the class's kit and the points back).
  */
 export function applyRole(u, roleId) {
   const r = resolveRole(roleId, u.team);

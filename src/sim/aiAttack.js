@@ -5,7 +5,7 @@
 // sim.memory, known barricades in sim.intel, the bomb once spotted). Its
 // operators then walk, open doors, enter and shoot exactly like the player's.
 //
-//   buy    each operator spends his money on flashbangs
+//   buy    each operator spends his utility points (AI_ATTACK.buy)
 //   prep   keeps the default entry: the drone goes in through the middle
 //   drone  drives it along the nav path to each site in turn (nearest
 //          first) until it sees the bomb or a site's bomb spot comes up
@@ -67,8 +67,8 @@ const order = (sim, cmd) => applyCommand(sim, { team: TEAM, ...cmd }, 'ai');
 
 function buy(sim) {
   for (const u of sim.teams.attackers) {
-    for (let n = 0; n < AI_ATTACK.buyFlashes && u.money >= BUY.prices.flash && (u.gear.flash || 0) < BUY.max.flash; n++) {
-      order(sim, { type: 'buy', unitId: u.id, item: 'flash', count: 1 });
+    for (const item of AI_ATTACK.buy) {
+      if (u.points >= BUY.prices[item] && (u.gear[item] || 0) < BUY.max[item]) order(sim, { type: 'buy', unitId: u.id, item, count: 1 });
     }
   }
 }

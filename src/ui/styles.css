@@ -718,9 +718,9 @@ body.touch .phase-panel .pp-body { flex-direction: row; flex-wrap: wrap; }
 body.touch .phase-panel .pp-row { grid-template-columns: 1fr; gap: 0; flex: 1 1 100px; font-size: 12px; }
 body.touch .phase-panel .pp-entry { flex: 1 1 90px; font-size: 12px; padding: 6px 8px; letter-spacing: 0.06em; }
 body.touch .phase-panel .pp-note { display: none; }
-/* Buy: money and one button per item (tap buys one more, − gives one back). */
+/* Buy: utility points and one button per item (tap buys one more, − gives one back). */
 .phase-panel .pp-buy { grid-template-columns: 74px 1fr auto; row-gap: 4px; }
-.phase-panel .pp-money { color: var(--ok); font-weight: 700; font-variant-numeric: tabular-nums; }
+.phase-panel .pp-points { color: var(--ok); font-weight: 700; font-variant-numeric: tabular-nums; }
 .phase-panel .pp-items { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
 .phase-panel .pp-item { display: inline-flex; }
 .phase-panel .pp-buy-btn { min-height: 34px; padding: 4px 8px; font-size: 12px; letter-spacing: 0.04em; }
@@ -740,6 +740,10 @@ body.touch .phase-panel .pp-buy-btn, body.touch .phase-panel .pp-sell { min-heig
 .phase-panel .pp-label { font-size: 12px; color: #cfd6db; }
 .phase-panel .pp-opts { display: flex; flex-wrap: wrap; gap: 4px; }
 .phase-panel .pp-opt { min-height: 32px; padding: 4px 8px; font-size: 11px; letter-spacing: 0.04em; flex: 1 1 auto; justify-content: center; }
+.phase-panel .pp-setup.gear .pp-opts { gap: 4px 6px; }
+.phase-panel .pp-setup.gear .pp-buy-btn { min-height: 30px; padding: 2px 6px; font-size: 10.5px; letter-spacing: 0.02em; }
+.phase-panel .pp-setup.gear .pp-sell { min-width: 24px; padding: 2px 4px; }
+.phase-panel .pp-sell:disabled { opacity: 0.3; }
 .phase-panel .pp-opt.on { border-color: var(--cyan); background: var(--cyan-deep); }
 .phase-panel .pp-opt.off { opacity: 0.4; }
 .phase-panel .pp-opt:disabled { opacity: 0.3; }
@@ -966,7 +970,7 @@ body.touch .phase-panel .pp-class { min-height: 30px; padding: 2px 8px; font-siz
 body.touch .phase-panel:has(.pp-buy) { width: min(600px, calc(100vw - 250px)); max-height: calc(100vh - 70px - var(--sat)); overflow-y: auto; }
 body.touch .phase-panel .pp-buy { grid-template-columns: auto 1fr auto; column-gap: 8px; align-items: center; row-gap: 3px; }
 body.touch .phase-panel .pp-buy .pp-classes { grid-column: 2; grid-row: 1; flex-wrap: nowrap; }
-body.touch .phase-panel .pp-buy .pp-money { grid-column: 3; grid-row: 1; }
+body.touch .phase-panel .pp-buy .pp-points { grid-column: 3; grid-row: 1; }
 body.touch .phase-panel .pp-items { flex-wrap: nowrap; }
 body.touch .phase-panel .pp-buy-btn { padding: 2px 5px; font-size: 10.5px; letter-spacing: 0.02em; }
 body.touch .phase-panel .pp-buy-btn .p { font-size: 9.5px; }
