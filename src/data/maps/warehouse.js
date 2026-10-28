@@ -10,7 +10,7 @@
 // doors with `barricade: true` are the gaps defenders may block (only those
 // touching their half count: sim/mapCompiler.js barricadeSlots).
 //
-// Walls are axis-aligned center lines; doors/openings cut gaps automatically.
+// Walls are axis-aligned center lines; doors/openings/windows cut gaps automatically.
 // Door `at` is the center of the opening; `axis` is the wall direction
 // ('v' = wall runs along y). `hinge` picks which end the door pivots on.
 
@@ -56,6 +56,13 @@ export default {
 
   // Doorless gaps.
   openings: [{ id: 'arco-cocina', at: [28, 5.0], axis: 'v', width: 2.0 }],
+
+  // Windows (sim/mapCompiler.js compileWindow): you see, shoot and throw through
+  // them, nobody walks through. The office and the bathroom look out on the yard.
+  windows: [
+    { id: 'ventana-oficina', at: [10, 7.2], axis: 'v', width: 1.6 },
+    { id: 'ventana-banio', at: [10, 17.6], axis: 'v', width: 1.6 },
+  ],
 
   // Named areas for the round debrief ("fell in the kitchen"); first match
   // wins, so the site comes before the hall that contains it. Display names
@@ -161,8 +168,8 @@ export default {
     { type: 'officeChair', at: [16.2, 4.85], rot: 160 },
     { type: 'desk', at: [17.6, 9.1], rot: 90 },
     { type: 'officeChair', at: [16.7, 9.2], rot: 90 },
-    { type: 'cabinet', at: [10.55, 7.0], rot: 90 },
-    { type: 'cabinet', at: [10.55, 7.65], rot: 90 },
+    { type: 'cabinet', at: [10.55, 3.6], rot: 90 },
+    { type: 'cabinet', at: [10.55, 4.25], rot: 90 },
     { type: 'bookshelf', at: [14.4, 2.45], rot: 0 },
     { type: 'plant', at: [18.4, 10.8], rot: 0 },
     { type: 'plant', at: [10.65, 10.75], rot: 0 },

@@ -92,6 +92,7 @@ export const WEAPON_MODELS = Object.freeze({
 export const HEIGHTS = Object.freeze({
   wall: 2.2,
   fence: 1.15,
+  sill: 0.95, // window sill (map `windows`): below the muzzle, you shoot over it
   door: 1.95,
   muzzle: 1.2, // z of tracers / muzzle flashes (matches the scaled gun height)
   label: 1.45, // z used to place DOM labels over units (just above the head at CHARACTER_SCALE)

@@ -16,9 +16,11 @@ export class World {
 
     this.wallBoxes = compiled.walls.map((w) => w.box);
     this.propBlockers = compiled.props.filter((p) => p.blocksMove).map((p) => p.box);
-    this.moveBlockers = [...this.wallBoxes, ...this.propBlockers];
-    // Low cover: solid furniture you can see and shoot over (see COVER).
-    this.lowCover = compiled.props.filter((p) => p.blocksMove && !p.blocksVision && p.h >= COVER.minHeight).map((p) => p.box);
+    // Window sills: nobody walks through a window, but sight, shots and throws go through.
+    this.windowBoxes = (compiled.windows || []).map((w) => w.box);
+    this.moveBlockers = [...this.wallBoxes, ...this.propBlockers, ...this.windowBoxes];
+    // Low cover: solid furniture you can see and shoot over (see COVER), and the window sills.
+    this.lowCover = [...compiled.props.filter((p) => p.blocksMove && !p.blocksVision && p.h >= COVER.minHeight).map((p) => p.box), ...this.windowBoxes];
 
     // Flat LOS/bullet segment list: box edges (walls, vision-blocking props,
     // map border), then one slot (4 floats) per door slab.

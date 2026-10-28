@@ -1,5 +1,5 @@
 // Turns map DATA (src/data/maps/*) into runtime geometry: wall boxes with
-// door/opening gaps cut out, door hinges, prop footprints, zones and the
+// door/opening/window gaps cut out, door hinges, window sills, prop footprints, zones and the
 // round data (bomb sites, attacker entries, deployment halves, barricade slots).
 // Pure: no DOM, no WebGL. Output is consumed by World (sim) and by render.
 import { PROPS } from '../data/props.js';
@@ -13,18 +13,20 @@ export function compileMap(def) {
   const gaps = [
     ...def.doors.map((d) => ({ ...d, isDoor: true })),
     ...(def.openings || []).map((o) => ({ ...o, isDoor: false })),
+    ...(def.windows || []).map((w) => ({ ...w, isWindow: true })),
   ];
 
   const walls = [];
   for (const w of def.walls) walls.push(...cutWall(w, gaps));
 
   const doors = def.doors.map((d, i) => compileDoor(d, i, def.walls));
+  const windows = (def.windows || []).map((w) => compileWindow(w, def.walls));
   const props = def.props.map(compileProp);
   const zones = {};
   for (const [key, z] of Object.entries(def.zones || {})) zones[key] = { ...z, box: boxFromRect(z.rect) };
   // Every passable gap in a wall (doors and doorless openings): used to aim
   // through doorways while approaching them and to snap planned points.
-  const doorways = gaps.map((g) => ({
+  const doorways = gaps.filter((g) => !g.isWindow).map((g) => ({
     cx: g.at[0],
     cy: g.at[1],
     length: g.width,
@@ -84,6 +86,7 @@ export function compileMap(def) {
     height: def.size.h,
     walls,
     doors,
+    windows,
     props,
     zones,
     doorways,
@@ -184,6 +187,26 @@ function compileDoor(d, index, walls) {
     closedBox: vertical
       ? { minX: cx - halfT, maxX: cx + halfT, minY: cy - half, maxY: cy + half }
       : { minX: cx - half, maxX: cx + half, minY: cy - halfT, maxY: cy + halfT },
+  };
+}
+
+/**
+ * A window: a gap in the wall with a sill across it, waist high. You see, shoot
+ * and throw through it, but nobody walks through (World: a move blocker and low cover).
+ */
+function compileWindow(w, walls) {
+  const [cx, cy] = w.at;
+  const half = w.width / 2;
+  const t = wallThicknessAt(w, walls);
+  const vertical = w.axis === 'v';
+  return {
+    id: w.id,
+    cx,
+    cy,
+    axis: w.axis,
+    length: w.width,
+    thickness: t,
+    box: vertical ? { minX: cx - t / 2, maxX: cx + t / 2, minY: cy - half, maxY: cy + half } : { minX: cx - half, maxX: cx + half, minY: cy - t / 2, maxY: cy + t / 2 },
   };
 }
 

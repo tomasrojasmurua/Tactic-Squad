@@ -37,6 +37,9 @@ export const WALL = Object.freeze({
   fenceTop: '#3a3935',
   fenceRail: '#b4ad9d',
   fencePostSpacing: 2.4, // m
+  sill: '#7d848d', // window sill (map `windows`): its sides
+  sillTop: '#bcd3e0', // its top, pale like glass so it reads as a window from above
+  sillFrame: '#2a2d31', // the thin frame along its edges
 });
 
 export const DOOR = Object.freeze({
