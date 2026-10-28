@@ -16,7 +16,7 @@
 import { EV } from '../core/events.js';
 import { POINTER, TOUCH, DOOR_TAP } from '../config/input.js';
 import { NAV } from '../config/balance.js';
-import { routeTail, lastUserIndex, controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, teamUnits, doorwayNear } from '../sim/queries.js';
+import { routeTail, lastUserIndex, controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, teamUnits, doorwayNear, HERE } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
 import { canEditRoutes, targetIndex, isDefenderSetup } from '../session/Session.js';
 import { watchOf, watchOrder } from '../session/watch.js';
@@ -139,7 +139,11 @@ export class PlanningController {
     const u = this.selectedUnit();
     if (!u) return false;
     if (isDefenderSetup(this.session)) return this.place(u, px, py);
-    if (g.kind === 'unit') return true; // tapping the selected operator again changes nothing
+    if (g.kind === 'unit') {
+      // Tapping the selected operator: his menu on the spot he stands on (throw / wait from here).
+      this.request(`door_${u.id}_${HERE}`);
+      return true;
+    }
     // A second tap on the last point (double tap, shaky finger) adds nothing.
     if (u.route.length && this.nearTail(px, py, touch ? TOUCH.duplicatePointPx : POINTER.duplicatePointPx)) return true;
     const w = this.world(px, py);
@@ -356,6 +360,12 @@ export class PlanningController {
   pickToss(item) {
     const u = this.selectedUnit();
     if (!u || !this.canEdit) return true;
+    if (this.here(u)) {
+      const ui = this.session.ui;
+      ui.tossPick = ui.tossPick && ui.tossPick.item === item ? null : { unitId: u.id, index: HERE, item };
+      if (ui.tossPick) this.request('tossAim');
+      return true;
+    }
     const i = targetIndex(this.session, u);
     if (i < 0) return true;
     const p = u.route[i];
@@ -384,7 +394,7 @@ export class PlanningController {
     const u = this.getSim().units[tp.unitId];
     if (!u || !u.alive || tp.index >= u.route.length) return true;
     const w = this.world(px, py);
-    this.session.pointTarget = { unitId: u.id, index: tp.index };
+    this.session.pointTarget = { unitId: u.id, index: tp.index === HERE ? 0 : tp.index }; // "here" is his first point now
     this.command({ type: 'setToss', unitId: u.id, item: tp.item, x: w.x, y: w.y, index: tp.index });
     return true;
   }
@@ -542,11 +552,23 @@ export class PlanningController {
   setWhen(code) {
     const u = this.selectedUnit();
     if (!u || !this.canEdit) return true;
+    if (this.here(u)) {
+      if (code === null) return true; // "now" from where he stands: nothing to set
+      this.session.pointTarget = { unitId: u.id, index: 0 };
+      this.command({ type: 'setHold', unitId: u.id, code, index: HERE });
+      return true;
+    }
     const i = targetIndex(this.session, u);
     if (i < 0) return true;
     this.keepTarget(u, i, u.route[i]);
     this.command({ type: 'setHold', unitId: u.id, code, index: i });
     return true;
+  }
+
+  /** Is the menu on the spot u stands on (a tap on him), not on a point of his route? */
+  here(u) {
+    const t = this.session.pointTarget;
+    return !!t && t.unitId === u.id && t.index === HERE;
   }
 
   /** Deciding on a tapped point (a "?" stops being one): the menu stays on it, not on the last waypoint. */

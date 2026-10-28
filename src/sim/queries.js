@@ -241,6 +241,9 @@ function holdAhead(u, code) {
 export const holdCode = (p) => p.code || ENTRY.goCodes[0];
 
 /** unit.waitCode of an operator stopped at a "?" door point (no GO releases it: a decision does). */
+/** The `index` of an order (setToss, setHold) on the spot the unit stands on: sim/orders.js pointIndex. */
+export const HERE = 'here';
+
 export const ASK_CODE = '?';
 
 /** "?" door points of the side still undecided (operators already stopped at one included). */

@@ -10,7 +10,8 @@
 //   {type:'promoteLast', unitId}               last point becomes a user waypoint
 //   {type:'setLook', unitId, angle, index?}    facing at a user waypoint (default: last; none: idle facing)
 //   {type:'toggleHold', unitId}                last user waypoint waits for a GO code: none -> A -> B -> C -> none
-//   {type:'setHold', unitId, code, index?}     that waypoint (default: last) waits for `code` ('A'|'B'|'C'; null: no hold)
+//   {type:'setHold', unitId, code, index?}     that waypoint (default: last) waits for `code` ('A'|'B'|'C'; null: no hold;
+//                                              index 'here' as for setToss)
 //   {type:'setEntry', unitId, mode, index?}    how he goes through the doorway next to that waypoint (default: last):
 //                                              ENTRY.modes ('kick'|'slow'|'flash'|'frag'|'breach') or null (just walk through)
 //
@@ -24,7 +25,9 @@
 //   {type:'setPace', unitId, pace, index?}     the leg ending at that user waypoint (default: last) is walked
 //                                              'sneak' (MOVE.sneakFactor, quiet) or normally (null)
 //   {type:'setToss', unitId, item, x, y, index?}  from that user waypoint (default: last) he throws a flash /
-//                                              grenade / smoke (ENTRY.tossItems) to (x, y); item null: no throw
+//                                              grenade / smoke (ENTRY.tossItems) to (x, y); item null: no throw.
+//                                              index 'here': from where he stands now (a user point is put
+//                                              there, first on his route: he throws, then walks on)
 //   {type:'setPeek', unitId, on, index?}       "asomarse y volver" on the last user waypoint: he stands there
 //                                              MOVE.peekTime s looking at its look (the way he walked in, if
 //                                              none) and goes back to the point before it (or where he
@@ -74,7 +77,7 @@
 // turns codes into text (ui/texts.js T.rejectReason), the sim never does.
 import { NAV, ENTRY, MOVE } from '../config/balance.js';
 import { EV } from '../core/events.js';
-import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode, codeInUse, humanTeam, ASK_CODE } from './queries.js';
+import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode, codeInUse, humanTeam, ASK_CODE, HERE } from './queries.js';
 import { segmentCrossesDoorway } from './doors.js';
 import { startDefuse } from './objectives.js';
 import { cancelEntry, releaseDelay } from './entries.js';
@@ -182,8 +185,10 @@ export function applyCommand(sim, cmd, by = 'human') {
       return setLook(sim, unit, cmd.angle, cmd.index);
     case 'toggleHold':
       return toggleHold(sim, unit);
-    case 'setHold':
-      return setHold(sim, unit, cmd.code ?? null, cmd.index);
+    case 'setHold': {
+      const i = pointIndex(sim, unit, cmd.index);
+      return i === FULL ? reject(sim, unit, REJECT.routeTooLong) : setHold(sim, unit, cmd.code ?? null, i);
+    }
     case 'setEntry':
       return setEntry(sim, unit, cmd.mode ?? null, cmd.index);
     case 'undoWaypoint':
@@ -194,8 +199,10 @@ export function applyCommand(sim, cmd, by = 'human') {
       return insertWaypoint(sim, unit, cmd.index, cmd.x, cmd.y);
     case 'setPace':
       return setPace(sim, unit, cmd.pace === 'sneak' ? 'sneak' : null, cmd.index);
-    case 'setToss':
-      return setToss(sim, unit, cmd.item ?? null, cmd.x, cmd.y, cmd.index);
+    case 'setToss': {
+      const i = pointIndex(sim, unit, cmd.index);
+      return i === FULL ? reject(sim, unit, REJECT.routeTooLong) : setToss(sim, unit, cmd.item ?? null, cmd.x, cmd.y, i);
+    }
     case 'setPeek':
       return setPeek(sim, unit, cmd.on !== false, cmd.index);
     case 'follow': {
@@ -423,6 +430,22 @@ function settleAsk(unit, i) {
 function applyHold(p, code) {
   p.hold = code !== null;
   p.code = code;
+}
+
+const FULL = -2;
+
+/**
+ * The index an order names; HERE: a user point where the unit stands, first
+ * on his route (put there if there is none) — a throw or a hold "from here",
+ * before what he walks next. FULL when there is no room for it.
+ */
+function pointIndex(sim, unit, index) {
+  if (index !== HERE) return index;
+  const r = unit.route;
+  if (r.length && r[0].user && Math.hypot(r[0].x - unit.x, r[0].y - unit.y) < 0.05) return 0;
+  if (r.length >= NAV.maxRoutePoints) return FULL;
+  r.unshift(routePoint(unit.x, unit.y, { user: true }));
+  return 0;
 }
 
 /** A valid user waypoint index (given, else the last one), or -1. */
