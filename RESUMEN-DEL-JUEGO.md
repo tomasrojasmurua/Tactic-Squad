@@ -68,7 +68,7 @@ fase trae una tarjeta que la explica la primera vez. Solo las lecciones del tuto
 (enseña el asalto).
 
 **Menú y lobby.** JUGAR → CONTRA LA IA (MULTIJUGADOR, próximamente) → el lobby:
-**formato** (una ronda suelta, que se puede reintentar, o al mejor de 3, 5 o 7), **con
+**formato** (una ronda suelta o al mejor de 3, 5 o 7), **con
 qué bando empiezas**, **mapa** (Operación Almacén; más, próximamente) y **tu equipo**: la
 clase de cada puesto al atacar y al defender (en la compra o la preparación se puede
 cambiar ronda a ronda). Abajo, quién está y si está listo; con LISTO empieza (contra la
@@ -126,10 +126,14 @@ de desactivar se oyen a través de las paredes dentro de un radio. Al final de c
 lo que oyó cada bando aparece en **su** mapa como un pulso aproximado que se apaga en 3
 turnos. El paso sigiloso casi no se oye.
 
-**Reintentar.** Fuera de una partida, al final de la ronda R la repite con la misma
-semilla y las mismas órdenes grabadas, fase por fase. Cambiar una cosa toma el control
-desde ahí. El bucle buscado: fallar, entender por qué, cambiar **una** cosa, probar de
-nuevo.
+**Las rondas no se repiten.** Una ronda termina y su resultado queda: sin reintento ni
+"empezar de nuevo" (solo una lección del tutorial se puede repetir). Al terminar, antes
+del resultado, se ve la **repetición de la última baja**: 3,5 s antes del disparo,
+el momento del disparo en cámara lenta, y quién abatió a quién, con el que dispara a la
+vista aunque nunca se lo haya visto. ESPACIO o SALTAR va directo al resultado, que ofrece
+verla de nuevo y OTRA RONDA. La repetición no graba nada aparte: la ronda se juega otra
+vez, fuera de pantalla, con la misma semilla y las órdenes de cada fase
+(`session/KillCam.js`).
 
 ### Partida al mejor de 3, 5 o 7
 
@@ -208,7 +212,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 - Turnos de 5 s que se cortan al ver un enemigo nuevo (opción), bomba de 90 s.
 - Grupos GO de color en vivo.
 - Todas las fases desde la primera ronda, con tarjeta de presentación.
-- Reintentar con el plan grabado (fuera de partida).
+- Repetición de la última baja al terminar la ronda (las rondas no se reintentan).
 - **Partidas al mejor de 3, 5 o 7**, marcador, clase que se conserva y +1 punto de utilidad para el que pierde.
 - Menú con lobby (formato, bando, mapa, clases), tutorial en lecciones (1. Básico, sobre una ronda real más fácil; 5. Ronda completa, con tarjeta en cada fase; las otras tres en camino), pantalla de "por qué".
 

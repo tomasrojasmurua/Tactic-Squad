@@ -59,6 +59,13 @@ export const HUD_OCCLUSION = Object.freeze({
 });
 
 /**
+ * The last kill, again, when the round is over (session/KillCam.js): from
+ * `before` s before it to `after` s after, the `slowWindow` s around the
+ * shot at `slow` speed. The camera frames killer and victim from `height` m.
+ */
+export const KILLCAM = Object.freeze({ before: 3.5, after: 1.2, slow: 0.4, slowWindow: 0.6, height: 13, minDelay: 0.4 });
+
+/**
  * Session flow tuning (owner: gameplay — what happens and when, not how it looks).
  *   confirmSeconds   a destructive request (wipe the plan) must be repeated within this time
  *   replayPhaseSeconds  on a retry, each recorded decision phase replays and ends by itself

@@ -68,7 +68,7 @@ La ronda vive en la simulación (`sim/round.js`): **compra → preparación → 
 
 **Vista por bando.** `sim/view.js` `teamView(sim, bando)` devuelve lo que ese bando puede saber: sus unidades, los enemigos que ve ahora, dónde vio por última vez a los demás, los pulsos que oyó y la bomba si sabe dónde está. Es el filtro que usará el servidor online; los pulsos ya se dibujan desde ahí, el resto del render todavía lee la sim entera.
 
-**Reintentar** (R al final de la ronda) repite la ronda con la misma semilla: cada fase de decisión vuelve a dar sus órdenes grabadas y se cierra sola. Cambiar algo en una fase repetida toma el control desde ahí. Durante la ronda, R la empieza de nuevo sin plan (con confirmación).
+**Repetición de la última baja** (`session/KillCam.js`, `KILLCAM`). Al terminar la ronda, antes del resultado, la ronda se juega otra vez fuera de pantalla con la misma semilla y las órdenes grabadas por fase (`PlanRecorder`) hasta 3,5 s antes de la última baja, y esa copia se muestra (render, sonido, efectos; sus eventos llevan `replay` y ni el HUD ni la sesión los cuentan) con el disparo en cámara lenta. Las rondas no se reintentan: R / N (reintentar, plan nuevo) quedan solo para las lecciones del tutorial.
 
 ## Preparación de ambos bandos (hito 3)
 

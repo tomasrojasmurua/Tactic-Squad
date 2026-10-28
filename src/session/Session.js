@@ -39,6 +39,8 @@ export function createSession({ touch }) {
     pauseReason: null,
     resumePhase: 'running', // what a pause goes back to: 'running' | 'drone'
     confirm: { action: null, until: 0 }, // destructive request armed until `until` (performance.now ms)
+    lastKill: null, // the round's last EV.DEATH {tick, unitId, killerId} (the kill cam shows it again)
+    killcam: null, // after the round, until its last kill was shown: {tick, unitId, killerId, playing}
     replay: { pending: 0, attempt: 0, exec: false }, // recorded phases still to replay; retries of this plan; this turn is a replayed one
     clock: { left: 0, total: 0, unlimited: false, auto: false }, // session/PhaseClock.js (decision phases)
     tutorial: { active: false, step: 0, id: null, info: false, card: false, count: 0, done: false }, // session/Tutorial.js
