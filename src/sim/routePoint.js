@@ -10,7 +10,10 @@
 //             grenade / smoke to that point (sim/entries.js armToss)
 //   pause     s he stands there (looking at `look`) before going on: "asomarse y volver"
 //   back      the point he goes back to after such a peek (orders.js setPeek)
+//   beside    a stack beside a door frame, not in front of it (orders.js stackBeside; door = that doorway)
+//   waitDoor  doorway a teammate decided: he waits here until that teammate's entry is done
+//             (queries.js doorClaimed), then goes through; -1 = none
 export function routePoint(x, y, over = null) {
-  const p = { x, y, user: false, look: null, hold: false, code: null, entry: null, entryDoor: -1, ask: false, door: -1, pace: null, toss: null, pause: 0, back: false };
+  const p = { x, y, user: false, look: null, hold: false, code: null, entry: null, entryDoor: -1, ask: false, door: -1, pace: null, toss: null, pause: 0, back: false, beside: false, waitDoor: -1 };
   return over ? Object.assign(p, over) : p;
 }

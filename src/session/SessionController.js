@@ -20,7 +20,7 @@ import { FLOW } from '../config/ui.js';
 import { lessonById, nextLesson } from '../config/lessons.js';
 import { loadPref, savePref } from './storage.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
-import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors, lastUserIndex } from '../sim/queries.js';
+import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors, lastUserIndex, HERE } from '../sim/queries.js';
 import { phaseTick } from '../sim/round.js';
 import { SESSION_PHASE, isDecisionPhase, isPlanningTime, isLivePhase, pilotsDrone, isDefenderSetup } from './Session.js';
 import { watchOf, watchOrder } from './watch.js';
@@ -65,10 +65,12 @@ export class SessionController {
     bus.on(EV.COMMAND, (cmd) => this.record(cmd));
     bus.on(EV.REQUEST, ({ action }) => this.handleRequest(action));
     bus.on(EV.SELECT, ({ unitId }) => this.select(unitId));
-    bus.on(EV.ROUTE_CHANGED, ({ unitId, kind }) => {
+    bus.on(EV.ROUTE_CHANGED, ({ unitId, kind, moved }) => {
       // A new / undone / cleared leg: the picker goes back to the last waypoint (indices may have moved).
       const t = this.session.pointTarget;
       if (t && t.unitId === unitId && (kind === 'add' || kind === 'undo' || kind === 'clear')) this.session.pointTarget = null;
+      // The decided point went beside the door frame (or back): the picker stays on it.
+      if (t && t.unitId === unitId && moved && t.index === moved.from) this.session.pointTarget = { unitId, index: moved.to };
       // A tap on a door stacked him by it (PlanningController.stackAt): the door wheel opens on that point.
       const w = this.session.ui.wheelAt;
       if (w && w.unitId === unitId) {
@@ -595,14 +597,17 @@ export class SessionController {
     this.sound(sign === '-' ? 'undo' : 'select');
   }
 
-  /** A tapped "?" door point (door_<unitId>_<index>): its operator is selected and the picker edits that point. */
+  /**
+   * A tapped "?" door point (door_<unitId>_<index>): its operator is selected and the picker edits that point.
+   * door_<unitId>_here: the spot he stands on (a throw or a GO wait from there, before he walks on).
+   */
   targetDoor(action) {
     if (!isPlanningTime(this.session)) return;
     const [, id, index] = action.split('_');
     const u = controllableUnit(this.sim, +id, this.session.team);
     if (!u) return;
     this.select(u.id);
-    this.session.pointTarget = { unitId: u.id, index: +index };
+    this.session.pointTarget = { unitId: u.id, index: index === HERE ? HERE : +index };
     this.sound('select');
   }
 

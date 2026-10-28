@@ -11,7 +11,7 @@ import { EV } from '../core/events.js';
 import { angleDiff, angleTo, approachAngle } from '../core/math.js';
 import { tryOpenDoors, segmentCrossesDoorway } from './doors.js';
 import { armEntry, armToss } from './entries.js';
-import { isAiControlled, holdCode, ASK_CODE } from './queries.js';
+import { isAiControlled, holdCode, ASK_CODE, doorClaimed } from './queries.js';
 import { routePoint } from './routePoint.js';
 
 const carrot = { x: 0, y: 0 };
@@ -98,6 +98,10 @@ export function updateMovement(sim, u, dt) {
     return resetStuck(u);
   }
   if (u.waitingGo || u.entry || u.bash || u.goDelay > 0 || !u.route.length) return resetStuck(u);
+  if (u.waitDoor >= 0) {
+    if (doorClaimed(sim, u, u.waitDoor)) return resetStuck(u); // a teammate is still to go through it: after him
+    u.waitDoor = -1;
+  }
 
   let speed = (u.behavior && u.behavior.type === 'patrol' ? MOVE.patrolSpeed : MOVE.speed) * u.mods.speed;
   if (u.target >= 0) speed *= MOVE.engageFactor;
@@ -272,6 +276,11 @@ function arriveAt(sim, u, p) {
   if (!p.user) return;
   u.lookOverride = p.look;
   if (p.pause > 0) u.pause = p.pause;
+  if (p.waitDoor >= 0) {
+    u.waitDoor = p.waitDoor;
+    const d = sim.world.doorways[p.waitDoor];
+    if (p.look === null) u.lookOverride = angleTo(u.x, u.y, d.cx, d.cy); // covering the doorway
+  }
   if (p.hold) {
     u.waitingGo = true;
     u.waitCode = holdCode(p);

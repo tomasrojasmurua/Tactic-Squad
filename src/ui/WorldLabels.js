@@ -85,11 +85,13 @@ export class WorldLabels {
         if (!u.alive) continue;
         for (let i = 0; i < u.route.length; i++) {
           const p = u.route[i];
-          if (!p.user || (!p.hold && !p.entry && !p.ask && !(p.pause > 0))) continue;
+          const waits = p.waitDoor >= 0 && !p.entry;
+          if (!p.user || (!p.hold && !p.entry && !p.ask && !waits && !(p.pause > 0))) continue;
           const t = this.point(n++);
           const code = p.hold ? holdCode(p) : null;
           const g = code && GO_GROUPS[code];
-          const text = p.ask ? '?' : p.hold && p.entry ? `${g.glyph} ${T.entry.tags[p.entry]}` : p.hold ? T.goShort(code) : p.entry ? T.entry.tags[p.entry] : T.peek.tag;
+          const tag = p.entry ? T.entry.tags[p.entry] : waits ? T.entry.tags.wait : null;
+          const text = p.ask ? '?' : p.hold && tag ? `${g.glyph} ${tag}` : p.hold ? T.goShort(code) : tag || T.peek.tag;
           toggle(t.node, 'ask', p.ask);
           toggle(t.node, 'go', !p.ask && !!g);
           toggle(t.node, 'entry', !p.ask && !g);
