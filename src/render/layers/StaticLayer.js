@@ -1,5 +1,5 @@
-// Static lit geometry: extruded walls (grey sides, black tops) and all
-// furniture, merged into a single mesh / draw call.
+// Static lit geometry: extruded walls (grey sides, black tops), window sills
+// and all furniture, merged into a single mesh / draw call.
 import { WALL } from '../../config/materials.js';
 import { HEIGHTS } from '../../config/render.js';
 import { ShaderProgram } from '../gl/ShaderProgram.js';
@@ -36,6 +36,7 @@ export class StaticLayer {
       m.box(cx, cy, 0, bw + k, bd + k, WALL.baseboardHeight, WALL.baseboard, { top: WALL.baseboard });
       m.box(cx, cy, 0, bw, bd, HEIGHTS.wall, side, { top: WALL.top });
     }
+    for (const w of compiled.windows || []) buildSill(m, w);
     for (const p of compiled.props) buildProp(m, p);
     this.mesh.upload(m.toFloat32());
   }
@@ -45,6 +46,24 @@ export class StaticLayer {
     applyLit(p, frame);
     p.mat4('uModel', this.identity);
     this.mesh.draw();
+  }
+}
+
+/** A window: a waist-high sill across the gap, its top pale like glass, with a dark frame along both faces. */
+function buildSill(m, w) {
+  const b = w.box;
+  const cx = (b.minX + b.maxX) / 2;
+  const cy = (b.minY + b.maxY) / 2;
+  const bw = b.maxX - b.minX;
+  const bd = b.maxY - b.minY;
+  const h = HEIGHTS.sill;
+  m.box(cx, cy, 0, bw, bd, h, WALL.sill, { top: WALL.sillTop });
+  const f = 0.05; // frame width, m
+  const vertical = w.axis === 'v';
+  for (const s of [-1, 1]) {
+    const ox = vertical ? (s * (bw - f)) / 2 : 0;
+    const oy = vertical ? 0 : (s * (bd - f)) / 2;
+    m.box(cx + ox, cy + oy, h, vertical ? f : bw, vertical ? bd : f, 0.03, WALL.sillFrame, { top: WALL.sillFrame });
   }
 }
 
