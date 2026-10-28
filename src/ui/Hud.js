@@ -124,12 +124,13 @@ export class Hud {
       this.vignetteFloor = 0;
     });
     bus.on(EV.HIT, (e) => {
+      if (e.replay) return; // the kill cam: already in the feed
       const u = this.sim && this.sim.units[e.unitId];
       if (u && u.team === this.viewer.team) this.vignetteLevel = Math.min(1, this.vignetteLevel + VIGNETTE.hitKick);
     });
     bus.on(EV.DEATH, (e) => {
       const sim = this.sim;
-      if (!sim) return;
+      if (!sim || e.replay) return;
       const victim = sim.units[e.unitId];
       const killer = sim.units[e.killerId];
       if (victim.team === this.viewer.team) {
@@ -191,6 +192,7 @@ export class Hud {
   }
 
   addFeed(item) {
+    if (this.viewer.killcam && this.viewer.killcam.playing) return; // the kill cam replays what the feed already said
     this.feed.appendChild(item);
     while (this.feed.children.length > HUD.feedMaxItems) this.feed.firstChild.remove();
     setTimeout(() => item.classList.add('out'), HUD.feedSeconds * 1000);
@@ -299,6 +301,7 @@ export class Hud {
       setStyle(g.key, 'display', live ? '' : 'none');
     }
     setHidden(this.btnCameras, !showCameras(sim, session));
+    setHidden(this.btnRestart, session.mode !== 'tutorial'); // only a lesson starts over
     const armed = session.confirm.action === 'restart';
     setText(this.restartLabel, armed ? T.flow.confirmRestart : T.actions.restart);
     if ((this.btnRestart.dataset.armed || '') !== (armed ? '1' : '')) this.btnRestart.dataset.armed = armed ? '1' : '';

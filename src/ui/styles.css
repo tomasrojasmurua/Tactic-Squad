@@ -977,9 +977,19 @@ body.touch .phase-panel .pp-class { min-height: 26px; padding: 1px 6px; font-siz
 .result .match-line { font-size: 13px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cyan); margin-bottom: 4px; }
 .result .match-line:empty { display: none; }
 .result .match-pay { margin-top: 8px; font-size: 12.5px; color: var(--ok); }
-.result .next-round { display: none; }
-.result.in-match .next-round { display: inline-flex; }
-.result.in-match .retry-plan, .result.in-match .new-plan, .result.in-match .reroll { display: none; }
+/* Only a lesson repeats a round; a single round or a match goes forward. */
+.result.lesson .next-round, .result.lesson .replay-kill { display: none; }
+.result:not(.lesson) .retry-plan, .result:not(.lesson) .new-plan, .result:not(.lesson) .reroll { display: none; }
+.result-box .result-actions .btn.replay-kill { background: transparent; color: #cfd6db; }
+
+/* The last kill shown again: a band at the top, the battlefield below it. */
+.killcam { position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: center; padding: 14px 16px 0; pointer-events: none; z-index: 6; }
+.killcam.hidden { display: none; }
+.killcam .kc-bar { display: flex; align-items: center; gap: 14px; padding: 8px 10px 8px 14px; background: rgba(8, 12, 16, 0.86); border-top: 2px solid var(--red, #e5484d); max-width: 100%; }
+.killcam .kc-tag { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; color: var(--red, #e5484d); white-space: nowrap; }
+.killcam .kc-who { font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.killcam .kc-skip { pointer-events: auto; }
+body.killcam-on .banner, body.killcam-on .squad, body.killcam-on .feed, body.killcam-on .actions, body.killcam-on .tbar, body.killcam-on .phase-panel { visibility: hidden; }
 
 /* ------------------------------------------------------------ phone pass (landscape, height <= 520 px)
  * Nothing cut off, finger-size targets (>= 36 px, 44 px for the main ones), and scroll where a panel

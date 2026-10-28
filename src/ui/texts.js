@@ -32,7 +32,7 @@ export const T = Object.freeze({
     planning: 'Traza o cambia rutas · ESPACIO: listo',
     paused: 'ESPACIO para reanudar',
     running: 'Todo se ejecuta a la vez: el plan sigue al terminar el turno',
-    ended: 'R: reintentar',
+    ended: 'La ronda terminó: el resultado queda',
   },
 
   /** Sub line of the banner playing the defenders (replaces phaseSub / phaseSubTouch where it has the phase). */
@@ -56,7 +56,7 @@ export const T = Object.freeze({
     planning: 'Dibuja o cambia rutas · LISTO para ejecutar',
     paused: 'SEGUIR para reanudar',
     running: 'Todo se ejecuta a la vez: el plan sigue al terminar el turno',
-    ended: 'REINICIAR para otro intento',
+    ended: 'La ronda terminó: el resultado queda',
   },
   /** Phase bar: turn and the decision clock (ui/Hud.js). */
   turn: (n) => `TURNO ${n}`,
@@ -191,6 +191,16 @@ export const T = Object.freeze({
     aimTitle: { flash: '¿Dónde cae el flash?', frag: '¿Dónde cae la granada?', smoke: '¿Dónde cae el humo?' },
   },
 
+  /** The round's last kill shown again before its result (ui/Screens.js). */
+  killcam: {
+    title: 'REPETICIÓN · ÚLTIMA BAJA',
+    who: (killer, victim) => `${killer} abate a ${victim}`,
+    died: (victim) => `Cae ${victim}`,
+    skip: 'SALTAR',
+    skipKey: 'ESPACIO',
+    again: 'VER LA ÚLTIMA BAJA',
+  },
+
   result: {
     win: 'MISIÓN CUMPLIDA',
     lose: 'MISIÓN FALLIDA',
@@ -209,6 +219,7 @@ export const T = Object.freeze({
     retry: 'R: reintentar el mismo plan · N: plan nuevo',
     retryTouch: 'Mismo plan, nueva tirada: corrige lo que falló.',
     retryButton: 'REINTENTAR PLAN',
+    another: 'OTRA RONDA',
     newPlanButton: 'PLAN NUEVO',
     whyLost: 'Por qué',
     stats: { time: 'Tiempo', kills: 'Bajas', losses: 'Pérdidas', accuracy: 'Precisión' },
@@ -345,8 +356,8 @@ export const T = Object.freeze({
       ['Rueda · + / −', 'Zoom'],
       ['V', 'Ver todo el mapa (otra vez: volver)'],
       ['F', 'Centrar en el operador'],
-      ['R', 'Reintentar con el mismo plan (durante la ronda: empezarla de nuevo)'],
-      ['N', 'Plan nuevo (borra todas las rutas)'],
+      ['R · N', 'Solo en el tutorial: repetir la lección con el mismo plan · con un plan nuevo. Las rondas no se repiten'],
+      ['Espacio (al terminar la ronda)', 'Saltar la repetición de la última baja'],
       ['Esc', 'Cancelar el trazo en curso'],
       ['P', 'Desactivar la bomba (operador junto a ella)'],
       ['M', 'Silenciar'],

@@ -41,7 +41,7 @@ export class SessionController {
    * @param deps.getSim     () => current Simulation
    * @param deps.restart    (seed) => starts a new round with that seed
    */
-  constructor({ bus, session, loop, planning, framing, audio, getSim, restart }) {
+  constructor({ bus, session, loop, planning, framing, audio, getSim, restart, killcam }) {
     this.bus = bus;
     this.session = session;
     this.loop = loop;
@@ -51,6 +51,7 @@ export class SessionController {
     session.musicOn = audio.musicOn;
     this.getSim = getSim;
     this.restart = restart;
+    this.killcam = killcam; // {start(kill), stop()}: Game plays the round's last kill again
     this.seed = SIM.seed; // the scenario: kept on retry (same plan = same round); "reroll" changes it
     this.postRoundTimer = 0;
     this.helpPaused = false; // the help opened while a turn ran (closing it resumes)
@@ -78,7 +79,9 @@ export class SessionController {
       }
       this.planning.refresh();
     });
-    bus.on(EV.DEATH, ({ unitId }) => {
+    bus.on(EV.DEATH, ({ unitId, killerId, tick, replay }) => {
+      if (replay) return; // the kill cam's copy of the round
+      this.session.lastKill = { tick, unitId, killerId };
       if (unitId === this.session.selectedId) this.selectNextAlive();
     });
   }
@@ -89,6 +92,8 @@ export class SessionController {
 
   /** Called by Game when a new round's simulation exists. */
   onRoundStart() {
+    this.session.lastKill = null;
+    this.session.killcam = null;
     this.selectNextAlive();
     if (this.tutorial.current() === 'select') this.session.selectedId = -1;
     this.postRoundTimer = 0;
@@ -128,6 +133,8 @@ export class SessionController {
         if (this.session.mode === 'match' && this.session.match) endMatchRound(this.session.match, sim); // score and pay, once
       }
       this.postRoundTimer = SIM.postRoundSeconds;
+      // The result waits for the last kill, shown again once the round's tail has run (not in a lesson).
+      if (this.session.phase !== 'ended') this.session.killcam = this.session.lastKill && this.session.mode !== 'tutorial' ? { ...this.session.lastKill, playing: false } : null;
       this.setPhase('ended');
       return;
     }
@@ -234,7 +241,10 @@ export class SessionController {
     }
     else if (phase === 'ended') {
       this.postRoundTimer -= dt;
-      if (this.postRoundTimer <= 0) this.loop.setSimulating(false);
+      if (this.postRoundTimer > 0) return;
+      this.loop.setSimulating(false);
+      const kc = this.session.killcam;
+      if (kc && !kc.playing) this.playKillcam();
     }
   }
 
@@ -345,9 +355,9 @@ export class SessionController {
     const session = this.session;
     const key = action === 'toggle' || action === 'execute' ? 'ready' : action; // LISTO's other names
     if (session.confirm.action && session.confirm.action !== key) session.confirm.action = null;
-    // A match is played forward: no retries of a round (its result counts).
-    if (session.mode === 'match' && (action === 'restart' || action === 'newPlan' || action === 'reroll')) {
-      if (phase === 'ended') this.notice('matchNoRetry');
+    // A round is played forward and its result counts: no retries, no starting over (only a lesson repeats).
+    if (session.mode !== 'tutorial' && (action === 'restart' || action === 'newPlan' || action === 'reroll')) {
+      if (phase === 'ended') this.notice('noRetry');
       return;
     }
     switch (action) {
@@ -390,8 +400,16 @@ export class SessionController {
         this.sound('select');
         return;
       case 'nextRound':
-        // Match result screen: the next round (or, when it is over, a new match).
-        if (phase === 'ended' && session.mode === 'match') this.nextMatchRound();
+        // Result screen: the match's next round (or, when it is over, a new match); a single round: another one.
+        if (phase !== 'ended' || session.killcam) return;
+        if (session.mode === 'match') this.nextMatchRound();
+        else if (session.mode === 'play') this.anotherRound();
+        return;
+      case 'skipKillcam':
+        this.killcamDone();
+        return;
+      case 'killcam':
+        this.playKillcam();
         return;
       case 'menu':
         // Back to the main menu (during the round, only after a confirming second press).
@@ -603,6 +621,20 @@ export class SessionController {
     this.sound('select');
   }
 
+  /** The round's last kill again (after the round, or VER DE NUEVO on the result). */
+  playKillcam() {
+    if (!this.session.lastKill || this.session.phase !== 'ended') return;
+    this.session.killcam = { ...this.session.lastKill, playing: true };
+    this.killcam.start(this.session.lastKill);
+  }
+
+  /** The clip is over (or skipped): the result. */
+  killcamDone() {
+    if (!this.session.killcam) return;
+    this.session.killcam = null;
+    this.killcam.stop();
+  }
+
   /** The door picker's ×. */
   closePicker() {
     this.session.pointTarget = null;
@@ -649,6 +681,16 @@ export class SessionController {
     this.recorder.beginAttempt([]);
     this.session.replay.attempt = 0;
     this.restart(this.seed); // Game.newRound: puts the screen in the new round's first phase
+    this.framing.frameStart();
+    this.sound('select');
+  }
+
+  /** A single round is over: a new one (another scenario: site, spread...), same side and classes. */
+  anotherRound() {
+    this.seed = (Math.random() * 1e9) | 0;
+    this.recorder.beginAttempt([]);
+    this.session.replay.attempt = 0;
+    this.restart(this.seed);
     this.framing.frameStart();
     this.sound('select');
   }

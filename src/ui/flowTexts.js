@@ -91,7 +91,7 @@ export const FLOW_TEXTS = Object.freeze({
     tutorialFirst: 'Primero haz el paso del tutorial (recuadro de la izquierda)',
     noCameras: { touch: 'No te queda ninguna cámara', desk: 'No te queda ninguna cámara' },
     tossAim: { touch: 'Toca donde quieres que caiga. Junto a una puerta, la abre y lanza adentro. × cancela', desk: 'Haz clic donde quieres que caiga. Junto a una puerta, la abre y lanza adentro. Esc cancela' },
-    matchNoRetry: 'En una partida no se repiten rondas: SIGUIENTE RONDA',
+    noRetry: 'Las rondas no se repiten: mejor suerte en la próxima',
     contactCut: '¡Contacto! El turno se cortó para que puedas reaccionar',
     contactOn: 'El turno se cortará al ver un enemigo (desde el próximo plan)',
     contactOff: 'Los turnos duran siempre 5 s (desde el próximo plan)',
