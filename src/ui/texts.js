@@ -461,6 +461,8 @@ export const T = Object.freeze({
     trapModeOn: 'Poniendo trampas: toca el suelo',
     cameras: (n, max) => `Cámaras ${n}/${max}: toca un soporte en la pared (+ pone, × quita)`,
     mount: 'Soporte de cámara',
+    fold: 'Ocultar panel ▴',
+    unfold: 'Opciones ▾',
   },
   /** Drone phase (ui/DroneStick.js). */
   drone: { stick: 'DRON', keys: 'WASD' },

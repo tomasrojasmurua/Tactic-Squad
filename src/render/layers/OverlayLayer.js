@@ -26,7 +26,9 @@ const LOOK_PREVIEW_RGB = [1, 1, 1];
 const DRONE_RGB = hexToRgb('#8fe36b');
 const TOSS_DANGER_RGB = [1, 0.33, 0.3]; // a grenade that would reach its own thrower
 const BARRICADE_RGBA = [1, 0.69, 0.18, 0.95];
-const WIRE_RGBA = [0.78, 0.82, 0.86, 0.95]; // barbed wire: steel grey
+const WIRE_RGB = [0.8, 0.84, 0.88]; // barbed wire: steel grey (the far half of each loop darker)
+const WIRE_BARB_RGBA = [0.93, 0.95, 0.97, 1];
+const WIRE_LOOP = Object.freeze({ radius: 0.24, pitch: 0.17, steps: 24, barb: 0.04 }); // m (steps per loop: a multiple of 8)
 const SIDES = [-1, 1];
 
 export class OverlayLayer {
@@ -47,6 +49,7 @@ export class OverlayLayer {
     this.ghostSim = null;
     this.routePts = []; // scratch flat polyline
     this.linkPts = [0, 0, 0, 0]; // scratch entry link
+    this.wirePt = [0, 0, 0]; // scratch point on a wire's coil (x, y, near side)
     this.tossPts = []; // scratch throw path (2 or 3 points)
     this.conePts = []; // scratch outline of a camera's view
     this.routeOrder = []; // own operators, selected last
@@ -230,26 +233,68 @@ export class OverlayLayer {
     }
   }
 
-  /** Barbed wire the viewer's side knows of: a zigzag coil across the doorway (sim/wires.js). */
+  /**
+   * Barbed wire the viewer's side knows of (sim/wires.js): a concertina coil
+   * seen from above, overlapping loops lit on their near side, barbs knotted
+   * along it and a picket at each end, with its shadow on the floor.
+   */
   wires(t, sim, own, mpp) {
     for (const door of sim.doors) {
       if (!door.wired || (own === 'attackers' && !sim.intel.wires.has(door.def.index))) continue;
       const d = door.def;
       const tx = d.normalY; // along the wall
       const ty = -d.normalX;
-      const h = d.length / 2 + 0.1;
-      const n = 7;
-      let px = d.cx - tx * h;
-      let py = d.cy - ty * h;
-      for (let k = 1; k <= n; k++) {
-        const s = -h + (2 * h * k) / n;
-        const off = (k % 2 ? 1 : -1) * 0.22;
-        const x = d.cx + tx * s + d.normalX * off;
-        const y = d.cy + ty * s + d.normalY * off;
-        t.line(px, py, x, y, 5 * mpp, BLACK(0.55));
-        t.line(px, py, x, y, 2.4 * mpp, WIRE_RGBA);
-        px = x;
-        py = y;
+      const h = d.length / 2 + 0.14;
+      const loops = Math.max(4, Math.round((2 * h) / WIRE_LOOP.pitch));
+      const r = WIRE_LOOP.radius;
+      // Prolate cycloid: the axis walks 2h while the wire turns `loops` times around it.
+      const n = loops * WIRE_LOOP.steps;
+      const pt = (k) => {
+        const a = (k / n) * loops * Math.PI * 2;
+        const s = -h + r * 0.55 + ((2 * h - r * 1.1) * k) / n - Math.sin(a) * r * 0.55;
+        const o = Math.cos(a) * r;
+        this.wirePt[0] = d.cx + tx * s + d.normalX * o;
+        this.wirePt[1] = d.cy + ty * s + d.normalY * o;
+        this.wirePt[2] = Math.sin(a); // > 0: the near half of the loop
+        return this.wirePt;
+      };
+      // Pickets at both ends and the coil's shadow first, then the wire over them.
+      for (const e of SIDES) {
+        const px = d.cx + tx * h * e;
+        const py = d.cy + ty * h * e;
+        t.circle(px + 0.04, py + 0.05, 0.075, BLACK(0.35), 10);
+        t.circle(px, py, 0.06, rgba(0.2, 0.17, 0.13, 1), 10);
+        t.ring(px, py, 0.06, 1.2 * mpp, BLACK(0.7), 10);
+      }
+      for (let pass = 0; pass < 2; pass++) {
+        let p = pt(0);
+        let x0 = p[0];
+        let y0 = p[1];
+        for (let k = 1; k <= n; k++) {
+          p = pt(k);
+          const x = p[0];
+          const y = p[1];
+          if (pass === 0) {
+            t.line(x0 + 0.05, y0 + 0.07, x + 0.05, y + 0.07, 3 * mpp, BLACK(0.28));
+          } else {
+            const lit = 0.45 + 0.55 * Math.max(0, p[2]);
+            t.line(x0, y0, x, y, 3.4 * mpp, BLACK(0.6));
+            t.line(x0, y0, x, y, 1.7 * mpp, rgba(WIRE_RGB[0] * lit, WIRE_RGB[1] * lit, WIRE_RGB[2] * lit, 1));
+          }
+          x0 = x;
+          y0 = y;
+        }
+      }
+      // Barbs: a short twisted cross every 3/8 of a turn, so they spread all over the loops.
+      const b = WIRE_LOOP.barb;
+      for (let k = WIRE_LOOP.steps / 8; k < n; k += (WIRE_LOOP.steps * 3) / 8) {
+        const p = pt(k);
+        const x = p[0];
+        const y = p[1];
+        t.line(x - b, y - b, x + b, y + b, 1.3 * mpp, BLACK(0.75));
+        t.line(x - b, y + b, x + b, y - b, 1.3 * mpp, BLACK(0.75));
+        t.line(x - b * 0.8, y - b * 0.8, x + b * 0.8, y + b * 0.8, 0.8 * mpp, WIRE_BARB_RGBA);
+        t.line(x - b * 0.8, y + b * 0.8, x + b * 0.8, y - b * 0.8, 0.8 * mpp, WIRE_BARB_RGBA);
       }
     }
   }
@@ -539,8 +584,10 @@ export class OverlayLayer {
 
   /**
    * Trampero's traps (sim/traps.js): the defenders see theirs, the attackers
-   * the ones they found — a toothed orange ring on the floor; a sprung or
-   * broken one is a dark ring with a cross.
+   * the ones they found. A cepo seen from above: two open steel jaws toothed
+   * inward around the pressure plate, the spring bar across them with its
+   * coils and a chain to a stake, on a soft orange halo so it stands out on
+   * the floor. A sprung or broken one lies with its jaws shut, dark.
    */
   traps(t, sim, own, mpp) {
     const C = OVERLAY.trap;
@@ -548,19 +595,78 @@ export class OverlayLayer {
     const s = C.size;
     for (const trap of sim.traps) {
       if (own === 'attackers' && !trap.known) continue;
-      const col = trap.alive ? rgba(c[0], c[1], c[2], 1) : rgba(0.3, 0.3, 0.32, 0.9);
-      t.ring(trap.x, trap.y, s, 3.4 * mpp, BLACK(0.6), 18);
-      t.ring(trap.x, trap.y, s, 2 * mpp, col, 18);
-      if (trap.alive) {
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * Math.PI * 2;
-          t.line(trap.x + Math.cos(a) * s * 0.45, trap.y + Math.sin(a) * s * 0.45, trap.x + Math.cos(a) * s, trap.y + Math.sin(a) * s, 1.6 * mpp, col);
+      const x = trap.x;
+      const y = trap.y;
+      const a = trap.id * 2.1 + 0.6; // the hinge axis: fixed per trap, varied between them
+      const ux = Math.cos(a);
+      const uy = Math.sin(a);
+      if (!trap.alive) {
+        // Jaws shut: a toothed seam along the axis, the bar beyond it.
+        t.line(x - ux * s * 1.4, y - uy * s * 1.4, x + ux * s * 1.4, y + uy * s * 1.4, 2.4 * mpp, rgba(0.18, 0.18, 0.2, 0.9));
+        t.line(x - ux * s, y - uy * s, x + ux * s, y + uy * s, 5 * mpp, BLACK(0.6));
+        t.line(x - ux * s, y - uy * s, x + ux * s, y + uy * s, 3 * mpp, rgba(0.36, 0.36, 0.38, 0.95));
+        for (let k = -3; k <= 3; k++) {
+          const px = x + ux * s * 0.28 * k;
+          const py = y + uy * s * 0.28 * k;
+          const e = (k % 2 ? 1 : -1) * s * 0.14;
+          t.line(px, py, px - uy * e, py + ux * e, 1.4 * mpp, rgba(0.3, 0.3, 0.32, 0.95));
         }
-        t.circle(trap.x, trap.y, s * 0.22, col, 8);
-      } else {
-        t.line(trap.x - s * 0.7, trap.y - s * 0.7, trap.x + s * 0.7, trap.y + s * 0.7, 2 * mpp, col);
-        t.line(trap.x - s * 0.7, trap.y + s * 0.7, trap.x + s * 0.7, trap.y - s * 0.7, 2 * mpp, col);
+        continue;
       }
+      const steel = rgba(C.steel[0], C.steel[1], C.steel[2], 1);
+      const L = s * 2.1; // the spring levers reach this far along the axis
+      t.circle(x, y, L, rgba(c[0], c[1], c[2], 0.26), 28, rgba(c[0], c[1], c[2], 0));
+      // Chain from the end of one lever to its stake.
+      const cx = x + ux * L;
+      const cy = y + uy * L;
+      const kx = cx + (ux - uy) * s * 0.6;
+      const ky = cy + (uy + ux) * s * 0.6;
+      for (let i = 0; i < 4; i++) {
+        const f0 = i / 4;
+        const f1 = (i + 0.7) / 4;
+        t.line(cx + (kx - cx) * f0, cy + (ky - cy) * f0, cx + (kx - cx) * f1, cy + (ky - cy) * f1, 1.6 * mpp, rgba(0.25, 0.25, 0.27, 1));
+      }
+      t.circle(kx, ky, s * 0.13, rgba(0.15, 0.13, 0.11, 1), 8);
+      t.circle(x, y, s, BLACK(0.4), 20); // the pit the jaws sit around
+      // The base bar under the jaws, and a long folded spring lever out of each hinge.
+      t.line(x - ux * s, y - uy * s, x + ux * s, y + uy * s, 3.6 * mpp, BLACK(0.55));
+      t.line(x - ux * s, y - uy * s, x + ux * s, y + uy * s, 1.8 * mpp, steel);
+      const w = s * 0.16;
+      for (const e of SIDES) {
+        const hx = x + ux * s * 0.9 * e;
+        const hy = y + uy * s * 0.9 * e;
+        const ex = x + ux * L * e;
+        const ey = y + uy * L * e;
+        for (const pass of [0, 1]) {
+          const col = pass ? steel : BLACK(0.6);
+          const lw = (pass ? 1.8 : 3.6) * mpp;
+          t.line(hx - uy * w, hy + ux * w, ex - uy * w, ey + ux * w, lw, col);
+          t.line(hx + uy * w, hy - ux * w, ex + uy * w, ey - ux * w, lw, col);
+          t.arc(ex, ey, w, lw, a + (e > 0 ? -Math.PI / 2 : Math.PI / 2), a + (e > 0 ? Math.PI / 2 : (3 * Math.PI) / 2), col, 16);
+        }
+      }
+      // Two jaws, each half a ring between the hinges, a few long teeth pointing in.
+      for (const e of SIDES) {
+        const a0 = a + (e > 0 ? 0 : Math.PI) + 0.3;
+        const a1 = a0 + Math.PI - 0.6;
+        t.arc(x, y, s, 4.6 * mpp, a0, a1, BLACK(0.65), 32);
+        t.arc(x, y, s, 2.6 * mpp, a0, a1, steel, 32);
+        const teeth = 4;
+        const half = (a1 - a0) / teeth / 2;
+        for (let i = 0; i < teeth; i++) {
+          const m = a0 + half * (2 * i + 1);
+          const r0 = s * 0.97;
+          t.tri(
+            x + Math.cos(m - half * 0.45) * r0, y + Math.sin(m - half * 0.45) * r0,
+            x + Math.cos(m + half * 0.45) * r0, y + Math.sin(m + half * 0.45) * r0,
+            x + Math.cos(m) * s * 0.62, y + Math.sin(m) * s * 0.62,
+            steel,
+          );
+        }
+      }
+      // The pressure plate, in the trap's colour.
+      t.circle(x, y, s * 0.3, BLACK(0.6), 12);
+      t.circle(x, y, s * 0.24, rgba(c[0], c[1], c[2], 1), 12);
     }
   }
 

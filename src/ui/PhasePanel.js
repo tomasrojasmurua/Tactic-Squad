@@ -12,6 +12,8 @@
 //   planning  first turn only, compact: the entry can still change
 //   watch     planning, playing the defenders, with one of them selected:
 //             his watch order again (it can change every turn of the assault)
+// The defender's side panels (recon, deploy, watch) fold into one button to see the
+// whole map, and open again with it; a new panel starts open.
 // Emits EV.REQUEST {action: 'buy_<unitId>_<item>_<+|->' | 'chooseEntry_<id>' |
 // 'site_<id>' | 'barricade_<doorId>' | 'wire_<doorId>' | 'watch_<mode>' | 'trapmode'}; LISTO is the usual button.
 import { EV } from '../core/events.js';
@@ -38,8 +40,14 @@ function panelFor(sim, session) {
 export class PhasePanel {
   constructor(root, bus) {
     this.bus = bus;
-    this.node = el('div', 'phase-panel hidden', `<div class="pp-title"></div><div class="pp-body"></div><div class="pp-note"></div>`);
+    this.node = el('div', 'phase-panel hidden', `<button class="btn pp-fold"></button><div class="pp-title"></div><div class="pp-body"></div><div class="pp-note"></div>`);
     this.node.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.fold = this.node.querySelector('.pp-fold');
+    this.folded = false;
+    this.fold.addEventListener('click', () => {
+      this.folded = !this.folded;
+      this.fold.blur(); // ESPACIO keeps confirming, it does not press this again
+    });
     this.title = this.node.querySelector('.pp-title');
     this.body = this.node.querySelector('.pp-body');
     this.note = this.node.querySelector('.pp-note');
@@ -57,7 +65,8 @@ export class PhasePanel {
     const panel = panelFor(sim, session);
     toggle(this.node, 'hidden', !panel || session.helpOpen);
     toggle(this.node, 'compact', panel === 'entry');
-    toggle(this.node, 'side', panel === 'recon' || panel === 'deploy' || panel === 'watch');
+    const side = panel === 'recon' || panel === 'deploy' || panel === 'watch';
+    toggle(this.node, 'side', side);
     if (!panel) {
       this.shown = null;
       return;
@@ -65,12 +74,15 @@ export class PhasePanel {
     if (panel !== this.shown || sim !== this.sim) {
       this.shown = panel;
       this.sim = sim;
+      this.folded = false;
       if (panel === 'buy') this.buildBuy(sim, session.team);
       else if (panel === 'recon') this.buildRecon(sim);
       else if (panel === 'deploy') this.buildDeploy(sim);
       else if (panel === 'watch') this.buildWatch();
       else this.buildEntries(sim, panel);
     }
+    toggle(this.node, 'folded', side && this.folded);
+    setText(this.fold, this.folded ? T.setup.unfold : T.setup.fold);
     if (panel === 'buy') this.refreshItems();
     else if (panel === 'recon') this.refreshRecon(sim);
     else if (panel === 'deploy') this.refreshDeploy(sim, session);

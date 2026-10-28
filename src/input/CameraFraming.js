@@ -4,7 +4,7 @@
 // and centering on an operator. The "see all" height may exceed
 // CAMERA.maxHeight: pinch zoom (zoomImmediate) and the mouse wheel (Camera.zoomOutLimit) reach it.
 import { CAMERA } from '../config/render.js';
-import { HUD_SAFE, FLOW } from '../config/ui.js';
+import { HUD_SAFE, FLOW, KILLCAM } from '../config/ui.js';
 import { clamp } from '../core/math.js';
 
 export class CameraFraming {
@@ -20,10 +20,9 @@ export class CameraFraming {
     return this.session.touch ? HUD_SAFE.phone : HUD_SAFE.desktop;
   }
 
-  /** Height (m) at which a world rect w×h fits the free screen area. */
-  fitHeight(w, h) {
+  /** Height (m) at which a world rect w×h fits the free screen area (`m`: its margins in px). */
+  fitHeight(w, h, m = this.insets()) {
     const cam = this.camera;
-    const m = this.insets();
     const freeW = Math.max(1, cam.width - m.left - m.right);
     const freeH = Math.max(1, cam.heightPx - m.top - m.bottom);
     const mpp = Math.max(w / freeW, h / freeH); // meters per pixel needed
@@ -38,9 +37,8 @@ export class CameraFraming {
   }
 
   /** Puts world point (x, y) at the center of the free area, at height h. */
-  placeAt(x, y, h) {
+  placeAt(x, y, h, m = this.insets()) {
     const cam = this.camera;
-    const m = this.insets();
     const mpp = (2 * cam.tanHalf * h) / cam.heightPx;
     cam.jumpTo(x - ((m.left - m.right) / 2) * mpp, y - ((m.top - m.bottom) / 2) * mpp, h);
   }
@@ -102,6 +100,34 @@ export class CameraFraming {
     const ty = d.y - ((m.top - m.bottom) / 2) * mpp;
     const k = 1 - Math.exp(-FLOW.droneFollow * dt);
     cam.pan((tx - cam.x) * k, (ty - cam.y) * k);
+  }
+
+  /**
+   * Kill cam: eases toward the shot that keeps every point ([x, y]) inside
+   * the screen (KILLCAM.insets: the HUD is hidden but for the clip's bar),
+   * KILLCAM.padM m to spare, never closer than KILLCAM.height. snap: at once.
+   */
+  followPoints(points, dt, snap = false) {
+    if (!points.length) return;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [x, y] of points) {
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+    }
+    const cam = this.camera;
+    const m = KILLCAM.insets;
+    const pad = 2 * KILLCAM.padM;
+    const h = clamp(this.fitHeight(x1 - x0 + pad, y1 - y0 + pad, m), KILLCAM.height, this.maxHeight);
+    const mpp = (2 * cam.tanHalf * h) / cam.heightPx;
+    const tx = (x0 + x1) / 2 - ((m.left - m.right) / 2) * mpp;
+    const ty = (y0 + y1) / 2 - ((m.top - m.bottom) / 2) * mpp;
+    this.saved = null;
+    if (snap) {
+      cam.jumpTo(tx, ty, h);
+      return;
+    }
+    const k = 1 - Math.exp(-KILLCAM.follow * dt);
+    cam.jumpTo(cam.x + (tx - cam.x) * k, cam.y + (ty - cam.y) * k, cam.height + (h - cam.height) * k);
   }
 
   centerOn(x, y) {
