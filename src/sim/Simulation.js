@@ -152,6 +152,7 @@ export class Simulation {
       );
     });
     defenders.forEach((s, i) => {
+      const role = this.roles.defenders[i] || s.role || DEFAULT_DEFENDER_ROLE;
       this.units.push(
         createUnit({
           id: this.units.length,
@@ -162,9 +163,9 @@ export class Simulation {
           x: s.at[0],
           y: s.at[1],
           facing: s.facing,
-          role: this.roles.defenders[i] || s.role || DEFAULT_DEFENDER_ROLE,
-          weaponId: s.weapon,
-          behavior: layoutBehavior(this, s.behavior),
+          role,
+          weaponId: ROLES[role].ownWeapon ? undefined : s.weapon, // the post's, unless the class brings its own
+          behavior: layoutBehavior(this, s.behavior, role),
         }),
       );
     });

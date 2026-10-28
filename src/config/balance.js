@@ -160,7 +160,8 @@ export const AI_ATTACK = Object.freeze({
   droneStuck: 0.6, // s without moving (a barricade, a prop) before it gives up on that point
   choiceSlack: 0.15, // entries / sites up to this much longer than the best are as good (the seed picks)
   spotSpacing: 0.9, // m between the operators' end points around the bomb
-  flashers: 1, // operators who throw a flashbang through each door (if they carry one); the rest follow
+  flashers: 1, // operators who throw a flashbang (a Granadero: gas) through each door (if they carry one); the rest follow
+  gasDepth: 3.5, // m into the room an AI Granadero aims his gas
   goPause: 0.25, // s a group waits in position before its GO (it reads as a call, not a reflex)
   goTimeout: 4, // s waiting for a GO before it is given anyway (someone is stuck or fighting)
 });

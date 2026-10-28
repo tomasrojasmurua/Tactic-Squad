@@ -75,6 +75,11 @@ export const ROLE_GEAR = Object.freeze({
   defender: { head: 'cap', pack: 'small', extra: null },
   roamer: { head: 'cap', pack: 'none', extra: null },
   trapper: { head: 'beanie', pack: 'small', extra: 'tools' },
+  shield: { head: 'heavy', pack: 'none', extra: null }, // + the shield itself (UnitLayer)
+  marksman: { head: 'helmet', pack: 'small', extra: null },
+  grenadier: { head: 'helmet', pack: 'large', extra: 'charges' }, // 40 mm rounds on the pack
+  lookout: { head: 'cap', pack: 'small', extra: 'antenna' }, // the monitor's radio
+  sniper: { head: 'beanie', pack: 'none', extra: null },
 });
 export const TEAM_GEAR = Object.freeze({
   attackers: { head: 'helmet', pack: 'large', extra: null },

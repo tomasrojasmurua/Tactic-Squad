@@ -231,16 +231,21 @@ function stackDoors(sim, squad) {
     const stacked = squad.filter((u) => at(u) >= 0);
     // The throwers decide the door first; the rest then wait for them beside the frame (sim/orders.js).
     const throwers = [];
-    for (const u of stacked) {
+    const gasFirst = stacked.filter((u) => gearLeft(u, 'gas', at(u)) > 0).concat(stacked.filter((u) => gearLeft(u, 'gas', at(u)) <= 0));
+    for (const u of gasFirst) {
       if (throwers.length >= (barricade ? 1 : AI_ATTACK.flashers)) break;
-      const mode = barricade && gearLeft(u, 'breach', at(u)) > 0 ? 'breach' : !barricade && gearLeft(u, 'flash', at(u)) > 0 ? 'flash' : null;
+      // A Granadero fires gas into the room instead of a flash (sim/gas.js).
+      const mode = barricade && gearLeft(u, 'breach', at(u)) > 0 ? 'breach' : !barricade && gearLeft(u, 'gas', at(u)) > 0 ? 'gas' : !barricade && gearLeft(u, 'flash', at(u)) > 0 ? 'flash' : null;
       if (mode) throwers.push([u, mode]);
     }
     const order1 = (u, mode) => {
       const i = at(u); // a hold keeps the point where it is
       if (i < 0) return;
       if (code) order(sim, { type: 'setHold', unitId: u.id, code, index: i });
-      if (mode || u.route[i].ask) order(sim, { type: 'setEntry', unitId: u.id, mode, index: i }); // last: a throw moves the point
+      if (mode === 'gas') {
+        const [x, y] = intoRoom(sim, k, u.route[i], AI_ATTACK.gasDepth);
+        order(sim, { type: 'setToss', unitId: u.id, item: 'gas', x, y, index: i }); // last: a throw moves the point
+      } else if (mode || u.route[i].ask) order(sim, { type: 'setEntry', unitId: u.id, mode, index: i });
     };
     for (const [u, mode] of throwers) order1(u, mode);
     // The Explorador waiting with them looks under the door with his camera meanwhile.
@@ -271,6 +276,13 @@ function callGos(sim, ai) {
 // ------------------------------------------------------------ helpers
 
 const siteById = (sim, id) => sim.compiled.sites.find((s) => s.id === id);
+
+/** A point `depth` m into the room beyond doorway k, seen from route point p (the side he stands on). */
+function intoRoom(sim, k, p, depth) {
+  const d = sim.world.doorways[k];
+  const s = (p.x - d.cx) * d.normalX + (p.y - d.cy) * d.normalY > 0 ? -1 : 1;
+  return [d.cx + d.normalX * s * depth, d.cy + d.normalY * s * depth];
+}
 
 function pathLength(from, path) {
   let len = 0;

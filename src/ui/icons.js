@@ -232,7 +232,7 @@ export const ROLE_EMBLEM = {
   ),
   // Trampero: the jaws of a trap
   trapper: svg('0 0 48 48', `<circle cx="24" cy="24" r="19" fill="none" stroke="currentColor" stroke-width="4"/><path fill="currentColor" d="${ring(12, 18, 9, 0.2)}"/><circle cx="24" cy="24" r="3" fill="currentColor"/>`),
-  // Coming later (the design's other classes)
+  // Escudo, Tirador, Granadero, Vigía
   shield: svg('0 0 48 48', `<path fill="currentColor" d="M10 5 H38 V30 C38 37 31 42 24 44 C17 42 10 37 10 30 Z"/><rect x="15" y="12" width="18" height="4.5" rx="1.5" fill="#0a0c0e"/>`),
   marksman: svg(
     '0 0 48 48',
@@ -248,6 +248,7 @@ export const ROLE_EMBLEM = {
     `<path d="M3 24 C10 12 17 9 24 9 C31 9 38 12 45 24 C38 36 31 39 24 39 C17 39 10 36 3 24 Z" fill="none" stroke="currentColor" stroke-width="3.5"/><circle cx="24" cy="24" r="8" fill="currentColor"/><circle cx="24" cy="24" r="3" fill="#0a0c0e"/>`,
   ),
 };
+ROLE_EMBLEM.sniper = ROLE_EMBLEM.marksman; // the defending Tirador: the same crosshair
 
 /** Utility in a class's kit (the roster's detail). */
 export const GEAR_ICON = {
@@ -255,5 +256,8 @@ export const GEAR_ICON = {
   frag: ENTRY_ICON.frag,
   breach: ENTRY_ICON.breach,
   smoke: svg('0 0 24 24', `<g fill="currentColor"><circle cx="8" cy="15" r="5"/><circle cx="15" cy="13" r="6"/><circle cx="11" cy="8" r="4.5" opacity=".7"/><rect x="4" y="18" width="16" height="3" rx="1.5"/></g>`),
+  // Gas lacrimógeno: a 40 mm round trailing its cloud
+  gas: svg('0 0 24 24', `<rect x="3" y="13" width="9" height="7" rx="1.5" fill="currentColor"/><rect x="12" y="14" width="3" height="5" fill="currentColor" opacity=".7"/>
+     <g fill="currentColor" opacity=".55"><circle cx="16" cy="8" r="3.4"/><circle cx="20.5" cy="6" r="2.6"/><circle cx="12" cy="6" r="2.2"/></g>`),
   molotov: svg('0 0 24 24', `<path fill="currentColor" d="M10 2 H14 V7 C17 8.5 18 11 18 13 V21 C18 22 17 23 16 23 H8 C7 23 6 22 6 21 V13 C6 11 7 8.5 10 7 Z"/><path d="M12 0.5 C13.5 2 13 3 12 4 C11 3 10.5 2 12 0.5Z" fill="#ff7a1a"/>`),
 };

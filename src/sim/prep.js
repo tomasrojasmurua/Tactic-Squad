@@ -132,18 +132,22 @@ export function applyLayout(sim, layout) {
       applyRole(u, role); // an anchor slot makes him an Ancla (config/operators.js)
       resetGear(sim, u); // and gives him the Ancla's kit
     }
-    if (s.weapon && s.weapon !== u.weaponId) setWeapon(u, s.weapon);
-    setBehavior(u, layoutBehavior(sim, s.behavior));
+    if (s.weapon && s.weapon !== u.weaponId && !ROLES[role].ownWeapon) setWeapon(u, s.weapon); // the post's, unless the class brings its own
+    setBehavior(u, layoutBehavior(sim, s.behavior, role));
   });
 }
 
 /**
  * A layout post's behavior for the side that stands there. The AI plays the
- * map's as written; a player's defender never walks on his own: a patrol
+ * map's as written — an AI Vigía (role `roleId`) holds the post's angle at
+ * his monitor; a player's defender never walks on his own: a patrol
  * becomes holding that spot (turning to noise) and a fallback is dropped, so
  * he moves only where his player sends him.
  */
-export function layoutBehavior(sim, b) {
+export function layoutBehavior(sim, b, roleId = null) {
+  if (sim.controllers.defenders !== 'human' && b && roleId && ROLES[roleId].ability === 'monitor') {
+    return { type: 'hold', reactsToNoise: true, rotate: b.rotate, monitor: true };
+  }
   if (!b || sim.controllers.defenders !== 'human') return b || null;
   if (b.type === 'patrol') return { type: 'hold', reactsToNoise: b.reactsToNoise !== false };
   if (!b.rotate) return b;
@@ -171,7 +175,7 @@ export function placeDefender(sim, u, px, py, facing = u.facing) {
 
 /**
  * A defender changes class (preparation): stats and health of the new class;
- * his weapon is his post's. At most ROLES[id].max of a class per side. A
+ * his weapon is his post's (the class's own for a Merodeador / Tirador). At most ROLES[id].max of a class per side. A
  * Trampero who stops being one takes his traps with him. He takes the new
  * class's kit and gets his points back.
  */
@@ -180,9 +184,9 @@ export function setDefenderRole(sim, u, roleId) {
   if (u.team !== 'defenders' || !role || !role.defPick) return 'badRole';
   if (u.role === roleId) return null;
   if (sim.teams.defenders.filter((o) => o !== u && o.role === roleId).length >= role.max) return 'roleTaken';
-  const weaponId = u.weaponId;
+  const weaponId = postWeapon(sim, u) || u.weaponId;
   applyRole(u, roleId);
-  if (weaponId !== u.weaponId) setWeapon(u, weaponId);
+  if (!role.ownWeapon && weaponId !== u.weaponId) setWeapon(u, weaponId);
   resetGear(sim, u);
   dropOrphanTraps(sim);
   // A Vigía / Trampero who stops being one takes the camera / wire he brought.
@@ -294,6 +298,14 @@ export function aiPrepare(sim) {
 }
 
 // ------------------------------------------------------------ helpers
+
+/** The weapon of the layout post defender u stands for (map `defense[site]`), or null. */
+function postWeapon(sim, u) {
+  const layout = sim.compiled.defense[sim.site.id];
+  const i = sim.teams.defenders.indexOf(u);
+  const s = layout && layout[(sim.defenderSlots ? sim.defenderSlots[i] : i) % layout.length];
+  return (s && s.weapon) || null;
+}
 
 function moveTo(u, x, y, facing) {
   u.x = u.prevX = x;

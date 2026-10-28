@@ -114,6 +114,26 @@ export const ROLES = Object.freeze({
   },
 });
 
+/**
+ * The squads an AI side picks from, blind (session/Lobby.js aiRoles: one per
+ * round, from its seed). Defenders by post of the map's layout.
+ */
+export const AI_SQUADS = Object.freeze({
+  attackers: Object.freeze([
+    Object.freeze(['assault', 'entry', 'scout']),
+    Object.freeze(['shield', 'entry', 'scout']),
+    Object.freeze(['assault', 'entry', 'marksman']),
+    Object.freeze(['shield', 'entry', 'grenadier']),
+    Object.freeze(['assault', 'entry', 'grenadier']),
+  ]),
+  defenders: Object.freeze([
+    Object.freeze(['anchor', 'defender', 'trapper']),
+    Object.freeze(['anchor', 'lookout', 'trapper']),
+    Object.freeze(['anchor', 'sniper', 'roamer']),
+    Object.freeze(['anchor', 'lookout', 'roamer']),
+  ]),
+});
+
 /** A role's flag (ROLES[id][key]), false for an unknown role. */
 export const roleFlag = (roleId, key) => !!(ROLES[roleId] && ROLES[roleId][key]);
 

@@ -426,3 +426,36 @@ test('Tirador: quieto sobre su ángulo dispara primero', () => {
   };
   assert.ok(holdReaction('marksman') < holdReaction('assault') * 0.7);
 });
+
+// ------------------------------------------------------------ La IA
+
+test('la IA elige su escuadra a ciegas según la semilla, siempre una válida', async () => {
+  const { aiRoles, canPick, createLobby } = await import('../src/session/Lobby.js');
+  const seen = { attackers: new Set(), defenders: new Set() };
+  for (let seed = 1; seed <= 40; seed++) {
+    for (const team of ['attackers', 'defenders']) {
+      const ids = aiRoles(seed, team);
+      assert.deepEqual(aiRoles(seed, team), ids, 'la misma semilla, la misma escuadra');
+      const lobby = createLobby();
+      assert.ok(ids.every((id, i) => canPick(lobby, team, i, id, ids)), `${team}: ${ids}`);
+      seen[team].add(ids.join());
+    }
+  }
+  assert.ok(seen.attackers.size >= 3 && seen.defenders.size >= 3, 'varía');
+});
+
+test('la IA usa las clases nuevas: el Granadero lanza gas por la puerta y el Vigía mira su monitor', () => {
+  const sim = new Simulation(MAP, { seed: 4, site: 'A', controllers: { attackers: 'ai', defenders: 'ai' }, roles: { attackers: ['assault', 'entry', 'grenadier'], defenders: ['anchor', 'lookout', 'trapper'] } });
+  const lookout = sim.teams.defenders.find((u) => u.role === 'lookout');
+  assert.equal(lookout.behavior.monitor, true);
+  let gas = 0;
+  let monitored = false;
+  for (let guard = 0; sim.phase !== 'end' && guard < 40000; guard++) {
+    if (sim.phase === 'buy' || sim.phase === 'prep' || sim.phase === 'plan') sim.advancePhase();
+    else sim.step();
+    monitored ||= lookout.monitor;
+    for (const e of sim.drainEvents()) if (e.type === EV.GAS_START) gas++;
+  }
+  assert.ok(gas >= 1, 'lanzó gas');
+  assert.ok(monitored, 'miró el monitor');
+});

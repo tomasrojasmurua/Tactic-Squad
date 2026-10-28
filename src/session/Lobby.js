@@ -21,7 +21,7 @@
 // The choices last on the device (session/storage.js), except `view`, `inspect`, `pickSide` and `ready`
 // (a squad left incomplete comes back as the defaults).
 import { MATCH } from '../config/balance.js';
-import { ROLES, PICK_ROLES, DEF_PICK_ROLES } from '../config/operators.js';
+import { ROLES, PICK_ROLES, DEF_PICK_ROLES, AI_SQUADS } from '../config/operators.js';
 import { SQUAD, DEFENDERS } from '../config/squad.js';
 import { DEFAULT_MAP } from '../data/maps/index.js';
 
@@ -50,6 +50,15 @@ export function createLobby(saved = null) {
     lobby.inspect[team] = lobby.roles[team][0];
   }
   return lobby;
+}
+
+/** The squad an AI side takes this round, picked blind from AI_SQUADS by the round's seed. */
+export function aiRoles(seed, team) {
+  const list = AI_SQUADS[team];
+  let h = (seed ^ (team === 'attackers' ? 0x51ed27 : 0x2f6b9d)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0;
+  return [...list[((h ^ (h >>> 16)) >>> 0) % list.length]];
 }
 
 /** What the device keeps. */
