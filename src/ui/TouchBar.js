@@ -120,6 +120,7 @@ export class TouchBar {
     if (g) this.hold.style.setProperty('--g', g.color);
     toggle(this.holdMenu, 'on', show && session.ui.holdMenu && !disabled);
     toggle(this.hold, 'active', session.ui.holdMenu);
+    setHidden(this.restart, session.mode !== 'tutorial'); // only a lesson starts over
     setText(this.restartLabel, session.confirm.action === 'restart' ? T.flow.confirmRestart : T.touch.restart);
     // The planning clock is running out: LISTO asks for attention (amber pulse: styles.css [data-attn]).
     const attn = deciding && !session.clock.unlimited && session.clock.left <= HUD.clockWarnSeconds ? '1' : '';

@@ -75,7 +75,7 @@ export class AudioDirector {
     on(EV.BOMB_DEFUSED, () => this.ui('planted'));
     on(EV.BOMB_EXPLODED, (ev) => this.bang('blast', ev.x, ev.y));
     on(EV.ORDER_REJECTED, () => this.ui('error'));
-    on(EV.ROUND_END, (ev) => this.music.stinger(ev.winner === this.viewer.team));
+    on(EV.ROUND_END, (ev) => !ev.replay && this.music.stinger(ev.winner === this.viewer.team)); // not again in the kill cam
     on(EV.UI_SOUND, (ev) => this.ui(ev.name));
     on(EV.SELECT, (ev) => this.select(ev.unitId));
     on(EV.ROUTE_CHANGED, (ev) => this.route(ev.kind));
@@ -110,6 +110,11 @@ export class AudioDirector {
 
   get musicOn() {
     return this.music.enabled;
+  }
+
+  /** The simulation whose places and units the sounds refer to (the kill cam's copy while it plays). */
+  watch(sim) {
+    this.sim = sim;
   }
 
   onRoundReset(sim) {

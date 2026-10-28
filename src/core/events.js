@@ -16,9 +16,9 @@ export const EV = Object.freeze({
   GO_CODE: 'goCode', // {released, code}
   ENTRY_CHOSEN: 'entryChosen', // {entry}: the attackers start from another entry (preparation)
   // Buy and defender set-up (sim/prep.js)
-  ROLE_CHANGED: 'roleChanged', // {unitId, role, money}: an attacker changed class in the buy phase
+  ROLE_CHANGED: 'roleChanged', // {unitId, role, points}: an operator changed class (buy phase / preparation)
   SCOUT_PULSE: 'scoutPulse', // {unitId, x, y, radius, found}: an Explorador's turn-end sweep (found: defenders detected)
-  GEAR_CHANGED: 'gearChanged', // {unitId, item, count, money}: bought or sold in the buy phase
+  GEAR_CHANGED: 'gearChanged', // {unitId, item, count, points}: bought or given back (buy phase / preparation)
   SITE_CHOSEN: 'siteChosen', // {site}: the defenders moved the bomb (and reset their set-up to that site's)
   SETUP_CHANGED: 'setupChanged', // {unitId, kind:'place'|'watch'}: a defender placed or given a watch order
   BARRICADE_SET: 'barricadeSet', // {doorId, on}
@@ -53,7 +53,7 @@ export const EV = Object.freeze({
   ROUND_END: 'roundEnd', // {winner, reason}
   ROUND_PHASE: 'roundPhase', // {phase: sim/round.js PHASE, previous, turn}: the round changed phase
   ORDER_REJECTED: 'orderRejected', // {unitId, reason: REJECT code (sim/orders.js)}
-  ROUTE_CHANGED: 'routeChanged', // {unitId, kind}
+  ROUTE_CHANGED: 'routeChanged', // {unitId, kind, moved?: {from, to}} (moved: the decided point is at another index now)
 
   // --- session / UI ---
   COMMAND: 'command', // a sim command object, queued for the simulation

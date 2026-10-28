@@ -52,7 +52,7 @@ export const FLOW_TEXTS = Object.freeze({
     formatNote: (n) =>
       n === 1
         ? 'Una ronda suelta: puedes repetir tu plan o probar otra suerte'
-        : `Gana el primero en llegar a ${Math.floor(n / 2) + 1}. A la mitad se cambia de bando; el dinero y el equipo de los vivos pasan a la siguiente`,
+        : `Gana el primero en llegar a ${Math.floor(n / 2) + 1}. A la mitad se cambia de bando. Cada ronda empiezas con el equipo de tu clase y ${BUY.points} puntos de utilidad; el que pierde suma uno más en la siguiente`,
     side: 'Empiezas',
     sides: { attackers: 'Atacando', defenders: 'Defendiendo', attackersTeam: 'Cuando atacas', defendersTeam: 'Cuando defiendes' },
     map: 'Mapa',
@@ -92,7 +92,7 @@ export const FLOW_TEXTS = Object.freeze({
     tutorialFirst: 'Primero haz el paso del tutorial (recuadro de la izquierda)',
     noCameras: { touch: 'No te queda ninguna cámara', desk: 'No te queda ninguna cámara' },
     tossAim: { touch: 'Toca donde quieres que caiga. Junto a una puerta, la abre y lanza adentro. × cancela', desk: 'Haz clic donde quieres que caiga. Junto a una puerta, la abre y lanza adentro. Esc cancela' },
-    matchNoRetry: 'En una partida no se repiten rondas: SIGUIENTE RONDA',
+    noRetry: 'Las rondas no se repiten: mejor suerte en la próxima',
     contactCut: '¡Contacto! El turno se cortó para que puedas reaccionar',
     contactOn: 'El turno se cortará al ver un enemigo (desde el próximo plan)',
     contactOff: 'Los turnos duran siempre 5 s (desde el próximo plan)',
@@ -177,8 +177,8 @@ export const FLOW_TEXTS = Object.freeze({
       introBuy: {
         title: 'Nuevo: clases y compra',
         text: {
-          touch: `Elige la clase de cada operador: Asaltante (duelos), Brecha (cargas rápidas) o Explorador (detecta defensores cerca al final de cada turno). Cada uno tiene $${BUY.startMoney} y ya lleva el equipo de su clase: toca un objeto para comprar otro (− lo devuelve). LISTO para seguir.`,
-          desk: `Elige la clase de cada operador: Asaltante (duelos), Brecha (cargas rápidas) o Explorador (detecta defensores cerca al final de cada turno). Cada uno tiene $${BUY.startMoney} y ya lleva el equipo de su clase: haz clic en un objeto para comprar otro (− lo devuelve). LISTO (Espacio) para seguir.`,
+          touch: `Elige la clase de cada operador: Asaltante (duelos), Brecha (cargas rápidas) o Explorador (detecta defensores cerca al final de cada turno). Cada clase trae su equipo gratis, y cada operador tiene ${BUY.points} puntos (●) para sumar utilidad: toca un objeto para sumar uno (− lo devuelve). Lo que no gastes se pierde. LISTO para seguir.`,
+          desk: `Elige la clase de cada operador: Asaltante (duelos), Brecha (cargas rápidas) o Explorador (detecta defensores cerca al final de cada turno). Cada clase trae su equipo gratis, y cada operador tiene ${BUY.points} puntos (●) para sumar utilidad: haz clic en un objeto para sumar uno (− lo devuelve). Lo que no gastes se pierde. LISTO (Espacio) para seguir.`,
         },
       },
       introPrep: {

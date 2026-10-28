@@ -29,7 +29,8 @@ export const BASE_MODIFIERS = Object.freeze({
  * Role fields: label (UI), weapon (config/weapons.js id), ability (id in
  * sim/abilities/index.js or null), modifiers (subset of BASE_MODIFIERS),
  * maxHp (optional, default UNIT.maxHp), gear (door-entry utility carried:
- * {flash, frag, breach} counts, sim/entries.js; the round economy will buy it later).
+ * {flash, frag, smoke, breach} counts: the class's kit, free and full again
+ * every round; utility points add to it, config/balance.js BUY).
  */
 export const ROLES = Object.freeze({
   // Player squad (attackers). `pick`: offered in the buy phase; `unique`: one per squad.
@@ -48,23 +49,23 @@ export const ROLES = Object.freeze({
   // Defenders (their weapon comes from each map spawn). `defPick`: offered in the defender's
   // preparation; `max`: how many a side may have.
   defender: {
-    label: 'Defensor', defPick: true, max: 4, weapon: 'rifle', ability: null, modifiers: {},
-    blurb: 'El de siempre.',
+    label: 'Defensor', defPick: true, max: 4, weapon: 'rifle', ability: null, modifiers: {}, gear: { flash: 1 },
+    blurb: 'El de siempre. Lleva una flash.',
   },
   // Site anchor: holds his angle; tougher and quicker to shoot first.
   anchor: {
-    label: 'Ancla', defPick: true, max: 2, weapon: 'rifle', ability: null, modifiers: { reaction: 0.85 }, maxHp: 120,
-    blurb: 'Sostiene el sitio: 120 de vida y dispara antes.',
+    label: 'Ancla', defPick: true, max: 2, weapon: 'rifle', ability: null, modifiers: { reaction: 0.85 }, maxHp: 120, gear: { frag: 1 },
+    blurb: 'Sostiene el sitio: 120 de vida, dispara antes y lleva una granada para la puerta.',
   },
   // Roamer: off the site, hunting the attackers' flank; quick and quiet. The Explorador's pulse finds him.
   roamer: {
-    label: 'Merodeador', defPick: true, max: 1, weapon: 'smg', ability: null, modifiers: { speed: 1.12, stepNoise: 0.35 },
-    blurb: 'Fuera del sitio: más rápido y sus pasos casi no se oyen.',
+    label: 'Merodeador', defPick: true, max: 1, weapon: 'smg', ability: null, modifiers: { speed: 1.12, stepNoise: 0.35 }, gear: { flash: 1 },
+    blurb: 'Fuera del sitio: más rápido, sus pasos casi no se oyen y lleva una flash.',
   },
   // Trapper: lays TRAP.perTrapper traps in the preparation (sim/traps.js).
   trapper: {
-    label: 'Trampero', defPick: true, max: 1, weapon: 'rifle', ability: null, modifiers: {},
-    blurb: 'Pone 2 trampas: atrapan al que las pisa y lo delatan.',
+    label: 'Trampero', defPick: true, max: 1, weapon: 'rifle', ability: null, modifiers: {}, gear: { smoke: 1 },
+    blurb: 'Pone 2 trampas (atrapan al que las pisa y lo delatan) y lleva un humo.',
   },
 });
 

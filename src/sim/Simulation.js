@@ -27,7 +27,7 @@ import { createBomb, updateObjectives, endRound } from './objectives.js';
 import { createRound, advancePhase, canStep, afterTick, phaseTick, isLive, PHASE } from './round.js';
 import { createNoise, collectNoise } from './noise.js';
 import { createMemory, updateMemory } from './view.js';
-import { initMoney } from './prep.js';
+import { initPoints } from './prep.js';
 import { updateDrone } from './drone.js';
 import { createIntel, updateBash, spotBarricades } from './barricades.js';
 
@@ -46,11 +46,13 @@ export class Simulation {
    *                    when the attackers see a new enemy: the player gets to react (against the AI).
    * @param opts.roles   the class of each slot the lobby chose ({attackers?: [roleId], defenders?: [roleId | null]};
    *                      null or an invalid pick: the default, the squad's or the map post's). A loadout's role wins.
-   * @param opts.loadout per attacker slot {money, gear?, role?} carried over from the last round of a
-   *                    match (session/Match.js); omitted: BUY.startMoney and the role's gear.
+   * @param opts.loadout per attacker slot {role} carried over from the last round of a match (session/Match.js).
+   * @param opts.lossBonus the side that lost the last round of a match ('attackers' | 'defenders' | null):
+   *                    BUY.lossBonus more utility points each (sim/prep.js pointsFor).
    */
-  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, defenders = null, phases = true, stopOnContact = false, loadout = null, roles = null } = {}) {
+  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, defenders = null, phases = true, stopOnContact = false, loadout = null, roles = null, lossBonus = null } = {}) {
     this.seed = seed;
+    this.lossBonus = lossBonus;
     this.stopOnContact = stopOnContact;
     this.loadout = loadout;
     this.controllers = controllers;
@@ -100,20 +102,19 @@ export class Simulation {
     placeCameras(this); // sim/cameras.js: the defenders' cameras on this site
     this.traps = [];
     layTraps(this); // sim/traps.js: the Trampero's traps of the map's layout
-    if (loadout) this.applyLoadout(loadout); // a match: class, money and gear carried over
-    else if (phases) initMoney(this); // the buy phase: each attacker's money after his role's gear
+    if (loadout) this.applyLoadout(loadout); // a match: the class carried over
+    if (phases) initPoints(this); // the buy phase / preparation: each operator's utility points
     initAbilities(this);
     this.attackAi = createAttackAi(this); // sim/aiAttack.js: the commander of an AI attacking side
   }
 
-  /** Per attacker slot {role?, money, gear?} (session/Match.js): who he is and what he brings. */
+  /** Per attacker slot {role?} (session/Match.js): his class, with its kit full again. */
   applyLoadout(loadout) {
     this.teams.attackers.forEach((u, i) => {
       const l = loadout[i];
       if (!l) return;
       if (l.role && l.role !== u.role) applyRole(u, l.role);
-      u.gear = { ...roleGear(u.role), ...(l.gear || {}) };
-      u.money = l.money;
+      u.gear = roleGear(u.role);
     });
   }
 

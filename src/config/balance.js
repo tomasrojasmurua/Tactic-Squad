@@ -142,7 +142,7 @@ export const AI = Object.freeze({
  * side through the same orders as a player (used when the player defends).
  */
 export const AI_ATTACK = Object.freeze({
-  buyFlashes: 1, // flashbangs each operator tries to buy (as long as his money lasts)
+  buy: Object.freeze(['flash', 'frag', 'flash', 'smoke']), // each operator buys these in order while his points last
   droneReach: 0.35, // m: a point of the drone's path counts as reached this close
   droneStuck: 0.6, // s without moving (a barricade, a prop) before it gives up on that point
   choiceSlack: 0.15, // entries / sites up to this much longer than the best are as good (the seed picks)
@@ -185,6 +185,10 @@ export const ENTRY = Object.freeze({
   // and goes through — the "?" only offers a better entry) or 'stop' (strict: he waits for a decision).
   undecided: 'open',
   lookPast: 1.6, // m past the doorway a stacked operator aims (through the crack / at the room)
+  // Throwing through a door or blowing it, he stacks beside the frame, not in front of the opening:
+  // `jamb` m past the door jamb, as close to the wall as he can walk (`wall` m from the wall plane at
+  // most), on the side his route comes from (sim/orders.js stackBeside). He steps in after the bang.
+  beside: { modes: Object.freeze(['flash', 'frag', 'breach']), wall: 1, jamb: 0.6 },
   followGap: 0.12, // s after the grenade / charge goes off before the rest of the code moves in
   // De golpe: the door bursts open (no breach pause), loud, and whoever stands right behind it reels.
   kick: { hearing: 12, dazeRadius: 1.4, daze: 0.45 },
@@ -245,15 +249,37 @@ export const NOISE = Object.freeze({
 });
 
 /**
- * Buying (sim/prep.js, buy phase): every attacker has his own money and buys
- * the utility he carries. Starts with his role's gear (config/operators.js),
- * already paid for. The round economy (win / loss income) comes later.
+ * Utility points (sim/prep.js): every operator carries his class's kit
+ * (config/operators.js `gear`), free and full again every round, and gets
+ * `points` to add utility on top of it: the attackers in the buy phase, the
+ * defenders in the preparation. Unspent points are lost: nothing but the
+ * class carries over to the next round. In a match the side that lost the
+ * last round gets `lossBonus` more each (session/Match.js).
  */
 export const BUY = Object.freeze({
-  startMoney: 800, // $ per operator
-  prices: Object.freeze({ flash: 200, frag: 300, smoke: 300, breach: 300 }),
-  max: Object.freeze({ flash: 2, frag: 1, smoke: 1, breach: 2 }), // carried at most
-  items: Object.freeze(['flash', 'frag', 'smoke', 'breach']), // order of the buy panel
+  points: 2, // per operator and round
+  lossBonus: 1, // each, for the side that lost the last round of a match
+  prices: Object.freeze({ flash: 1, frag: 1, smoke: 1, breach: 1 }), // points
+  max: Object.freeze({ flash: 2, frag: 1, smoke: 1, breach: 2 }), // carried at most (kit included)
+  items: Object.freeze(['flash', 'frag', 'smoke', 'breach']), // the attackers' panel, in order
+  defenderItems: Object.freeze(['flash', 'frag', 'smoke']), // the defenders' (no charges)
+});
+
+/**
+ * AI defenders' utility (sim/prep.js aiPrepare, sim/ai.js; only a side the AI
+ * commands: a player's defenders throw what he plans): what they buy, in
+ * order while their points last, and when they throw it during the assault.
+ * An alerted defender who is not fighting throws at the doorway / corner the
+ * noise will come through (the spot he watches) once it is in reach and in
+ * sight, with no teammate within `friendlyMargin` of the blast: a grenade
+ * first, else smoke to shut that way.
+ */
+export const AI_UTILITY = Object.freeze({
+  buy: Object.freeze(['flash']), // a grenade or smoke more per defender left the attackers at 39 % / 56 % (scripts/balance.mjs)
+  throws: Object.freeze(['frag', 'smoke']), // what an alerted defender throws, first one he carries
+  minRange: 3, // m: closer than this to the spot, he fights instead (a grenade: never within its radius of him)
+  friendlyMargin: 1.2, // m added to a grenade's blast radius around him and his teammates
+  cooldown: 6, // s between two throws of the same defender
 });
 
 /** Defender preparation (sim/prep.js): set-up rules and the watch orders. */
@@ -358,12 +384,9 @@ export const TRAP = Object.freeze({
 
 /**
  * Match against the AI (session/Match.js): best of `bestOf` (3, 5 or 7, the lobby's choice;
- * this is the default), so first to bestOf/2 + 1 rounds.
- * Each operator carries his class, his money and — if he lived — his unused
- * gear into the next round, and earns per round: `win` or `loss` (+`lossBonus`
- * per round lost in a row, up to `lossBonusMax` rounds), `kill` per defender
- * he downed, `defuse` if he defused. Money is capped at `cap`. The player
- * switches sides after half the series (3 rounds of a best of 7); the new
- * attackers start over from the first round's money.
+ * this is the default), so first to bestOf/2 + 1 rounds. Each attacker keeps
+ * his class into the next round; the side that lost a round gets
+ * BUY.lossBonus more utility points in the next one. The player switches
+ * sides after half the series (3 rounds of a best of 7).
  */
-export const MATCH = Object.freeze({ bestOf: 7, formats: Object.freeze([3, 5, 7]), win: 600, loss: 300, lossBonus: 100, lossBonusMax: 3, kill: 100, defuse: 200, cap: 2000 });
+export const MATCH = Object.freeze({ bestOf: 7, formats: Object.freeze([3, 5, 7]) });

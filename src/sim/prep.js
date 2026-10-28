@@ -1,8 +1,8 @@
 // What each side does before the assault, as plain state changes driven by
 // orders (sim/orders.js) or, for an AI side, by aiPrepare:
 //
-//   buy   (attackers) each operator buys the utility he carries with his own
-//         money (BUY); he starts with his role's gear, already paid for.
+//   buy   (attackers) each operator carries his class's kit (free) and adds
+//         utility with his points (BUY); the defenders do the same in prep.
 //   prep  (defenders) pick the site (the bomb never moves once the
 //         preparation ends), place each operator in their half of the map,
 //         give each one a watch order and put up PREP.barricades barricades.
@@ -20,7 +20,7 @@
 // pick hashes the seed), so a set-up cannot shift the rest of the round.
 import { placeCameras } from './cameras.js';
 import { layTraps, dropOrphanTraps, placeTrap as layTrap } from './traps.js';
-import { BUY, PREP, NAV } from '../config/balance.js';
+import { BUY, PREP, NAV, AI_UTILITY } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { pointInBox } from '../core/geom.js';
 import { WEAPONS } from '../config/weapons.js';
@@ -30,52 +30,63 @@ import { createBomb } from './objectives.js';
 
 // ------------------------------------------------------------ buy
 
-/** What a set of gear costs. */
-export function gearCost(gear) {
-  let c = 0;
-  for (const item of BUY.items) c += (gear[item] || 0) * BUY.prices[item];
-  return c;
+/** The phase each side buys in: the attackers in the buy phase, the defenders in their preparation. */
+const BUY_PHASE = Object.freeze({ attackers: 'buy', defenders: 'prep' });
+
+/** What a side may buy (BUY.items / BUY.defenderItems). */
+export const buyableItems = (team) => (team === 'attackers' ? BUY.items : BUY.defenderItems);
+
+/** The utility points an operator of `team` gets this round: BUY.points, plus BUY.lossBonus if his side lost the last round of a match. */
+export function pointsFor(sim, team) {
+  return BUY.points + (sim.lossBonus === team ? BUY.lossBonus : 0);
 }
 
-/** Phased rounds: every attacker's money is what is left after his role's gear (never below 0). */
-export function initMoney(sim) {
-  for (const u of sim.teams.attackers) u.money = Math.max(0, BUY.startMoney - gearCost(u.gear));
+/** Phased rounds: every operator starts with his points (his class's kit is free). */
+export function initPoints(sim) {
+  for (const u of sim.units) u.points = pointsFor(sim, u.team);
 }
 
-/** Buys (count +1) or sells back (-1) one item. Returns a REJECT code or null. */
+/**
+ * Buys (count +1) or gives back (-1) one item for its points. The class's kit
+ * cannot be given back (it costs nothing). Returns a REJECT code or null.
+ */
 export function buyItem(sim, u, item, count) {
-  if (u.team !== 'attackers' || !BUY.items.includes(item) || (count !== 1 && count !== -1)) return 'badItem';
+  if (!buyableItems(u.team).includes(item) || (count !== 1 && count !== -1)) return 'badItem';
+  if (sim.phase !== BUY_PHASE[u.team]) return 'badItem';
   const have = u.gear[item] || 0;
   const price = BUY.prices[item];
   if (count > 0) {
     if (have >= BUY.max[item]) return 'gearFull';
-    if (u.money < price) return 'noMoney';
+    if (u.points < price) return 'noPoints';
     u.gear[item] = have + 1;
-    u.money -= price;
+    u.points -= price;
   } else {
-    if (have <= 0) return 'noGear';
+    if (have <= (roleGear(u.role)[item] || 0)) return 'noGear';
     u.gear[item] = have - 1;
-    u.money += price;
+    u.points += price;
   }
-  sim.emit(EV.GEAR_CHANGED, { unitId: u.id, item, count: u.gear[item], money: u.money });
+  sim.emit(EV.GEAR_CHANGED, { unitId: u.id, item, count: u.gear[item], points: u.points });
   return null;
 }
 
+/** A new class: its kit, and the points back (what he bought goes back with the old class). */
+function resetGear(sim, u) {
+  u.gear = roleGear(u.role);
+  u.points = pointsFor(sim, u.team);
+}
+
 /**
- * An attacker changes class (buy phase): his gear goes back for its price,
- * he takes the new class's stats, weapon and gear and pays for that gear
- * (whatever is left; never below 0). Brecha and Explorador: one per squad.
+ * An attacker changes class (buy phase): he takes the new class's stats,
+ * weapon and kit, and gets his points back. Brecha and Explorador: one per squad.
  */
 export function setRole(sim, u, roleId) {
   const role = ROLES[roleId];
   if (u.team !== 'attackers' || !role || !role.pick) return 'badRole';
   if (u.role === roleId) return null;
   if (role.unique && sim.teams.attackers.some((o) => o !== u && o.role === roleId)) return 'roleTaken';
-  const refund = gearCost(u.gear);
   applyRole(u, roleId);
-  u.gear = roleGear(roleId);
-  u.money = Math.max(0, u.money + refund - gearCost(u.gear));
-  sim.emit(EV.ROLE_CHANGED, { unitId: u.id, role: roleId, money: u.money });
+  resetGear(sim, u);
+  sim.emit(EV.ROLE_CHANGED, { unitId: u.id, role: roleId, points: u.points });
   return null;
 }
 
@@ -111,7 +122,10 @@ export function applyLayout(sim, layout) {
     const s = layout[(sim.defenderSlots ? sim.defenderSlots[i] : i) % layout.length];
     moveTo(u, s.at[0], s.at[1], s.facing);
     const role = sim.roles.defenders[i] || s.role || DEFAULT_DEFENDER_ROLE; // the lobby's class, else the post's
-    if (role !== u.role) applyRole(u, role); // an anchor slot makes him an Ancla (config/operators.js)
+    if (role !== u.role) {
+      applyRole(u, role); // an anchor slot makes him an Ancla (config/operators.js)
+      resetGear(sim, u); // and gives him the Ancla's kit
+    }
     if (s.weapon && s.weapon !== u.weaponId) setWeapon(u, s.weapon);
     setBehavior(u, s.behavior || null);
   });
@@ -138,7 +152,8 @@ export function placeDefender(sim, u, px, py, facing = u.facing) {
 /**
  * A defender changes class (preparation): stats and health of the new class;
  * his weapon is his post's. At most ROLES[id].max of a class per side. A
- * Trampero who stops being one takes his traps with him.
+ * Trampero who stops being one takes his traps with him. He takes the new
+ * class's kit and gets his points back.
  */
 export function setDefenderRole(sim, u, roleId) {
   const role = ROLES[roleId];
@@ -148,8 +163,9 @@ export function setDefenderRole(sim, u, roleId) {
   const weaponId = u.weaponId;
   applyRole(u, roleId);
   if (weaponId !== u.weaponId) setWeapon(u, weaponId);
+  resetGear(sim, u);
   dropOrphanTraps(sim);
-  sim.emit(EV.ROLE_CHANGED, { unitId: u.id, role: roleId, money: 0 });
+  sim.emit(EV.ROLE_CHANGED, { unitId: u.id, role: roleId, points: u.points });
   return null;
 }
 
@@ -198,10 +214,12 @@ export function setBarricade(sim, doorId, on) {
 /**
  * On entering the preparation: an AI defending side sets up (for now its
  * plan is the map's: the site rolled from the seed, that site's layout and
- * PREP.barricades of the site's `aiBarricades`, picked by a hash of the seed).
+ * PREP.barricades of the site's `aiBarricades`, picked by a hash of the seed)
+ * and buys AI_UTILITY.buy with each defender's points.
  */
 export function aiPrepare(sim) {
   if (sim.controllers.defenders !== 'ai') return;
+  for (const u of sim.teams.defenders) for (const item of AI_UTILITY.buy) buyItem(sim, u, item, 1); // what the points reach
   const options = (sim.compiled.aiBarricades[sim.site.id] || []).slice();
   let h = (sim.seed ^ 0x5bd1e995) >>> 0;
   for (let n = 0; n < PREP.barricades && options.length; n++) {

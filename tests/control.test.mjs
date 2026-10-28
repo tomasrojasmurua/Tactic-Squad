@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
 import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
-import { MOVE, NOISE } from '../src/config/balance.js';
+import { MOVE, NOISE, BUY } from '../src/config/balance.js';
 
 const MAP = MAPS[DEFAULT_MAP];
 const T = 'attackers';
@@ -158,7 +158,7 @@ test('cortar el turno al ver un enemigo: termina antes y el reintento lo repite 
 
 // ------------------------------------------------------------ clases
 
-test('clases: se eligen en la compra, Brecha y Explorador una vez, el equipo se reembolsa', async () => {
+test('clases: se eligen en la compra, Brecha y Explorador una vez, cada una con su equipo', async () => {
   const { ROLES } = await import('../src/config/operators.js');
   const sim = new Simulation(MAP, { seed: 1 });
   const [aguila, lobo, zorro] = sim.teams.attackers;
@@ -170,12 +170,12 @@ test('clases: se eligen en la compra, Brecha y Explorador una vez, el equipo se 
   order({ type: 'setRole', unitId: aguila.id, role: 'scout' });
   order({ type: 'setRole', unitId: aguila.id, role: 'anchor' });
   assert.deepEqual(rejects(sim), ['roleTaken', 'badRole']);
-  const before = zorro.money;
+  order({ type: 'buy', unitId: zorro.id, item: 'flash', count: 1 });
   order({ type: 'setRole', unitId: zorro.id, role: 'assault' });
   assert.deepEqual(rejects(sim), []);
   assert.equal(zorro.weaponId, ROLES.assault.weapon);
   assert.deepEqual([zorro.gear.flash, zorro.gear.frag, zorro.gear.smoke], [1, 1, 0]);
-  assert.equal(zorro.money, before + 200 + 300 - 200 - 300, 'devuelve flash + humo, paga flash + granada');
+  assert.equal(zorro.points, BUY.points, 'lo comprado vuelve con la clase anterior: recupera sus puntos');
   order({ type: 'setRole', unitId: aguila.id, role: 'scout' });
   assert.equal(aguila.ability, 'scoutPulse');
   sim.advancePhase();

@@ -1,11 +1,12 @@
 // Panel of the round's first decision phases, over the map (it stays visible):
-//   buy       each operator's class (Asaltante / Brecha / Explorador), money and
-//             utility: tap an item to buy one, − to give one back (sim/prep.js,
-//             BUY in config/balance.js, ROLES in config/operators.js)
+//   buy       each operator's class (Asaltante / Brecha / Explorador), its kit
+//             and his utility points: tap an item to buy one, − to give one
+//             back (sim/prep.js, BUY in config/balance.js, ROLES in config/operators.js)
 //   prep      which entry the squad starts from (hidden from the defenders)
 //   setup     prep, playing the defenders: the bomb's site, the barricades,
 //             how many cameras are up (their mounts are tapped on the map:
-//             ui/CameraMounts.js) and the selected defender's watch order
+//             ui/CameraMounts.js) and the selected defender's watch order,
+//             class and utility
 //             (placing and aiming him are map gestures: input/PlanningController.js)
 //   planning  first turn only, compact: the entry can still change
 // Emits EV.REQUEST {action: 'buy_<unitId>_<item>_<+|->' | 'role_<unitId>_<role>' | 'chooseEntry_<id>' |
@@ -38,7 +39,7 @@ export class PhasePanel {
     this.note = this.node.querySelector('.pp-note');
     this.shown = null; // panel the body was built for
     this.sim = null;
-    this.items = []; // buy panel: {u, item, count, sell, money}
+    this.items = []; // buy panel: {u, item, count, sell, points}
     this.roles = []; // buy panel: {u, role, b, label}
     root.appendChild(this.node);
   }
@@ -76,10 +77,10 @@ export class PhasePanel {
     this.roles = [];
     this.team = sim.teams[team];
     for (const u of sim.teams[team]) {
-      const row = el('div', 'pp-row pp-buy', `<b style="color:${u.color}"></b><span class="pp-role"></span><span class="pp-money"></span><div class="pp-classes"></div><div class="pp-items"></div>`);
+      const row = el('div', 'pp-row pp-buy', `<b style="color:${u.color}"></b><span class="pp-role"></span><span class="pp-points"></span><div class="pp-classes"></div><div class="pp-items"></div>`);
       setText(row.children[0], u.name);
       const label = row.children[1];
-      const money = row.children[2];
+      const points = row.children[2];
       const classes = row.children[3];
       const list = row.children[4];
       for (const role of PICK_ROLES) {
@@ -92,15 +93,40 @@ export class PhasePanel {
       }
       for (const item of BUY.items) {
         const box = el('span', 'pp-item');
-        const buy = el('button', 'btn pp-buy-btn', `<span class="n"></span> ${T.buy.gear[item]} <span class="p">${T.buy.price(BUY.prices[item])}</span>`);
-        const sell = el('button', 'btn pp-sell', T.buy.sell);
-        buy.addEventListener('click', () => this.request(`buy_${u.id}_${item}_+`));
-        sell.addEventListener('click', () => this.request(`buy_${u.id}_${item}_-`));
-        box.append(buy, sell);
-        list.appendChild(box);
-        this.items.push({ u, item, buy, count: buy.querySelector('.n'), sell, money });
+        list.appendChild(this.itemButtons(item, () => u, points));
       }
       this.body.appendChild(row);
+    }
+  }
+
+  /** One item's buy (+) and give-back (−) buttons for the operator unitOf() returns (null: none). */
+  itemButtons(item, unitOf, points) {
+    const box = el('span', 'pp-item');
+    const buy = el('button', 'btn pp-buy-btn', `<span class="n"></span> ${T.buy.gear[item]} <span class="p">${T.buy.price(BUY.prices[item])}</span>`);
+    const sell = el('button', 'btn pp-sell', T.buy.sell);
+    const send = (sign) => {
+      const u = unitOf();
+      if (u) this.request(`buy_${u.id}_${item}_${sign}`);
+    };
+    buy.addEventListener('click', () => send('+'));
+    sell.addEventListener('click', () => send('-'));
+    box.append(buy, sell);
+    this.items.push({ unitOf, item, buy, count: buy.querySelector('.n'), sell, points });
+    return box;
+  }
+
+  /** Counts, points and what can still be bought or given back (the class's kit cannot). */
+  refreshItems() {
+    for (const it of this.items) {
+      const u = it.unitOf();
+      const n = u ? u.gear[it.item] || 0 : 0;
+      setText(it.count, `${n}×`);
+      if (it.points) setText(it.points, u ? T.buy.points(u.points) : '');
+      const full = !u || n >= BUY.max[it.item] || u.points < BUY.prices[it.item];
+      toggle(it.buy, 'off', full);
+      toggle(it.buy, 'has', n > 0);
+      const kit = u ? n <= (ROLES[u.role].gear?.[it.item] || 0) : true;
+      if (it.sell.disabled !== kit) it.sell.disabled = kit;
     }
   }
 
@@ -112,15 +138,7 @@ export class PhasePanel {
       if (r.b.disabled !== taken) r.b.disabled = taken;
       if (mine) setText(r.label, `${ROLES[r.role].label} · ${r.u.weapon.name} — ${ROLES[r.role].blurb}`);
     }
-    for (const it of this.items) {
-      const n = it.u.gear[it.item] || 0;
-      setText(it.count, `${n}×`);
-      setText(it.money, T.buy.money(it.u.money));
-      const full = n >= BUY.max[it.item] || it.u.money < BUY.prices[it.item];
-      toggle(it.buy, 'off', full);
-      toggle(it.buy, 'has', n > 0);
-      if (it.sell.disabled !== n <= 0) it.sell.disabled = n <= 0;
-    }
+    this.refreshItems();
   }
 
   buildEntries(sim, panel) {
@@ -167,6 +185,11 @@ export class PhasePanel {
     this.roleButtons = DEF_PICK_ROLES.map((r) => button(this.roleRow, ROLES[r].label, `defrole_${r}`, r));
     this.trapRow = row('', 'traps');
     this.trapButton = button(this.trapRow, S.trapMode, 'trapmode', 'trap');
+    // The selected defender's utility: his class's kit plus what his points buy.
+    this.items = [];
+    this.gearRow = row('', 'gear');
+    const selected = () => controllableUnit(sim, this.selectedId, 'defenders');
+    for (const item of BUY.defenderItems) this.gearRow.children[1].appendChild(this.itemButtons(item, selected, null));
   }
 
   refreshSetup(sim, session) {
@@ -182,6 +205,9 @@ export class PhasePanel {
     setText(this.barRow.children[0], S.barricades(up, PREP.barricades));
     setText(this.camRow.children[0], S.cameras(sim.cameras.length, CAMERA.max));
     const u = controllableUnit(sim, session.selectedId, session.team);
+    this.selectedId = session.selectedId;
+    setText(this.gearRow.children[0], u ? S.gearOf(u.name, T.buy.points(u.points)) : S.pickGear);
+    this.refreshItems();
     setText(this.watchRow.children[0], u ? S.watchOf(u.name) : S.pickOne);
     const mode = u ? watchOf(u).mode : null;
     for (const b of this.watchButtons) {
