@@ -21,13 +21,28 @@ export const FLOW_TEXTS = Object.freeze({
     multi: 'Multijugador',
     soon: 'Próximamente',
     back: 'Volver',
-    tutorial: 'Tutorial guiado',
-    tutorialNote: 'Paso a paso, en una ronda más fácil',
+    tutorial: 'Tutorial',
+    tutorialNote: 'Lecciones cortas, de lo básico a la ronda completa',
     tutorialNew: 'Recomendado para empezar',
-    tutorialDone: 'Completado',
+    lessonsDone: (n, total) => `${n}/${total} lecciones`,
     button: 'Menú',
     confirm: '¿Salir?',
     pitch: 'Asalto táctico por turnos. Planificas sin ver al rival y todo se ejecuta a la vez. Ataca para desactivar la bomba, o defiéndela.',
+  },
+  /** The tutorial's lessons (config/lessons.js) in the menu. */
+  lessons: {
+    title: 'Tutorial',
+    minutes: (n) => `~${n} min`,
+    done: 'Hecha',
+    next: 'Siguiente',
+    soon: 'Próximamente',
+    items: {
+      basic: { title: '1. Básico', note: 'Elegir operador, ruta, mirada, puertas, GO y el turno de 5 s' },
+      doors: { title: '2. Puertas y granadas', note: 'Patada, entreabrir, flash por la puerta y por qué gana el que espera' },
+      squad: { title: '3. Coordinar con GO', note: 'Escuadra en fila, colores de GO, dos puertas a la vez y sigilo' },
+      defend: { title: '4. Defender', note: 'Sitio, posiciones, vigilancia, barricadas, cámaras y asomarse' },
+      round: { title: '5. Ronda completa', note: 'Compra, entrada, dron, cámaras y bomba contra la IA' },
+    },
   },
   /** The lobby (ui/Menu.js, session/Lobby.js). */
   lobby: {
@@ -99,7 +114,7 @@ export const FLOW_TEXTS = Object.freeze({
     tip: 'Consejo',
     welcome: {
       title: 'Bienvenido',
-      text: `Los Defensores escondieron una bomba en el sitio A o en el B. Tu escuadrón de 3 debe encontrarla y desactivarla antes de que explote, o eliminar a todos los Defensores. Aquí aprendes el asalto, con solo 2 defensores. La compra, la elección de entrada y el dron se suman en las rondas siguientes, de a uno.`,
+      text: `Los Defensores escondieron una bomba en el sitio A o en el B. Tu escuadrón de 3 debe encontrarla y desactivarla antes de que explote, o eliminar a todos los Defensores. Aquí aprendes el asalto, con solo 2 defensores. La compra, la entrada y el dron están en la lección 5 y en cualquier partida.`,
     },
     plan: {
       title: 'Asalto por turnos',
@@ -144,6 +159,14 @@ export const FLOW_TEXTS = Object.freeze({
         touch: 'Cuando ÁGUILA llegue a la puerta, toca GO VIOLETA a la derecha: ¡ahora! Si el turno se acaba antes, pulsa LISTO y sigue en el próximo.',
         desk: 'Cuando ÁGUILA llegue a la puerta, pulsa GO VIOLETA (o Z): ¡ahora! Si el turno se acaba antes, pulsa Espacio y sigue en el próximo.',
       },
+    },
+    roundWelcome: {
+      title: 'Una ronda completa',
+      text: 'Ahora sí, todo: compras, eliges por dónde entrar, reconoces con el dron y asaltas. Contra 3 defensores de la IA que también se prepararon a ciegas. Cada fase se explica al llegar.',
+    },
+    roundPlan: {
+      title: 'Al asalto',
+      text: 'Lo que vio el dron sigue marcado. Las cámaras (punto rojo con su cono) avisan a los defensores: rómpelas de un tiro o ciégalas con humo. Gana encontrando la bomba y desactivándola, o eliminando a los defensores.',
     },
     turnEnd: {
       title: 'Fin del turno',

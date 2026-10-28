@@ -46,7 +46,7 @@ export class TutorialCard {
     if (key === this.shownKey) return;
     this.shownKey = key;
     const F = T.flow.tutorial;
-    const s = t.tip ? F.tips[t.tip] : F[id];
+    const s = t.tip ? F.tips[t.tip] : F[id] || F.tips[id]; // a lesson's step may be a phase's intro card
     toggle(this.node, 'info', t.card);
     toggle(this.node, 'tip', !!t.tip);
     setText(this.step, t.tip ? F.tip : F.step(t.step + 1, t.count));
