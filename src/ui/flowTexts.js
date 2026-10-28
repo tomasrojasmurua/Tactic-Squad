@@ -80,6 +80,7 @@ export const FLOW_TEXTS = Object.freeze({
     replayDiverged: (n) => `Plan cambiado: ${n === 1 ? 'esta fase ya no se repite' : `estas ${n} fases ya no se repiten`}; sigues tú`,
     noPause: `Un turno no se pausa: dura ${TURN} s y luego vuelves a planificar`,
     droneReplay: 'Reintento: el dron repite su recorrido grabado',
+    camerasReplay: 'Reintento: tus cámaras se mueven como la otra vez',
     enemyDrone: 'El dron es del atacante: termina solo (o cuando un defensor lo derriba)',
     pickDefender: 'Primero toca a un defensor',
     goInTurn: 'Los GO se dan durante el turno: pulsa LISTO y luego el GO de color cuando quieras',

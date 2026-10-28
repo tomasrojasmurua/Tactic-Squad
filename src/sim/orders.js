@@ -55,6 +55,9 @@
 //   {type:'barricade', door, on}               preparation, defenders: puts up / takes down a barricade
 //   {type:'setDefenderRole', unitId, role}     preparation: a defender's class (config/operators.js DEF_PICK_ROLES)
 //   {type:'placeTrap', unitId, x, y}           preparation: the Trampero lays a trap there (or picks his own up)
+//   {type:'camera', mount, on, atTick?}        preparation and drone, defenders: a camera up on that map mount
+//                                              (`cameraMounts`; on false: taken down). During the drone it is
+//                                              live, stamped with the drone phase's step like the stick
 // Recon drone (sim/drone.js), during the drone phase, stamped like a GO:
 //   {type:'drone', dir, atTick}                the stick: one of DRONE.directions headings, -1 = stop
 //   {type:'droneRecall', atTick}               the drone is done (the first planning starts)
@@ -78,6 +81,7 @@ import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, ent
 import { segmentCrossesDoorway } from './doors.js';
 import { startDefuse } from './objectives.js';
 import { cancelEntry, releaseDelay } from './entries.js';
+import { setCamera } from './cameras.js';
 import { buyItem, setRole, chooseSite, placeDefender, setWatch, setBarricade, setDefenderRole, placeTrap } from './prep.js';
 import { steerDrone, endDrone } from './drone.js';
 import { routePoint } from './routePoint.js';
@@ -109,6 +113,8 @@ export const REJECT = Object.freeze({
   tooManyBarricades: 'tooManyBarricades', // PREP.barricades already up
   notTrapper: 'notTrapper', // placeTrap for a defender who is not the Trampero
   tooManyTraps: 'tooManyTraps', // TRAP.perTrapper already laid
+  badMount: 'badMount', // a camera on a mount the map does not have
+  tooManyCameras: 'tooManyCameras', // CAMERA.max already up
   badFollow: 'badFollow', // follow: no such leader, himself, another side, or a leader who follows someone
 });
 
@@ -120,15 +126,15 @@ const OWN_ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'promoteLast', 'setLook'
 /** Orders each round phase takes (sim/round.js PHASE; literal keys: round.js imports this module). */
 const PHASE_ORDERS = Object.freeze({
   buy: ['buy', 'setRole'],
-  prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade', 'setDefenderRole', 'placeTrap'],
-  drone: ['drone', 'droneRecall'],
+  prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade', 'setDefenderRole', 'placeTrap', 'camera'],
+  drone: ['drone', 'droneRecall', 'camera'],
   plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry'],
   exec: ['go'],
   end: [],
 });
 
 /** Orders a side gives as a whole (no unit): which side must be human to give them. */
-const SIDE_ORDERS = Object.freeze({ chooseSite: 'defenders', barricade: 'defenders', drone: 'attackers', droneRecall: 'attackers' });
+const SIDE_ORDERS = Object.freeze({ chooseSite: 'defenders', barricade: 'defenders', camera: 'defenders', drone: 'attackers', droneRecall: 'attackers' });
 
 /** May the side that sent `cmd` command this unit? (`by`: who gives it, 'human' | 'ai') */
 function obeys(sim, unit, cmd, by) {
@@ -151,6 +157,7 @@ export function applyCommand(sim, cmd, by = 'human') {
     if (sideOf(sim, cmd) !== side || sim.controllers[side] !== by) return;
     if (cmd.type === 'chooseSite') return refuse(sim, -1, chooseSite(sim, cmd.site));
     if (cmd.type === 'barricade') return refuse(sim, -1, setBarricade(sim, cmd.door, cmd.on !== false));
+    if (cmd.type === 'camera') return refuse(sim, -1, setCamera(sim, cmd.mount, cmd.on !== false));
     if (cmd.type === 'drone') return steerDrone(sim, cmd.dir);
     return endDrone(sim, 'recalled');
   }

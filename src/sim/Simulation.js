@@ -96,6 +96,7 @@ export class Simulation {
     for (const t of TEAMS) this.teams[t] = this.units.filter((u) => u.team === t);
     this.bomb = createBomb(this.site);
     this.cameras = [];
+    this.knownMounts = new Set(); // camera mounts the attackers found (sim/cameras.js)
     placeCameras(this); // sim/cameras.js: the defenders' cameras on this site
     this.traps = [];
     layTraps(this); // sim/traps.js: the Trampero's traps of the map's layout

@@ -210,7 +210,7 @@ export class SessionController {
   /** Orders are recorded per phase (a turn only takes GOs; the drone its stick and recall). A new one in a replayed decision phase takes over. */
   record(cmd) {
     const live = isLivePhase(this.session.phase) || this.session.phase === 'paused';
-    const liveOrder = cmd.type === 'go' || cmd.type === 'drone' || cmd.type === 'droneRecall';
+    const liveOrder = cmd.type === 'go' || cmd.type === 'drone' || cmd.type === 'droneRecall' || (cmd.type === 'camera' && cmd.atTick !== undefined);
     if (!isDecisionPhase(this.session) && !(live && liveOrder)) return;
     const dropped = this.recorder.record(cmd);
     this.session.replay.pending = this.recorder.pending;
@@ -525,6 +525,7 @@ export class SessionController {
         else if (action.startsWith('chooseEntry_') && (phase === 'prep' || phase === 'planning')) this.chooseEntry(action.slice(12));
         else if (action.startsWith('buy_') && phase === 'buy') this.buy(action);
         else if (action.startsWith('role_') && phase === 'buy') this.setRole(action);
+        else if (action.startsWith('mount_')) this.toggleMount(action.slice(6));
         else if (isDefenderSetup(session)) this.setup(action);
     }
   }
@@ -601,6 +602,26 @@ export class SessionController {
     const c = live[s.ui.camera];
     this.framing.centerOn(c.x, c.y);
     this.sound('select');
+  }
+
+  /**
+   * Defending, a camera mount tapped on the map (ui/CameraMounts.js): a camera
+   * goes up there, or comes down. In the preparation, or live while the enemy
+   * drone flies (stamped with its step, like the stick).
+   */
+  toggleMount(id) {
+    const s = this.session;
+    const sim = this.sim;
+    if (s.team !== 'defenders' || s.helpOpen) return;
+    const on = !sim.cameras.some((c) => c.mount === id);
+    if (s.phase === 'prep') {
+      this.command({ type: 'camera', mount: id, on });
+      sim.flushCommands();
+    } else if (s.phase === 'drone') {
+      if (s.replay.exec) return this.notice('camerasReplay');
+      this.command({ type: 'camera', mount: id, on, atTick: phaseTick(sim) });
+    } else return;
+    this.sound(on ? 'select' : 'undo');
   }
 
   /** The door picker's ×. */

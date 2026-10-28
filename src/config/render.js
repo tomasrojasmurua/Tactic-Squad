@@ -199,7 +199,11 @@ export const OVERLAY = Object.freeze({
   // Door entries: dashed link waypoint -> doorway and a marker on the doorway, per mode (rgb).
   entryColors: Object.freeze({ kick: [1, 1, 1], slow: [0.6, 0.85, 1], flash: [1, 0.96, 0.62], frag: [0.72, 0.85, 0.45], breach: [1, 0.69, 0.18], smoke: [0.78, 0.8, 0.82] }),
   smokeColor: [0.72, 0.74, 0.76], // a smoke cloud (sim/smoke.js)
-  camera: Object.freeze({ size: 0.2, color: [1, 0.33, 0.3], coneAlpha: 0.1, spotPulse: 1.2 }), // defender cameras (sim/cameras.js)
+  // Defender cameras (sim/cameras.js), seen from above: a wall plate, a short arm and the body with its
+  // lens toward `facing`. length: m from the plate to the lens; minPx: never drawn shorter on screen.
+  // coneAlpha / edgeAlpha: its field of view on the floor (fill, outline); ghost: a free mount's
+  // dashed outline while the defender picks where they go (ui/CameraMounts.js).
+  camera: Object.freeze({ length: 0.7, width: 0.3, minPx: 34, color: [1, 0.33, 0.3], coneAlpha: 0.13, edgeAlpha: 0.6, ghostAlpha: 0.45, spotPulse: 1.2 }),
   trap: Object.freeze({ size: 0.28, color: [1, 0.62, 0.18] }), // Trampero's traps (sim/traps.js)
   entryMarker: 0.2, // m, half-size of the doorway marker
   grenadeRadius: 0.09, // m, a grenade in flight / on the floor

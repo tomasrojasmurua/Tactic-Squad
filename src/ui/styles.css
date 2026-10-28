@@ -650,6 +650,32 @@ body.touch .entry-picker .ep-panel { padding: 4px 5px 5px; }
 .tag .s.blind { color: #111; background: #fff6c4; }
 .tag .s.entry { color: var(--cyan); }
 /* Waypoint tags: GO code + door entry under the planned point (ui/WorldLabels.js). */
+/* Camera mounts (ui/CameraMounts.js): defending, before the assault, a button on each mount of the walls. */
+.mounts { position: absolute; inset: 0; overflow: hidden; pointer-events: none; display: none; }
+.mounts.on { display: block; }
+.cmount {
+  position: absolute; left: 0; top: 0; width: 34px; height: 34px; padding: 0; border-radius: 50%; pointer-events: auto; cursor: pointer;
+  touch-action: manipulation; will-change: transform; display: flex; align-items: center; justify-content: center;
+  color: #ffd9d6; background: rgba(10, 11, 13, 0.72); border: 2px dashed rgba(255, 90, 80, 0.85);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+.cmount::before { content: ''; position: absolute; inset: -7px; border-radius: 50%; } /* a finger-size target */
+.cmount .ci { width: 20px; height: 20px; display: block; }
+.cmount .ci svg { width: 100%; height: 100%; display: block; }
+.cmount.east .ci { transform: scaleX(-1); }
+.cmount .cx {
+  position: absolute; right: -5px; top: -5px; width: 16px; height: 16px; border-radius: 50%; font: 900 13px/16px var(--font); text-align: center;
+  color: #1a0503; background: #ff6a5e; box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.8);
+}
+.cmount:hover { background: rgba(60, 14, 10, 0.85); }
+/* A camera is up there: the canvas draws it, the button is just a ring around it and its ×. */
+.cmount.up { background: transparent; border: 2px solid rgba(255, 106, 94, 0.9); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(0, 0, 0, 0.55); }
+.cmount.up .ci { visibility: hidden; }
+.cmount.up .cx { color: #fff; background: #2a2d31; box-shadow: 0 0 0 1.5px rgba(255, 106, 94, 0.9); }
+.cmount.full { opacity: 0.45; }
+.cmount.under-hud { visibility: hidden; }
+body.touch .cmount { width: 40px; height: 40px; }
+body.touch .cmount .ci { width: 23px; height: 23px; }
 .ptag {
   position: absolute; left: 0; top: 0; height: 15px; padding: 0 4px; font-size: 9.5px; font-weight: 900; letter-spacing: 0.08em; white-space: nowrap;
   color: #0b0b0b; background: var(--op); opacity: 0.78; display: flex; align-items: center; will-change: transform;

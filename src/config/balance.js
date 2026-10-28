@@ -314,14 +314,15 @@ export const MAP_FORMAT = Object.freeze({
 });
 
 /**
- * Defender cameras (sim/cameras.js, map `aiCameras[site]`): a fixed eye on a
- * wall. While it keeps an attacker in sight for `detect` s every AI defender
- * is told where he is (as if they heard him, COMBAT.alertDuration). The
+ * Defender cameras (sim/cameras.js, map `cameraMounts`): a fixed eye on a
+ * wall, `max` of them on the mounts the defenders pick. While it keeps an
+ * attacker in sight for `detect` s every AI defender is told where he is (as if they heard him, COMBAT.alertDuration). The
  * attackers see it like an enemy (their cones, the drone) and whoever has it
  * in sight within `shootRange` and nothing else to shoot breaks it in
  * `shootDelay` s (one loud shot).
  */
 export const CAMERA = Object.freeze({
+  max: 2, // cameras a side mounts (map `cameraMounts`; the AI: `aiCameras[site]`)
   fov: (80 * Math.PI) / 180,
   range: 15, // m
   detect: 0.5, // s in sight before it reports

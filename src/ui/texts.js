@@ -1,7 +1,7 @@
 // Every user-facing string (Spanish). Keep UI copy here, not in components.
 
 import { FLOW_TEXTS } from './flowTexts.js';
-import { ROUND, DRONE, PREP } from '../config/balance.js';
+import { ROUND, DRONE, PREP, CAMERA } from '../config/balance.js';
 import { GO_GROUPS } from '../config/ui.js';
 
 const TURN = ROUND.turnSeconds;
@@ -38,13 +38,13 @@ export const T = Object.freeze({
   /** Sub line of the banner playing the defenders (replaces phaseSub / phaseSubTouch where it has the phase). */
   phaseSubDefend: {
     desk: {
-      prep: 'Elige el sitio, coloca a cada defensor, oriéntalo y pon 2 barricadas · ESPACIO: listo',
-      drone: 'El dron enemigo explora: si un defensor lo ve, lo derriba',
+      prep: `Elige el sitio, coloca a cada defensor, oriéntalo, pon 2 barricadas y ${CAMERA.max} cámaras · ESPACIO: listo`,
+      drone: 'El dron enemigo explora: si un defensor lo ve, lo derriba · aún puedes mover tus cámaras',
       planning: 'Puedes mover defensores (su vigilancia pasa a fija) · ESPACIO: listo',
     },
     touch: {
-      prep: 'Sitio, posiciones, vigilancia y 2 barricadas · LISTO',
-      drone: 'El dron enemigo explora: si un defensor lo ve, lo derriba',
+      prep: 'Sitio, posiciones, vigilancia, barricadas y cámaras · LISTO',
+      drone: 'Dron enemigo: si un defensor lo ve, lo derriba · aún puedes mover tus cámaras',
       planning: 'Mueve defensores si quieres · LISTO',
     },
   },
@@ -425,6 +425,8 @@ export const T = Object.freeze({
     traps: (n, max) => `Trampas ${n}/${max}`,
     trapMode: 'Poner trampas',
     trapModeOn: 'Poniendo trampas: toca el suelo',
+    cameras: (n, max) => `Cámaras ${n}/${max}: toca un soporte en la pared (+ pone, × quita)`,
+    mount: 'Soporte de cámara',
   },
   /** Drone phase (ui/DroneStick.js). */
   drone: { stick: 'DRON', keys: 'WASD' },
@@ -487,6 +489,8 @@ export const T = Object.freeze({
     roleTaken: 'Ya hay el máximo de esa clase',
     notTrapper: 'Solo el Trampero pone trampas',
     tooManyTraps: 'Ya puso sus 2 trampas: toca una para levantarla',
+    badMount: 'Ahí no se puede montar una cámara',
+    tooManyCameras: `Ya tienes tus ${CAMERA.max} cámaras: toca una para quitarla`,
   },
   webgl: 'Tu navegador no soporta WebGL2, necesario para Tactic Squad. Prueba con una versión reciente de Chrome, Edge o Firefox.',
   fatal: 'Se produjo un error al iniciar el juego.',
