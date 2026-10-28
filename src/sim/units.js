@@ -104,7 +104,7 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     alertY: 0,
 
     behavior,
-    ai: { patrolIndex: 0, wait: 0, baseFacing: facing, repath: 0, noiseX: 0, noiseY: 0, rotating: null, rotated: false },
+    ai: { patrolIndex: 0, wait: 0, baseFacing: facing, repath: 0, noiseX: 0, noiseY: 0, rotating: null, rotated: false, rotateTo: null, report: null, commanded: false },
 
     defusing: false, // working on the bomb (sim/objectives.js): still, not shooting
     deathTime: -1,

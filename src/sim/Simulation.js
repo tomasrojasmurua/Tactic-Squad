@@ -20,6 +20,7 @@ import { applyCommand } from './orders.js';
 import { updatePerception } from './perception.js';
 import { updateAiUnit } from './ai.js';
 import { createAttackAi, attackAiDecide, attackAiTick } from './aiAttack.js';
+import { createDefendAi, defendAiTick } from './aiDefend.js';
 import { isAiControlled, humanTeam } from './queries.js';
 import { updateFacing, updateMovement } from './movement.js';
 import { resolveCollisions } from './collisions.js';
@@ -28,7 +29,7 @@ import { createBomb, updateObjectives, endRound } from './objectives.js';
 import { createRound, advancePhase, canStep, afterTick, phaseTick, isLive, PHASE } from './round.js';
 import { createNoise, collectNoise } from './noise.js';
 import { createMemory, updateMemory } from './view.js';
-import { initPoints } from './prep.js';
+import { initPoints, layoutBehavior } from './prep.js';
 import { updateDrone } from './drone.js';
 import { createIntel, updateBash, spotBarricades } from './barricades.js';
 import { spotWires, updateWires } from './wires.js';
@@ -111,6 +112,7 @@ export class Simulation {
     if (phases) initPoints(this); // the buy phase / preparation: each operator's utility points
     initAbilities(this);
     this.attackAi = createAttackAi(this); // sim/aiAttack.js: the commander of an AI attacking side
+    this.defendAi = createDefendAi(this); // sim/aiDefend.js: sends an AI defending side's rotations
   }
 
   /** Per attacker slot {role?} (session/Match.js): his class, with its kit full again. */
@@ -157,7 +159,7 @@ export class Simulation {
           facing: s.facing,
           role: this.roles.defenders[i] || s.role || DEFAULT_DEFENDER_ROLE,
           weaponId: s.weapon,
-          behavior: s.behavior,
+          behavior: layoutBehavior(this, s.behavior),
         }),
       );
     });
@@ -272,6 +274,7 @@ export class Simulation {
       spotBarricades(this, u, u.vision.fov);
       spotWires(this, u, u.vision.fov);
     }
+    defendAiTick(this);
     for (const u of this.units) {
       if (!u.alive) continue;
       if (isAiControlled(this, u)) updateAiUnit(this, u, dt);

@@ -131,8 +131,22 @@ export function applyLayout(sim, layout) {
       resetGear(sim, u); // and gives him the Ancla's kit
     }
     if (s.weapon && s.weapon !== u.weaponId) setWeapon(u, s.weapon);
-    setBehavior(u, s.behavior || null);
+    setBehavior(u, layoutBehavior(sim, s.behavior));
   });
+}
+
+/**
+ * A layout post's behavior for the side that stands there. The AI plays the
+ * map's as written; a player's defender never walks on his own: a patrol
+ * becomes holding that spot (turning to noise) and a fallback is dropped, so
+ * he moves only where his player sends him.
+ */
+export function layoutBehavior(sim, b) {
+  if (!b || sim.controllers.defenders !== 'human') return b || null;
+  if (b.type === 'patrol') return { type: 'hold', reactsToNoise: b.reactsToNoise !== false };
+  if (!b.rotate) return b;
+  const { rotate, ...rest } = b;
+  return rest;
 }
 
 /**
@@ -285,7 +299,7 @@ function moveTo(u, x, y, facing) {
 
 function setBehavior(u, behavior) {
   u.behavior = behavior;
-  u.ai = { patrolIndex: 0, wait: 0, baseFacing: u.facing, repath: 0, noiseX: 0, noiseY: 0, rotating: null, rotated: false };
+  u.ai = { patrolIndex: 0, wait: 0, baseFacing: u.facing, repath: 0, noiseX: 0, noiseY: 0, rotating: null, rotated: false, rotateTo: null, report: null, commanded: u.ai.commanded };
 }
 
 function setWeapon(u, weaponId) {
