@@ -146,7 +146,7 @@ canStep?  (en fases de decisión el tiempo no corre)
 | `doors.js` | Puertas con bisagra: abrir, entreabrir, patear, volar. La geometría de la hoja alimenta LOS y balas |
 | `entries.js` | Entradas a puerta estilo Door Kickers: `kick`, `slow` (entreabrir), `flash`, `frag`, `breach`, armadas en un punto de ruta y liberadas con un GO. Una puerta sin decidir se abre al pasar (`ENTRY.undecided = 'open'`). También el **lanzamiento libre** (`armToss`, modo `toss`): flash, granada o humo a un punto, cortado por `queries.tossLanding` |
 | `smoke.js` | Nubes de humo: crecen, duran y se disipan; `World.updateSmokeSegments` las convierte en polígonos que tapan la vista |
-| `cameras.js` | Cámaras del defensor (`aiCameras` del mapa, por sitio): ven atacantes y alertan a la IA, se descubren (operadores, dron) y se rompen de un tiro |
+| `cameras.js` | Cámaras del defensor (`CAMERA.max` en los `cameraMounts` del mapa; la IA y el inicio: `aiCameras[sitio]`; orden `camera` en preparación y dron): ven atacantes y alertan a la IA, se descubren (operadores, dron) y se rompen de un tiro |
 | `traps.js` | Trampas del Trampero (`aiTraps` del mapa, orden `placeTrap`): atrapan al atacante que las pisa y lo delatan; se descubren con sigilo, dron o pulso del Explorador y se rompen de un tiro |
 | `barricades.js` | Barricadas: bloquean cuerpo, vista, balas y dron; romperlas a golpes o volarlas con carga. `sim.intel` = qué barricadas conocen los atacantes |
 | `wires.js` | Alambre de púas del defensor: frena al atacante que lo cruza y suena; una granada o una carga lo corta. `sim.intel.wires` = los que conocen los atacantes |
@@ -293,7 +293,7 @@ de piso, y los datos de la ronda: `sites` (A y B, con el punto de la bomba), `en
 (norte, principal, sur: la puerta y las posiciones de inicio), `deployment` (línea y
 mitad de cada bando), `defense` (la disposición de la IA defensora para cada sitio, con
 el comportamiento de cada puesto y su `role`), `aiBarricades`, `aiEntries` (con pesos),
-`aiCameras` (las cámaras del defensor por sitio: `{at, facing, fov?, range?}`) y `camera`
+`cameraMounts` (los soportes de cámara: `{id, at, facing, fov?, range?}`), `aiCameras` (los soportes que usa la IA en cada sitio) y `camera`
 (el encuadre inicial de la vista).
 
 ---
@@ -356,6 +356,7 @@ Una revisión de jugabilidad en tres fases, cada una en sus commits.
 **Fase 1 — claridad**
 - GO por **colores** (`config/ui.js GO_GROUPS`): violeta, rosa, blanco; teclas Z / X / C. Internamente siguen siendo `'A' / 'B' / 'C'`.
 - Puertas **abiertas por defecto** (`ENTRY.undecided = 'open'`; `'stop'` restaura el freno anterior).
+- Soportes de cámara (`ui/CameraMounts.js`): jugando de defensor, en la preparación y durante el dron enemigo, un botón redondo sobre cada soporte del mapa (+ pone la cámara, × la quita). Pide `mount_<id>`; durante el dron la orden `camera` va sellada con el paso, como el mando del dron.
 - Menú del punto (`ui/EntryPicker.js`): en una puerta, rueda con las seis entradas alrededor del punto y un panel al lado (cuándo, paso, lanzar); lejos de puertas, popover anclado. Tocar una puerta apila al operador junto a ella y abre la rueda (`PlanningController.stackAt`, `config/input.js` `DOOR_TAP`).
 - ESPERAR (táctil) abre los colores (`session.ui.holdMenu`).
 - Primera partida directo a planificar; compra, entrada y dron se desbloquean (`FLOW.unlockAfterRounds`), con tarjeta la primera vez.

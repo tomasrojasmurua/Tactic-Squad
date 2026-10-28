@@ -4,7 +4,8 @@
 //
 // Phases mirror the round's (sim/round.js) plus what only the screen has:
 //   title              the menu: main, JUGAR, the lobby (session.lobby: session/Lobby.js)
-//   buy, prep          the round's first decision phases (time stopped)
+//   buy, prep          the round's first decision phases (time stopped); a
+//                      defender's prep has two steps: the recon (inRecon), then his operators
 //   drone              the attackers drive their recon drone (real time, like a turn)
 //   planning           a turn's planning: orders apply instantly (routes update live)
 //   running            a turn's execution: the fixed-step simulation advances, no orders
@@ -39,6 +40,8 @@ export function createSession({ touch }) {
     pauseReason: null,
     resumePhase: 'running', // what a pause goes back to: 'running' | 'drone'
     confirm: { action: null, until: 0 }, // destructive request armed until `until` (performance.now ms)
+    lastKill: null, // the round's last EV.DEATH {tick, unitId, killerId} (the kill cam shows it again)
+    killcam: null, // after the round, until its last kill was shown: {tick, unitId, killerId, playing}
     replay: { pending: 0, attempt: 0, exec: false }, // recorded phases still to replay; retries of this plan; this turn is a replayed one
     clock: { left: 0, total: 0, unlimited: false, auto: false }, // session/PhaseClock.js (decision phases)
     tutorial: { active: false, step: 0, id: null, info: false, card: false, count: 0, done: false }, // session/Tutorial.js
@@ -94,6 +97,9 @@ export const pilotsDrone = (session) => session.team === 'attackers';
 
 /** The defender's set-up: preparation phase, playing the defenders (place, watch orders, site, barricades). */
 export const isDefenderSetup = (session) => session.phase === 'prep' && session.team === 'defenders';
+
+/** The defender's recon, the first step of his set-up: site, barricades, cameras (fixed once it ends: sim/prep.js endRecon). */
+export const inRecon = (sim, session) => isDefenderSetup(session) && !sim.reconDone;
 
 /** The CÁMARAS button: defending, while deciding, with a camera still working. */
 export const showCameras = (sim, session) => session.team === 'defenders' && isPlanningTime(session) && sim.cameras.some((c) => c.alive);

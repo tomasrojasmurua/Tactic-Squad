@@ -55,12 +55,14 @@ export function coachHint(sim, session) {
   return say(C.ready[dev], false);
 }
 
-/** Playing the defenders, preparation: pick one, place and aim him; the barricades still to put up. */
+/** Playing the defenders, preparation: first the recon (the barricades still to put up, the cameras), then pick one, place and aim him. */
 function defenderSetup(sim, session, dev) {
   const C = T.coach;
+  if (!sim.reconDone) {
+    const left = PREP.barricades - sim.doors.filter((d) => d.barricaded).length;
+    return left > 0 ? say(C.defBarricades(left), false) : say(C.defCameras[dev], false);
+  }
   const sel = controllableUnit(sim, session.selectedId, session.team);
   if (!sel) return say(C.defSelect[dev], true);
-  const left = PREP.barricades - sim.doors.filter((d) => d.barricaded).length;
-  if (left > 0) return say(C.defBarricades(left), false);
   return say(C.defPlace[dev](sel.name), false);
 }

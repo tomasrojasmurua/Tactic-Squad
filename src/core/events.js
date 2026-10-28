@@ -48,6 +48,7 @@ export const EV = Object.freeze({
   CAMERA_FOUND: 'cameraFound', // {cameraId, x, y, byDrone}: the attackers know where a defender camera is
   CAMERA_SPOT: 'cameraSpot', // {cameraId, unitId, x, y}: a camera saw an attacker and told the defenders
   CAMERA_DESTROYED: 'cameraDestroyed', // {cameraId, unitId, x, y}: an attacker shot it
+  CAMERA_SET: 'cameraSet', // {mount, on}: the defenders put a camera up on a mount (or took it down)
   BOMB_SPOTTED: 'bombSpotted', // {unitId, site, x, y}: the attackers found the bomb
   DEFUSE_START: 'defuseStart', // {unitId, x, y}
   DEFUSE_ABORT: 'defuseAbort', // {unitId}
@@ -56,7 +57,7 @@ export const EV = Object.freeze({
   ROUND_END: 'roundEnd', // {winner, reason}
   ROUND_PHASE: 'roundPhase', // {phase: sim/round.js PHASE, previous, turn}: the round changed phase
   ORDER_REJECTED: 'orderRejected', // {unitId, reason: REJECT code (sim/orders.js)}
-  ROUTE_CHANGED: 'routeChanged', // {unitId, kind}
+  ROUTE_CHANGED: 'routeChanged', // {unitId, kind, moved?: {from, to}} (moved: the decided point is at another index now)
 
   // --- session / UI ---
   COMMAND: 'command', // a sim command object, queued for the simulation

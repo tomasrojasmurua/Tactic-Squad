@@ -37,6 +37,7 @@ export class Screens {
         <div class="match-pay"></div>
         <div class="result-actions">
           <button class="btn primary next-round"></button>
+          <button class="btn replay-kill">${T.killcam.again}</button>
           <button class="btn primary retry-plan">${T.result.retryButton}</button>
           <button class="btn new-plan">${T.result.newPlanButton}</button>
           <button class="btn reroll">${T.flow.rerollButton}</button>
@@ -55,6 +56,16 @@ export class Screens {
     this.result.querySelector('.retry-plan').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'restart' }));
     this.result.querySelector('.new-plan').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'newPlan' }));
     this.result.querySelector('.reroll').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'reroll' }));
+    this.replayKill = this.result.querySelector('.replay-kill');
+    this.replayKill.addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'killcam' }));
+
+    // The round's last kill shown again (session/KillCam.js): who got whom, and SALTAR.
+    this.killcam = el('div', 'killcam hidden', `<div class="kc-bar"><span class="kc-tag">${T.killcam.title}</span><span class="kc-who"></span><button class="btn kc-skip">${T.killcam.skip}<span class="key desk-only">${T.killcam.skipKey}</span></button></div>`);
+    this.killcamWho = this.killcam.querySelector('.kc-who');
+    this.killcamKey = '';
+    const skip = this.killcam.querySelector('.kc-skip');
+    skip.addEventListener('pointerdown', (e) => e.stopPropagation());
+    skip.addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'skipKillcam' }));
     this.result.querySelector('.to-menu').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'menu' }));
 
     this.help = el('div', 'screen help hidden');
@@ -76,7 +87,7 @@ export class Screens {
     this.stopContact.addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'stopOnContact' }));
 
     this.resultShown = false;
-    root.append(this.title, this.result, this.help);
+    root.append(this.title, this.result, this.killcam, this.help);
   }
 
   setTouch(on) {
@@ -93,9 +104,26 @@ export class Screens {
       const sc = session.progress.stopOnContact ? '1' : '';
       if ((this.stopContact.dataset.on || '') !== sc) this.stopContact.dataset.on = sc;
     }
-    const showResult = session.phase === 'ended' && sim.outcome;
+    const kc = session.phase === 'ended' && session.killcam;
+    toggle(this.killcam, 'hidden', !(kc && kc.playing));
+    toggle(document.body, 'killcam-on', !!(kc && kc.playing));
+    if (kc && kc.playing) {
+      const key = `${kc.killerId}>${kc.unitId}`;
+      if (key !== this.killcamKey) {
+        this.killcamKey = key;
+        const killer = sim.units[kc.killerId];
+        const victim = sim.units[kc.unitId];
+        setText(this.killcamWho, killer && killer !== victim ? T.killcam.who(killer.name, victim.name) : T.killcam.died(victim.name));
+      }
+    } else this.killcamKey = '';
+    const showResult = session.phase === 'ended' && sim.outcome && !kc;
     toggle(this.result, 'hidden', !showResult);
-    if (showResult && !this.resultShown) this.fillResult(sim, session.team, session.mode === 'match' ? session.match : null);
+    if (showResult && !this.resultShown) {
+      this.fillResult(sim, session.team, session.mode === 'match' ? session.match : null);
+      // Retries are a lesson's only; a single round or a match goes forward (and can see its last kill again).
+      toggle(this.result, 'lesson', session.mode === 'tutorial');
+      this.replayKill.hidden = !session.lastKill || session.mode === 'tutorial';
+    }
     if (!!showResult !== this.resultShown) this.resultActions.style.display = showResult ? '' : 'none';
     this.resultShown = !!showResult;
   }
@@ -114,7 +142,7 @@ export class Screens {
     // Who gets the extra utility point next round, or the half-time switch.
     pay.hidden = !match || !!match.over;
     if (match && !match.over) setText(pay, last.switched ? T.match.switchSides(match.team) : T.match.bonus(!last.playerWon));
-    setText(this.result.querySelector('.next-round'), match && match.over ? T.match.again : T.match.next);
+    setText(this.result.querySelector('.next-round'), match ? (match.over ? T.match.again : T.match.next) : T.result.another);
     setText(this.result.querySelector('.reason'), (team === 'defenders' ? T.result.reasonDefend : T.result.reason)[o.reason]);
     const squad = teamUnits(sim, team);
     const kills = squad.reduce((s, u) => s + u.stats.kills, 0);
@@ -125,7 +153,7 @@ export class Screens {
     setText(this.result.querySelector('.st-losses'), squad.filter((u) => !u.alive).length);
     setText(this.result.querySelector('.st-acc'), shots ? `${Math.round((hits / shots) * 100)}%` : '—');
 
-    setText(this.result.querySelector('.retry'), match ? T.match.toWin(match.toWin) : this.touch ? T.result.retryTouch : T.result.retry);
+    setText(this.result.querySelector('.retry'), match ? T.match.toWin(match.toWin) : this.result.classList.contains('lesson') ? (this.touch ? T.result.retryTouch : T.result.retry) : '');
 
     // Why: one line per fallen operator / outcome note, plus the tip that matters most.
     const { lines, tip } = buildDebrief(sim, team);

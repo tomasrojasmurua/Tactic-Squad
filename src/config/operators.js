@@ -6,10 +6,11 @@
 // in sim/abilities/ registered by its id. Modifiers multiply the global
 // numbers of config/balance.js; 1 = unchanged.
 //
-// Classes: attackers Asaltante / Brecha / Explorador (chosen in the buy phase,
-// order setRole; Brecha and Explorador one each), defenders Defensor / Ancla /
-// Merodeador / Trampero (the map layout gives the AI's; a human defender picks
-// them in the preparation, order setDefenderRole, at most `max` of each). Each
+// Classes: attackers Asaltante / Brecha / Explorador (Brecha and Explorador
+// one each), defenders Defensor / Ancla / Merodeador / Trampero (at most `max`
+// of each; the map layout gives the AI's). A player picks his before the game
+// (the menu's class pick: session/Lobby.js, Simulation opts.roles; the rules
+// are sim/prep.js setRole / setDefenderRole) and keeps them all game. Each
 // side picks blind: neither sees the other's classes.
 
 /** Neutral modifiers: every role starts from these. */

@@ -376,7 +376,7 @@ body.touch .help-box { max-height: calc(100dvh - 66px - var(--sat)); overflow: a
 .tbar-col { right: calc(8px + var(--sar)); top: 50%; transform: translateY(-50%); flex-direction: column; align-items: stretch; }
 .tbar-row { right: calc(8px + var(--sar)); top: calc(6px + var(--sat)); flex-direction: row; }
 .tbtn {
-  pointer-events: auto; touch-action: manipulation; min-width: 60px; min-height: 48px; padding: 4px 6px; border-radius: 6px;
+  pointer-events: auto; touch-action: none; min-width: 60px; min-height: 48px; padding: 4px 6px; border-radius: 6px;
   font-family: var(--font); color: #fff; background: rgba(8, 9, 11, 0.8); border: 1px solid rgba(255, 255, 255, 0.18);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: transform 0.06s, background 0.1s;
 }
@@ -603,7 +603,7 @@ body.touch .weapon-plate { left: var(--sal); }
 .entry-picker .ep-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; letter-spacing: 0.12em; white-space: nowrap; }
 .entry-picker .ep-title { font-weight: 800; text-transform: uppercase; color: var(--cyan); }
 .entry-picker .ep-x {
-  pointer-events: auto; touch-action: manipulation; min-width: 28px; min-height: 24px; padding: 0; margin: -3px -3px 0 0; font-size: 17px; line-height: 1;
+  pointer-events: auto; touch-action: none; min-width: 28px; min-height: 24px; padding: 0; margin: -3px -3px 0 0; font-size: 17px; line-height: 1;
   color: var(--muted); background: none; border: 0; cursor: pointer;
 }
 .entry-picker .ep-x:hover { color: #fff; }
@@ -625,12 +625,12 @@ body.touch .weapon-plate { left: var(--sal); }
 .entry-picker .ep-ring .ebtn .en { top: 4px; right: 8px; }
 .entry-picker .ep-hub {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%;
-  pointer-events: auto; touch-action: manipulation; cursor: pointer; font-size: 20px; line-height: 1; color: #cfd6db;
+  pointer-events: auto; touch-action: none; cursor: pointer; font-size: 20px; line-height: 1; color: #cfd6db;
   background: rgba(8, 9, 11, 0.85); border: 1px solid rgba(255, 255, 255, 0.3);
 }
 .entry-picker .ep-hub:hover { color: #fff; border-color: rgba(255, 255, 255, 0.6); }
 .ebtn {
-  pointer-events: auto; touch-action: manipulation; min-width: 58px; min-height: 46px; padding: 4px 6px; position: relative;
+  pointer-events: auto; touch-action: none; min-width: 58px; min-height: 46px; padding: 4px 6px; position: relative;
   font-family: var(--font); color: #fff; background: rgba(20, 23, 27, 0.95); border: 1px solid rgba(255, 255, 255, 0.18);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer;
 }
@@ -651,6 +651,30 @@ body.touch .entry-picker .ep-panel { padding: 4px 5px 5px; }
 .tag .s.blind { color: #111; background: #fff6c4; }
 .tag .s.entry { color: var(--cyan); }
 /* Waypoint tags: GO code + door entry under the planned point (ui/WorldLabels.js). */
+/* Camera mounts (ui/CameraMounts.js): defending, before the assault, a button on each mount of the walls. */
+.mounts { position: absolute; inset: 0; overflow: hidden; pointer-events: none; display: none; }
+.mounts.on { display: block; }
+.cmount {
+  position: absolute; left: 0; top: 0; width: 18px; height: 18px; padding: 0; border-radius: 50%; pointer-events: auto; cursor: pointer;
+  touch-action: none; will-change: transform; display: flex; align-items: center; justify-content: center;
+  color: #ffd9d6; background: rgba(10, 11, 13, 0.72); border: 1px dashed rgba(255, 90, 80, 0.85);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+.cmount::before { content: ''; position: absolute; inset: -13px; border-radius: 50%; } /* a finger-size target (44 px) */
+.cmount .ci { width: 12px; height: 12px; display: block; }
+.cmount .ci svg { width: 100%; height: 100%; display: block; }
+.cmount.east .ci { transform: scaleX(-1); }
+.cmount .cx {
+  position: absolute; right: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; font: 900 9px/10px var(--font); text-align: center;
+  color: #1a0503; background: #ff6a5e; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.8);
+}
+.cmount:hover { background: rgba(60, 14, 10, 0.85); }
+/* A camera is up there: the canvas draws it to scale, the button is only its small ×. */
+.cmount.up { background: transparent; border-color: transparent; box-shadow: none; }
+.cmount.up .ci { visibility: hidden; }
+.cmount.up .cx { right: -9px; top: -9px; color: #fff; background: #2a2d31; box-shadow: 0 0 0 1px rgba(255, 106, 94, 0.9); }
+.cmount.full { opacity: 0.45; }
+.cmount.under-hud { visibility: hidden; }
 .ptag {
   position: absolute; left: 0; top: 0; height: 15px; padding: 0 4px; font-size: 9.5px; font-weight: 900; letter-spacing: 0.08em; white-space: nowrap;
   color: #0b0b0b; background: var(--op); opacity: 0.78; display: flex; align-items: center; will-change: transform;
@@ -661,23 +685,23 @@ body.touch .entry-picker .ep-panel { padding: 4px 5px 5px; }
 .ptag.under-hud { visibility: hidden; }
 /* A door on the route: a small "?" that opens the door picker (it is opened on the way if nobody decides). */
 .ptag.ask {
-  pointer-events: auto; cursor: pointer; touch-action: manipulation; width: 20px; height: 20px; padding: 0; margin-top: -4px; border-radius: 50%;
+  pointer-events: auto; cursor: pointer; touch-action: none; width: 20px; height: 20px; padding: 0; margin-top: -4px; border-radius: 50%;
   justify-content: center; font-size: 13px; color: #1a1000; background: #d9dee2; opacity: 0.9;
 }
 .ptag.ask.sel { background: #fff; }
 .ptag.ask::before { content: ''; position: absolute; inset: -12px; } /* a finger-size target */
 .ptag.ask.target { box-shadow: 0 0 0 2px var(--cyan), 0 1px 0 rgba(0, 0, 0, 0.9); }
 /* Waypoint tags with a GO hold wear their group's color (config/ui.js GO_GROUPS). */
-.ptag.go { background: var(--g); pointer-events: auto; cursor: pointer; touch-action: manipulation; }
+.ptag.go { background: var(--g); pointer-events: auto; cursor: pointer; touch-action: none; }
 .ptag.go::before { content: ''; position: absolute; inset: -8px -4px; }
-.ptag.entry { pointer-events: auto; cursor: pointer; touch-action: manipulation; }
+.ptag.entry { pointer-events: auto; cursor: pointer; touch-action: none; }
 .ptag.entry::before { content: ''; position: absolute; inset: -8px -4px; }
 .gdot { display: inline-block; font-style: normal; color: var(--g); margin-right: 4px; text-shadow: 0 0 1px #000; }
 .entry-picker.ask .ep-title { color: #d9dee2; }
 .entry-picker .ep-when { display: flex; align-items: center; gap: 4px; }
 .entry-picker .ep-wl { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #cfd6db; margin-right: 4px; }
 .wbtn {
-  pointer-events: auto; touch-action: manipulation; min-height: 30px; padding: 2px 10px; font-family: var(--font); font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+  pointer-events: auto; touch-action: none; min-height: 30px; padding: 2px 10px; font-family: var(--font); font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
   text-transform: uppercase; color: #fff; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16);
 }
 .wbtn.active { background: rgba(255, 255, 255, 0.14); border-color: #fff; }
@@ -732,7 +756,6 @@ body.touch .phase-panel .pp-note { display: none; }
 .phase-panel .pp-sell { min-height: 34px; min-width: 30px; padding: 4px 6px; justify-content: center; }
 .phase-panel .pp-sell:disabled { opacity: 0.3; }
 body.touch .phase-panel .pp-buy { grid-template-columns: 1fr auto; flex: 1 1 100%; }
-body.touch .phase-panel .pp-buy .pp-role { display: none; }
 body.touch .phase-panel .pp-buy-btn, body.touch .phase-panel .pp-sell { min-height: 32px; }
 /* First planning: the entry, compact and out of the way. */
 /* The defender's set-up: docked on the right, clear of the building. */
@@ -837,6 +860,15 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
 .title-box .lobby .lb-ready { margin: 0; padding: 13px 44px; }
 .title-box .lobby .lb-ready .key { margin-left: 10px; }
 .title-box .lobby .menu-btn.back { margin: 0; }
+/* The class pick: a tab per side (in a match), a row per operator with his class's blurb under it. */
+.pick .pk-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 12px; }
+.pick .pk-teams { margin-top: 12px; }
+.pick .lb-team { gap: 10px; }
+.pick .lb-slot { display: grid; grid-template-columns: 88px auto; align-items: center; column-gap: 10px; row-gap: 3px; }
+.pick .pk-blurb { grid-column: 2; font-size: 12px; line-height: 1.3; color: #b9c3ca; }
+.pick .lb-actions { flex-wrap: wrap; }
+.pick .lb-players { margin-left: auto; }
+.pick [hidden] { display: none !important; }
 
 /* ------------------------------------------------------------ guided tutorial card (ui/TutorialCard.js) */
 .tut-backdrop { position: absolute; inset: 0; z-index: 38; background: rgba(0, 0, 0, 0.5); pointer-events: auto; }
@@ -905,6 +937,15 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
   .lobby .lb-note { font-size: 11px; }
   .lobby .lb-actions { margin-top: 10px; position: sticky; bottom: 0; padding: 8px 0; background: rgba(0, 0, 0, 0.92); }
   .title-box .lobby .lb-ready { padding: 10px 34px; }
+  .lobby .lb-col { flex-basis: 230px; }
+  .pick .pk-note { display: none; }
+  .pick .pk-head, .pick .pk-teams { margin-top: 6px; }
+  .pick .lb-team { gap: 5px; }
+  .pick .lb-slot { grid-template-columns: 62px auto minmax(0, 1fr); column-gap: 8px; }
+  .pick .pk-blurb { grid-column: 3; font-size: 10.5px; line-height: 1.25; }
+  .pick .lb-actions { flex-wrap: nowrap; }
+  .pick .lb-players { flex-direction: column; gap: 3px; }
+  .pick .lb-player { padding: 4px 8px; font-size: 12px; }
 }
 
 /* Help: close, and the way back to the main menu (the phone's top row has no room for it). */
@@ -961,30 +1002,33 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
 .tbtn.aim { border-color: var(--cyan); color: var(--cyan); animation: tbtn-aim 0.9s ease-in-out infinite alternate; }
 @keyframes tbtn-aim { from { box-shadow: 0 0 0 0 rgba(47, 215, 255, 0.0); } to { box-shadow: 0 0 0 3px rgba(47, 215, 255, 0.35); } }
 
-/* Buy panel: the operator's class (Asaltante / Brecha / Explorador). */
-.phase-panel .pp-classes { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
-.phase-panel .pp-class { min-height: 30px; padding: 3px 10px; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; }
-.phase-panel .pp-class.on { background: var(--cyan-deep); border-color: var(--cyan); color: #fff; }
-.phase-panel .pp-class[disabled] { opacity: 0.35; }
-body.touch .phase-panel .pp-class { min-height: 30px; padding: 2px 8px; font-size: 10.5px; }
-/* Touch buy panel: wider and denser (class chips beside the name, the four items on one line), scrolls if it must. */
+/* Touch buy panel: wider and denser (the class beside the name, the items on one line), scrolls if it must. */
 body.touch .phase-panel:has(.pp-buy) { width: min(600px, calc(100vw - 250px)); max-height: calc(100vh - 70px - var(--sat)); overflow-y: auto; }
 body.touch .phase-panel .pp-buy { grid-template-columns: auto 1fr auto; column-gap: 8px; align-items: center; row-gap: 3px; }
-body.touch .phase-panel .pp-buy .pp-classes { grid-column: 2; grid-row: 1; flex-wrap: nowrap; }
+body.touch .phase-panel .pp-buy .pp-role { grid-column: 2; grid-row: 1; font-size: 11px; color: var(--muted); }
 body.touch .phase-panel .pp-buy .pp-points { grid-column: 3; grid-row: 1; }
 body.touch .phase-panel .pp-items { flex-wrap: nowrap; }
 body.touch .phase-panel .pp-buy-btn { padding: 2px 5px; font-size: 10.5px; letter-spacing: 0.02em; }
 body.touch .phase-panel .pp-buy-btn .p { font-size: 9.5px; }
 body.touch .phase-panel .pp-sell { min-width: 24px; padding: 2px 4px; }
-body.touch .phase-panel .pp-class { min-height: 26px; padding: 1px 6px; font-size: 9.5px; letter-spacing: 0.03em; }
 
 /* Match (best of 7): score line over the result, the pay, and only NEXT ROUND / MENU (no retries). */
 .result .match-line { font-size: 13px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cyan); margin-bottom: 4px; }
 .result .match-line:empty { display: none; }
 .result .match-pay { margin-top: 8px; font-size: 12.5px; color: var(--ok); }
-.result .next-round { display: none; }
-.result.in-match .next-round { display: inline-flex; }
-.result.in-match .retry-plan, .result.in-match .new-plan, .result.in-match .reroll { display: none; }
+/* Only a lesson repeats a round; a single round or a match goes forward. */
+.result.lesson .next-round, .result.lesson .replay-kill { display: none; }
+.result:not(.lesson) .retry-plan, .result:not(.lesson) .new-plan, .result:not(.lesson) .reroll { display: none; }
+.result-box .result-actions .btn.replay-kill { background: transparent; color: #cfd6db; }
+
+/* The last kill shown again: a band at the top, the battlefield below it. */
+.killcam { position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: center; padding: 14px 16px 0; pointer-events: none; z-index: 6; }
+.killcam.hidden { display: none; }
+.killcam .kc-bar { display: flex; align-items: center; gap: 14px; padding: 8px 10px 8px 14px; background: rgba(8, 12, 16, 0.86); border-top: 2px solid var(--red, #e5484d); max-width: 100%; }
+.killcam .kc-tag { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; color: var(--red, #e5484d); white-space: nowrap; }
+.killcam .kc-who { font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.killcam .kc-skip { pointer-events: auto; }
+body.killcam-on .banner, body.killcam-on .squad, body.killcam-on .feed, body.killcam-on .actions, body.killcam-on .tbar, body.killcam-on .phase-panel { visibility: hidden; }
 
 /* ------------------------------------------------------------ phone pass (landscape, height <= 520 px)
  * Nothing cut off, finger-size targets (>= 36 px, 44 px for the main ones), and scroll where a panel
@@ -1018,15 +1062,17 @@ body.touch .phase-panel .pp-class { min-height: 26px; padding: 1px 6px; font-siz
     left: calc(8px + var(--sal)); right: calc(96px + var(--sar)); top: calc(86px + var(--sat)); width: auto; transform: none;
     max-height: calc(100dvh - 124px - var(--sat) - var(--sab)); overflow-y: auto;
   }
-  body.touch .phase-panel .pp-items { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  body.touch .phase-panel .pp-items { display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: 4px; }
   body.touch .phase-panel .pp-item { min-width: 0; }
   body.touch .phase-panel .pp-buy-btn { flex: 1 1 auto; min-width: 0; min-height: 38px; justify-content: center; overflow: hidden; white-space: nowrap; }
   body.touch .phase-panel .pp-sell { flex: none; min-width: 34px; min-height: 38px; }
-  body.touch .phase-panel .pp-class { min-height: 34px; padding: 2px 8px; font-size: 10.5px; }
 
   /* Defender set-up: a little wider, real targets, scrolls between the squad row and the objective line. */
   body.touch .phase-panel.side { width: 246px; max-height: calc(100dvh - 120px - var(--sat) - var(--sab)); }
   body.touch .phase-panel .pp-opt { min-height: 38px; font-size: 11px; }
+  body.touch .phase-panel.side .pp-title, body.touch .phase-panel:has(.pp-buy) .pp-title { display: none; } /* the banner already names the phase */
+  body.touch .phase-panel:has(.pp-buy) .pp-body { margin-top: 0; }
+  body.touch .phase-panel .pp-setup.bars .pp-opt { min-height: 34px; flex-basis: 40%; }
   /* First planning (entry): touch-size choices. */
   body.touch .phase-panel.compact .pp-entry { min-height: 40px; }
 

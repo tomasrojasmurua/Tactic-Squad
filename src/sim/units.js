@@ -66,6 +66,7 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     strokeStart: 0, // route length when the current freehand stroke began (orders.js)
     waitingGo: false,
     waitCode: null, // GO code he waits for (ENTRY.goCodes)
+    waitDoor: -1, // doorway whose teammate's entry he waits for (route point waitDoor), -1 = none
     pause: 0, // s still standing on a peek point (waypoint.pause) before walking on
     goDelay: 0, // s released but still holding: a teammate's grenade / charge goes off first
     entry: null, // door entry in progress (sim/entries.js)

@@ -226,18 +226,23 @@ function stackDoors(sim, squad) {
   doors.forEach((k, n) => {
     const code = free[n] || null;
     const barricade = sim.intel.barricades.has(k);
-    let throwers = 0;
-    for (const u of squad) {
-      const i = u.route.findIndex((p) => p.ask && p.door === k);
-      if (i < 0) continue;
-      let mode = null;
-      if (throwers < (barricade ? 1 : AI_ATTACK.flashers)) {
-        mode = barricade && gearLeft(u, 'breach', i) > 0 ? 'breach' : !barricade && gearLeft(u, 'flash', i) > 0 ? 'flash' : null;
-        if (mode) throwers++;
-      }
-      order(sim, { type: 'setEntry', unitId: u.id, mode, index: i });
-      if (code) order(sim, { type: 'setHold', unitId: u.id, code, index: i });
+    const at = (u) => u.route.findIndex((p) => (p.ask || p.waitDoor === k) && p.door === k);
+    const stacked = squad.filter((u) => at(u) >= 0);
+    // The throwers decide the door first; the rest then wait for them beside the frame (sim/orders.js).
+    const throwers = [];
+    for (const u of stacked) {
+      if (throwers.length >= (barricade ? 1 : AI_ATTACK.flashers)) break;
+      const mode = barricade && gearLeft(u, 'breach', at(u)) > 0 ? 'breach' : !barricade && gearLeft(u, 'flash', at(u)) > 0 ? 'flash' : null;
+      if (mode) throwers.push([u, mode]);
     }
+    const order1 = (u, mode) => {
+      const i = at(u); // a hold keeps the point where it is
+      if (i < 0) return;
+      if (code) order(sim, { type: 'setHold', unitId: u.id, code, index: i });
+      if (mode || u.route[i].ask) order(sim, { type: 'setEntry', unitId: u.id, mode, index: i }); // last: a throw moves the point
+    };
+    for (const [u, mode] of throwers) order1(u, mode);
+    for (const u of stacked) if (!throwers.some(([t]) => t === u)) order1(u, null);
   });
 }
 

@@ -22,7 +22,7 @@ import { loadPref, savePref } from './storage.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
 import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors, lastUserIndex, HERE } from '../sim/queries.js';
 import { phaseTick } from '../sim/round.js';
-import { SESSION_PHASE, isDecisionPhase, isPlanningTime, isLivePhase, pilotsDrone, isDefenderSetup } from './Session.js';
+import { SESSION_PHASE, isDecisionPhase, isPlanningTime, isLivePhase, pilotsDrone, isDefenderSetup, inRecon } from './Session.js';
 import { watchOf, watchOrder } from './watch.js';
 import { armOrConfirm } from './confirm.js';
 import { PlanRecorder } from './PlanRecorder.js';
@@ -31,7 +31,7 @@ import { AutoPause } from './AutoPause.js';
 import { Tutorial } from './Tutorial.js';
 
 import { createMatch, matchLoadout, endMatchRound } from './Match.js';
-import { createLobby, savedLobby, lobbySet, lobbyStart } from './Lobby.js';
+import { createLobby, savedLobby, lobbySet, lobbyStart, openPick } from './Lobby.js';
 
 export class SessionController {
   /**
@@ -41,7 +41,7 @@ export class SessionController {
    * @param deps.getSim     () => current Simulation
    * @param deps.restart    (seed) => starts a new round with that seed
    */
-  constructor({ bus, session, loop, planning, framing, audio, getSim, restart }) {
+  constructor({ bus, session, loop, planning, framing, audio, getSim, restart, killcam }) {
     this.bus = bus;
     this.session = session;
     this.loop = loop;
@@ -51,6 +51,7 @@ export class SessionController {
     session.musicOn = audio.musicOn;
     this.getSim = getSim;
     this.restart = restart;
+    this.killcam = killcam; // {start(kill), stop()}: Game plays the round's last kill again
     this.seed = SIM.seed; // the scenario: kept on retry (same plan = same round); "reroll" changes it
     this.postRoundTimer = 0;
     this.helpPaused = false; // the help opened while a turn ran (closing it resumes)
@@ -64,10 +65,12 @@ export class SessionController {
     bus.on(EV.COMMAND, (cmd) => this.record(cmd));
     bus.on(EV.REQUEST, ({ action }) => this.handleRequest(action));
     bus.on(EV.SELECT, ({ unitId }) => this.select(unitId));
-    bus.on(EV.ROUTE_CHANGED, ({ unitId, kind }) => {
+    bus.on(EV.ROUTE_CHANGED, ({ unitId, kind, moved }) => {
       // A new / undone / cleared leg: the picker goes back to the last waypoint (indices may have moved).
       const t = this.session.pointTarget;
       if (t && t.unitId === unitId && (kind === 'add' || kind === 'undo' || kind === 'clear')) this.session.pointTarget = null;
+      // The decided point went beside the door frame (or back): the picker stays on it.
+      if (t && t.unitId === unitId && moved && t.index === moved.from) this.session.pointTarget = { unitId, index: moved.to };
       // A tap on a door stacked him by it (PlanningController.stackAt): the door wheel opens on that point.
       const w = this.session.ui.wheelAt;
       if (w && w.unitId === unitId) {
@@ -78,7 +81,9 @@ export class SessionController {
       }
       this.planning.refresh();
     });
-    bus.on(EV.DEATH, ({ unitId }) => {
+    bus.on(EV.DEATH, ({ unitId, killerId, tick, replay }) => {
+      if (replay) return; // the kill cam's copy of the round
+      this.session.lastKill = { tick, unitId, killerId };
       if (unitId === this.session.selectedId) this.selectNextAlive();
     });
   }
@@ -89,6 +94,8 @@ export class SessionController {
 
   /** Called by Game when a new round's simulation exists. */
   onRoundStart() {
+    this.session.lastKill = null;
+    this.session.killcam = null;
     this.selectNextAlive();
     if (this.tutorial.current() === 'select') this.session.selectedId = -1;
     this.postRoundTimer = 0;
@@ -128,6 +135,8 @@ export class SessionController {
         if (this.session.mode === 'match' && this.session.match) endMatchRound(this.session.match, sim); // score and the loser's bonus, once
       }
       this.postRoundTimer = SIM.postRoundSeconds;
+      // The result waits for the last kill, shown again once the round's tail has run (not in a lesson).
+      if (this.session.phase !== 'ended') this.session.killcam = this.session.lastKill && this.session.mode !== 'tutorial' ? { ...this.session.lastKill, playing: false } : null;
       this.setPhase('ended');
       return;
     }
@@ -144,8 +153,6 @@ export class SessionController {
     }
     this.session.replay.exec = false;
     if (!isDecisionPhase(this.session)) return;
-    // Playing the defenders there is nothing to buy: the AI's squad buys when the phase ends.
-    if (sim.phase === 'buy' && sim.controllers.attackers === 'ai') return this.advance();
     const auto = this.recorder.enterPhase((cmd) => this.bus.emit(EV.COMMAND, cmd));
     this.session.replay.pending = this.recorder.pending;
     this.clock.start(sim.phase, auto);
@@ -234,7 +241,10 @@ export class SessionController {
     }
     else if (phase === 'ended') {
       this.postRoundTimer -= dt;
-      if (this.postRoundTimer <= 0) this.loop.setSimulating(false);
+      if (this.postRoundTimer > 0) return;
+      this.loop.setSimulating(false);
+      const kc = this.session.killcam;
+      if (kc && !kc.playing) this.playKillcam();
     }
   }
 
@@ -311,6 +321,13 @@ export class SessionController {
       else this.command({ type: 'droneRecall', atTick: phaseTick(this.sim) });
       return;
     }
+    if (inRecon(this.sim, this.session)) {
+      // The defender's recon ends: site, barricades and cameras stay; now his operators.
+      this.command({ type: 'endRecon' });
+      this.sim.flushCommands();
+      this.sound('select');
+      return;
+    }
     if (isDecisionPhase(this.session)) {
       // Strict mode (ENTRY.undecided 'stop'): doors still on "?" stop their operators. Say so once; a second LISTO confirms.
       const doors = ENTRY.undecided === 'stop' ? pendingDoors(this.sim, this.session.team) : 0;
@@ -345,9 +362,9 @@ export class SessionController {
     const session = this.session;
     const key = action === 'toggle' || action === 'execute' ? 'ready' : action; // LISTO's other names
     if (session.confirm.action && session.confirm.action !== key) session.confirm.action = null;
-    // A match is played forward: no retries of a round (its result counts).
-    if (session.mode === 'match' && (action === 'restart' || action === 'newPlan' || action === 'reroll')) {
-      if (phase === 'ended') this.notice('matchNoRetry');
+    // A round is played forward and its result counts: no retries, no starting over (only a lesson repeats).
+    if (session.mode !== 'tutorial' && (action === 'restart' || action === 'newPlan' || action === 'reroll')) {
+      if (phase === 'ended') this.notice('noRetry');
       return;
     }
     switch (action) {
@@ -357,7 +374,7 @@ export class SessionController {
         if (session.lobby.view === 'lessons') {
           const next = nextLesson(session.tutorial.lessonsDone);
           if (next) this.handleRequest(`lesson_${next.id}`);
-        } else this.handleRequest({ main: 'play', play: 'vsAi', lobby: 'lobbyReady' }[session.lobby.view]);
+        } else this.handleRequest({ main: 'play', play: 'vsAi', lobby: 'lobbyReady', pick: 'lobbyReady' }[session.lobby.view]);
         return;
       case 'play':
       case 'vsAi':
@@ -370,12 +387,18 @@ export class SessionController {
         return;
       case 'back':
         if (phase !== 'title' || session.lobby.view === 'main') return;
-        session.lobby.view = session.lobby.view === 'lobby' ? 'play' : 'main'; // play and lessons go back to main
+        session.lobby.view = { pick: 'lobby', lobby: 'play' }[session.lobby.view] || 'main'; // play and lessons go back to main
         this.sound('undo');
         return;
       case 'lobbyReady': {
-        // Everyone ready (against the AI: the player; the AI always is): the game starts.
-        if (phase !== 'title' || session.lobby.view !== 'lobby') return;
+        // The conditions set: on to the class pick. There, everyone ready (against the AI: the player; the AI always is): the game starts.
+        if (phase !== 'title') return;
+        if (session.lobby.view === 'lobby') {
+          openPick(session.lobby);
+          this.sound('select');
+          return;
+        }
+        if (session.lobby.view !== 'pick') return;
         if (session.touch) requestFullscreenLandscape();
         session.lobby.ready = true;
         const { mode, team, bestOf } = lobbyStart(session.lobby);
@@ -390,8 +413,16 @@ export class SessionController {
         this.sound('select');
         return;
       case 'nextRound':
-        // Match result screen: the next round (or, when it is over, a new match).
-        if (phase === 'ended' && session.mode === 'match') this.nextMatchRound();
+        // Result screen: the match's next round (or, when it is over, a new match); a single round: another one.
+        if (phase !== 'ended' || session.killcam) return;
+        if (session.mode === 'match') this.nextMatchRound();
+        else if (session.mode === 'play') this.anotherRound();
+        return;
+      case 'skipKillcam':
+        this.killcamDone();
+        return;
+      case 'killcam':
+        this.playKillcam();
         return;
       case 'menu':
         // Back to the main menu (during the round, only after a confirming second press).
@@ -523,25 +554,17 @@ export class SessionController {
         else if (action.startsWith('lobby_') && phase === 'title') this.lobbySet(action.slice(6));
         else if (action.startsWith('lesson_') && phase === 'title') this.beginLesson(action.slice(7));
         else if (action.startsWith('chooseEntry_') && (phase === 'prep' || phase === 'planning')) this.chooseEntry(action.slice(12));
-        else if (action.startsWith('buy_') && (phase === 'buy' || isDefenderSetup(session))) this.buy(action);
-        else if (action.startsWith('role_') && phase === 'buy') this.setRole(action);
+        else if (action.startsWith('buy_') && phase === 'buy') this.buy(action);
+        else if (action.startsWith('mount_')) this.toggleMount(action.slice(6));
         else if (isDefenderSetup(session)) this.setup(action);
     }
   }
 
-  /** Buy panel: role_<unitId>_<role> (the operator's class). */
-  setRole(action) {
-    const [, id, role] = action.split('_');
-    this.command({ type: 'setRole', unitId: +id, role });
-    this.sim.flushCommands();
-    this.sound('select');
-  }
-
   /**
-   * The defender's set-up panel (ui/PhasePanel.js): site_<id> moves the bomb
-   * (the set-up starts over from the map's for it), barricade_<doorId> / wire_<doorId>
-   * toggles one, watch_<mode> changes the selected defender's watch order,
-   * defrole_<role> his class, trapmode switches taps to laying traps.
+   * The defender's set-up panels (ui/PhasePanel.js): in the recon site_<id>
+   * moves the bomb (the set-up starts over from the map's for it) and
+   * barricade_<doorId> / wire_<doorId> toggles one; then watch_<mode> changes the selected
+   * defender's watch order and trapmode switches taps to laying traps.
    */
   setup(action) {
     const sim = this.sim;
@@ -564,16 +587,12 @@ export class SessionController {
       if (!u) return this.notice('pickDefender');
       const w = watchOf(u);
       this.command({ type: 'setWatch', unitId: u.id, watch: watchOrder(arg, w.facing, w.fallback) });
-    } else if (kind === 'defrole') {
-      const u = controllableUnit(sim, this.session.selectedId, this.session.team);
-      if (!u) return this.notice('pickDefender');
-      this.command({ type: 'setDefenderRole', unitId: u.id, role: arg });
     } else return;
     sim.flushCommands();
     this.sound('select');
   }
 
-  /** Buy panel / defender set-up: buy_<unitId>_<item>_<+|-> (one item bought or given back). */
+  /** Buy panel: buy_<unitId>_<item>_<+|-> (one item bought or given back). */
   buy(action) {
     const [, id, item, sign] = action.split('_');
     this.command({ type: 'buy', unitId: +id, item, count: sign === '-' ? -1 : 1 });
@@ -608,6 +627,35 @@ export class SessionController {
     const c = live[s.ui.camera];
     this.framing.centerOn(c.x, c.y);
     this.sound('select');
+  }
+
+  /**
+   * Defending, a camera mount tapped on the map (ui/CameraMounts.js): a camera
+   * goes up there, or comes down. In the recon only: then they stay put.
+   */
+  toggleMount(id) {
+    const s = this.session;
+    const sim = this.sim;
+    if (!inRecon(sim, s) || s.helpOpen) return;
+    const on = !sim.cameras.some((c) => c.mount === id);
+    this.command({ type: 'camera', mount: id, on });
+    sim.flushCommands();
+    this.sound(on ? 'select' : 'undo');
+  }
+
+
+  /** The round's last kill again (after the round, or VER DE NUEVO on the result). */
+  playKillcam() {
+    if (!this.session.lastKill || this.session.phase !== 'ended') return;
+    this.session.killcam = { ...this.session.lastKill, playing: true };
+    this.killcam.start(this.session.lastKill);
+  }
+
+  /** The clip is over (or skipped): the result. */
+  killcamDone() {
+    if (!this.session.killcam) return;
+    this.session.killcam = null;
+    this.killcam.stop();
   }
 
   /** The door picker's ×. */
@@ -656,6 +704,16 @@ export class SessionController {
     this.recorder.beginAttempt([]);
     this.session.replay.attempt = 0;
     this.restart(this.seed); // Game.newRound: puts the screen in the new round's first phase
+    this.framing.frameStart();
+    this.sound('select');
+  }
+
+  /** A single round is over: a new one (another scenario: site, spread...), same side and classes. */
+  anotherRound() {
+    this.seed = (Math.random() * 1e9) | 0;
+    this.recorder.beginAttempt([]);
+    this.session.replay.attempt = 0;
+    this.restart(this.seed);
     this.framing.frameStart();
     this.sound('select');
   }

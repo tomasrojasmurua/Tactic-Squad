@@ -267,11 +267,6 @@ export default {
     B: ['banio-sala', 'ofi-cocina', 'sitio-pasillo'],
   },
 
-  // Defender cameras for each site (sim/cameras.js): a fixed eye that tells
-  // the defenders where it saw an attacker. Both can be found by the drone,
-  // shot, or blinded with smoke. A: the corridor seen from its east end
-  // (whoever comes in through the main door). B: the lounge from its far
-  // corner (the corridor door, the bathroom door and the site).
   // The Trampero's traps for each site (sim/traps.js): just past the doors into it.
   // A: the corridor door and the lounge door of the hall. B: the corridor door and the bathroom door.
   aiTraps: {
@@ -279,9 +274,25 @@ export default {
     B: [[20.55, 15.3], [17.3, 19.5]],
   },
 
+  // Where the defenders can mount their cameras (sim/cameras.js): a fixed eye
+  // high on a wall that tells them where it saw an attacker. In the
+  // preparation (and while the enemy drone flies) a human defender picks
+  // CAMERA.max of these; the drone can find them, an attacker shoots them,
+  // smoke blinds them. `facing` is where the lens points (fixed by the mount).
+  cameraMounts: [
+    { id: 'pasillo-este', at: [27.55, 11.7], facing: 177 * DEG }, // the corridor from its east end (the main door)
+    { id: 'pasillo-oeste', at: [18.7, 11.7], facing: 172 * DEG }, // the west corridor: main, office and bathroom doors (close to them: found early)
+    { id: 'cocina', at: [27.55, 8.0], facing: 160 * DEG }, // the kitchen: the office door and the corridor door
+    { id: 'sala-norte', at: [27.55, 14.45], facing: 145 * DEG }, // the lounge from the hall door: corridor door, bathroom door, site B
+    { id: 'sala-sur', at: [27.6, 25.6], facing: -142 * DEG }, // the lounge from its far corner (corridor door, bathroom door, site B)
+    { id: 'nave-norte', at: [38.55, 2.45], facing: 140 * DEG }, // the hall from the north: the kitchen arch and site A
+    { id: 'nave-sur', at: [38.55, 25.55], facing: -135 * DEG }, // the hall from the south: the lounge door and site A
+  ],
+
+  // The mounts the AI defenders use for each site (and a human's starting pick).
   aiCameras: {
-    A: [{ at: [27.55, 11.7], facing: 177 * DEG }],
-    B: [{ at: [27.6, 25.6], facing: -142 * DEG }],
+    A: ['pasillo-este', 'nave-sur'],
+    B: ['sala-sur', 'sala-norte'],
   },
 
   // Entries the attacking AI (sim/aiAttack.js) goes for each site through, with

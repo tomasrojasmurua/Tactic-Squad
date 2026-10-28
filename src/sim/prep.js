@@ -1,13 +1,16 @@
 // What each side does before the assault, as plain state changes driven by
 // orders (sim/orders.js) or, for an AI side, by aiPrepare:
 //
-//   buy   (attackers) each operator carries his class's kit (free) and adds
-//         utility with his points (BUY); the defenders do the same in prep.
-//   prep  (defenders) pick the site (the bomb never moves once the
-//         preparation ends), place each operator in their half of the map,
-//         give each one a watch order and put up PREP.barricades barricades.
-//         Each defender has a class (Defensor / Ancla / Merodeador / Trampero,
-//         at most ROLES[id].max each); the Trampero lays his traps (sim/traps.js).
+//   buy   (both sides, at once) each operator carries his class's kit (free)
+//         and adds utility with his points (BUY). The classes were picked
+//         before the game (Simulation opts.roles); the rules of a pick are
+//         setRole / setDefenderRole.
+//   prep  (defenders) first the recon: pick the site (the bomb never moves
+//         once it ends), put up PREP.barricades barricades, PREP.wires barbed
+//         wire (sim/wires.js) and the cameras
+//         (sim/cameras.js); endRecon fixes them for the rest of the round.
+//         Then place each operator in their half of the map and give each
+//         one a watch order; the Trampero lays his traps (sim/traps.js).
 //
 // Watch orders ({facing, sweep, react, fallback}) become the AI behaviors of
 // sim/ai.js, so they keep working on their own during the assault:
@@ -31,8 +34,8 @@ import { setWire } from './wires.js';
 
 // ------------------------------------------------------------ buy
 
-/** The phase each side buys in: the attackers in the buy phase, the defenders in their preparation. */
-const BUY_PHASE = Object.freeze({ attackers: 'buy', defenders: 'prep' });
+/** The phase each side buys in: both in the buy phase. */
+const BUY_PHASE = Object.freeze({ attackers: 'buy', defenders: 'buy' });
 
 /** What a side may buy (BUY.items / BUY.defenderItems). */
 export const buyableItems = (team) => (team === 'attackers' ? BUY.items : BUY.defenderItems);
@@ -192,6 +195,13 @@ export function setWatch(sim, u, watch) {
   return null;
 }
 
+/** The defenders' recon is over: site, barricades and cameras stay as they are this round. */
+export function endRecon(sim) {
+  if (sim.reconDone) return;
+  sim.reconDone = true;
+  sim.emit(EV.SETUP_CHANGED, { unitId: -1, kind: 'recon' });
+}
+
 /** Doors barricaded now (indices into sim.doors). */
 export function barricadedDoors(sim) {
   const out = [];
@@ -213,16 +223,20 @@ export function setBarricade(sim, doorId, on) {
 
 // ------------------------------------------------------------ AI
 
+/** As the buy ends: an AI defending side buys AI_UTILITY.buy with each defender's points. */
+export function aiBuy(sim) {
+  if (sim.controllers.defenders !== 'ai') return;
+  for (const u of sim.teams.defenders) for (const item of AI_UTILITY.buy) buyItem(sim, u, item, 1); // what the points reach
+}
+
 /**
  * On entering the preparation: an AI defending side sets up (for now its
  * plan is the map's: the site rolled from the seed, that site's layout and
  * PREP.barricades of the site's `aiBarricades`, picked by a hash of the seed,
- * then PREP.wires of barbed wire on the options left)
- * and buys AI_UTILITY.buy with each defender's points.
+ * then PREP.wires of barbed wire on the options left).
  */
 export function aiPrepare(sim) {
   if (sim.controllers.defenders !== 'ai') return;
-  for (const u of sim.teams.defenders) for (const item of AI_UTILITY.buy) buyItem(sim, u, item, 1); // what the points reach
   const options = (sim.compiled.aiBarricades[sim.site.id] || []).slice();
   let h = (sim.seed ^ 0x5bd1e995) >>> 0;
   for (let n = 0; n < PREP.barricades && options.length; n++) {

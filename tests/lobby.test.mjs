@@ -1,7 +1,7 @@
-// El lobby antes de jugar (session/Lobby.js): formato, bando, clases por puesto.
+// El lobby antes de jugar (session/Lobby.js): formato, bando y mapa; después la selección de clases por puesto.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createLobby, lobbySet, lobbyStart, savedLobby, canPick, DEFAULT_ROLES } from '../src/session/Lobby.js';
+import { createLobby, lobbySet, lobbyStart, savedLobby, canPick, openPick, pickSides, DEFAULT_ROLES } from '../src/session/Lobby.js';
 
 test('por defecto: mejor de 3, atacando, las clases de siempre', () => {
   const l = createLobby();
@@ -44,4 +44,20 @@ test('un cambio quita el "listo"; lo guardado vuelve, lo raro no', () => {
   const back = createLobby(JSON.parse(JSON.stringify(savedLobby(l))));
   assert.equal(back.bestOf, 5);
   assert.deepEqual(createLobby({ bestOf: 9, side: 'x', roles: { attackers: ['scout', 'scout', 'scout'] } }), createLobby());
+});
+
+test('la selección de clases abre en el bando con que empiezas; en una partida se eligen ambos', () => {
+  const l = createLobby();
+  lobbySet(l, 'side_defenders');
+  openPick(l);
+  assert.equal(l.view, 'pick');
+  assert.equal(l.pickSide, 'defenders');
+  assert.deepEqual(pickSides(l), ['defenders', 'attackers']);
+  lobbySet(l, 'pickSide_attackers');
+  assert.equal(l.pickSide, 'attackers');
+  lobbySet(l, 'bestOf_1');
+  openPick(l);
+  assert.deepEqual(pickSides(l), ['defenders'], 'una ronda suelta: solo tu bando');
+  lobbySet(l, 'pickSide_attackers');
+  assert.equal(l.pickSide, 'defenders');
 });

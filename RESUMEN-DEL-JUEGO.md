@@ -56,9 +56,9 @@ bando; hoy 47 % atacantes en 200 rondas: 49 % en A, 44 % en B).
 
 | Fase | Plazo | Qué pasa |
 | --- | --- | --- |
-| **Compra** | sin límite | Cada atacante elige su **clase** (Asaltante, Brecha, Explorador; Brecha y Explorador, uno solo) y suma utilidad con sus **2 puntos**: flash, granada, humo o carga (1 punto cada una). El equipo de la clase es gratis. |
-| **Preparación** | sin límite | A ciegas y a la vez. El atacante elige una de **3 entradas** (norte, principal, sur); el defensor elige **sitio A o B**, coloca a los suyos, les da vigilancia, suma utilidad con sus **2 puntos** (flash, granada o humo), pone **2 barricadas** y **1 alambre de púas**. Cada sitio trae **una cámara**. |
-| **Dron** | 15 s | El atacante maneja un dron en tiempo real. Pasa por debajo de las puertas, no por barricadas. Lo que ve queda marcado: defensores, barricadas, cámaras y la bomba. Un defensor que lo vea 0,6 s lo derriba. |
+| **Compra** | sin límite | Los dos bandos a la vez. Cada operador lleva gratis el equipo de su **clase** (elegida antes de la partida) y suma utilidad con sus **2 puntos**: el atacante flash, granada, humo o carga; el defensor flash, granada o humo (1 punto cada una). |
+| **Preparación** | sin límite | A ciegas y a la vez. El atacante elige una de **3 entradas** (norte, principal, sur); el defensor primero hace su **Reconocimiento**: elige **sitio A o B**, pone **2 barricadas** y **1 alambre de púas** y monta **2 cámaras** en los soportes que elija (7 en el mapa); al confirmar quedan **fijos toda la ronda**. Después coloca a los suyos y les da vigilancia. |
+| **Dron** | 15 s | El atacante maneja un dron en tiempo real. Pasa por debajo de las puertas, no por barricadas. Lo que ve queda marcado: defensores, barricadas, cámaras y la bomba. Un defensor que lo vea 0,6 s lo derriba. Las cámaras ya no se mueven. |
 | **Planificación** | sin límite | Tiempo detenido. Rutas, miradas, esperas en grupos GO de **color** (violeta, rosa, blanco), cómo entra por cada puerta, a qué paso, y qué lanza. |
 | **Ejecución** | 5 s (menos si ve a alguien) | Todo corre a la vez. La única orden durante el turno es el **GO de un color**: ese grupo sale junto. |
 | **Fin** | 10 s | Resultado, con un "por qué" que explica cómo murió cada uno y qué falló. |
@@ -68,11 +68,13 @@ fase trae una tarjeta que la explica la primera vez. Solo las lecciones del tuto
 (enseña el asalto).
 
 **Menú y lobby.** JUGAR → CONTRA LA IA (MULTIJUGADOR, próximamente) → el lobby:
-**formato** (una ronda suelta, que se puede reintentar, o al mejor de 3, 5 o 7), **con
-qué bando empiezas**, **mapa** (Operación Almacén; más, próximamente) y **tu equipo**: la
-clase de cada puesto al atacar y al defender (en la compra o la preparación se puede
-cambiar ronda a ronda). Abajo, quién está y si está listo; con LISTO empieza (contra la
-IA, la IA siempre lo está). El lobby recuerda lo elegido.
+**formato** (una ronda suelta o al mejor de 3, 5 o 7), **con
+qué bando empiezas** y **mapa** (Operación Almacén; más, próximamente). ELEGIR CLASES
+lleva a la **selección de clases**, como el pick phase de un MOBA: la clase de cada puesto
+(en una partida, una pestaña para cuando atacas y otra para cuando defiendes), con la
+descripción de cada una. Duran toda la partida: dentro de ella no se cambian. Abajo,
+quién está y si está listo; con CONFIRMAR empieza (contra la IA, la IA elige la suya a
+ciegas). El menú recuerda lo elegido.
 
 **Objetivo.** Los atacantes ganan si desactivan la bomba (7 s quieto al lado) o si
 eliminan a todos los defensores. Los defensores ganan si explota o si eliminan a todos
@@ -93,6 +95,12 @@ los atacantes.
     Patada, Carga, Granada, Flash, Entreabrir); × en el centro o Esc la cierra. Lo demás
     (cuándo, paso, lanzar) queda en un panel al lado. **Tocar una puerta directamente**
     apila al operador del lado por donde llega y abre la rueda: un toque y una elección.
+  - **Granada, Flash y Carga se hacen desde el costado del marco**, pegado a la pared y no
+    parado frente al vano: al abrir la puerta, desde adentro casi no se lo ve. Abrir,
+    Patada y Entreabrir siguen frente a la puerta.
+  - **Puerta compartida.** Si dos rutas cruzan la misma puerta y uno ya decidió cómo
+    entrar, al otro no se le pregunta: espera al costado libre del marco (etiqueta
+    ESPERA) y cruza recién cuando el primero terminó su entrada (después del estallido).
   - **Entreabrir** deja la puerta a 20° y el operador mira por la rendija: ve **una franja
     de la sala** hacia el lado del pestillo, no la sala entera. Lo que ve se marca, pero no
     dispara a través de la puerta; con el GO la abre y entra.
@@ -120,10 +128,14 @@ de desactivar se oyen a través de las paredes dentro de un radio. Al final de c
 lo que oyó cada bando aparece en **su** mapa como un pulso aproximado que se apaga en 3
 turnos. El paso sigiloso casi no se oye.
 
-**Reintentar.** Fuera de una partida, al final de la ronda R la repite con la misma
-semilla y las mismas órdenes grabadas, fase por fase. Cambiar una cosa toma el control
-desde ahí. El bucle buscado: fallar, entender por qué, cambiar **una** cosa, probar de
-nuevo.
+**Las rondas no se repiten.** Una ronda termina y su resultado queda: sin reintento ni
+"empezar de nuevo" (solo una lección del tutorial se puede repetir). Al terminar, antes
+del resultado, se ve la **repetición de la última baja**: 3,5 s antes del disparo,
+el momento del disparo en cámara lenta, y quién abatió a quién, con el que dispara a la
+vista aunque nunca se lo haya visto. ESPACIO o SALTAR va directo al resultado, que ofrece
+verla de nuevo y OTRA RONDA. La repetición no graba nada aparte: la ronda se juega otra
+vez, fuera de pantalla, con la misma semilla y las órdenes de cada fase
+(`session/KillCam.js`).
 
 ### Partida al mejor de 3, 5 o 7
 
@@ -153,7 +165,7 @@ marcador cuenta las rondas del jugador contra las de la IA, en los dos bandos.
 | **Merodeador** | defensor (uno) | según el puesto | flash | Fuera del sitio, a la caza del flanco: 12 % más rápido y **sus pasos se oyen a un tercio de distancia**. El pulso del Explorador lo encuentra igual |
 | **Trampero** | defensor (uno) | según el puesto | 2 trampas, humo | Las pone en la preparación. **El que pisa una queda 2 s atrapado, recibe 15 de daño, suena fuerte y los defensores saben dónde está.** Solo se ven yendo con sigilo (a 3,5 m), con el dron o con el pulso del Explorador; una trampa conocida se rompe de un tiro |
 
-El defensor elige las clases en el panel de preparación, a ciegas (no ve las del
+Las clases se eligen antes de la partida, a ciegas (no ve las del
 atacante, y el atacante no ve las suyas). La IA las toma de los puestos del mapa.
 
 **Alambre de púas.** Solo del defensor: uno por ronda, en una puerta que podría atrancar (nunca junto a una barricada). No para a nadie ni hace daño: el atacante que lo cruza va a la mitad de velocidad y **suena** (los defensores cercanos se giran hacia ahí). El defensor pasa libre. Una granada o una carga cerca lo quita. El atacante lo ve como una barricada: a la vista, con el dron o al pisarlo. La IA pone el suyo en una de sus puertas sin barricada.
@@ -168,11 +180,18 @@ alcanza a ningún compañero. En 200 rondas IA contra IA los atacantes ganan el 
 todos**: operadores, IA, niebla de guerra, dron y cámaras. **No para balas ni
 explosiones.**
 
-**Cámaras de los defensores.** Una por sitio: en A mira el pasillo, en B la sala. Si
-tiene a un atacante a la vista 0,5 s, **todos los defensores saben dónde está** y
+**Cámaras de los defensores.** El defensor monta **2** en los **7 soportes** de la pared
+del mapa (pasillo este y oeste, cocina, sala norte y sur, nave norte y sur). En la
+preparación y mientras vuela el dron enemigo, cada soporte es un botón redondo sobre el
+mapa: **+** la pone, **×** la quita, y el cono de lo que vería se dibuja punteado. Cada
+soporte apunta a un lado fijo. La IA usa las de su sitio (A: pasillo este y nave sur;
+B: sala sur y sala norte), que también son las iniciales del jugador. Se ven como una
+cámara de seguridad blanca con su lente y su cono de visión en el suelo, cortado por
+paredes, puertas y humo. Un soporte que el atacante ya descubrió sigue descubierto
+aunque la cámara se quite y se vuelva a poner. Si tiene a un atacante a la vista 0,5 s, **todos los defensores saben dónde está** y
 apuntan a esa entrada. Si juegas de defensor, **lo ves en tu mapa** y la primera vez
-cuenta como contacto (corta el turno); con **CÁMARAS** (tecla O) las recorres al planificar. Los atacantes la descubren con un operador o con el dron (punto
-rojo con su cono) y **la rompen de un tiro** si no tienen a quién más dispararle. Si ya
+cuenta como contacto (corta el turno); con **CÁMARAS** (tecla O) las recorres al planificar. Los atacantes la descubren con un operador o con el dron (la
+cámara con su cono) y **la rompen de un tiro** si no tienen a quién más dispararle. Si ya
 la conocían, la rompen antes de que alcance a verlos. El humo también la ciega.
 
 ---
@@ -204,7 +223,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 - Turnos de 5 s que se cortan al ver un enemigo nuevo (opción), bomba de 90 s.
 - Grupos GO de color en vivo.
 - Todas las fases desde la primera ronda, con tarjeta de presentación.
-- Reintentar con el plan grabado (fuera de partida).
+- Repetición de la última baja al terminar la ronda (las rondas no se reintentan).
 - **Partidas al mejor de 3, 5 o 7**, marcador, clase que se conserva y +1 punto de utilidad para el que pierde.
 - Menú con lobby (formato, bando, mapa, clases), tutorial en lecciones (1. Básico, sobre una ronda real más fácil; 5. Ronda completa, con tarjeta en cada fase; las otras tres en camino), pantalla de "por qué".
 
@@ -216,7 +235,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 - El Explorador detecta a través de las paredes.
 
 **Defensor**
-- Sitio A/B oculto, colocación, 4 órdenes de vigilancia, 2 barricadas, una cámara por sitio, Anclas.
+- Sitio A/B oculto, colocación, 4 órdenes de vigilancia, 2 barricadas, 2 cámaras en los soportes que elige (también durante el dron), Anclas.
 
 **Simulación y presentación**
 - Determinista por semilla, paso fijo de 60 Hz. Visión compartida entre percepción y niebla de guerra (el humo entra en las dos).
@@ -231,7 +250,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 | Economía entre rondas | **Cambiado** (28 oct 2026): sin dinero. Equipo de clase gratis cada ronda y 2 puntos de utilidad por operador en los dos bandos, +1 al que perdió. Con mitades de 3 rondas el dinero casi no pesaba y solo compraba el atacante |
 | Clases de operador con habilidad | **Parcial.** Asaltante, Brecha, Explorador, Ancla, Merodeador y Trampero (las 3 por bando del primer paso), con elección a ciegas en los dos bandos. Faltan Escudo, Tirador, Granadero y Vigía |
 | Contras entre clases | **Parcial.** Brecha contra barricadas, Explorador contra Anclas escondidos, Merodeador y trampas, humo contra cámaras y anclas |
-| Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (fijas por mapa, gratis). Sensor y elección de refuerzos por el defensor: faltan |
+| Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (soportes del mapa a elegir, gratis). Sensor y elección de refuerzos por el defensor: faltan |
 | Paredes blandas destructibles | **Descartado** por decisión de diseño (27 oct 2026): no se implementan |
 | Plazos de las fases | **Parcial.** El reloj existe (`PhaseClock`), pero contra la IA no hay límite |
 | Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Falta** |
