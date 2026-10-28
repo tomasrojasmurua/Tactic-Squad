@@ -166,7 +166,7 @@ marcador cuenta las rondas del jugador contra las de la IA, en los dos bandos.
 | **Escudo** | atacante (uno) | pistola | flash | Escudo balístico al frente: para las balas que vienen de adelante (algo se filtra a brazos y piernas). Más lento, gira y apunta peor; golpea más fuerte. Si lo ciegan o aturden, lo baja |
 | **Tirador** | atacante | fusil de tirador | humo | Mira larga: reacciona un 45 % más rápido mientras está quieto sosteniendo un ángulo, pero gira despacio y anda más lento |
 | **Granadero** | atacante | subfusil | 2 de gas, humo | Lanzador: tira el doble de lejos. **Gas lacrimógeno**: los enemigos adentro ven a 4 m, reaccionan más lento, apuntan peor y tosen (se los oye) |
-| **Defensor** | defensor | según el puesto | flash | El de siempre |
+| **Escopetero** | defensor (hasta 2) | escopeta | flash, granada | Espera pegado a la puerta al que entra: a menos de 5 m tumba de un tiro y a menos de 4 m reacciona un 30 % más rápido. Lejos la rosa de perdigones se abre y pierde fuerza |
 | **Ancla** | defensor (hasta 2) | según el puesto | granada | 120 de vida y reacción un 15 % más rápida. **Parapeto**: en la preparación arma una cobertura de metal a la altura del pecho frente a su puesto |
 | **Merodeador** | defensor (uno) | su propia arma | flash | Fuera del sitio, a la caza del flanco: 12 % más rápido, sus pasos se oyen a un tercio de distancia y **sus tiros llevan silenciador** |
 | **Trampero** | defensor (uno) | según el puesto | 2 trampas, humo | Trampas en la preparación (2 s atrapado, 15 de daño, ruido y delación) y **un alambre más** para el equipo. Las trampas se ven con sigilo, dron o la cámara del Explorador |
@@ -258,7 +258,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 | El jugador elige bando | **Hecho** (en el lobby) |
 | Partida al mejor de 7 | **Hecho**, también al mejor de 3 y 5, con cambio de bando a la mitad |
 | Economía entre rondas | **Cambiado** (28 oct 2026): sin dinero. Equipo de clase gratis cada ronda y 2 puntos de utilidad por operador en los dos bandos, +1 al que perdió. Con mitades de 3 rondas el dinero casi no pesaba y solo compraba el atacante |
-| Clases de operador con habilidad | **Hecho** (28 oct 2026): 6 atacantes y 6 defensores, cada uno con algo que lo hace jugar distinto; elección a ciegas en los dos bandos, también la IA |
+| Clases de operador con habilidad | **Hecho** (28 oct 2026): 6 atacantes y 6 defensores, cada uno con algo que lo hace jugar distinto (el Defensor genérico queda solo para el tutorial); elección a ciegas en los dos bandos, también la IA |
 | Contras entre clases | **Parcial.** Brecha contra barricadas y alambre, cámara de fibra contra Anclas y trampas, gas contra parapetos, flash contra escudo, Merodeador y trampas, humo contra cámaras y anclas |
 | Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (soportes del mapa a elegir, gratis). Sensor y elección de refuerzos por el defensor: faltan |
 | Paredes blandas destructibles | **Descartado** por decisión de diseño (27 oct 2026): no se implementan |

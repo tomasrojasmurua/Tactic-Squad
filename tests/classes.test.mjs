@@ -427,6 +427,45 @@ test('Tirador: quieto sobre su ángulo dispara primero', () => {
   assert.ok(holdReaction('marksman') < holdReaction('assault') * 0.7);
 });
 
+// ------------------------------------------------------------ Escopetero
+
+/** A defender of `role` facing an attacker `dist` m east, both still: his reaction, and the damage per hit over many shots. */
+function pointBlank(role, dist) {
+  const { sim, a, defs } = atTheDoor();
+  const d = defs[0];
+  applyRole(d, role);
+  d.x = 12;
+  d.y = 12.7;
+  d.facing = 0;
+  d.stillTime = 5;
+  a.x = 12 + dist;
+  a.y = 12.7;
+  a.facing = Math.PI;
+  a.mag = 0;
+  a.reserve = 0;
+  sim.step();
+  const reaction = d.reaction;
+  let damage = 0;
+  let hits = 0;
+  for (let i = 0; i < 2400 && hits < 12; i++) {
+    a.hp = 1e6;
+    d.mag = Math.max(d.mag, 1);
+    sim.step();
+    for (const e of sim.drainEvents()) if (e.type === EV.HIT && e.attackerId === d.id) (damage += e.damage), hits++;
+  }
+  return { reaction, perHit: hits ? damage / hits : 0, hits };
+}
+
+test('Escopetero: a quemarropa reacciona antes y tumba de un tiro; lejos, la escopeta pierde', () => {
+  const near = pointBlank('shotgunner', 3);
+  const far = pointBlank('shotgunner', 13);
+  const rifle = pointBlank('defender', 3);
+  assert.ok(near.reaction < rifle.reaction * 0.8, `reacción ${near.reaction} contra ${rifle.reaction}`);
+  assert.ok(near.hits > 0 && far.hits > 0);
+  assert.ok(near.perHit >= 85, `de cerca ${near.perHit} por impacto`);
+  assert.ok(far.perHit < near.perHit * 0.45, `de lejos ${far.perHit} por impacto`);
+});
+
 // ------------------------------------------------------------ La IA
 
 test('la IA elige su escuadra a ciegas según la semilla, siempre una válida', async () => {

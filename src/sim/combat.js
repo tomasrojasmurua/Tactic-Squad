@@ -121,8 +121,9 @@ function fire(sim, u) {
   let hitT = wallT;
   for (const o of sim.units) {
     if (!o.alive || o.team === u.team) continue;
-    // A raised shield facing the shot is wider than the body behind it.
-    const t = rayCircle(ox, oy, dx, dy, o.x, o.y, shieldFacing(o, dx, dy) ? SHIELD.radius : UNIT.hitRadius);
+    // A raised shield facing the shot is wider than the body behind it; buckshot spreads with distance.
+    const pattern = w.cone ? Math.hypot(o.x - ox, o.y - oy) * Math.tan(w.cone) : 0;
+    const t = rayCircle(ox, oy, dx, dy, o.x, o.y, (shieldFacing(o, dx, dy) ? SHIELD.radius : UNIT.hitRadius) + pattern);
     if (t < hitT) {
       hitT = t;
       victim = o;
@@ -266,12 +267,20 @@ function rollBodyPart(rng, shooter, covered) {
   return r < head + COMBAT.limbChance ? 'limb' : 'torso';
 }
 
+/** Damage fraction left at distance d (m): buckshot loses its punch fast (weapon `falloff`). */
+function falloff(w, d) {
+  if (!w.falloff) return 1;
+  const [full, far, floor] = w.falloff;
+  if (d <= full) return 1;
+  return d >= far ? floor : 1 - ((d - full) / (far - full)) * (1 - floor);
+}
+
 /** `limb`: past a shield, only a leg or an arm shows; `guard`: damage multiplier (the Ancla's barrier). */
 function applyHit(sim, shooter, victim, x, y, dx, dy, covered, limb = false, guard = 1) {
   const rng = sim.rng;
   const w = shooter.weapon;
   const part = limb ? 'limb' : rollBodyPart(rng, shooter, covered);
-  let damage = rng.range(w.damage[0], w.damage[1]);
+  let damage = rng.range(w.damage[0], w.damage[1]) * falloff(w, Math.hypot(x - shooter.x, y - shooter.y));
   if (part === 'head') damage *= COMBAT.headshotMultiplier;
   else if (part === 'limb') damage *= COMBAT.limbMultiplier;
   damage = Math.round(damage * guard);

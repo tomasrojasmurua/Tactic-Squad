@@ -109,6 +109,7 @@ export const FLOW_TEXTS = Object.freeze({
       shotNoise: (p) => `Ruido de sus disparos ${p} (supresor)`,
       doorwayReaction: (p) => `Reacción al cruzar una puerta ${p}`,
       holdReaction: (p) => `Reacción quieto sobre su ángulo ${p}`,
+      closeReaction: (p) => `Reacción contra un enemigo a menos de 4 m ${p}`,
       breachStun: (p) => `Aturdimiento de su carga ${p}`,
       trapSpot: (p) => `Distancia a la que ve las trampas ${p}`,
       tossRange: (p) => `Alcance de lanzamiento ${p}`,

@@ -33,6 +33,7 @@ export const BASE_MODIFIERS = Object.freeze({
   shotNoise: 1, // how far his shots are heard (NOISE.radius.shot, COMBAT.hearingRadius): a suppressor
   doorwayReaction: 1, // reaction multiplier for a while after he comes through a doorway (COMBAT.doorwayTime), no doorway penalty if < 1
   holdReaction: 1, // extra reaction multiplier when he holds the angle (focused, still: COMBAT.holdFactor)
+  closeReaction: 1, // reaction multiplier against an enemy within COMBAT.closeRange
   breachStun: 1, // ENTRY.breach.stun: how long his charge freezes whoever is behind the door
   trapSpot: 1, // TRAP.spot: how far he notices a trap (he also notices them walking normally if > 1)
   tossRange: 1, // ENTRY.tossRange: how far he throws (a launcher)
@@ -83,9 +84,15 @@ export const ROLES = Object.freeze({
   },
   // Defenders (their weapon comes from each map spawn, unless `ownWeapon`). `defPick`: offered in the
   // defender's preparation; `max`: how many a side may have.
+  // The plain defender: the tutorial's and a post's without a class. `hidden`: not offered in the roster.
   defender: {
-    label: 'Defensor', defPick: true, max: 4, weapon: 'rifle', ability: null, modifiers: {}, gear: { flash: 1 },
+    label: 'Defensor', defPick: true, hidden: true, max: 4, weapon: 'rifle', ability: null, modifiers: {}, gear: { flash: 1 },
     blurb: 'El de siempre. Lleva una flash.',
+  },
+  // Shotgunner: waits beside a door for whoever comes through it; deadly up close, little past 10 m.
+  shotgunner: {
+    label: 'Escopetero', defPick: true, max: 2, weapon: 'shotgun', ability: null, modifiers: { closeReaction: 0.7 }, ownWeapon: true, gear: { flash: 1, frag: 1 },
+    blurb: 'Espera pegado a la puerta al que entra: escopeta que tumba de un tiro a quemarropa y reacción más rápida de cerca. Lejos, pierde.',
   },
   // Site anchor: holds his angle from a prepared position; tougher and quicker to shoot first.
   anchor: {
@@ -127,7 +134,8 @@ export const AI_SQUADS = Object.freeze({
     Object.freeze(['assault', 'entry', 'grenadier']),
   ]),
   defenders: Object.freeze([
-    Object.freeze(['anchor', 'defender', 'trapper']),
+    Object.freeze(['anchor', 'shotgunner', 'trapper']),
+    Object.freeze(['shotgunner', 'lookout', 'roamer']),
     Object.freeze(['anchor', 'lookout', 'trapper']),
     Object.freeze(['anchor', 'sniper', 'roamer']),
     Object.freeze(['anchor', 'lookout', 'roamer']),
@@ -141,6 +149,6 @@ export const roleFlag = (roleId, key) => !!(ROLES[roleId] && ROLES[roleId][key])
 export const PICK_ROLES = Object.freeze(Object.keys(ROLES).filter((id) => ROLES[id].pick));
 
 /** The defender classes offered in the preparation, in panel order. */
-export const DEF_PICK_ROLES = Object.freeze(Object.keys(ROLES).filter((id) => ROLES[id].defPick));
+export const DEF_PICK_ROLES = Object.freeze(Object.keys(ROLES).filter((id) => ROLES[id].defPick && !ROLES[id].hidden));
 
 export const DEFAULT_DEFENDER_ROLE = 'defender';

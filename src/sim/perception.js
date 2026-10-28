@@ -118,6 +118,7 @@ function reactionTime(sim, u, e) {
     if (u.moving) r += COMBAT.movingReaction;
   }
   if (focused && !u.moving && u.stillTime >= COMBAT.holdTime) r *= u.mods.holdReaction; // a marksman on his angle
+  if ((e.x - u.x) ** 2 + (e.y - u.y) ** 2 < COMBAT.closeRange ** 2) r *= u.mods.closeReaction; // the Escopetero, point blank
   // Through a doorway: a moment lost, unless he cuts the angle as he goes in (the Asaltante).
   if (sim.time - u.doorwayAt < COMBAT.doorwayTime) r = u.mods.doorwayReaction < 1 ? r * u.mods.doorwayReaction : r + COMBAT.doorwayPenalty;
   if (u.alertTimer > 0 || (u.lastKnown && u.lastKnown.until > sim.time)) r *= COMBAT.alertFactor;

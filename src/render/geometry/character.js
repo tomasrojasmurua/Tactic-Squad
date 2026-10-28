@@ -118,6 +118,11 @@ export function gunMesh(kind) {
     m.box(0.72, 0, -0.02, 0.3, 0.034, 0.034, g, top); // barrel
     m.box(0.33, 0, -0.16, 0.07, 0.05, 0.11, g); // short mag
     m.box(0.26, 0, 0.05, 0.22, 0.05, 0.04, a, { top: C.optic }); // scope
+  } else if (kind === 'shotgun') {
+    m.box(0.26, 0, -0.04, 0.36, 0.075, 0.085, g, top); // receiver
+    m.box(0.02, 0, -0.06, 0.2, 0.065, 0.09, a, { top: C.gunAccentTop }); // stock
+    m.box(0.62, 0, -0.01, 0.4, 0.045, 0.045, g, top); // barrel
+    m.box(0.56, 0, -0.065, 0.26, 0.05, 0.05, a, { top: C.gunAccentTop }); // pump under the barrel
   } else {
     m.box(0.36, 0, -0.04, 0.56, 0.075, 0.085, g, top);
     m.box(0.04, 0, -0.05, 0.22, 0.07, 0.09, a, { top: C.gunAccentTop });
@@ -131,7 +136,7 @@ export function gunMesh(kind) {
 export function buildCharacterGeometry() {
   return {
     teams: Object.fromEntries(TEAMS.map((team) => [team, teamParts(team)])), // palette per side (materials.js CHARACTER)
-    guns: { rifle: gunMesh('rifle'), smg: gunMesh('smg'), pistol: gunMesh('pistol'), dmr: gunMesh('dmr'), sniper: gunMesh('sniper') },
+    guns: { rifle: gunMesh('rifle'), smg: gunMesh('smg'), pistol: gunMesh('pistol'), dmr: gunMesh('dmr'), shotgun: gunMesh('shotgun'), sniper: gunMesh('sniper') },
     bomb: mk((m) => {
       m.box(0, 0, 0, 0.34, 0.24, 0.12, BOMB_COLOR.body, { top: BOMB_COLOR.top });
       m.box(-0.08, 0, 0.12, 0.05, 0.25, 0.005, BOMB_COLOR.tape);

@@ -55,6 +55,23 @@ export const WEAPONS = Object.freeze({
     reserve: 60,
     reloadTime: 2.6,
   },
+  // Pump shotgun (the Escopetero): one shot is a pattern of buckshot. `cone`: the pattern's
+  // half-width per meter of distance (it widens the target for that shot, sim/combat.js);
+  // `falloff`: [full damage up to (m), the floor reached at (m), the floor (fraction)].
+  shotgun: {
+    name: 'Escopeta',
+    fireInterval: 0.8,
+    burst: [1, 1],
+    burstPause: 0,
+    damage: [88, 104],
+    spread: 2.2 * DEG,
+    movingSpread: 2.4 * DEG,
+    cone: 3 * DEG,
+    falloff: [5, 14, 0.2],
+    magazine: 7,
+    reserve: 28,
+    reloadTime: 3.2,
+  },
   sniper: {
     name: 'Francotirador',
     fireInterval: 1.25,

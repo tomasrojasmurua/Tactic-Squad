@@ -196,6 +196,14 @@ export const GUN_SOUNDS = Object.freeze({
     mech: { hz: 2100, modes: [1, 1.5, 2.3], decay: 0.035 }, tail: { hz: 450, decay: 0.26, attack: 0.01, lengths: [0.65, 1, 1.4] },
     refl: { hz: 450, decay: 0.04 },
   },
+  shotgun: {
+    length: 1.0, bodyLength: 0.3, spread: 0.18, drive: 3.8, counts: { body: 4, mech: 3, tail: 3, refl: 2 },
+    snap: { width: 0.0012, gain: 0.7 }, crack: { hz: 2600, q: 0.6, decay: 0.006, gain: 0.55 },
+    body: { hz: 5000, endHz: 300, sweep: 0.07, decay: 0.045, gain: 1 }, boom: { hz: 150, q: 0.65, decay: 0.11, gain: 1.35 },
+    thump: { hz: 110, endHz: 55, sweep: 0.05, decay: 0.05, gain: 0.55 },
+    mech: { hz: 1500, modes: [1, 1.4, 2.1], decay: 0.05 }, tail: { hz: 400, decay: 0.3, attack: 0.012, lengths: [0.7, 1, 1.4] },
+    refl: { hz: 420, decay: 0.045 },
+  },
   sniper: {
     length: 1.6, bodyLength: 0.35, spread: 0.15, drive: 3.8, counts: { body: 4, mech: 2, tail: 3, refl: 2 },
     snap: { width: 0.001, gain: 0.9 }, crack: { hz: 3000, q: 0.6, decay: 0.008, gain: 0.8 },
@@ -212,7 +220,7 @@ export const GUN_SOUNDS = Object.freeze({
  * later in bigger spaces (zone, config ZONES) and is sometimes absent (an open side).
  */
 export const GUN_MIX = Object.freeze({
-  level: { rifle: 1, smg: 0.85, pistol: 0.8, dmr: 1.05, sniper: 1.1 },
+  level: { rifle: 1, smg: 0.85, pistol: 0.8, dmr: 1.05, shotgun: 1.15, sniper: 1.1 },
   suppressed: { gain: 0.32, lowpass: 2200, send: 0.4 }, // a suppressed shot (EV.SHOT.suppressed): quieter, duller, less room
   body: { gain: 1, db: 1.2, at: [0, 0] },
   mech: { gain: 0.2, db: 3, at: [0.012, 0.03] },
@@ -226,6 +234,7 @@ export const RELOADS = Object.freeze({
   smg: { rate: 1.12, parts: [['magRelease', 0.06], ['magOut', 0.14], ['magDrop', 0.5], ['magIn', 1.05], ['charge', 1.6]] },
   pistol: { rate: 1.28, parts: [['magRelease', 0.05], ['magOut', 0.1], ['magDrop', 0.38], ['magIn', 0.85], ['slide', 1.28]] },
   dmr: { rate: 0.98, parts: [['magRelease', 0.08], ['magOut', 0.2], ['magDrop', 0.6], ['magIn', 1.4], ['charge', 2.1]] },
+  shotgun: { rate: 0.9, parts: [['magIn', 0.3], ['magIn', 0.9], ['magIn', 1.5], ['magIn', 2.1], ['charge', 2.8]] }, // shells, one by one, then the pump
   sniper: { rate: 0.94, parts: [['magRelease', 0.1], ['magOut', 0.22], ['magIn', 1.6], ['bolt', 2.4]] },
 });
 

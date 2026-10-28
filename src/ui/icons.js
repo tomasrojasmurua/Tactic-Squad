@@ -28,6 +28,11 @@ export const WEAPON_ICONS = {
      L112 50 L100 48 L106 30 L88 29 L82 36 L74 36 L76 29 L52 29 L16 43 L6 41 Z"/>
      <rect x="70" y="5" width="46" height="8" rx="3" fill="currentColor"/><rect x="88" y="12" width="6" height="5" fill="currentColor"/>`,
   ),
+  shotgun: svg(
+    '0 0 220 64',
+    `<path fill="currentColor" d="M6 26 L44 19 L50 16 L120 16 L120 14 L208 14 L208 20 L120 20 L120 22 L108 22 L102 28 L88 28 L82 34 L74 34
+     L76 28 L54 28 L18 44 L8 42 Z"/><rect x="124" y="22" width="56" height="9" rx="2" fill="currentColor"/>`,
+  ),
   sniper: svg(
     '0 0 220 64',
     `<path fill="currentColor" d="M2 26 L40 20 L46 18 L140 18 L140 21 L216 21 L216 25 L140 25 L136 30 L104 30 L98 44 L88 44 L92 30 L52
@@ -248,6 +253,8 @@ export const ROLE_EMBLEM = {
     `<path d="M3 24 C10 12 17 9 24 9 C31 9 38 12 45 24 C38 36 31 39 24 39 C17 39 10 36 3 24 Z" fill="none" stroke="currentColor" stroke-width="3.5"/><circle cx="24" cy="24" r="8" fill="currentColor"/><circle cx="24" cy="24" r="3" fill="#0a0c0e"/>`,
   ),
 };
+// Escopetero: three buckshot pellets spreading from a muzzle
+ROLE_EMBLEM.shotgunner = svg('0 0 48 48', `<rect x="3" y="20" width="16" height="8" rx="2" fill="currentColor"/><g fill="currentColor"><circle cx="30" cy="24" r="4.5"/><circle cx="38" cy="13" r="4.5" opacity=".75"/><circle cx="38" cy="35" r="4.5" opacity=".75"/><circle cx="44" cy="24" r="3" opacity=".5"/></g>`);
 ROLE_EMBLEM.sniper = ROLE_EMBLEM.marksman; // the defending Tirador: the same crosshair
 
 /** Utility in a class's kit (the roster's detail). */

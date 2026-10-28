@@ -280,7 +280,8 @@ los atacantes `pick` / `unique` / `blurb` (lo que muestra la compra) y para los
 defensores `defPick` / `max` (panel de preparación, tope por bando). Un rol nuevo es una
 entrada ahí más, si tiene habilidad, un módulo en `sim/abilities/`. Hoy: `assault`
 (Asaltante), `entry` (Brecha), `scout` (Explorador, cámara de fibra), `shield` (Escudo),
-`marksman` (Tirador), `grenadier` (Granadero), `defender`, `anchor` (Ancla, parapeto),
+`marksman` (Tirador), `grenadier` (Granadero), `shotgunner` (Escopetero), `defender`
+(el genérico, `hidden`: tutorial y puestos sin clase), `anchor` (Ancla, parapeto),
 `roamer` (Merodeador), `trapper` (Trampero), `lookout` (Vigía, monitor) y `sniper`
 (Tirador defensor). `AI_SQUADS` son las escuadras que la IA elige a ciegas (`session/Lobby.js aiRoles`).
 `sim/units.js applyRole` cambia la clase de una unidad viva (compra, `setDefenderRole`).

@@ -33,6 +33,7 @@ export const ROLE_COLOR = {
   grenadier: '#c9d65a',
   lookout: '#4fd1c5',
   sniper: '#ff6f91',
+  shotgunner: '#ff9f43',
 };
 
 // Weapon bars: each stat against the best weapon there is (1 = the best).

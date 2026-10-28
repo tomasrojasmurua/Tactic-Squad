@@ -80,6 +80,7 @@ export const ROLE_GEAR = Object.freeze({
   grenadier: { head: 'helmet', pack: 'large', extra: 'charges' }, // 40 mm rounds on the pack
   lookout: { head: 'cap', pack: 'small', extra: 'antenna' }, // the monitor's radio
   sniper: { head: 'beanie', pack: 'none', extra: null },
+  shotgunner: { head: 'helmet', pack: 'small', extra: null },
 });
 export const TEAM_GEAR = Object.freeze({
   attackers: { head: 'helmet', pack: 'large', extra: null },
@@ -92,6 +93,7 @@ export const WEAPON_MODELS = Object.freeze({
   smg: { length: 0.58 },
   pistol: { length: 0.34 },
   dmr: { length: 0.9 },
+  shotgun: { length: 0.82 },
   sniper: { length: 1.0 },
 });
 

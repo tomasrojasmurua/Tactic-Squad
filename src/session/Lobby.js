@@ -28,7 +28,7 @@ import { DEFAULT_MAP } from '../data/maps/index.js';
 export const BEST_OF = Object.freeze([1, ...MATCH.formats]);
 export const DEFAULT_ROLES = Object.freeze({
   attackers: Object.freeze(SQUAD.map((s) => s.role)),
-  defenders: Object.freeze(['anchor', 'defender', 'trapper'].slice(0, DEFENDERS)),
+  defenders: Object.freeze(['anchor', 'shotgunner', 'trapper'].slice(0, DEFENDERS)),
 });
 
 /** A lobby from what was saved on the device (anything missing or stale: the defaults). */
