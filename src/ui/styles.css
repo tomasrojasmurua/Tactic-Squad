@@ -781,6 +781,12 @@ body.touch .phase-panel .pp-opt { min-height: 30px; padding: 3px 6px; font-size:
 .phase-panel.compact .pp-title { font-size: 12px; }
 .phase-panel.compact .pp-note { margin-top: 4px; }
 body.touch .phase-panel.compact { width: auto; }
+/* Defender set-up folds to one button to see the whole map (ui/PhasePanel.js). */
+.phase-panel .pp-fold { display: none; }
+.phase-panel.side .pp-fold { display: flex; width: 100%; justify-content: center; min-height: 32px; padding: 4px 8px; margin-bottom: 6px; font-size: 11px; letter-spacing: 0.06em; }
+.phase-panel.side.folded { width: auto; padding: 0; background: none; border: none; overflow: visible; }
+.phase-panel.side.folded .pp-fold { width: auto; min-width: 120px; margin-bottom: 0; border-color: var(--cyan); }
+.phase-panel.side.folded > :not(.pp-fold) { display: none !important; }
 /* Recon drone: the stick (any pointer) and its key hint. */
 .drone-stick {
   position: absolute; left: 50%; margin-left: -66px; bottom: calc(24px + var(--sab)); width: 132px; height: 132px; border-radius: 50%;
@@ -1071,6 +1077,8 @@ body.killcam-on .banner, body.killcam-on .squad, body.killcam-on .feed, body.kil
   /* Defender set-up: a little wider, real targets, scrolls between the squad row and the objective line. */
   body.touch .phase-panel.side { width: 246px; max-height: calc(100dvh - 120px - var(--sat) - var(--sab)); }
   body.touch .phase-panel .pp-opt { min-height: 38px; font-size: 11px; }
+  body.touch .phase-panel.side .pp-fold { min-height: 40px; }
+  body.touch .phase-panel.side.folded { width: auto; }
   body.touch .phase-panel.side .pp-title, body.touch .phase-panel:has(.pp-buy) .pp-title { display: none; } /* the banner already names the phase */
   body.touch .phase-panel:has(.pp-buy) .pp-body { margin-top: 0; }
   body.touch .phase-panel .pp-setup.bars .pp-opt { min-height: 34px; flex-basis: 40%; }
