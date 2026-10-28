@@ -64,10 +64,12 @@ export class SessionController {
     bus.on(EV.COMMAND, (cmd) => this.record(cmd));
     bus.on(EV.REQUEST, ({ action }) => this.handleRequest(action));
     bus.on(EV.SELECT, ({ unitId }) => this.select(unitId));
-    bus.on(EV.ROUTE_CHANGED, ({ unitId, kind }) => {
+    bus.on(EV.ROUTE_CHANGED, ({ unitId, kind, moved }) => {
       // A new / undone / cleared leg: the picker goes back to the last waypoint (indices may have moved).
       const t = this.session.pointTarget;
       if (t && t.unitId === unitId && (kind === 'add' || kind === 'undo' || kind === 'clear')) this.session.pointTarget = null;
+      // The decided point went beside the door frame (or back): the picker stays on it.
+      if (t && t.unitId === unitId && moved && t.index === moved.from) this.session.pointTarget = { unitId, index: moved.to };
       // A tap on a door stacked him by it (PlanningController.stackAt): the door wheel opens on that point.
       const w = this.session.ui.wheelAt;
       if (w && w.unitId === unitId) {

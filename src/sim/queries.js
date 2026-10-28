@@ -241,6 +241,22 @@ function holdAhead(u, code) {
 export const holdCode = (p) => p.code || ENTRY.goCodes[0];
 
 /** unit.waitCode of an operator stopped at a "?" door point (no GO releases it: a decision does). */
+/**
+ * Has a teammate of u decided how to go through doorway k, and not done it
+ * yet? (an entry, a throw or a GO wait on a point at it, or the entry he is
+ * doing now). Whoever else crosses it waits for him (route point waitDoor).
+ */
+export function doorClaimed(sim, u, k) {
+  for (const a of sim.teams[u.team]) {
+    if (a === u || !a.alive) continue;
+    if (a.entry && a.entry.doorway === k) return true;
+    for (const p of a.route) {
+      if (p.user && !p.ask && p.waitDoor < 0 && (p.entryDoor === k || p.door === k)) return true;
+    }
+  }
+  return false;
+}
+
 export const ASK_CODE = '?';
 
 /** "?" door points of the side still undecided (operators already stopped at one included). */
