@@ -139,18 +139,10 @@ export class Screens {
     const last = match && match.history[match.history.length - 1];
     setText(this.result.querySelector('.match-line'), match ? `${T.match.round(last.round)} · ${T.match.score(match.score.player, match.score.ai)}` : '');
     const pay = this.result.querySelector('.match-pay');
-<<<<<<< HEAD
-    // What the player's attackers earned, or the half-time switch (a defender earns nothing).
-    pay.hidden = !match || !!match.over || (team !== 'attackers' && !last.switched);
-    if (match && !match.over && last.switched) setText(pay, T.match.switchSides(match.team));
-    else if (match && !match.over && team === 'attackers') setText(pay, `${T.match.payTitle}: ${teamUnits(sim, team).map((u, i) => T.match.pay(u.name, last.income[i])).join(' · ')}`);
-    setText(this.result.querySelector('.next-round'), match ? (match.over ? T.match.again : T.match.next) : T.result.another);
-=======
     // Who gets the extra utility point next round, or the half-time switch.
     pay.hidden = !match || !!match.over;
     if (match && !match.over) setText(pay, last.switched ? T.match.switchSides(match.team) : T.match.bonus(!last.playerWon));
-    setText(this.result.querySelector('.next-round'), match && match.over ? T.match.again : T.match.next);
->>>>>>> origin/main
+    setText(this.result.querySelector('.next-round'), match ? (match.over ? T.match.again : T.match.next) : T.result.another);
     setText(this.result.querySelector('.reason'), (team === 'defenders' ? T.result.reasonDefend : T.result.reason)[o.reason]);
     const squad = teamUnits(sim, team);
     const kills = squad.reduce((s, u) => s + u.stats.kills, 0);
