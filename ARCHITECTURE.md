@@ -150,7 +150,7 @@ canStep?  (en fases de decisión el tiempo no corre)
 | `traps.js` | Trampas del Trampero (`aiTraps` del mapa, orden `placeTrap`): atrapan al atacante que las pisa y lo delatan; se descubren con sigilo, dron o pulso del Explorador y se rompen de un tiro |
 | `barricades.js` | Barricadas: bloquean cuerpo, vista, balas y dron; romperlas a golpes o volarlas con carga. `sim.intel` = qué barricadas conocen los atacantes |
 | `drone.js` | Dron de reconocimiento del atacante (fase `drone`): se maneja en tiempo real con órdenes selladas por paso; pasa bajo las puertas, no por barricadas |
-| `prep.js` | Compra (dinero por operador), **clase** (`setRole`: reembolsa el equipo, aplica la clase, cobra su equipo) y preparación del defensor: elegir sitio, colocar, vigilancia, barricadas, cámaras del sitio. `applyLayout` aplica el rol de cada puesto (`role: 'anchor'`) |
+| `prep.js` | Compra con **puntos de utilidad** (`BUY`; atacantes en la compra, defensores en la preparación; el equipo de la clase es gratis y no se devuelve), **clase** (`setRole` / `setDefenderRole`: aplica la clase, su equipo y devuelve los puntos) y preparación del defensor: elegir sitio, colocar, vigilancia, barricadas, cámaras del sitio. `applyLayout` aplica el rol de cada puesto (`role: 'anchor'`) |
 | `objectives.js` | La bomba, encontrarla, desactivarla (7 s quieto) y el resultado de la ronda |
 | `noise.js` | Qué oye cada bando del otro. Se lee de los eventos que el paso emitió, así que ningún sistema necesita saber del ruido. Al final del turno los ruidos oídos se vuelven pulsos aproximados en el mapa del que escucha |
 | `view.js` | `teamView(sim, bando)`: **lo que un bando puede saber**. Es el filtro que aplicará el servidor online antes de mandar un frame |
@@ -178,7 +178,7 @@ es el trabajo pendiente para que el servidor online no mande lo que el jugador n
 | `SessionController.js` | El **único** lugar que decide qué significa cada petición del jugador en cada fase: cierra fases de decisión, corre el bucle solo mientras un turno se ejecuta, sella los GO y el mando del dron. Salta con valores por defecto las fases previas que una lección no usa (`scenario.skip` de `config/lessons.js`); toda ronda del lobby es completa. Lleva el modo (`play` / `tutorial` / `match`) |
 | `PhaseClock.js` | Plazos de reloj de pared de las fases de decisión. La sim nunca ve este reloj; online, lo tendrá el servidor. Se detiene mientras el jugador no puede planificar (ayuda abierta, página oculta, celular en vertical, tutorial) |
 | `Lobby.js` | El menú antes de jugar, reglas puras: vista (`main` / `play` / `lobby`), formato, bando inicial, clases del jugador por puesto (`opts.roles` de la `Simulation`, validadas también allí), "listo". Lo elegido se guarda en el dispositivo |
-| `Match.js` | Partida al mejor de 3, 5 o 7 contra la IA: reglas puras (`createMatch(team, bestOf)`, `matchLoadout`, `endMatchRound`). Marcador del jugador contra la IA, cambio de bando tras `match.switchAfter` rondas (la mitad de la serie) (`match.team`, que el flujo copia a `session.team`), ingresos (`MATCH`), y qué pasa a la ronda siguiente (clase, dinero, equipo de los vivos) como `opts.loadout` de la próxima `Simulation` |
+| `Match.js` | Partida al mejor de 3, 5 o 7 contra la IA: reglas puras (`createMatch(team, bestOf)`, `matchLoadout`, `endMatchRound`). Marcador del jugador contra la IA, cambio de bando tras `match.switchAfter` rondas (la mitad de la serie) (`match.team`, que el flujo copia a `session.team`), el punto extra del bando que perdió (`match.lossBonus` → `opts.lossBonus`) y la clase de cada atacante como `opts.loadout` de la próxima `Simulation` |
 | `PlanRecorder.js` | Todas las órdenes de un intento, agrupadas por fase. Es exactamente la lista de paquetes de turno We-Go: lo que mandaría una partida online y lo que necesita un replay. Sostiene el "reintentar" |
 | `Tutorial.js` | Motor de las lecciones del tutorial: las lecciones son datos en `config/lessons.js` (escenario y pasos); cada paso "hacé" tiene su comprobación aquí (`stepDone`). Las lecciones hechas se guardan en el dispositivo. También las tarjetas de presentación de compra, entrada y dron la primera vez que aparecen (`PHASE_INTROS`) |
 | `AutoPause.js` | Pausa de sistema cuando el jugador no puede seguir el turno (página oculta, foco perdido, contexto WebGL perdido). Nunca por contacto |
@@ -372,6 +372,6 @@ Una revisión de jugabilidad en tres fases, cada una en sus commits.
 - Lanzar flash / granada / humo a cualquier punto (`setToss`) y humo que tapa la vista (`sim/smoke.js`).
 - Cámaras del defensor (`sim/cameras.js`, `aiCameras`).
 - Clases Asaltante / Brecha / Explorador / Ancla (`config/operators.js`, `setRole`, `abilities/scoutPulse.js`).
-- Partida al mejor de 7 con economía (`session/Match.js`, `MATCH`).
+- Partida al mejor de 7 con puntos de utilidad (`session/Match.js`, `BUY`).
 
 **Paredes blandas destructibles: descartadas.** Tomás decidió no implementarlas (27 oct 2026). No proponerlas como trabajo pendiente.

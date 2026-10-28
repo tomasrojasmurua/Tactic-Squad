@@ -6,16 +6,21 @@
 // hold the angle the threat must come through: the first corner or doorway
 // on the walking path toward the noise — not the noise itself, which is
 // usually behind a wall. This is what makes them dangerous rather than
-// random: they pre-aim the entry the attackers have to use.
-import { TAU } from '../core/math.js';
-import { AI, COMBAT, NAV, MOVE } from '../config/balance.js';
+// random: they pre-aim the entry the attackers have to use. Defenders of a
+// side the AI commands also throw their utility there (AI_UTILITY): a grenade
+// into the doorway before the attackers come through it, or smoke to shut it.
+import { TAU, angleTo } from '../core/math.js';
+import { AI, AI_UTILITY, COMBAT, ENTRY, NAV, MOVE } from '../config/balance.js';
 import { lineOfSight } from './vision.js';
 import { enemyTeam } from './queries.js';
 
 /** One AI-controlled unit (any side whose controller is 'ai'). */
 export function updateAiUnit(sim, u, dt) {
   listenForFootsteps(sim, u);
-  if (u.alertTimer > 0 && u.target < 0) updateWatchPoint(sim, u, dt);
+  if (u.alertTimer > 0 && u.target < 0) {
+    updateWatchPoint(sim, u, dt);
+    throwAtWatchPoint(sim, u);
+  }
 
   const b = u.behavior;
   if (!b) return;
@@ -84,6 +89,30 @@ function updateWatchPoint(sim, u, dt) {
     u.alertY = p.y + (next.y - p.y) * k;
     return;
   }
+}
+
+/**
+ * An alerted AI defender, not fighting, throws the first AI_UTILITY.throws
+ * item he carries at the spot he watches, when it is in sight and in reach
+ * and a grenade would hurt none of his own (him included). Through the usual
+ * entry machine (sim/entries.js): he stays put until it goes off.
+ */
+function throwAtWatchPoint(sim, u) {
+  if (u.team !== 'defenders' || sim.controllers.defenders !== 'ai' || u.entry) return;
+  if (sim.time < (u.ai.throwAt || 0)) return;
+  const item = AI_UTILITY.throws.find((i) => (u.gear[i] || 0) > 0);
+  if (!item) return;
+  const tx = u.alertX;
+  const ty = u.alertY;
+  const d = Math.hypot(tx - u.x, ty - u.y);
+  if (d < AI_UTILITY.minRange || d > ENTRY.tossRange) return;
+  if (!lineOfSight(sim.world, u.x, u.y, tx, ty)) return;
+  if (item === 'frag') {
+    const r2 = (ENTRY.frag.radius + AI_UTILITY.friendlyMargin) ** 2;
+    for (const o of sim.teams.defenders) if (o.alive && (o.x - tx) ** 2 + (o.y - ty) ** 2 < r2) return;
+  }
+  u.entry = { mode: 'toss', item, tx, ty, doorway: -1, side: 1, look: angleTo(u.x, u.y, tx, ty), phase: 'armed', t: 0, spent: false, step: null, grenade: null };
+  u.ai.throwAt = sim.time + AI_UTILITY.cooldown;
 }
 
 /**
