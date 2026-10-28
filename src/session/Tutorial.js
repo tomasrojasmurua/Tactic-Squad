@@ -1,6 +1,7 @@
 // The tutorial's lessons (menu TUTORIAL; config/lessons.js has them as
 // data): each a round on the real map set up to teach one thing. Lesson 1,
-// "Básico", teaches the assault: planning, doors, GO groups, the turn. Phases
+// "Básico", teaches the assault: planning, doors, GO groups, the turn; then
+// doors and throws, two groups with their GOs, and the defender's set-up. Phases
 // a lesson skips get an intro card the first time a later round reaches them
 // (PHASE_INTROS). Two kinds of step:
 //   info  a card that explains (ui/TutorialCard.js); ENTENDIDO / LISTO / Enter
@@ -14,7 +15,10 @@
 // the device. State lives in session.tutorial; ui/TutorialCard.js shows it.
 import { FLOW } from '../config/ui.js';
 import { LESSONS, lessonById } from '../config/lessons.js';
+import { ENTRY } from '../config/balance.js';
 import { teamUnits, controllableUnit, canOrderDefuse } from '../sim/queries.js';
+import { barricadedDoors } from '../sim/prep.js';
+import { watchOf } from './watch.js';
 import { loadPref, savePref } from './storage.js';
 
 /**
@@ -28,6 +32,28 @@ export const PHASE_INTROS = Object.freeze({ buy: 'introBuy', prep: 'introPrep', 
 export const TUTORIAL_TIPS = Object.freeze(['barricade', 'defuse']);
 
 const hasUserPoint = (u) => u.route.some((p) => p.user);
+const anyPoint = (squad, test) => squad.some((u) => u.route.some(test));
+
+/** A defender's spot and watch in the map's layout for this site (where the set-up started). */
+function layoutOf(sim, u) {
+  const layout = sim.compiled.defense[sim.site.id];
+  return layout[sim.defenderSlots ? sim.defenderSlots[u.slot] : u.slot] || null;
+}
+
+/** Did the player move this defender off his layout spot? */
+function placed(sim, u) {
+  const s = layoutOf(sim, u);
+  return !!s && Math.hypot(u.x - s.at[0], u.y - s.at[1]) > 0.3;
+}
+
+/** Did the player change this defender's watch (mode or facing)? */
+function watchChanged(sim, u) {
+  const s = layoutOf(sim, u);
+  if (!s) return false;
+  const was = watchOf({ behavior: s.behavior, facing: s.facing, ai: { baseFacing: s.facing } });
+  const now = watchOf(u);
+  return now.mode !== was.mode || Math.abs(Math.atan2(Math.sin(now.facing - was.facing), Math.cos(now.facing - was.facing))) > 0.05;
+}
 
 /** Lessons done on this device (the old single tutorial counts as the first). */
 function loadDone() {
@@ -36,8 +62,8 @@ function loadDone() {
   return loadPref(FLOW.storageKeys.tutorialDone, false) ? [LESSONS[0].id] : [];
 }
 
-/** Is the gesture of `do` step `id` done? */
-function stepDone(id, sim, session, t) {
+/** Is gesture `id` (a `do` step's check) done? */
+function stepDone(id, sim, session) {
   const squad = teamUnits(sim, session.team);
   const sel = controllableUnit(sim, session.selectedId, session.team);
   switch (id) {
@@ -56,6 +82,32 @@ function stepDone(id, sim, session, t) {
       return sim.turn > 1 || session.phase === 'running' || session.phase === 'paused';
     case 'go':
       return sim.goCount > 0;
+    case 'ask':
+      // A route crosses a door (its "?"), or that door already got a decision.
+      return anyPoint(squad, (p) => p.ask || (p.user && p.entryDoor >= 0));
+    case 'beside':
+      return anyPoint(squad, (p) => p.user && ENTRY.beside.modes.includes(p.entry));
+    case 'waitDoor':
+      return anyPoint(squad, (p) => p.waitDoor >= 0);
+    case 'toss':
+      return anyPoint(squad, (p) => p.toss);
+    case 'follow':
+      return squad.some((u) => u.follow);
+    case 'groups':
+      // Holds on two GO colors: two groups that go each on its own GO.
+      return new Set(squad.flatMap((u) => u.route.filter((p) => p.hold).map((p) => p.code))).size >= 2;
+    case 'sneak':
+      return anyPoint(squad, (p) => p.pace === 'sneak');
+    case 'barricade':
+      return barricadedDoors(sim).length > 0;
+    case 'recon':
+      return sim.reconDone;
+    case 'place':
+      return squad.some((u) => placed(sim, u));
+    case 'watch':
+      return squad.some((u) => watchChanged(sim, u));
+    case 'setupDone':
+      return sim.phase !== 'prep';
     default:
       return true;
   }
@@ -156,7 +208,7 @@ export class Tutorial {
     const s = steps[t.step];
     t.id = s.id;
     t.info = !!s.info;
-    if (s.id === 'select') this.session.selectedId = -1; // the lesson is choosing one
+    if ((s.check || s.id) === 'select') this.session.selectedId = -1; // the lesson is choosing one
   }
 
   /**
@@ -205,7 +257,7 @@ export class Tutorial {
         }
         return 'card';
       }
-      if (!stepDone(s.id, sim, this.session, t)) break;
+      if (!stepDone(s.check || s.id, sim, this.session)) break;
       this.advanceFrom(t.step);
       advanced = true;
     }
