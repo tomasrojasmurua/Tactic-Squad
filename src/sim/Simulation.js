@@ -13,6 +13,7 @@ import { createUnit, applyRole, roleGear } from './units.js';
 import { createDoorState, updateDoors, markDoorwayCrossings } from './doors.js';
 import { updateEntries } from './entries.js';
 import { updateSmokes } from './smoke.js';
+import { updateFires } from './fire.js';
 import { placeCameras, updateCameras } from './cameras.js';
 import { layTraps, updateTraps } from './traps.js';
 import { applyCommand } from './orders.js';
@@ -30,6 +31,7 @@ import { createMemory, updateMemory } from './view.js';
 import { initPoints } from './prep.js';
 import { updateDrone } from './drone.js';
 import { createIntel, updateBash, spotBarricades } from './barricades.js';
+import { spotWires, updateWires } from './wires.js';
 
 export class Simulation {
   /**
@@ -80,6 +82,8 @@ export class Simulation {
     this.goCount = 0;
     this.grenades = []; // thrown, not yet detonated (sim/entries.js)
     this.smokes = []; // smoke clouds standing (sim/smoke.js)
+    this.fires = []; // incendiaria pools burning (sim/fire.js)
+    this.fireSeq = 0;
     this.smokeDirty = false;
     this.grenadeSeq = 0;
     this.outcome = null;
@@ -251,6 +255,7 @@ export class Simulation {
     for (const u of this.units) if (u.alive && u.bash) updateBash(this, u, dt);
     updateEntries(this, dt);
     updateSmokes(this, dt);
+    updateFires(this, dt);
     updatePerception(this);
     updateCameras(this, dt);
     updateTraps(this, dt);
@@ -261,7 +266,11 @@ export class Simulation {
       if (e.type === EV.SPOTTED && e.team !== watcher && !e.byDrone) this.round.contact = true;
     }
     updateMemory(this);
-    for (const u of this.teams.attackers) if (u.alive && u.blind <= 0) spotBarricades(this, u, u.vision.fov);
+    for (const u of this.teams.attackers) {
+      if (!u.alive || u.blind > 0) continue;
+      spotBarricades(this, u, u.vision.fov);
+      spotWires(this, u, u.vision.fov);
+    }
     for (const u of this.units) {
       if (!u.alive) continue;
       if (isAiControlled(this, u)) updateAiUnit(this, u, dt);
@@ -270,6 +279,7 @@ export class Simulation {
     }
     resolveCollisions(this);
     markDoorwayCrossings(this);
+    updateWires(this); // sim/wires.js: an attacker stepping into barbed wire rattles it
     for (const u of this.units) if (u.alive) updateCombat(this, u, dt);
     updateAbilities(this, dt);
     updateObjectives(this, dt);

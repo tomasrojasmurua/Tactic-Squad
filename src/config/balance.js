@@ -207,10 +207,12 @@ export const ENTRY = Object.freeze({
   // Carga de brecha: planted on arrival (prepTime), fired by the release. The door is destroyed.
   breach: { prepTime: 1.8, fuse: 0.35, radius: 3.0, damage: 75, blind: 1.8, hearing: 22, depth: 0.25 },
   // Thrown from any waypoint to a point the player picks (waypoint.toss; not only through a door).
-  tossItems: Object.freeze(['flash', 'frag', 'smoke']),
+  tossItems: Object.freeze(['flash', 'frag', 'smoke', 'molotov']),
   tossRange: 9, // m at most from the thrower (short of the first wall on the way)
   // Humo: a cloud that blocks sight (not bullets) for `seconds`, growing to `radius` in `grow` s,
   // thinning out over the last `fade` s. Up to `max` clouds at once (the oldest clears first).
+  // Incendiaria (defenders only, sim/fire.js): a pool `radius` wide burning `seconds`, `dps` to whoever is in it.
+  molotov: { fuse: 0.5, hearing: 10, radius: 1.8, seconds: 7, dps: 22, tick: 0.25 },
   smoke: { fuse: 0.6, hearing: 6, radius: 2.6, grow: 1.4, seconds: 14, fade: 2, sides: 8, max: 4 },
 });
 
@@ -244,8 +246,8 @@ export const NOISE = Object.freeze({
   jitter: 0.9, // ...and shifted up to this much (deterministic, from the seed)
   keepTurns: 3, // a pulse stays on the map this many turns, fading
   // Radius heard (m) by kind; the loudest kind of a cell names its pulse.
-  radius: Object.freeze({ sneak: 2, step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, trap: 14, flash: 18, frag: 22, breach: 22 }),
-  rank: Object.freeze(['sneak', 'step', 'crack', 'door', 'plant', 'defuse', 'kick', 'bash', 'trap', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
+  radius: Object.freeze({ wire: 10, sneak: 2, step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, trap: 14, flash: 18, frag: 22, breach: 22 }),
+  rank: Object.freeze(['sneak', 'step', 'crack', 'door', 'wire', 'plant', 'defuse', 'kick', 'bash', 'trap', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
 });
 
 /**
@@ -259,10 +261,10 @@ export const NOISE = Object.freeze({
 export const BUY = Object.freeze({
   points: 2, // per operator and round
   lossBonus: 1, // each, for the side that lost the last round of a match
-  prices: Object.freeze({ flash: 1, frag: 1, smoke: 1, breach: 1 }), // points
-  max: Object.freeze({ flash: 2, frag: 1, smoke: 1, breach: 2 }), // carried at most (kit included)
+  prices: Object.freeze({ flash: 1, frag: 1, smoke: 1, breach: 1, molotov: 2 }), // points
+  max: Object.freeze({ flash: 2, frag: 1, smoke: 1, breach: 2, molotov: 1 }), // carried at most (kit included)
   items: Object.freeze(['flash', 'frag', 'smoke', 'breach']), // the attackers' panel, in order
-  defenderItems: Object.freeze(['flash', 'frag', 'smoke']), // the defenders' (no charges)
+  defenderItems: Object.freeze(['flash', 'frag', 'smoke', 'molotov']), // the defenders' (no charges; the incendiaria is theirs only)
 });
 
 /**
@@ -272,23 +274,40 @@ export const BUY = Object.freeze({
  * An alerted defender who is not fighting throws at the doorway / corner the
  * noise will come through (the spot he watches) once it is in reach and in
  * sight, with no teammate within `friendlyMargin` of the blast: a grenade
- * first, else smoke to shut that way.
+ * first, else smoke to shut that way. An incendiaria goes on the bomb while an
+ * attacker defuses it, when it is in reach and in sight.
  */
 export const AI_UTILITY = Object.freeze({
   buy: Object.freeze(['flash']), // a grenade or smoke more per defender left the attackers at 39 % / 56 % (scripts/balance.mjs)
-  throws: Object.freeze(['frag', 'smoke']), // what an alerted defender throws, first one he carries
+  throws: Object.freeze(['frag', 'molotov', 'smoke']), // what an alerted defender throws, first one he carries
   minRange: 3, // m: closer than this to the spot, he fights instead (a grenade: never within its radius of him)
   friendlyMargin: 1.2, // m added to a grenade's blast radius around him and his teammates
   cooldown: 6, // s between two throws of the same defender
+  molotovs: 1, // defenders who buy an incendiaria (the closest to the bomb first) and burn a defuse with it
 });
 
 /** Defender preparation (sim/prep.js): set-up rules and the watch orders. */
 export const PREP = Object.freeze({
   barricades: 2, // per round (free for now)
+  wires: 1, // barbed wire per round (sim/wires.js)
   barricadeReach: 0.5, // m: a door counts as in the defenders' half this close to it
   sweepPeriod: 6, // s of a full sweep (watch order "barrer")
   sweepArc: 70 * DEG, // the sweep a player gives covers this much, centred on the facing he set
   minSpacing: 0.7, // m between two defenders placed in the set-up
+});
+
+/**
+ * Barbed wire (sim/wires.js): across a doorway, it slows the attackers who
+ * cross it (within `radius` of its center) to `slow` and rattles when one
+ * steps in (AI defenders within `hearing` turn to it). A grenade or a breach
+ * charge clears it. Seen like a barricade within `spotRange`.
+ */
+export const WIRE = Object.freeze({
+  radius: 0.9, // m from the doorway's center
+  slow: 0.5, // 0.35 left the attackers at 43 % (scripts/balance.mjs)
+  hearing: 12, // m
+  spotRange: 12, // m
+  fragCut: 2.5, // m: a grenade this close clears it
 });
 
 /** Barricades (sim/barricades.js): block bodies, sight and the drone until broken or blown. */

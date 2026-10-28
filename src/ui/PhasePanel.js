@@ -11,7 +11,7 @@
 //             map gestures: input/PlanningController.js)
 //   planning  first turn only, compact: the entry can still change
 // Emits EV.REQUEST {action: 'buy_<unitId>_<item>_<+|->' | 'chooseEntry_<id>' |
-// 'site_<id>' | 'barricade_<doorId>' | 'watch_<mode>' | 'trapmode'}; LISTO is the usual button.
+// 'site_<id>' | 'barricade_<doorId>' | 'wire_<doorId>' | 'watch_<mode>' | 'trapmode'}; LISTO is the usual button.
 import { EV } from '../core/events.js';
 import { ROLES } from '../config/operators.js';
 import { BUY, PREP, TRAP, CAMERA } from '../config/balance.js';
@@ -163,6 +163,8 @@ export class PhasePanel {
     this.camRow = this.setupRow('', 'cams'); // the mounts are tapped on the map (ui/CameraMounts.js)
     this.barRow = this.setupRow('', 'bars');
     this.barButtons = sim.compiled.barricadeSlots.map((id) => this.setupButton(this.barRow, S.doors[id] ?? id, `barricade_${id}`, id));
+    this.wireRow = this.setupRow('', 'bars');
+    this.wireButtons = sim.compiled.barricadeSlots.map((id) => this.setupButton(this.wireRow, S.doors[id] ?? id, `wire_${id}`, id));
   }
 
   refreshRecon(sim) {
@@ -174,8 +176,17 @@ export class PhasePanel {
       if (on) up++;
       toggle(b, 'on', on);
     }
-    for (const b of this.barButtons) toggle(b, 'off', up >= PREP.barricades && !b.classList.contains('on'));
+    const doorOf = (id) => sim.doors.find((d) => d.def.id === id);
+    for (const b of this.barButtons) toggle(b, 'off', (up >= PREP.barricades || doorOf(b.dataset.key).wired) && !b.classList.contains('on'));
     setText(this.barRow.children[0], S.barricades(up, PREP.barricades));
+    let wired = 0;
+    for (const b of this.wireButtons) {
+      const on = doorOf(b.dataset.key).wired;
+      if (on) wired++;
+      toggle(b, 'on', on);
+    }
+    for (const b of this.wireButtons) toggle(b, 'off', (wired >= PREP.wires || doorOf(b.dataset.key).barricaded) && !b.classList.contains('on'));
+    setText(this.wireRow.children[0], S.wires(wired, PREP.wires));
     setText(this.camRow.children[0], S.cameras(sim.cameras.length, CAMERA.max));
   }
 

@@ -18,12 +18,13 @@
 // entered right after it: "flash and clear". Everything here is
 // deterministic (no RNG at all) and driven by orders: it works the same in
 // real time and in We-Go turns.
-import { ENTRY, COMBAT } from '../config/balance.js';
+import { ENTRY, COMBAT, WIRE } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { angleTo } from '../core/math.js';
 import { rayCast } from '../core/geom.js';
 import { solidLineOfSight } from './vision.js';
 import { spawnSmoke } from './smoke.js';
+import { spawnFire } from './fire.js';
 import { openDoor, crackDoor, destroyDoor } from './doors.js';
 import { alertAiUnit } from './ai.js';
 import { applyBlast } from './combat.js';
@@ -31,6 +32,7 @@ import { isAiControlled, ENTRY_GEAR, tossLanding, tossDoorway } from './queries.
 
 const LAND = { x: 0, y: 0, reach: 0, viaX: 0, viaY: 0, leg1: 0, leg2: 0 };
 import { startBash, breakBarricade } from './barricades.js';
+import { cutWiresNear } from './wires.js';
 
 /** Seconds each mode works on arrival before it is armed (0 = armed at once). */
 const PREP = Object.freeze({ slow: ENTRY.slow.prepTime, breach: ENTRY.breach.prepTime });
@@ -318,7 +320,11 @@ function detonate(sim, g) {
   sim.emit(EV.GRENADE_DETONATE, { id: g.id, kind: g.kind, unitId: g.ownerId, x: g.x, y: g.y });
   if (g.kind === 'flash') flashAt(sim, g);
   else if (g.kind === 'smoke') spawnSmoke(sim, g.x, g.y);
-  else blastAt(sim, g.x, g.y, ENTRY.frag.radius, ENTRY.frag.damage, ENTRY.frag.minDamage, 0, owner, g.cover);
+  else if (g.kind === 'molotov') spawnFire(sim, g.x, g.y, owner);
+  else {
+    blastAt(sim, g.x, g.y, ENTRY.frag.radius, ENTRY.frag.damage, ENTRY.frag.minDamage, 0, owner, g.cover);
+    cutWiresNear(sim, g.x, g.y, WIRE.fragCut, owner); // barbed wire (sim/wires.js)
+  }
   alertNear(sim, owner, g.x, g.y, ENTRY[g.kind].hearing, true);
 }
 
@@ -370,6 +376,7 @@ function detonateBreach(sim, u, e) {
   const door = doorOf(sim, e.doorway);
   if (door && door.barricaded) breakBarricade(sim, door, u, 'breach');
   else if (door) destroyDoor(sim, door);
+  cutWiresNear(sim, d.cx, d.cy, ENTRY.breach.radius, u);
   const x = d.cx + d.normalX * e.side * B.depth;
   const y = d.cy + d.normalY * e.side * B.depth;
   sim.emit(EV.CHARGE_BLAST, { unitId: u.id, doorId: d.id, x: d.cx, y: d.cy, dirX: d.normalX * e.side, dirY: d.normalY * e.side });

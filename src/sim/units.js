@@ -70,7 +70,8 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     pause: 0, // s still standing on a peek point (waypoint.pause) before walking on
     goDelay: 0, // s released but still holding: a teammate's grenade / charge goes off first
     entry: null, // door entry in progress (sim/entries.js)
-    gear: { flash: 0, frag: 0, smoke: 0, breach: 0, ...r.role.gear }, // utility left (spent by entries / throws)
+    gear: { flash: 0, frag: 0, smoke: 0, breach: 0, molotov: 0, ...r.role.gear }, // utility left (spent by entries / throws)
+    wireDoor: -1, // the wired door he stands in (sim/wires.js), -1: none
     points: 0, // utility points left to buy with (buy phase / preparation: sim/prep.js)
     bash: null, // breaking a barricade: {door, t, next} (sim/barricades.js)
     blind: 0, // s flashed / stunned: sees nothing, does not shoot
@@ -137,5 +138,5 @@ export function applyRole(u, roleId) {
 
 /** The gear a class starts with (counts per item). */
 export function roleGear(roleId) {
-  return { flash: 0, frag: 0, smoke: 0, breach: 0, ...ROLES[roleId].gear };
+  return { flash: 0, frag: 0, smoke: 0, breach: 0, molotov: 0, ...ROLES[roleId].gear };
 }

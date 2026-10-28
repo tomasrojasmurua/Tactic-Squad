@@ -13,10 +13,12 @@ import { TAU, angleTo } from '../core/math.js';
 import { AI, AI_UTILITY, COMBAT, ENTRY, NAV, MOVE } from '../config/balance.js';
 import { lineOfSight } from './vision.js';
 import { enemyTeam } from './queries.js';
+import { inFire } from './fire.js';
 
 /** One AI-controlled unit (any side whose controller is 'ai'). */
 export function updateAiUnit(sim, u, dt) {
   listenForFootsteps(sim, u);
+  burnDefuse(sim, u);
   if (u.alertTimer > 0 && u.target < 0) {
     updateWatchPoint(sim, u, dt);
     throwAtWatchPoint(sim, u);
@@ -113,6 +115,22 @@ function throwAtWatchPoint(sim, u) {
   }
   u.entry = { mode: 'toss', item, tx, ty, doorway: -1, side: 1, look: angleTo(u.x, u.y, tx, ty), phase: 'armed', t: 0, spent: false, step: null, grenade: null };
   u.ai.throwAt = sim.time + AI_UTILITY.cooldown;
+}
+
+/**
+ * An AI defender carrying an incendiaria throws it on the bomb while an
+ * attacker defuses it, if it is in reach and in sight and none of his own
+ * stands there (sim/fire.js).
+ */
+function burnDefuse(sim, u) {
+  if (u.team !== 'defenders' || sim.controllers.defenders !== 'ai' || u.entry || !(u.gear.molotov > 0)) return;
+  const bomb = sim.bomb;
+  if (bomb.defuserId < 0 || inFire(sim, bomb.x, bomb.y)) return;
+  if (Math.hypot(bomb.x - u.x, bomb.y - u.y) > ENTRY.tossRange) return;
+  if (!lineOfSight(sim.world, u.x, u.y, bomb.x, bomb.y)) return;
+  const r2 = (ENTRY.molotov.radius + AI_UTILITY.friendlyMargin) ** 2;
+  for (const o of sim.teams.defenders) if (o.alive && (o.x - bomb.x) ** 2 + (o.y - bomb.y) ** 2 < r2) return;
+  u.entry = { mode: 'toss', item: 'molotov', tx: bomb.x, ty: bomb.y, doorway: -1, side: 1, look: angleTo(u.x, u.y, bomb.x, bomb.y), phase: 'armed', t: 0, spent: false, step: null, grenade: null };
 }
 
 /**

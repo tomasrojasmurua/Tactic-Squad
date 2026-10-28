@@ -22,6 +22,12 @@ export const EV = Object.freeze({
   SITE_CHOSEN: 'siteChosen', // {site}: the defenders moved the bomb (and reset their set-up to that site's)
   SETUP_CHANGED: 'setupChanged', // {unitId, kind:'place'|'watch'}: a defender placed or given a watch order
   BARRICADE_SET: 'barricadeSet', // {doorId, on}
+  FIRE_START: 'fireStart', // {id, x, y, unitId}: an incendiaria went off (sim/fire.js)
+  FIRE_OUT: 'fireOut', // {id, x, y, why:'smoke'|'burnt'}
+  WIRE_SET: 'wireSet', // {doorId, on}: barbed wire laid / taken up in the preparation (sim/wires.js)
+  WIRE_SPOTTED: 'wireSpotted', // {doorId, x, y}: the attackers found one
+  WIRE_CROSSED: 'wireCrossed', // {unitId, doorId, x, y}: an attacker stepped into it (noise)
+  WIRE_CUT: 'wireCut', // {unitId, doorId, x, y}: a blast cleared it
   // Barricades in the assault (sim/barricades.js)
   BARRICADE_SPOTTED: 'barricadeSpotted', // {doorId, x, y}: the attackers found one
   BARRICADE_HIT: 'barricadeHit', // {unitId, doorId, x, y}: a blow while breaking it

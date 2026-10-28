@@ -28,6 +28,7 @@ import { canEditRoutes, targetIndex } from '../session/Session.js';
 import { el, setText, toggle, setStyle } from './dom.js';
 import { ENTRY_ICON } from './icons.js';
 import { T } from './texts.js';
+import { buyableItems } from '../sim/prep.js';
 
 // The door wheel: every entry around the door point, clockwise from the top.
 const WHEEL = ['none', 'kick', 'breach', 'frag', 'flash', 'slow'];
@@ -165,6 +166,8 @@ export class EntryPicker {
       const has = p.toss && p.toss.item === item;
       const left = gearLeft(u, item, at);
       const ok = has || left > 0;
+      const hide = !ok && !buyableItems(u.team).includes(item); // the incendiaria is the defenders' only
+      if (b.hidden !== hide) b.hidden = hide;
       if (b.disabled !== !ok) b.disabled = !ok;
       toggle(b, 'active', has && !aiming);
       toggle(b, 'aim', aiming === item);

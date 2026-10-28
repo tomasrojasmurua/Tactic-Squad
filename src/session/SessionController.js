@@ -563,7 +563,7 @@ export class SessionController {
   /**
    * The defender's set-up panels (ui/PhasePanel.js): in the recon site_<id>
    * moves the bomb (the set-up starts over from the map's for it) and
-   * barricade_<doorId> toggles one; then watch_<mode> changes the selected
+   * barricade_<doorId> / wire_<doorId> toggles one; then watch_<mode> changes the selected
    * defender's watch order and trapmode switches taps to laying traps.
    */
   setup(action) {
@@ -578,6 +578,10 @@ export class SessionController {
       const door = sim.doors.find((d) => d.def.id === arg);
       if (!door) return;
       this.command({ type: 'barricade', door: arg, on: !door.barricaded });
+    } else if (kind === 'wire') {
+      const door = sim.doors.find((d) => d.def.id === arg);
+      if (!door) return;
+      this.command({ type: 'wire', door: arg, on: !door.wired });
     } else if (kind === 'watch') {
       const u = controllableUnit(sim, this.session.selectedId, this.session.team);
       if (!u) return this.notice('pickDefender');

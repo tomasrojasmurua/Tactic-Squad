@@ -13,6 +13,8 @@ import { tryOpenDoors, segmentCrossesDoorway } from './doors.js';
 import { armEntry, armToss } from './entries.js';
 import { isAiControlled, holdCode, ASK_CODE, doorClaimed } from './queries.js';
 import { routePoint } from './routePoint.js';
+import { wireFactor } from './wires.js';
+import { inFire } from './fire.js';
 
 const carrot = { x: 0, y: 0 };
 
@@ -111,7 +113,9 @@ export function updateMovement(sim, u, dt) {
   const sneaking = p0.pace === 'sneak';
   if (sneaking) speed *= MOVE.sneakFactor; // the leg he walks is a quiet one
   speed *= followFactor(sim, u, Math.cos(moveDir), Math.sin(moveDir));
+  speed *= wireFactor(sim, u); // barbed wire in the doorway (sim/wires.js)
   if (speed > 0 && doorwayBusy(sim, u)) speed = 0; // queue: an ally is still in the doorway ahead
+  if (speed > 0 && fireAhead(sim, u, moveDir)) speed = 0; // an AI attacker waits for the fire to burn down
 
   u.speedFraction = speed / MOVE.speed;
   let budget = speed * dt;
@@ -295,3 +299,12 @@ function arriveAt(sim, u, p) {
     u.lookOverride = null;
   }
 }
+
+/** An attacker of an AI-commanded side about to step into a fire (sim/fire.js) holds; already in one, he gets out. */
+function fireAhead(sim, u, dir) {
+  if (u.team !== 'attackers' || sim.controllers.attackers !== 'ai' || !sim.fires.length) return false;
+  if (inFire(sim, u.x, u.y)) return false;
+  return inFire(sim, u.x + Math.cos(dir) * FIRE_LOOK, u.y + Math.sin(dir) * FIRE_LOOK);
+}
+
+const FIRE_LOOK = 0.6; // m ahead
