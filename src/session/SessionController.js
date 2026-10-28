@@ -130,7 +130,7 @@ export class SessionController {
     }
     if (sim.phase === 'end') {
       if (this.session.phase !== 'ended') {
-        if (this.session.mode === 'match' && this.session.match) endMatchRound(this.session.match, sim); // score and pay, once
+        if (this.session.mode === 'match' && this.session.match) endMatchRound(this.session.match, sim); // score and the loser's bonus, once
       }
       this.postRoundTimer = SIM.postRoundSeconds;
       // The result waits for the last kill, shown again once the round's tail has run (not in a lesson).
@@ -167,7 +167,7 @@ export class SessionController {
     const s = this.session;
     const sc = this.lesson && this.lesson.scenario;
     const tutorial = sc ? { site: sc.site, defenders: sc.defenders } : {};
-    const loadout = s.mode === 'match' && s.match ? { loadout: matchLoadout(s.match) } : {};
+    const loadout = s.mode === 'match' && s.match ? { loadout: matchLoadout(s.match), lossBonus: s.match.lossBonus } : {};
     // The player's classes from the lobby (his side only: the AI keeps its own).
     const roles = s.mode === 'tutorial' ? {} : { roles: { [s.team]: s.lobby.roles[s.team] } };
     return { ...tutorial, ...loadout, ...roles, stopOnContact: s.mode === 'tutorial' || s.progress.stopOnContact };
@@ -541,7 +541,7 @@ export class SessionController {
         else if (action.startsWith('lobby_') && phase === 'title') this.lobbySet(action.slice(6));
         else if (action.startsWith('lesson_') && phase === 'title') this.beginLesson(action.slice(7));
         else if (action.startsWith('chooseEntry_') && (phase === 'prep' || phase === 'planning')) this.chooseEntry(action.slice(12));
-        else if (action.startsWith('buy_') && phase === 'buy') this.buy(action);
+        else if (action.startsWith('buy_') && (phase === 'buy' || isDefenderSetup(session))) this.buy(action);
         else if (action.startsWith('role_') && phase === 'buy') this.setRole(action);
         else if (isDefenderSetup(session)) this.setup(action);
     }
@@ -587,7 +587,7 @@ export class SessionController {
     this.sound('select');
   }
 
-  /** Buy panel: buy_<unitId>_<item>_<+|-> (one item bought or sold back). */
+  /** Buy panel / defender set-up: buy_<unitId>_<item>_<+|-> (one item bought or given back). */
   buy(action) {
     const [, id, item, sign] = action.split('_');
     this.command({ type: 'buy', unitId: +id, item, count: sign === '-' ? -1 : 1 });
