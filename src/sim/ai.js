@@ -30,9 +30,13 @@ export function updateAiUnit(sim, u, dt) {
   const busy = u.target >= 0 || u.alertTimer > 0 || (u.lastKnown && u.lastKnown.until > sim.time);
 
   if (b.type === 'scan') {
+    // Centred on the look he was given where he stands (moved or turned while
+    // planning: sim/orders.js), else on the order's own arc.
     const phase = (sim.time / b.period) * TAU + u.id;
     const k = 0.5 - 0.5 * Math.cos(phase);
-    u.ai.baseFacing = b.from + (b.to - b.from) * k;
+    const half = (b.to - b.from) / 2;
+    const c = u.idleLook !== null && !u.route.length ? u.idleLook : b.from + half;
+    u.ai.baseFacing = c - half + 2 * half * k;
   }
 
   if (b.type === 'patrol') {

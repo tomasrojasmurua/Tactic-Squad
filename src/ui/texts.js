@@ -447,6 +447,8 @@ export const T = Object.freeze({
     watchOf: (n) => `Vigilancia de ${n}`,
     pickOne: 'Vigilancia: toca a un defensor',
     watch: { fixed: 'Ángulo fijo', sweep: 'Barrer', alert: 'Atento' },
+    watchTitle: 'Vigilancia',
+    watchNote: 'Cámbiala en cada turno. Si lo mueves, la aplica donde llega, mirando hacia donde lo orientes.',
     traps: (n, max) => `Trampas ${n}/${max}`,
     trapMode: 'Poner trampas',
     trapModeOn: 'Poniendo trampas: toca el suelo',

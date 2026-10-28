@@ -10,6 +10,8 @@
 //             watch order and the Trampero's traps (placing and aiming him are
 //             map gestures: input/PlanningController.js)
 //   planning  first turn only, compact: the entry can still change
+//   watch     planning, playing the defenders, with one of them selected:
+//             his watch order again (it can change every turn of the assault)
 // Emits EV.REQUEST {action: 'buy_<unitId>_<item>_<+|->' | 'chooseEntry_<id>' |
 // 'site_<id>' | 'barricade_<doorId>' | 'wire_<doorId>' | 'watch_<mode>' | 'trapmode'}; LISTO is the usual button.
 import { EV } from '../core/events.js';
@@ -17,7 +19,7 @@ import { ROLES } from '../config/operators.js';
 import { BUY, PREP, TRAP, CAMERA } from '../config/balance.js';
 import { controllableUnit } from '../sim/queries.js';
 import { buyableItems } from '../sim/prep.js';
-import { inRecon } from '../session/Session.js';
+import { inRecon, watchInPlanning } from '../session/Session.js';
 import { watchOf, WATCH_MODES } from '../session/watch.js';
 import { el, setText, toggle } from './dom.js';
 import { T } from './texts.js';
@@ -29,6 +31,7 @@ function panelFor(sim, session) {
   // Before the first turn ran the attackers may still change their entry.
   // Not in the guided tutorial, which skips the entry choice (SessionController lockedPhases).
   if (session.phase === 'planning' && !session.locked.includes('prep') && !session.tutorial.active && session.team === 'attackers' && sim.turn === 1 && sim.round.execTotal === 0 && sim.controllers.attackers === 'human') return 'entry';
+  if (watchInPlanning(sim, session)) return 'watch';
   return null;
 }
 
@@ -54,7 +57,7 @@ export class PhasePanel {
     const panel = panelFor(sim, session);
     toggle(this.node, 'hidden', !panel || session.helpOpen);
     toggle(this.node, 'compact', panel === 'entry');
-    toggle(this.node, 'side', panel === 'recon' || panel === 'deploy');
+    toggle(this.node, 'side', panel === 'recon' || panel === 'deploy' || panel === 'watch');
     if (!panel) {
       this.shown = null;
       return;
@@ -65,11 +68,13 @@ export class PhasePanel {
       if (panel === 'buy') this.buildBuy(sim, session.team);
       else if (panel === 'recon') this.buildRecon(sim);
       else if (panel === 'deploy') this.buildDeploy(sim);
+      else if (panel === 'watch') this.buildWatch();
       else this.buildEntries(sim, panel);
     }
     if (panel === 'buy') this.refreshItems();
     else if (panel === 'recon') this.refreshRecon(sim);
     else if (panel === 'deploy') this.refreshDeploy(sim, session);
+    else if (panel === 'watch') this.refreshWatch(sim, session);
     else for (const b of this.body.children) toggle(b, 'on', b.dataset.entry === sim.entry.id);
   }
 
@@ -196,21 +201,42 @@ export class PhasePanel {
     setText(this.title, S.title);
     setText(this.note, S.note);
     this.body.innerHTML = '';
-    this.watchRow = this.setupRow('', 'watch');
-    this.watchButtons = WATCH_MODES.map((m) => this.setupButton(this.watchRow, S.watch[m], `watch_${m}`, m));
+    this.buildWatchRow();
     this.trapRow = this.setupRow('', 'traps');
     this.trapButton = this.setupButton(this.trapRow, S.trapMode, 'trapmode', 'trap');
   }
 
-  refreshDeploy(sim, session) {
-    const S = T.setup;
-    const u = controllableUnit(sim, session.selectedId, session.team);
-    setText(this.watchRow.children[0], u ? S.watchOf(u.name) : S.pickOne);
+  /** The selected defender's watch modes (the set-up, and each planning of the assault). */
+  buildWatchRow() {
+    this.watchRow = this.setupRow('', 'watch');
+    this.watchButtons = WATCH_MODES.map((m) => this.setupButton(this.watchRow, T.setup.watch[m], `watch_${m}`, m));
+  }
+
+  refreshWatchRow(u) {
+    setText(this.watchRow.children[0], u ? T.setup.watchOf(u.name) : T.setup.pickOne);
     const mode = u ? watchOf(u).mode : null;
     for (const b of this.watchButtons) {
       toggle(b, 'on', b.dataset.key === mode);
       if (b.disabled !== !u) b.disabled = !u;
     }
+  }
+
+  /** Planning the assault as the defenders: the selected one's watch order, which he keeps where his route ends. */
+  buildWatch() {
+    setText(this.title, T.setup.watchTitle);
+    setText(this.note, T.setup.watchNote);
+    this.body.innerHTML = '';
+    this.buildWatchRow();
+  }
+
+  refreshWatch(sim, session) {
+    this.refreshWatchRow(controllableUnit(sim, session.selectedId, session.team));
+  }
+
+  refreshDeploy(sim, session) {
+    const S = T.setup;
+    const u = controllableUnit(sim, session.selectedId, session.team);
+    this.refreshWatchRow(u);
     const trapper = sim.teams.defenders.find((o) => o.role === 'trapper');
     const laid = trapper ? sim.traps.filter((t) => t.alive && t.ownerId === trapper.id).length : 0;
     this.trapRow.hidden = !trapper;

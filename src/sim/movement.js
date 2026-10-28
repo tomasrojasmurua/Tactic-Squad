@@ -34,6 +34,7 @@ function desiredFacing(sim, u) {
     if ((p.x - u.x) ** 2 + (p.y - u.y) ** 2 > 1e-6) return angleTo(u.x, u.y, p.x, p.y);
   }
   if (u.waitingGo && u.lookOverride !== null) return u.lookOverride;
+  if (isAiControlled(sim, u) && u.behavior && u.behavior.type === 'scan') return u.ai.baseFacing; // sweeps around his idle look (sim/ai.js)
   if (u.idleLook !== null) return u.idleLook;
   if (isAiControlled(sim, u)) return u.ai.baseFacing;
   return u.facing;

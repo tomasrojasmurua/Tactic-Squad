@@ -178,7 +178,12 @@ export function placeTrap(sim, u, x, y) {
   return layTrap(sim, u, x, y, (px, py) => inDefenderHalf(sim, px, py));
 }
 
-/** A watch order (see the header) -> the unit's behavior. Returns a REJECT code or null. */
+/**
+ * A watch order (see the header) -> the unit's behavior. Returns a REJECT code or null.
+ * In the preparation he turns to it at once; while planning (the assault) only
+ * the mode changes: he turns to it during the turn, where his route ends, and
+ * keeps the rest of his state (a fallback under way, his idle look).
+ */
 export function setWatch(sim, u, watch) {
   if (!watch || typeof watch.facing !== 'number') return 'badWatch';
   const fb = watch.fallback || null;
@@ -188,7 +193,14 @@ export function setWatch(sim, u, watch) {
   const behavior = watch.sweep
     ? { type: 'scan', from: watch.sweep[0], to: watch.sweep[1], period: PREP.sweepPeriod, reactsToNoise: react, rotate }
     : { type: 'hold', reactsToNoise: react, rotate };
+  if (sim.round.enabled && sim.round.phase === 'plan') {
+    u.behavior = behavior;
+    if (!u.route.length && u.idleLook === null) u.ai.baseFacing = watch.facing;
+    sim.emit(EV.SETUP_CHANGED, { unitId: u.id, kind: 'watch' });
+    return null;
+  }
   u.facing = u.prevFacing = watch.facing;
+  u.idleLook = null;
   setBehavior(u, behavior);
   u.ai.baseFacing = watch.facing;
   sim.emit(EV.SETUP_CHANGED, { unitId: u.id, kind: 'watch' });

@@ -57,8 +57,9 @@
 //   {type:'chooseSite', site}                  recon: the bomb goes to that site and their
 //                                              set-up restarts from the map's layout for it
 //   {type:'placeUnit', unitId, x, y, facing?}  preparation: a defender stands there (their half, walkable)
-//   {type:'setWatch', unitId, watch}           preparation: a defender's watch order
-//                                              ({facing, sweep?: [from, to], react?, fallback?: {to: [x, y], look}})
+//   {type:'setWatch', unitId, watch}           preparation and planning: a defender's watch order
+//                                              ({facing, sweep?: [from, to], react?, fallback?: {to: [x, y], look}});
+//                                              while planning he turns to it during the turn, where his route ends
 //   {type:'barricade', door, on}               recon: puts up / takes down a barricade
 //   {type:'wire', door, on}                    recon: lays / takes up barbed wire (sim/wires.js)
 //   {type:'camera', mount, on}                 recon: a camera up on that map mount (`cameraMounts`; on
@@ -140,7 +141,7 @@ const PHASE_ORDERS = Object.freeze({
   buy: ['buy'],
   prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade', 'wire', 'placeTrap', 'camera', 'endRecon'],
   drone: ['drone', 'droneRecall'],
-  plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry'],
+  plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry', 'setWatch'],
   exec: ['go'],
   end: [],
 });
@@ -279,13 +280,15 @@ function addWaypoint(sim, unit, { x, y, user = true, quiet = false }, kind = 'ad
 
 /**
  * A defender sent somewhere by his player gives up his watch order's
- * movement (patrol, sweep, fallback): from then on he holds where he ends
- * up, facing the look set there, and still turns to noise if he did.
+ * movement (patrol, fallback) but keeps its mode: where he ends up he holds
+ * (or sweeps around) the look set there, and still turns to noise if he did.
+ * The mode itself can change while planning (setWatch).
  */
 function holdOnArrival(unit) {
   const b = unit.behavior;
-  if (!b || (b.type === 'hold' && !b.rotate)) return;
-  unit.behavior = { type: 'hold', reactsToNoise: b.reactsToNoise !== false };
+  if (!b || (b.type !== 'patrol' && !b.rotate)) return;
+  const react = b.reactsToNoise !== false;
+  unit.behavior = b.type === 'scan' ? { type: 'scan', from: b.from, to: b.to, period: b.period, reactsToNoise: react } : { type: 'hold', reactsToNoise: react };
   unit.ai.rotating = null;
 }
 
