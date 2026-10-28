@@ -38,9 +38,9 @@ export const FLOW_TEXTS = Object.freeze({
     soon: 'Próximamente',
     items: {
       basic: { title: '1. Básico', note: 'Elegir operador, ruta, mirada, puertas, GO y el turno de 5 s' },
-      doors: { title: '2. Puertas y granadas', note: 'Patada, entreabrir, flash por la puerta y por qué gana el que espera' },
-      squad: { title: '3. Coordinar con GO', note: 'Escuadra en fila, colores de GO, dos puertas a la vez y sigilo' },
-      defend: { title: '4. Defender', note: 'Sitio, posiciones, vigilancia, barricadas, cámaras y asomarse' },
+      doors: { title: '2. Puertas y granadas', note: 'Granada desde el costado del marco, esperar el estallido y lanzar sin moverte' },
+      squad: { title: '3. Coordinar con GO', note: 'Escuadra en fila, dos grupos con su GO, dos puertas a la vez y sigilo' },
+      defend: { title: '4. Defender', note: 'Barricadas, cámaras, posiciones, vigilancia y el turno del defensor' },
       round: { title: '5. Ronda completa', note: 'Compra, entrada, dron, cámaras y bomba contra la IA' },
     },
   },
@@ -164,6 +164,135 @@ export const FLOW_TEXTS = Object.freeze({
         touch: 'Cuando ÁGUILA llegue a la puerta, toca GO VIOLETA a la derecha: ¡ahora! Si el turno se acaba antes, pulsa LISTO y sigue en el próximo.',
         desk: 'Cuando ÁGUILA llegue a la puerta, pulsa GO VIOLETA (o Z): ¡ahora! Si el turno se acaba antes, pulsa Espacio y sigue en el próximo.',
       },
+    },
+    // Lesson 2: doors and throws (config/lessons.js 'doors').
+    doorsWelcome: {
+      title: 'Puertas y granadas',
+      text: 'Tu escuadrón está frente a la puerta principal. Una puerta cerrada es el lugar más peligroso: el que espera adentro ya te está apuntando. Aquí aprendes a abrirla con ventaja.',
+    },
+    doorAsk: {
+      title: 'Hasta la puerta',
+      text: {
+        touch: 'Toca a ÁGUILA y traza su ruta hasta el pasillo, cruzando la puerta principal. Sobre la puerta aparece un ?.',
+        desk: 'Elige a ÁGUILA (1) y haz clic en el pasillo, cruzando la puerta principal. Sobre la puerta aparece un ?.',
+      },
+    },
+    doorBeside: {
+      title: 'Granada desde el costado',
+      text: {
+        touch: 'Toca el ? y elige GRANADA. ÁGUILA se pega al costado del marco, fuera de la línea de fuego, abre y lanza adentro. FLASH y CARGA también se hacen desde el costado.',
+        desk: 'Haz clic en el ? y elige GRANADA. ÁGUILA se pega al costado del marco, fuera de la línea de fuego, abre y lanza adentro. FLASH y CARGA también se hacen desde el costado.',
+      },
+    },
+    doorWait: {
+      title: 'Espera el estallido',
+      text: {
+        touch: 'Ahora traza a LOBO por la misma puerta. Como ÁGUILA ya la decidió, LOBO se coloca del otro lado del marco con la etiqueta ESPERA: entra cuando estalle la granada.',
+        desk: 'Ahora elige a LOBO (2) y trázalo por la misma puerta. Como ÁGUILA ya la decidió, LOBO se coloca del otro lado del marco con la etiqueta ESPERA: entra cuando estalle la granada.',
+      },
+    },
+    doorHere: {
+      title: 'Lanzar sin moverte',
+      text: {
+        touch: 'Toca a ZORRO y vuelve a tocarlo: el menú «Desde donde está». En LANZAR elige HUMO o FLASH y toca dónde cae. Lanza desde su sitio y después sigue su ruta, si le das una.',
+        desk: 'Elige a ZORRO (3) y haz clic sobre él: el menú «Desde donde está». En LANZAR elige HUMO o FLASH y haz clic dónde cae. Lanza desde su sitio y después sigue su ruta, si le das una.',
+      },
+    },
+    doorsExecute: {
+      title: 'Ejecuta',
+      text: { touch: 'Pulsa LISTO y mira el orden: la granada, el estallido y LOBO entrando detrás.', desk: 'Pulsa LISTO (Espacio) y mira el orden: la granada, el estallido y LOBO entrando detrás.' },
+    },
+    doorsEnd: {
+      title: 'Otras entradas',
+      text: 'En el ? también tienes PATADA (de golpe: aturde al que está detrás, pero se oye lejos) y ENTREABRIR (mira por la rendija y pasa con el GO). Regla de oro: el que cruza la puerta mirando al frente pierde contra el que ya apunta al marco. Ciégalo, atúrdelo o espera a que se mueva.',
+    },
+    // Lesson 3: two groups with their GOs (config/lessons.js 'squad').
+    squadWelcome: {
+      title: 'Coordinar con GO',
+      text: 'Un buen asalto entra por dos lados a la vez: el defensor solo puede mirar uno. Vas a armar dos grupos, cada uno con su GO, y darlos tú en el momento justo.',
+    },
+    squadFile: {
+      title: 'Escuadra en fila',
+      text: {
+        touch: 'Elige a ÁGUILA y toca ESCUADRA: LOBO y ZORRO la siguen en fila por su ruta. Una ruta para todos.',
+        desk: 'Elige a ÁGUILA (1) y pulsa Q (o ESCUADRA): LOBO y ZORRO la siguen en fila por su ruta. Una ruta para todos.',
+      },
+    },
+    squadGroups: {
+      title: 'Dos grupos, dos GO',
+      text: {
+        touch: 'Traza a ÁGUILA hasta la puerta principal y en CUÁNDO elige VIOLETA. Luego da a ZORRO su propia ruta (sale de la fila) hasta la puerta de la oficina, al norte, con CUÁNDO ROSA.',
+        desk: 'Traza a ÁGUILA hasta la puerta principal y en CUÁNDO elige VIOLETA (Z). Luego da a ZORRO (3) su propia ruta (sale de la fila) hasta la puerta de la oficina, al norte, con CUÁNDO ROSA (X).',
+      },
+    },
+    squadSneak: {
+      title: 'Sigilo',
+      text: {
+        touch: 'Toca un punto de una ruta y en PASO elige SIGILO: ese tramo se camina despacio y casi sin ruido. Los defensores que reaccionan al ruido no te oyen llegar.',
+        desk: 'Haz clic en un punto de una ruta y pulsa T (o PASO: SIGILO): ese tramo se camina despacio y casi sin ruido. Los defensores que reaccionan al ruido no te oyen llegar.',
+      },
+    },
+    squadExecute: {
+      title: 'Ejecuta',
+      text: { touch: 'Pulsa LISTO. Cada grupo camina hasta su puerta y espera su GO.', desk: 'Pulsa LISTO (Espacio). Cada grupo camina hasta su puerta y espera su GO.' },
+    },
+    squadGo: {
+      title: 'Tú das la orden',
+      text: {
+        touch: 'Cuando un grupo llega, su botón GO se enciende. Dalos juntos para entrar a la vez, o uno detrás del otro para distraer. Si el turno se acaba antes, sigue en el próximo.',
+        desk: 'Cuando un grupo llega, su GO se enciende: Z violeta, X rosa (G, el primero listo). Dalos juntos para entrar a la vez, o uno detrás del otro para distraer. Si el turno se acaba antes, sigue en el próximo.',
+      },
+    },
+    squadEnd: {
+      title: 'Pinza',
+      text: 'Así se gana un sitio: el defensor que gira hacia un ruido le da la espalda a la otra puerta. Sigue la ronda y prueba: encuentra la bomba en B.',
+    },
+    // Lesson 4: the defender's side (config/lessons.js 'defend').
+    defWelcome: {
+      title: 'Defender',
+      text: 'Ahora la bomba es tuya: está en B y tus defensores deben aguantar hasta que explote. Te preparas a ciegas, igual que el atacante elige su entrada sin saber nada de ti.',
+    },
+    defBarricade: {
+      title: 'Barricadas',
+      text: 'En el panel, en BARRICADAS, atranca una puerta que lleve a B. No se abre: el atacante tiene que romperla a golpes (se oye) o volarla con una carga. Tienes 2.',
+    },
+    defRecon: {
+      title: 'Cámaras',
+      text: {
+        touch: 'Tus cámaras (punto rojo con su cono) avisan cuando ven a un atacante. Toca un + en la pared para poner una y × para quitarla. Luego pulsa CONFIRMAR: sitio, barricadas y cámaras quedan fijos.',
+        desk: 'Tus cámaras (punto rojo con su cono) avisan cuando ven a un atacante. Haz clic en un + de la pared para poner una y en × para quitarla. Luego pulsa CONFIRMAR (Espacio): sitio, barricadas y cámaras quedan fijos.',
+      },
+    },
+    defSelect: { title: 'Elige un defensor', text: { touch: 'Toca a uno de tus defensores.', desk: 'Haz clic en uno de tus defensores, o pulsa 1.' } },
+    defPlace: {
+      title: 'Colócalo',
+      text: {
+        touch: 'Toca el suelo para moverlo (solo en tu mitad). Lejos de la puerta y en ángulo: el atacante que entra mirando al frente tiene que girar para encontrarlo.',
+        desk: 'Haz clic en el suelo para moverlo (solo en tu mitad). Lejos de la puerta y en ángulo: el atacante que entra mirando al frente tiene que girar para encontrarlo.',
+      },
+    },
+    defWatch: {
+      title: 'Su vigilancia',
+      text: {
+        touch: 'Mantén pulsado y arrastra para orientarlo, o elige en el panel: ÁNGULO FIJO (no se distrae), BARRER (mueve la mirada) o ATENTO (gira hacia los ruidos).',
+        desk: 'Clic derecho y arrastra para orientarlo, o elige en el panel: ÁNGULO FIJO (no se distrae), BARRER (mueve la mirada) o ATENTO (gira hacia los ruidos).',
+      },
+    },
+    defReady: {
+      title: 'Listo',
+      text: { touch: 'Acomoda a los demás si quieres y pulsa LISTO. Empieza el asalto.', desk: 'Acomoda a los demás si quieres (1·2·3) y pulsa LISTO (Espacio). Empieza el asalto.' },
+    },
+    defPlan: {
+      title: 'El turno del defensor',
+      text: `También planificas cada turno de ${TURN} s: rutas cortas, asomarse y volver, o un cambio de posición. Sin órdenes, cada uno cumple su vigilancia. Lo que ven tus defensores y tus cámaras queda marcado.`,
+    },
+    defExecute: {
+      title: 'Ejecuta',
+      text: { touch: 'Pulsa LISTO y mira cómo llegan.', desk: 'Pulsa LISTO (Espacio) y mira cómo llegan.' },
+    },
+    defEnd: {
+      title: 'Aguanta',
+      text: 'Ganas si la bomba explota o si eliminas a los atacantes. No hace falta salir a buscarlos: el tiempo juega a tu favor y el que se mueve hace ruido.',
     },
     roundWelcome: {
       title: 'Una ronda completa',
