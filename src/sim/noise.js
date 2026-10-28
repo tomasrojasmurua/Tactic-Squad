@@ -38,7 +38,9 @@ function kindOf(ev) {
     case EV.CHARGE_BLAST:
       return 'breach';
     case EV.GRENADE_DETONATE:
-      return ev.kind === 'flash' ? 'flash' : 'frag';
+      return ev.kind === 'flash' ? 'flash' : ev.kind === 'gas' ? 'door' : 'frag'; // a 40 mm gas round only pops
+    case EV.COUGH:
+      return 'cough';
     case EV.DEFUSE_START:
       return 'defuse';
     case EV.BARRICADE_HIT:

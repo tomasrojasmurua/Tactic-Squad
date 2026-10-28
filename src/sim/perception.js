@@ -1,15 +1,17 @@
 // Who sees whom this tick, target acquisition and reaction times.
-import { VISION, COMBAT } from '../config/balance.js';
+import { COMBAT, ENTRY, MONITOR } from '../config/balance.js';
 import { angleDiff, angleTo } from '../core/math.js';
 import { canSee } from './vision.js';
 import { EV } from '../core/events.js';
-import { peekEye } from './queries.js';
+import { peekEye, isMonitoring } from './queries.js';
 import { rememberSeen } from './view.js';
 import { camSeesTraps } from './traps.js';
 
 export function updatePerception(sim) {
   const { units, world } = sim;
   for (const u of units) {
+    u.monitor = isMonitoring(u);
+    u.vision = impairedVision(u);
     u.visibleEnemies.length = 0;
     u.seenByEnemyPrev = u.seenByEnemy;
     u.seenByEnemy = false;
@@ -50,6 +52,22 @@ export function updatePerception(sim) {
 
 const eye = { x: 0, y: 0, facing: 0, fov: 0, range: 0 };
 
+/**
+ * What a unit can see with right now: his class's vision, cut short by tear
+ * gas (ENTRY.gas.vision) or narrowed to a glance while a Vigía looks at his
+ * monitor (MONITOR.fov). u.vision is what perception and the fog of war use.
+ */
+function impairedVision(u) {
+  const base = u.roleVision;
+  if (u.gassed <= 0 && !u.monitor) return base;
+  const fov = u.monitor ? base.fov * MONITOR.fov : base.fov;
+  const range = u.gassed > 0 ? Math.min(base.range, ENTRY.gas.vision) : base.range;
+  const v = u.visionScratch || (u.visionScratch = { fov, range });
+  v.fov = fov;
+  v.range = range;
+  return v;
+}
+
 function selectTarget(sim, u) {
   const current = u.target >= 0 ? sim.units[u.target] : null;
   if (current && current.alive && u.visibleEnemies.includes(current.id)) {
@@ -84,7 +102,9 @@ function selectTarget(sim, u) {
  * duel: inside the focus cone the base is cut by COMBAT.focusFactor, and by
  * COMBAT.holdFactor too if he has held it still (COMBAT.holdTime); outside it
  * every radian to turn costs time, and so does walking. Having just come
- * through a doorway costs a moment; an alerted unit is a bit sharper.
+ * through a doorway costs a moment (the Asaltante, cutting the angle, is
+ * sharper instead); an alerted unit is a bit sharper. Class modifiers, tear
+ * gas and a Vigía's monitor scale the result.
  */
 function reactionTime(sim, u, e) {
   const off = Math.abs(angleDiff(u.facing, angleTo(u.x, u.y, e.x, e.y)));
@@ -97,9 +117,12 @@ function reactionTime(sim, u, e) {
     r += (off - COMBAT.focusAngle) * COMBAT.reactionPerRadian;
     if (u.moving) r += COMBAT.movingReaction;
   }
-  if (sim.time - u.doorwayAt < COMBAT.doorwayTime) r += COMBAT.doorwayPenalty;
+  if (focused && !u.moving && u.stillTime >= COMBAT.holdTime) r *= u.mods.holdReaction; // a marksman on his angle
+  // Through a doorway: a moment lost, unless he cuts the angle as he goes in (the Asaltante).
+  if (sim.time - u.doorwayAt < COMBAT.doorwayTime) r = u.mods.doorwayReaction < 1 ? r * u.mods.doorwayReaction : r + COMBAT.doorwayPenalty;
   if (u.alertTimer > 0 || (u.lastKnown && u.lastKnown.until > sim.time)) r *= COMBAT.alertFactor;
-  return r * u.mods.reaction;
+  if (u.gassed > 0) r *= ENTRY.gas.reaction; // tear gas (sim/gas.js)
+  return r * u.mods.reaction * (u.monitor ? MONITOR.reaction : 1); // a Vigía looking at his monitor (sim/cameras.js)
 }
 
 /** Updates the unit's memory of where its target was (in place: runs every tick). */

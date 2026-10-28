@@ -39,6 +39,7 @@ import { EV } from '../core/events.js';
 import { summarizeNoise } from './noise.js';
 import { launchDrone, droneOver, endDrone } from './drone.js';
 import { aiBuy, aiPrepare } from './prep.js';
+import { placeParapets } from './parapets.js';
 
 export const PHASE = Object.freeze({ buy: 'buy', prep: 'prep', drone: 'drone', plan: 'plan', exec: 'exec', end: 'end' });
 
@@ -86,6 +87,7 @@ export function advancePhase(sim) {
     r.phase = PHASE.prep;
     aiPrepare(sim);
   } else if (from === PHASE.prep) {
+    placeParapets(sim); // the Ancla sets up his barrier where he stands
     r.droneTick = 0;
     if (launchDrone(sim)) r.phase = PHASE.drone;
     else return toFirstPlan(sim, from);
@@ -134,7 +136,7 @@ export function afterTick(sim, endRound) {
   r.cut = cut && r.execTick < TURN_TICKS;
   r.contact = false;
   summarizeNoise(sim);
-  turnEndAbilities(sim); // the Explorador's sweep, before the plan
+  turnEndAbilities(sim); // per-turn passives, before the plan
   r.turn++;
   r.phase = PHASE.plan;
   sim.emit(EV.ROUND_PHASE, { phase: r.phase, previous: PHASE.exec, turn: r.turn });

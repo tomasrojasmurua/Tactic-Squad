@@ -38,7 +38,7 @@ export class FxDirector {
     bus.on(EV.GO_CODE, () => this.onGo());
     bus.on(EV.HOLD_REACHED, (e) => this.pingUnit(e.unitId, 'hold'));
     bus.on(EV.FIBER_CAM, (e) => this.pingUnit(e.unitId, 'scout')); // the Explorador's camera under a door
-    bus.on(EV.GRENADE_DETONATE, (e) => (e.kind === 'smoke' || e.kind === 'molotov' ? null : e.kind === 'flash' ? this.onFlash(e) : this.onBlast(e.x, e.y, 0, 0, FX.shake.frag)));
+    bus.on(EV.GRENADE_DETONATE, (e) => (e.kind === 'smoke' || e.kind === 'molotov' || e.kind === 'gas' ? null : e.kind === 'flash' ? this.onFlash(e) : this.onBlast(e.x, e.y, 0, 0, FX.shake.frag)));
     bus.on(EV.CHARGE_BLAST, (e) => this.onBreach(e));
     bus.on(EV.BARRICADE_BROKEN, (e) => e.how === 'bash' && this.onDoor({ ...e, mode: 'kick' }));
   }

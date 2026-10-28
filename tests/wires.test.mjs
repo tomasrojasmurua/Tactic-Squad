@@ -17,8 +17,8 @@ const order = (sim, team, c) => {
   sim.flushCommands();
 };
 
-function inPrep() {
-  const sim = new Simulation(MAP, { seed: 3, controllers: BOTH, site: 'A' });
+function inPrep(defenders = ['anchor', 'defender', 'roamer']) {
+  const sim = new Simulation(MAP, { seed: 3, controllers: BOTH, site: 'A', roles: { defenders } });
   sim.advancePhase(); // compra -> preparación
   sim.drainEvents();
   return sim;
@@ -40,6 +40,16 @@ test('el defensor pone alambre en su preparación: uno por ronda, nunca junto a 
   order(sim, 'defenders', { type: 'wire', door: c, on: true });
   assert.ok(rejects(sim).includes('doorTaken'));
   assert.ok(sim.doors.find((d) => d.def.id === a).wired);
+});
+
+test('con un Trampero el equipo pone un alambre más', () => {
+  const sim = inPrep(['anchor', 'defender', 'trapper']);
+  const [a, b, c] = sim.compiled.barricadeSlots;
+  order(sim, 'defenders', { type: 'wire', door: a, on: true });
+  order(sim, 'defenders', { type: 'wire', door: b, on: true });
+  assert.deepEqual(rejects(sim), []);
+  order(sim, 'defenders', { type: 'wire', door: c, on: true });
+  assert.deepEqual(rejects(sim), ['tooManyWires']);
 });
 
 test('frena y delata al atacante que lo cruza; el defensor pasa libre; una granada lo corta', () => {

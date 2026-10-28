@@ -19,6 +19,7 @@
 //   reaccionar       {facing, react: true}          hold, turns to noise
 //   replegarse       {facing, react: true, fallback: {to: [x, y], look}}
 //                    on the first firefight heard, falls back there and holds `look`
+//   monitor          {facing, react: true, monitor: true}  the Vigía on his camera monitor (sim/cameras.js)
 // Everything here is deterministic and uses no sim.rng (the AI's barricade
 // pick hashes the seed), so a set-up cannot shift the rest of the round.
 import { placeCameras } from './cameras.js';
@@ -30,7 +31,8 @@ import { WEAPONS } from '../config/weapons.js';
 import { ROLES, DEFAULT_DEFENDER_ROLE } from '../config/operators.js';
 import { applyRole, roleGear } from './units.js';
 import { createBomb } from './objectives.js';
-import { setWire } from './wires.js';
+import { setWire, wiredDoors } from './wires.js';
+import { wireLimit, cameraLimit } from './queries.js';
 
 // ------------------------------------------------------------ buy
 
@@ -183,6 +185,9 @@ export function setDefenderRole(sim, u, roleId) {
   if (weaponId !== u.weaponId) setWeapon(u, weaponId);
   resetGear(sim, u);
   dropOrphanTraps(sim);
+  // A Vigía / Trampero who stops being one takes the camera / wire he brought.
+  while (sim.cameras.length > cameraLimit(sim)) sim.cameras.pop();
+  for (const k of wiredDoors(sim).slice(wireLimit(sim))) setWire(sim, sim.doors[k].def.id, false);
   sim.emit(EV.ROLE_CHANGED, { unitId: u.id, role: roleId, points: u.points });
   return null;
 }
@@ -202,11 +207,12 @@ export function setWatch(sim, u, watch) {
   if (!watch || typeof watch.facing !== 'number') return 'badWatch';
   const fb = watch.fallback || null;
   if (fb && (!inDefenderHalf(sim, fb.to[0], fb.to[1]) || !sim.world.nav.walkable(fb.to[0], fb.to[1]))) return 'outsideHalf';
+  if (watch.monitor && u.ability !== 'monitor') return 'badWatch';
   const react = !!watch.react;
   const rotate = fb ? { to: [fb.to[0], fb.to[1]], look: fb.look ?? watch.facing } : undefined;
   const behavior = watch.sweep
     ? { type: 'scan', from: watch.sweep[0], to: watch.sweep[1], period: PREP.sweepPeriod, reactsToNoise: react, rotate }
-    : { type: 'hold', reactsToNoise: react, rotate };
+    : watch.monitor ? { type: 'hold', reactsToNoise: react, rotate, monitor: true } : { type: 'hold', reactsToNoise: react, rotate };
   if (sim.round.enabled && sim.round.phase === 'plan') {
     u.behavior = behavior;
     if (!u.route.length && u.idleLook === null) u.ai.baseFacing = watch.facing;
@@ -268,7 +274,7 @@ export function aiBuy(sim) {
  * On entering the preparation: an AI defending side sets up (for now its
  * plan is the map's: the site rolled from the seed, that site's layout and
  * PREP.barricades of the site's `aiBarricades`, picked by a hash of the seed,
- * then PREP.wires of barbed wire on the options left).
+ * then the barbed wire it may lay (wireLimit) on the options left).
  */
 export function aiPrepare(sim) {
   if (sim.controllers.defenders !== 'ai') return;
@@ -280,7 +286,7 @@ export function aiPrepare(sim) {
     setBarricade(sim, id, true);
   }
   // Barbed wire on the options left (sim/wires.js).
-  for (let n = 0; n < PREP.wires && options.length; n++) {
+  for (let n = 0; n < wireLimit(sim) && options.length; n++) {
     h = Math.imul(h ^ (h >>> 13), 0x2c1b3c6d) >>> 0;
     const [id] = options.splice(h % options.length, 1);
     setWire(sim, id, true);

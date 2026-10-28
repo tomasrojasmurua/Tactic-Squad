@@ -17,16 +17,20 @@
 // CAMERA.shootDelay — one loud shot (defenders within COMBAT.hearingRadius
 // hear it). Deterministic: no randomness.
 //
+// A Vigía looking at his monitor (role ability 'monitor', sim/queries.js
+// isMonitoring) makes every camera report at once (MONITOR.detect) and show
+// every attacker in its view, not only the first.
+//
 // What a camera reports, its side sees: while it keeps an attacker in sight
 // after CAMERA.detect he is shown to the defenders (seenByEnemy, their
 // memory: sim/view.js) and the first sight is a contact (EV.SPOTTED byCamera),
 // so a player defending is told, not only the AI.
 //
-//   sim.cameras = [{id, mount, x, y, facing, fov, range, alive, known, watch, seeing, lastAlert, aim, aimBy}]
-import { CAMERA, COMBAT } from '../config/balance.js';
+//   sim.cameras = [{id, mount, x, y, facing, fov, range, alive, known, watch, seeing, also, lastAlert, aim, aimBy}]
+import { CAMERA, COMBAT, MONITOR } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { canSee } from './vision.js';
-import { isAiControlled } from './queries.js';
+import { isAiControlled, cameraLimit } from './queries.js';
 import { alertAiUnit } from './ai.js';
 import { rememberSeen } from './view.js';
 
@@ -46,6 +50,7 @@ function addCamera(sim, m) {
     known: sim.knownMounts.has(m.id),
     watch: 0, // s it has kept an attacker in sight
     seeing: -1, // the attacker it reports right now (after CAMERA.detect), else -1
+    also: [], // the others it shows at the same time, while a Vigía watches the monitor
     lastAlert: -Infinity,
     aim: 0, // s an attacker has been aiming at it
     aimBy: -1,
@@ -53,11 +58,21 @@ function addCamera(sim, m) {
   });
 }
 
-/** The site's cameras (`aiCameras[site]`): the AI's, and a human defender's starting pick (a new site: its own). */
+/**
+ * The site's cameras (`aiCameras[site]`): the AI's, and a human defender's
+ * starting pick (a new site: its own). When the side may mount more than the
+ * map lists (a Vigía), the free mounts closest to the bomb fill the rest.
+ */
 export function placeCameras(sim) {
   sim.cameras = [];
-  const ids = (sim.compiled.cameras && sim.compiled.cameras[sim.site.id]) || [];
-  for (const id of ids.slice(0, CAMERA.max)) {
+  const limit = cameraLimit(sim);
+  const ids = ((sim.compiled.cameras && sim.compiled.cameras[sim.site.id]) || []).slice(0, limit);
+  if (ids.length < limit) {
+    const d2 = (m) => (m.at[0] - sim.site.bombX) ** 2 + (m.at[1] - sim.site.bombY) ** 2;
+    const rest = sim.compiled.cameraMounts.filter((m) => !ids.includes(m.id)).sort((a, b) => d2(a) - d2(b) || (a.id < b.id ? -1 : 1));
+    for (const m of rest.slice(0, limit - ids.length)) ids.push(m.id);
+  }
+  for (const id of ids) {
     const m = mountById(sim, id);
     if (m) addCamera(sim, m);
   }
@@ -73,7 +88,7 @@ export function setCamera(sim, mountId, on) {
   const i = sim.cameras.findIndex((c) => c.mount === mountId);
   if ((i >= 0) === on) return null;
   if (on) {
-    if (sim.cameras.length >= CAMERA.max) return 'tooManyCameras';
+    if (sim.cameras.length >= cameraLimit(sim)) return 'tooManyCameras';
     addCamera(sim, m);
   } else {
     sim.cameras.splice(i, 1);
@@ -99,12 +114,14 @@ export function droneSeesCameras(sim, d, cfg) {
 }
 
 function watch(sim, c, dt) {
+  const monitored = sim.teams.defenders.some((d) => d.monitor); // a Vigía at his monitor (sim/perception.js)
   let seen = null;
+  c.also.length = 0;
   for (const a of sim.teams.attackers) {
-    if (a.alive && canSee(sim.world, c, a.x, a.y, c)) {
-      seen = a;
-      break;
-    }
+    if (!a.alive || !canSee(sim.world, c, a.x, a.y, c)) continue;
+    if (!seen) seen = a;
+    else if (monitored) reveal(sim, c, a, false); // watched on the screen: every one it shows, not only the first
+    if (!monitored) break;
   }
   if (!seen) {
     c.watch = 0;
@@ -112,7 +129,7 @@ function watch(sim, c, dt) {
     return;
   }
   c.watch += dt;
-  if (c.watch < CAMERA.detect) return;
+  if (c.watch < (monitored ? MONITOR.detect : CAMERA.detect)) return;
   reveal(sim, c, seen);
   if (sim.time - c.lastAlert < CAMERA.realert) return;
   c.lastAlert = sim.time;
@@ -121,9 +138,10 @@ function watch(sim, c, dt) {
 }
 
 /** The defenders see what their camera reports: shown on their map, remembered, a contact the first time. */
-function reveal(sim, c, a) {
+function reveal(sim, c, a, main = true) {
   const first = c.seeing !== a.id && !a.seenByEnemy;
-  c.seeing = a.id;
+  if (main) c.seeing = a.id;
+  else c.also.push(a.id);
   a.seenByEnemy = true;
   rememberSeen(sim, 'defenders', a);
   if (first) sim.emit(EV.SPOTTED, { unitId: a.id, team: a.team, x: a.x, y: a.y, byCamera: true });

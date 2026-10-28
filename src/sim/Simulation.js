@@ -14,6 +14,8 @@ import { createDoorState, updateDoors, markDoorwayCrossings } from './doors.js';
 import { updateEntries } from './entries.js';
 import { updateSmokes } from './smoke.js';
 import { updateFires } from './fire.js';
+import { placeParapets } from './parapets.js';
+import { updateGas } from './gas.js';
 import { placeCameras, updateCameras } from './cameras.js';
 import { layTraps, updateTraps } from './traps.js';
 import { applyCommand } from './orders.js';
@@ -84,6 +86,8 @@ export class Simulation {
     this.grenades = []; // thrown, not yet detonated (sim/entries.js)
     this.smokes = []; // smoke clouds standing (sim/smoke.js)
     this.fires = []; // incendiaria pools burning (sim/fire.js)
+    this.gases = []; // tear gas clouds (sim/gas.js)
+    this.parapets = []; // the Ancla's barriers, set up as the assault begins (sim/parapets.js)
     this.fireSeq = 0;
     this.smokeDirty = false;
     this.grenadeSeq = 0;
@@ -110,6 +114,7 @@ export class Simulation {
     layTraps(this); // sim/traps.js: the Trampero's traps of the map's layout
     if (loadout) this.applyLoadout(loadout); // a match: the class carried over
     if (phases) initPoints(this); // the buy phase / preparation: each operator's utility points
+    if (!phases) placeParapets(this); // no preparation: the barriers are up from the start
     initAbilities(this);
     this.attackAi = createAttackAi(this); // sim/aiAttack.js: the commander of an AI attacking side
     this.defendAi = createDefendAi(this); // sim/aiDefend.js: sends an AI defending side's rotations
@@ -259,6 +264,7 @@ export class Simulation {
     updateEntries(this, dt);
     updateSmokes(this, dt);
     updateFires(this, dt);
+    updateGas(this, dt);
     updatePerception(this);
     updateCameras(this, dt);
     updateTraps(this, dt);

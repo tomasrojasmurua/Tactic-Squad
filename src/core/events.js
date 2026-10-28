@@ -17,6 +17,11 @@ export const EV = Object.freeze({
   ENTRY_CHOSEN: 'entryChosen', // {entry}: the attackers start from another entry (preparation)
   // Buy and defender set-up (sim/prep.js)
   ROLE_CHANGED: 'roleChanged', // {unitId, role, points}: an operator changed class (buy phase / preparation)
+  SHIELD_HIT: 'shieldHit', // {unitId, attackerId, x, y}: a bullet stopped on an Escudo's shield (sim/combat.js)
+  PARAPET_SET: 'parapetSet', // {unitId, x, y, facing}: an Ancla set up his barrier as the assault begins (sim/parapets.js)
+  GAS_START: 'gasStart', // {id, x, y, unitId}: a tear gas cloud bursts (sim/gas.js)
+  GAS_END: 'gasEnd', // {id, x, y}: it has thinned out
+  COUGH: 'cough', // {unitId, team, x, y}: someone choking on tear gas coughs (heard: sim/noise.js)
   FIBER_CAM: 'fiberCam', // {unitId, doorId, x, y}: an Explorador threaded his fiber-optic camera under a door (sim/entries.js)
   GEAR_CHANGED: 'gearChanged', // {unitId, item, count, points}: bought or given back (buy phase / preparation)
   SITE_CHOSEN: 'siteChosen', // {site}: the defenders moved the bomb (and reset their set-up to that site's)

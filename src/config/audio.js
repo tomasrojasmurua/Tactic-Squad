@@ -213,6 +213,7 @@ export const GUN_SOUNDS = Object.freeze({
  */
 export const GUN_MIX = Object.freeze({
   level: { rifle: 1, smg: 0.85, pistol: 0.8, dmr: 1.05, sniper: 1.1 },
+  suppressed: { gain: 0.32, lowpass: 2200, send: 0.4 }, // a suppressed shot (EV.SHOT.suppressed): quieter, duller, less room
   body: { gain: 1, db: 1.2, at: [0, 0] },
   mech: { gain: 0.2, db: 3, at: [0.012, 0.03] },
   tail: { gain: 0.34, db: 2.5, at: [0, 0.006] },

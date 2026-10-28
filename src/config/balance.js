@@ -331,6 +331,7 @@ export const WIRE = Object.freeze({
   hearing: 12, // m
   spotRange: 12, // m
   fragCut: 2.5, // m: a grenade this close clears it
+  cutTime: 0.8, // s the Brecha kneels to cut it with his pliers (silent)
 });
 
 /** Barricades (sim/barricades.js): block bodies, sight and the drone until broken or blown. */
@@ -423,7 +424,7 @@ export const SHIELD = Object.freeze({ arc: 70 * DEG, radius: 0.42, leak: 0.1 });
  * a shot from within `arc` of its facing meets low cover (COVER) and he takes `damage` × of what gets
  * through. Walk away and it stays there, useless to him.
  */
-export const PARAPET = Object.freeze({ reach: 0.7, arc: 75 * DEG, damage: 0.8, ahead: 0.55, width: 1.0 });
+export const PARAPET = Object.freeze({ reach: 0.7, arc: 75 * DEG, damage: 0.8, ahead: 0.55, width: 1.0, height: 0.9 });
 
 /**
  * Trampero's traps (sim/traps.js). An attacker who steps within `trigger` is

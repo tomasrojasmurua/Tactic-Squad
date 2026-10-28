@@ -28,10 +28,11 @@ import { rayCast } from '../core/geom.js';
 import { solidLineOfSight } from './vision.js';
 import { spawnSmoke } from './smoke.js';
 import { spawnFire } from './fire.js';
+import { spawnGas } from './gas.js';
 import { openDoor, crackDoor, destroyDoor } from './doors.js';
 import { alertAiUnit } from './ai.js';
 import { applyBlast } from './combat.js';
-import { isAiControlled, ENTRY_GEAR, tossLanding, tossDoorway } from './queries.js';
+import { isAiControlled, ENTRY_GEAR, tossLanding, tossDoorway, tossRangeOf } from './queries.js';
 
 const LAND = { x: 0, y: 0, reach: 0, viaX: 0, viaY: 0, leg1: 0, leg2: 0 };
 import { startBash, breakBarricade } from './barricades.js';
@@ -260,11 +261,11 @@ function throwPath(sim, u, e) {
 
 /**
  * A toss to the point the player picked: straight from the thrower, at most
- * ENTRY.tossRange away and short of the first wall on the way (ENTRY.wallMargin),
+ * his throwing range (tossRangeOf) away and short of the first wall on the way (ENTRY.wallMargin),
  * through the doorway of the point when it was armed at a door (armToss).
  */
 function tossPath(sim, u, e) {
-  const land = tossLanding(sim.world, u.x, u.y, e.tx, e.ty, LAND, e.doorway);
+  const land = tossLanding(sim.world, u.x, u.y, e.tx, e.ty, LAND, e.doorway, tossRangeOf(u));
   path.fromX = u.x;
   path.fromY = u.y;
   path.x = land.x;
@@ -326,6 +327,7 @@ function detonate(sim, g) {
   if (g.kind === 'flash') flashAt(sim, g);
   else if (g.kind === 'smoke') spawnSmoke(sim, g.x, g.y);
   else if (g.kind === 'molotov') spawnFire(sim, g.x, g.y, owner);
+  else if (g.kind === 'gas') spawnGas(sim, g.x, g.y, owner);
   else {
     blastAt(sim, g.x, g.y, ENTRY.frag.radius, ENTRY.frag.damage, ENTRY.frag.minDamage, 0, owner, g.cover);
     cutWiresNear(sim, g.x, g.y, WIRE.fragCut, owner); // barbed wire (sim/wires.js)
@@ -359,9 +361,10 @@ function flashAt(sim, g) {
 /**
  * Explosion at (x, y): damage falling off linearly to 0 at `radius`, only
  * through a line of sight (walls and closed doors stop it). `plane` ({d, side})
- * restricts it to one side of a doorway (breach charge). Optional blindness.
+ * restricts it to one side of a doorway (breach charge). Optional blindness
+ * and stun (frozen where he stands).
  */
-function blastAt(sim, x, y, radius, damage, minDamage, blindSeconds, owner, plane) {
+function blastAt(sim, x, y, radius, damage, minDamage, blindSeconds, owner, plane, stunSeconds = 0) {
   for (const o of sim.units) {
     if (!o.alive) continue;
     const dist = Math.hypot(o.x - x, o.y - y);
@@ -370,6 +373,7 @@ function blastAt(sim, x, y, radius, damage, minDamage, blindSeconds, owner, plan
     if (!solidLineOfSight(sim.world, x, y, o.x, o.y)) continue;
     const k = 1 - dist / radius;
     if (blindSeconds > 0) blind(sim, o, blindSeconds * (0.5 + 0.5 * k), 'blast', x, y);
+    if (stunSeconds > 0) o.stun = Math.max(o.stun, stunSeconds * (0.5 + 0.5 * k));
     const dmg = damage * k;
     if (dmg >= minDamage) applyBlast(sim, owner, o, dmg, x, y);
   }
@@ -385,7 +389,7 @@ function detonateBreach(sim, u, e) {
   const x = d.cx + d.normalX * e.side * B.depth;
   const y = d.cy + d.normalY * e.side * B.depth;
   sim.emit(EV.CHARGE_BLAST, { unitId: u.id, doorId: d.id, x: d.cx, y: d.cy, dirX: d.normalX * e.side, dirY: d.normalY * e.side });
-  blastAt(sim, x, y, B.radius, B.damage, 1, B.blind, u, { d, side: e.side });
+  blastAt(sim, x, y, B.radius, B.damage, 1, B.blind, u, { d, side: e.side }, B.stun * u.mods.breachStun);
   alertNear(sim, u, d.cx, d.cy, B.hearing, true);
 }
 

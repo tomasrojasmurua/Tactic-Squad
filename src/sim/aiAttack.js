@@ -28,7 +28,7 @@ import { AI_ATTACK, BUY, DRONE, ENTRY, NAV } from '../config/balance.js';
 import { TAU } from '../core/math.js';
 import { canSee } from './vision.js';
 import { applyCommand } from './orders.js';
-import { codeWaiting, codeInUse, isGoReady, gearLeft, defuseCandidate } from './queries.js';
+import { codeWaiting, codeInUse, isGoReady, gearLeft, defuseCandidate, entryModeFits } from './queries.js';
 import { PHASE } from './round.js';
 
 const TEAM = 'attackers';
@@ -217,7 +217,8 @@ function spot(sim, site, i) {
  * last one they are simply opened). At each door the first
  * AI_ATTACK.flashers operators with a flashbang throw one (a known
  * barricade: the first with a charge blows it); the others follow on the
- * same code, right after the bang.
+ * same code, right after the bang; an Explorador among them looks under
+ * the door with his fiber-optic camera while they wait.
  */
 function stackDoors(sim, squad) {
   const doors = [];
@@ -242,7 +243,8 @@ function stackDoors(sim, squad) {
       if (mode || u.route[i].ask) order(sim, { type: 'setEntry', unitId: u.id, mode, index: i }); // last: a throw moves the point
     };
     for (const [u, mode] of throwers) order1(u, mode);
-    for (const u of stacked) if (!throwers.some(([t]) => t === u)) order1(u, null);
+    // The Explorador waiting with them looks under the door with his camera meanwhile.
+    for (const u of stacked) if (!throwers.some(([t]) => t === u)) order1(u, code && !barricade && entryModeFits(sim, k, 'cam', u) ? 'cam' : null);
   });
 }
 

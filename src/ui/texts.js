@@ -1,7 +1,7 @@
 // Every user-facing string (Spanish). Keep UI copy here, not in components.
 
 import { FLOW_TEXTS } from './flowTexts.js';
-import { ROUND, DRONE, PREP, CAMERA } from '../config/balance.js';
+import { ROUND, DRONE, PREP } from '../config/balance.js';
 import { GO_GROUPS } from '../config/ui.js';
 
 const TURN = ROUND.turnSeconds;
@@ -40,7 +40,7 @@ export const T = Object.freeze({
   phaseSubDefend: {
     desk: {
       buy: 'Compra el equipo de cada defensor · ESPACIO: listo',
-      recon: `Elige el sitio, pon 2 barricadas y ${CAMERA.max} cámaras · ESPACIO: confirmar (quedan fijas)`,
+      recon: 'Elige el sitio, pon las barricadas, el alambre y las cámaras · ESPACIO: confirmar (quedan fijas)',
       prep: 'Coloca a cada defensor y oriéntalo · ESPACIO: listo',
       drone: 'El dron enemigo explora: si un defensor lo ve, lo derriba',
       planning: 'Puedes mover defensores (su vigilancia pasa a fija) · ESPACIO: listo',
@@ -455,7 +455,7 @@ export const T = Object.freeze({
     doors: { cocina: 'Cocina–pasillo', 'ofi-cocina': 'Oficina–cocina', 'banio-sala': 'Baño–sala', sala: 'Pasillo–sala', 'sitio-pasillo': 'Pasillo–nave', 'sitio-sala': 'Sala–nave' },
     watchOf: (n) => `Vigilancia de ${n}`,
     pickOne: 'Vigilancia: toca a un defensor',
-    watch: { fixed: 'Ángulo fijo', sweep: 'Barrer', alert: 'Atento' },
+    watch: { fixed: 'Ángulo fijo', sweep: 'Barrer', alert: 'Atento', monitor: 'Monitor' },
     watchTitle: 'Vigilancia',
     watchNote: 'Cámbiala en cada turno. Si lo mueves, la aplica donde llega, mirando hacia donde lo orientes.',
     traps: (n, max) => `Trampas ${n}/${max}`,
@@ -531,7 +531,7 @@ export const T = Object.freeze({
     notTrapper: 'Solo el Trampero pone trampas',
     tooManyTraps: 'Ya puso sus 2 trampas: toca una para levantarla',
     badMount: 'Ahí no se puede montar una cámara',
-    tooManyCameras: `Ya tienes tus ${CAMERA.max} cámaras: toca una para quitarla`,
+    tooManyCameras: 'Ya pusiste todas tus cámaras: toca una para quitarla',
   },
   webgl: 'Tu navegador no soporta WebGL2, necesario para Tactic Squad. Prueba con una versión reciente de Chrome, Edge o Firefox.',
   fatal: 'Se produjo un error al iniciar el juego.',

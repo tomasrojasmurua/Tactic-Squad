@@ -1,14 +1,14 @@
 // Camera mounts on the map (sim/cameras.js, map `cameraMounts`): playing the
 // defenders, in their recon (the first step of the preparation), each mount
 // is a round button over its spot on the wall. A free one shows a camera and
-// "+": tapping it puts one of your CAMERA.max cameras up there (its view is
+// "+": tapping it puts one of your cameras (CAMERA.max, more with a Vigía) up there (its view is
 // drawn dashed meanwhile: render/layers/OverlayLayer.js). One with a camera
 // only shows a small × beside it: tapping it takes the camera down. Small
 // on screen (the map is to scale) but a finger-sized target; hidden under
 // the HUD plates.
 // Emits EV.REQUEST {action: 'mount_<id>'}.
 import { EV } from '../core/events.js';
-import { CAMERA } from '../config/balance.js';
+import { cameraLimit } from '../sim/queries.js';
 import { HUD } from '../config/ui.js';
 import { OVERLAY } from '../config/render.js';
 import { inRecon } from '../session/Session.js';
@@ -50,7 +50,7 @@ export class CameraMounts {
     toggle(this.node, 'on', on);
     if (!on) return;
     if (this.map !== sim.compiled) this.build(sim);
-    const full = sim.cameras.length >= CAMERA.max;
+    const full = sim.cameras.length >= cameraLimit(sim);
     for (const { b, m, x } of this.buttons) {
       const up = sim.cameras.some((c) => c.mount === m.id);
       toggle(b, 'up', up);

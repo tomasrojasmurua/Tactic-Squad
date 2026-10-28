@@ -4,7 +4,8 @@
 // the ONLY sim helpers that input/ui/render may import besides vision.js.
 import { pointInBox, pointAabbDistance, pointSegDist2, rayCast } from '../core/geom.js';
 import { angleDiff } from '../core/math.js';
-import { MOVE, ROUND, ENTRY, DOORS } from '../config/balance.js';
+import { MOVE, ROUND, ENTRY, DOORS, CAMERA, PREP } from '../config/balance.js';
+import { ROLES } from '../config/operators.js';
 import { PROP_SURFACE, SURFACE_PROBE, DOOR_SURFACE, FENCE_SURFACE } from '../config/materials.js';
 import { TEAMS } from '../config/squad.js';
 
@@ -417,14 +418,17 @@ export function tossDoorway(world, p, tx, ty) {
 }
 
 /**
- * Where a throw from (x, y) toward (tx, ty) lands: at most ENTRY.tossRange
- * away and short of the first wall / closed door on the way (ENTRY.wallMargin).
+ * Where a throw from (x, y) toward (tx, ty) lands: at most `range` (the
+ * thrower's: tossRangeOf) away and short of the first wall / closed door on the way (ENTRY.wallMargin).
  * Through doorway k (tossDoorway) it flies to the doorway center first and
  * from there toward the target, ignoring that doorway's own door (he opens
  * it to throw). Writes {x, y, reach, viaX, viaY, leg1, leg2} into `out`.
  * Shared by the sim (entries.js) and the plan preview.
  */
-export function tossLanding(world, x, y, tx, ty, out = {}, k = -1) {
+/** How far u throws: ENTRY.tossRange, farther with a launcher (the Granadero: modifiers.tossRange). */
+export const tossRangeOf = (u) => ENTRY.tossRange * u.mods.tossRange;
+
+export function tossLanding(world, x, y, tx, ty, out = {}, k = -1, range = ENTRY.tossRange) {
   const d = k >= 0 ? world.doorways[k] : null;
   const ox = d ? d.cx : x;
   const oy = d ? d.cy : y;
@@ -432,7 +436,7 @@ export function tossLanding(world, x, y, tx, ty, out = {}, k = -1) {
   const dx = tx - ox;
   const dy = ty - oy;
   const len = Math.hypot(dx, dy) || 1;
-  const want = Math.max(0, Math.min(len, ENTRY.tossRange - leg1));
+  const want = Math.max(0, Math.min(len, range - leg1));
   const nx = dx / len;
   const ny = dy / len;
   const segs = world.segments;
@@ -457,4 +461,29 @@ export function tossLanding(world, x, y, tx, ty, out = {}, k = -1) {
   }
   out.reach = leg1 + leg2;
   return out;
+}
+
+// ------------------------------------------------------------ defender set-up limits
+
+/** How many cameras the defenders mount: CAMERA.max, and one more for each class that brings one (the Vigía). */
+export function cameraLimit(sim) {
+  let n = CAMERA.max;
+  for (const u of sim.teams.defenders) n += ROLES[u.role].cameras || 0;
+  return n;
+}
+
+/** How many barbed wires the defenders may lay: PREP.wires, and one more for each class that brings one (the Trampero). */
+export function wireLimit(sim) {
+  let n = PREP.wires;
+  for (const u of sim.teams.defenders) n += ROLES[u.role].wires || 0;
+  return n;
+}
+
+/**
+ * Is u looking at his camera monitor now? A Vigía on the monitor watch order
+ * (sim/prep.js setWatch), standing still with nothing to shoot, not flashed
+ * nor hurt a moment ago (he looks up).
+ */
+export function isMonitoring(u) {
+  return u.alive && u.ability === 'monitor' && !!u.behavior && !!u.behavior.monitor && !u.route.length && !u.moving && u.target < 0 && u.blind <= 0 && u.alertTimer <= 0;
 }
