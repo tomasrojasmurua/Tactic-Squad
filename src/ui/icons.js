@@ -101,11 +101,15 @@ export const ICON = {
     `<path d="M3 6.5 L9 4 L15 6.5 L21 4 V17.5 L15 20 L9 17.5 L3 20 Z" fill="none" stroke="currentColor" stroke-width="2.2"
      stroke-linejoin="round"/><path d="M9 4 V17.5 M15 6.5 V20" stroke="currentColor" stroke-width="2"/>`,
   ),
-  // Defender cameras: a wall camera on its arm.
+  // Defender cameras: a security camera on its wall arm (body tilted down, lens on the left, hood over it).
   camera: svg(
     '0 0 24 24',
-    `<rect x="3" y="7" width="13" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="2.2"/>
-     <path d="M16 9.5 L21 7 V15 L16 12.5" fill="currentColor"/><path d="M7 15 V19 H3" fill="none" stroke="currentColor" stroke-width="2.2"/>`,
+    `<path d="M21.5 4 V14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+     <path d="M21.5 9 H17.5 L15.6 11.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+     <path d="M4.6 7.4 L16.2 4.3 a1.3 1.3 0 0 1 1.6 .9 L19 9.6 a1.3 1.3 0 0 1 -.9 1.6 L7.3 14 Z" fill="currentColor"/>
+     <path d="M2.2 7.2 L8.6 5.5 L9.1 7.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+     <circle cx="6" cy="10.8" r="2.6" fill="currentColor"/><circle cx="6" cy="10.8" r="1.25" fill="#000" opacity=".55"/>
+     <path d="M3 17 L5.5 14.6 M5.6 19 L7.4 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".6"/>`,
   ),
   music: svg(
     '0 0 24 24',

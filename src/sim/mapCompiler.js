@@ -60,11 +60,14 @@ export function compileMap(def) {
     for (const id of Object.keys(weights)) if (!def.entries.some((e) => e.id === id)) throw new Error(`aiEntries ${site}: entrada desconocida ${id}`);
   }
 
-  // Defender cameras per site (sim/cameras.js): {at, facing, fov?, range?}.
+  // Camera mounts (sim/cameras.js): {id, at, facing, fov?, range?}; aiCameras[site]: mount ids.
+  const cameraMounts = def.cameraMounts || [];
+  for (const m of cameraMounts) if (!m.id || !Array.isArray(m.at) || !Number.isFinite(m.facing)) throw new Error(`cameraMounts: soporte sin id / at / facing`);
+  if (new Set(cameraMounts.map((m) => m.id)).size !== cameraMounts.length) throw new Error('cameraMounts: id repetido');
   const cameras = def.aiCameras || {};
-  for (const [site, list] of Object.entries(cameras)) {
+  for (const [site, ids] of Object.entries(cameras)) {
     if (!def.sites.some((s) => s.id === site)) throw new Error(`aiCameras: sitio desconocido ${site}`);
-    for (const c of list) if (!Array.isArray(c.at) || !Number.isFinite(c.facing)) throw new Error(`aiCameras ${site}: cámara sin at / facing`);
+    for (const id of ids) if (!cameraMounts.some((m) => m.id === id)) throw new Error(`aiCameras ${site}: soporte desconocido ${id}`);
   }
 
   // Trampero's traps per site (sim/traps.js): [x, y] points.
@@ -95,6 +98,7 @@ export function compileMap(def) {
     barricadeSlots,
     aiBarricades,
     aiEntries,
+    cameraMounts,
     cameras,
     traps,
     camera: def.camera,

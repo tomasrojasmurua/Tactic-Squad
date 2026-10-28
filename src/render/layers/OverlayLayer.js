@@ -10,7 +10,7 @@
 // which is always enough because ShapeBatch consumes colors immediately.
 import { HEIGHTS, OVERLAY } from '../../config/render.js';
 import { GO_GROUPS } from '../../config/ui.js';
-import { ENTRY, MOVE, ROUND, NOISE, DRONE } from '../../config/balance.js';
+import { ENTRY, MOVE, ROUND, NOISE, DRONE, CAMERA } from '../../config/balance.js';
 import { teamView } from '../../sim/view.js';
 import { visibilityPolygon } from '../../sim/vision.js';
 import { hexToRgb, lerp, lerpAngle } from '../../core/math.js';
@@ -40,10 +40,14 @@ export class OverlayLayer {
     this.pose = { x: 0, y: 0, facing: 0 }; // scratch interpolated pose
     this.gpos = { x: 0, y: 0, k: 0 }; // scratch grenade position
     this.land = { x: 0, y: 0, reach: 0 }; // scratch throw landing (tossMarker)
-    this.camPoly = null; // scratch camera field of view (cameras)
+    this.camPoly = []; // scratch camera fields of view (cameras), one per camera
+    this.ghosts = []; // free camera mounts' fields of view (cached: mountGhosts)
+    this.ghostKey = '';
+    this.ghostSim = null;
     this.routePts = []; // scratch flat polyline
     this.linkPts = [0, 0, 0, 0]; // scratch entry link
     this.tossPts = []; // scratch throw path (2 or 3 points)
+    this.conePts = []; // scratch outline of a camera's view
     this.routeOrder = []; // own operators, selected last
     this.pings = new OverlayPings();
     this.lastSelected = -1;
@@ -155,7 +159,7 @@ export class OverlayLayer {
     for (const u of sim.teams[own]) if (u.alive && u.id === selected) order.push(u);
     for (const u of order) this.route(t, u, unitLayer.poseInto(u, frame.alpha, this.pose), mpp, time, u.id === selected);
 
-    this.cameras(t, g, sim, own, mpp, time);
+    this.cameras(t, g, sim, own, mpp, time, own === 'defenders' && (session.phase === 'prep' || session.phase === 'drone'));
     this.traps(t, sim, own, mpp);
     this.smokes(t, sim, frame);
     this.grenades(t, sim, frame, mpp);
@@ -398,36 +402,112 @@ export class OverlayLayer {
   }
 
   /**
-   * Defender cameras (sim/cameras.js): the attackers see the ones they know of
-   * — a small red box with its field of view on the floor, pulsing while it
-   * reports someone; a broken one is a dark box with a cross.
+   * Defender cameras (sim/cameras.js): the defenders see theirs, the attackers
+   * the ones they know of. Each is drawn as a wall camera seen from above (a
+   * plate on the wall, an arm, the body and its lens toward where it looks)
+   * with its field of view on the floor — filled and outlined, cut by walls,
+   * doors and smoke — pulsing while it reports someone. A broken one is a
+   * dark body with a cross. While the defender picks mounts (preparation,
+   * drone) every free mount shows the view a camera there would have, dashed.
    */
-  cameras(t, g, sim, own, mpp, time) {
+  cameras(t, g, sim, own, mpp, time, picking) {
     const C = OVERLAY.camera;
     const c = C.color;
+    if (picking) this.mountGhosts(t, sim, mpp, time);
+    let k = 0;
     for (const cam of sim.cameras) {
       if (own === 'attackers' && !cam.known) continue;
-      const s = C.size;
       if (cam.alive) {
         const hot = sim.time - cam.lastAlert < C.spotPulse;
-        const a = hot ? 0.18 + 0.12 * Math.sin(time * 14) : C.coneAlpha;
-        // What it sees, cut by walls, doors and smoke (a fan from the lens).
-        const poly = (this.camPoly = visibilityPolygon(sim.world, cam.x, cam.y, cam.facing, cam.fov, cam.range, this.camPoly));
-        const col = rgba(c[0], c[1], c[2], a);
-        for (let i = 0; i + 3 < poly.length; i += 2) g.tri(cam.x, cam.y, poly[i], poly[i + 1], poly[i + 2], poly[i + 3], col);
-        t.circle(cam.x, cam.y, s + 2 * mpp, BLACK(0.85), 12);
-        t.circle(cam.x, cam.y, s, rgba(c[0], c[1], c[2], 1), 12);
-        const lx = cam.x + Math.cos(cam.facing) * s * 0.9;
-        const ly = cam.y + Math.sin(cam.facing) * s * 0.9;
-        t.circle(lx, ly, s * 0.45, BLACK(0.9), 10);
-        t.circle(lx, ly, s * 0.22, hot ? WHITE(1) : rgba(1, 0.85, 0.85, 0.8), 8);
-      } else {
-        t.circle(cam.x, cam.y, s + 2 * mpp, BLACK(0.85), 12);
-        t.circle(cam.x, cam.y, s, rgba(0.25, 0.25, 0.27, 1), 12);
-        t.line(cam.x - s, cam.y - s, cam.x + s, cam.y + s, 2.4 * mpp, rgba(c[0], c[1], c[2], 0.9));
-        t.line(cam.x - s, cam.y + s, cam.x + s, cam.y - s, 2.4 * mpp, rgba(c[0], c[1], c[2], 0.9));
+        const pulse = hot ? 0.5 + 0.5 * Math.sin(time * 14) : 0;
+        const poly = this.camPoly[k] = visibilityPolygon(sim.world, cam.x, cam.y, cam.facing, cam.fov, cam.range, this.camPoly[k]);
+        k++;
+        const fill = rgba(c[0], c[1], c[2], C.coneAlpha + 0.12 * pulse);
+        for (let i = 0; i + 3 < poly.length; i += 2) g.tri(cam.x, cam.y, poly[i], poly[i + 1], poly[i + 2], poly[i + 3], fill);
+        const pts = this.coneOutline(cam, poly);
+        t.polyline(pts, 3.4 * mpp, BLACK(0.3), false);
+        t.polyline(pts, 1.6 * mpp, rgba(c[0], c[1], c[2], C.edgeAlpha + 0.4 * pulse), false);
       }
+      this.cameraBody(t, cam.x, cam.y, cam.facing, mpp, cam.alive ? 1 : 0, time, cam.alive && sim.time - cam.lastAlert < C.spotPulse);
     }
+  }
+
+  /** [lens, ...edge of the view, lens]: the outline of a camera's field of view. */
+  coneOutline(cam, poly) {
+    const pts = this.conePts;
+    pts.length = 0;
+    pts.push(cam.x, cam.y);
+    for (let i = 0; i < poly.length; i++) pts.push(poly[i]);
+    pts.push(cam.x, cam.y);
+    return pts;
+  }
+
+  /** The free mounts' views, dashed (their polygons only change with the doors: cached per barricade set-up). */
+  mountGhosts(t, sim, mpp, time) {
+    const C = OVERLAY.camera;
+    const c = C.color;
+    let key = sim.site.id;
+    for (const d of sim.doors) key += d.barricaded ? 'b' : d.destroyed || d.open ? 'o' : d.cracked ? 'c' : '-';
+    if (this.ghostKey !== key || this.ghostSim !== sim) {
+      this.ghostKey = key;
+      this.ghostSim = sim;
+      this.ghosts = sim.compiled.cameraMounts.map((m) => visibilityPolygon(sim.world, m.at[0], m.at[1], m.facing, m.fov ?? CAMERA.fov, m.range ?? CAMERA.range));
+    }
+    const full = sim.cameras.length >= CAMERA.max;
+    sim.compiled.cameraMounts.forEach((m, i) => {
+      if (sim.cameras.some((cam) => cam.mount === m.id)) return;
+      const a = full ? C.ghostAlpha * 0.45 : C.ghostAlpha;
+      const pts = this.coneOutline({ x: m.at[0], y: m.at[1] }, this.ghosts[i]);
+      t.dashed(pts, 1.6 * mpp, 0.25, 0.2, -time * 0.4, rgba(c[0], c[1], c[2], a));
+    });
+  }
+
+  /**
+   * A wall camera from above at (x, y) looking `facing`: the plate on the
+   * wall behind, an arm, the body and a hood over the lens. `alive` 0: broken
+   * (dark, crossed). `hot`: it is reporting someone (the lens flashes).
+   */
+  cameraBody(t, x, y, facing, mpp, alive, time, hot) {
+    const C = OVERLAY.camera;
+    const c = C.color;
+    const L = C.length;
+    const W = C.width * 0.5;
+    const ux = Math.cos(facing);
+    const uy = Math.sin(facing);
+    const vx = -uy;
+    const vy = ux;
+    // A box along the facing from a0 to a1 (m from the plate), half width h.
+    const box = (a0, a1, h, col) =>
+      t.quad(x + ux * a0 + vx * h, y + uy * a0 + vy * h, x + ux * a1 + vx * h, y + uy * a1 + vy * h, x + ux * a1 - vx * h, y + uy * a1 - vy * h, x + ux * a0 - vx * h, y + uy * a0 - vy * h, col);
+    const ol = Math.min(mpp, 0.03); // outline
+    const body = alive ? rgba(0.88, 0.9, 0.92, 1) : rgba(0.3, 0.3, 0.32, 1); // a white housing, like a real one
+    // Wall plate and arm.
+    box(-0.04 * L, 0.1 * L, W * 1.15, BLACK(0.9));
+    t.line(x + ux * 0.06 * L, y + uy * 0.06 * L, x + ux * 0.3 * L, y + uy * 0.3 * L, W * 0.55, BLACK(0.9));
+    // Body (outlined), then the hood over the lens, a bit wider.
+    box(0.26 * L - ol, 0.86 * L + ol, W + ol, BLACK(0.9));
+    box(0.26 * L, 0.86 * L, W, body);
+    box(0.8 * L, 1.0 * L, W * 1.2, alive ? rgba(0.1, 0.11, 0.12, 1) : body);
+    if (!alive) {
+      const k = W * 1.6;
+      const mx = x + ux * 0.6 * L;
+      const my = y + uy * 0.6 * L;
+      t.line(mx - k, my - k, mx + k, my + k, 1.6 * mpp, rgba(c[0], c[1], c[2], 0.9));
+      t.line(mx - k, my + k, mx + k, my - k, 1.6 * mpp, rgba(c[0], c[1], c[2], 0.9));
+      return;
+    }
+    t.circle(x + ux * 0.9 * L, y + uy * 0.9 * L, W * 0.62, hot ? WHITE(1) : rgba(0.55, 0.85, 1, 0.95), 12);
+    // The recording light: blinks on the body, with a halo that grows while it is on (it is what you spot).
+    const lx = x + ux * 0.55 * L;
+    const ly = y + uy * 0.55 * L;
+    const phase = (time / C.blink) % 2; // 0..1 on, 1..2 off
+    const on = hot || phase < 1;
+    if (on) {
+      const k = hot ? (time * 3) % 1 : phase;
+      t.ring(lx, ly, (3 + (C.haloPx - 3) * k) * mpp, 1.4 * mpp, rgba(1, 0.2, 0.15, 0.75 * (1 - k)), 16);
+      t.circle(lx, ly, Math.max(W * 0.35, C.ledPx * mpp) * 1.8, rgba(1, 0.2, 0.15, 0.3), 12, rgba(1, 0.2, 0.15, 0));
+    }
+    t.circle(lx, ly, Math.max(W * 0.35, C.ledPx * mpp), on ? rgba(1, 0.22, 0.16, 1) : rgba(0.45, 0.08, 0.06, 1), 10);
   }
 
   /**

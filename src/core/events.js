@@ -44,6 +44,7 @@ export const EV = Object.freeze({
   CAMERA_FOUND: 'cameraFound', // {cameraId, x, y, byDrone}: the attackers know where a defender camera is
   CAMERA_SPOT: 'cameraSpot', // {cameraId, unitId, x, y}: a camera saw an attacker and told the defenders
   CAMERA_DESTROYED: 'cameraDestroyed', // {cameraId, unitId, x, y}: an attacker shot it
+  CAMERA_SET: 'cameraSet', // {mount, on}: the defenders put a camera up on a mount (or took it down)
   BOMB_SPOTTED: 'bombSpotted', // {unitId, site, x, y}: the attackers found the bomb
   DEFUSE_START: 'defuseStart', // {unitId, x, y}
   DEFUSE_ABORT: 'defuseAbort', // {unitId}

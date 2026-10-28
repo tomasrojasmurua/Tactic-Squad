@@ -57,8 +57,8 @@ bando; hoy 47 % atacantes en 200 rondas: 49 % en A, 44 % en B).
 | Fase | Plazo | Qué pasa |
 | --- | --- | --- |
 | **Compra** | sin límite | Cada atacante elige su **clase** (Asaltante, Brecha, Explorador; Brecha y Explorador, uno solo) y suma utilidad con sus **2 puntos**: flash, granada, humo o carga (1 punto cada una). El equipo de la clase es gratis. |
-| **Preparación** | sin límite | A ciegas y a la vez. El atacante elige una de **3 entradas** (norte, principal, sur); el defensor elige **sitio A o B**, coloca a los suyos, les da vigilancia, suma utilidad con sus **2 puntos** (flash, granada o humo) y pone **2 barricadas**. Cada sitio trae **una cámara**. |
-| **Dron** | 15 s | El atacante maneja un dron en tiempo real. Pasa por debajo de las puertas, no por barricadas. Lo que ve queda marcado: defensores, barricadas, cámaras y la bomba. Un defensor que lo vea 0,6 s lo derriba. |
+| **Preparación** | sin límite | A ciegas y a la vez. El atacante elige una de **3 entradas** (norte, principal, sur); el defensor elige **sitio A o B**, coloca a los suyos, les da vigilancia, suma utilidad con sus **2 puntos** (flash, granada o humo), pone **2 barricadas** y monta **2 cámaras** en los soportes que elija (7 en el mapa). |
+| **Dron** | 15 s | El atacante maneja un dron en tiempo real. Pasa por debajo de las puertas, no por barricadas. Lo que ve queda marcado: defensores, barricadas, cámaras y la bomba. Un defensor que lo vea 0,6 s lo derriba. Mientras vuela, **el defensor todavía puede mover sus cámaras**. |
 | **Planificación** | sin límite | Tiempo detenido. Rutas, miradas, esperas en grupos GO de **color** (violeta, rosa, blanco), cómo entra por cada puerta, a qué paso, y qué lanza. |
 | **Ejecución** | 5 s (menos si ve a alguien) | Todo corre a la vez. La única orden durante el turno es el **GO de un color**: ese grupo sale junto. |
 | **Fin** | 10 s | Resultado, con un "por qué" que explica cómo murió cada uno y qué falló. |
@@ -176,11 +176,18 @@ alcanza a ningún compañero. En 200 rondas IA contra IA los atacantes ganan el 
 todos**: operadores, IA, niebla de guerra, dron y cámaras. **No para balas ni
 explosiones.**
 
-**Cámaras de los defensores.** Una por sitio: en A mira el pasillo, en B la sala. Si
-tiene a un atacante a la vista 0,5 s, **todos los defensores saben dónde está** y
+**Cámaras de los defensores.** El defensor monta **2** en los **7 soportes** de la pared
+del mapa (pasillo este y oeste, cocina, sala norte y sur, nave norte y sur). En la
+preparación y mientras vuela el dron enemigo, cada soporte es un botón redondo sobre el
+mapa: **+** la pone, **×** la quita, y el cono de lo que vería se dibuja punteado. Cada
+soporte apunta a un lado fijo. La IA usa las de su sitio (A: pasillo este y nave sur;
+B: sala sur y sala norte), que también son las iniciales del jugador. Se ven como una
+cámara de seguridad blanca con su lente y su cono de visión en el suelo, cortado por
+paredes, puertas y humo. Un soporte que el atacante ya descubrió sigue descubierto
+aunque la cámara se quite y se vuelva a poner. Si tiene a un atacante a la vista 0,5 s, **todos los defensores saben dónde está** y
 apuntan a esa entrada. Si juegas de defensor, **lo ves en tu mapa** y la primera vez
-cuenta como contacto (corta el turno); con **CÁMARAS** (tecla O) las recorres al planificar. Los atacantes la descubren con un operador o con el dron (punto
-rojo con su cono) y **la rompen de un tiro** si no tienen a quién más dispararle. Si ya
+cuenta como contacto (corta el turno); con **CÁMARAS** (tecla O) las recorres al planificar. Los atacantes la descubren con un operador o con el dron (la
+cámara con su cono) y **la rompen de un tiro** si no tienen a quién más dispararle. Si ya
 la conocían, la rompen antes de que alcance a verlos. El humo también la ciega.
 
 ---
@@ -224,7 +231,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 - El Explorador detecta a través de las paredes.
 
 **Defensor**
-- Sitio A/B oculto, colocación, 4 órdenes de vigilancia, 2 barricadas, una cámara por sitio, Anclas.
+- Sitio A/B oculto, colocación, 4 órdenes de vigilancia, 2 barricadas, 2 cámaras en los soportes que elige (también durante el dron), Anclas.
 
 **Simulación y presentación**
 - Determinista por semilla, paso fijo de 60 Hz. Visión compartida entre percepción y niebla de guerra (el humo entra en las dos).
@@ -239,7 +246,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 | Economía entre rondas | **Cambiado** (28 oct 2026): sin dinero. Equipo de clase gratis cada ronda y 2 puntos de utilidad por operador en los dos bandos, +1 al que perdió. Con mitades de 3 rondas el dinero casi no pesaba y solo compraba el atacante |
 | Clases de operador con habilidad | **Parcial.** Asaltante, Brecha, Explorador, Ancla, Merodeador y Trampero (las 3 por bando del primer paso), con elección a ciegas en los dos bandos. Faltan Escudo, Tirador, Granadero y Vigía |
 | Contras entre clases | **Parcial.** Brecha contra barricadas, Explorador contra Anclas escondidos, Merodeador y trampas, humo contra cámaras y anclas |
-| Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (fijas por mapa, gratis). Sensor y elección de refuerzos por el defensor: faltan |
+| Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (soportes del mapa a elegir, gratis). Sensor y elección de refuerzos por el defensor: faltan |
 | Paredes blandas destructibles | **Descartado** por decisión de diseño (27 oct 2026): no se implementan |
 | Plazos de las fases | **Parcial.** El reloj existe (`PhaseClock`), pero contra la IA no hay límite |
 | Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Falta** |
