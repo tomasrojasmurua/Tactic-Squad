@@ -1035,7 +1035,7 @@ body.touch .phase-panel .pp-sell { min-width: 24px; padding: 2px 4px; }
 .killcam .kc-tag { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; color: var(--red, #e5484d); white-space: nowrap; }
 .killcam .kc-who { font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .killcam .kc-skip { pointer-events: auto; }
-body.killcam-on .banner, body.killcam-on .squad, body.killcam-on .feed, body.killcam-on .actions, body.killcam-on .tbar, body.killcam-on .phase-panel { visibility: hidden; }
+body.killcam-on .banner, body.killcam-on .squad, body.killcam-on .feed, body.killcam-on .actions, body.killcam-on .tbar, body.killcam-on .phase-panel, body.killcam-on .weapon-plate, body.killcam-on .objective { visibility: hidden; }
 
 /* ------------------------------------------------------------ phone pass (landscape, height <= 520 px)
  * Nothing cut off, finger-size targets (>= 36 px, 44 px for the main ones), and scroll where a panel
