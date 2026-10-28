@@ -3,8 +3,9 @@
 // is a round button over its spot on the wall. A free one shows a camera and
 // "+": tapping it puts one of your CAMERA.max cameras up there (its view is
 // drawn dashed meanwhile: render/layers/OverlayLayer.js). One with a camera
-// is a ring around it with a small ×: tapping it takes the camera down.
-// Finger-sized on a phone; hidden under the HUD plates.
+// only shows a small × beside it: tapping it takes the camera down. Small
+// on screen (the map is to scale) but a finger-sized target; hidden under
+// the HUD plates.
 // Emits EV.REQUEST {action: 'mount_<id>'}.
 import { EV } from '../core/events.js';
 import { CAMERA } from '../config/balance.js';
@@ -54,8 +55,8 @@ export class CameraMounts {
       toggle(b, 'up', up);
       toggle(b, 'full', full && !up);
       if (x.textContent !== (up ? '×' : '+')) x.textContent = up ? '×' : '+';
-      // Centered on the camera's body (OverlayLayer cameraBody: never shorter than minPx on screen).
-      const k = 0.5 * Math.max(OVERLAY.camera.length, OVERLAY.camera.minPx * camera.metersPerPixel(0));
+      // Centered on the camera's body (OverlayLayer cameraBody).
+      const k = 0.5 * OVERLAY.camera.length;
       const s = camera.worldToScreen(m.at[0] + Math.cos(m.facing) * k, m.at[1] + Math.sin(m.facing) * k, 0);
       setStyle(b, 'transform', `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(-50%, -50%)`);
       toggle(b, 'under-hud', !!occlusion && occlusion.plateAt(s.x, s.y, HUD.labelHudMarginPx) >= 0);

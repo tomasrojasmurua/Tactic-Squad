@@ -199,11 +199,12 @@ export const OVERLAY = Object.freeze({
   // Door entries: dashed link waypoint -> doorway and a marker on the doorway, per mode (rgb).
   entryColors: Object.freeze({ kick: [1, 1, 1], slow: [0.6, 0.85, 1], flash: [1, 0.96, 0.62], frag: [0.72, 0.85, 0.45], breach: [1, 0.69, 0.18], smoke: [0.78, 0.8, 0.82] }),
   smokeColor: [0.72, 0.74, 0.76], // a smoke cloud (sim/smoke.js)
-  // Defender cameras (sim/cameras.js), seen from above: a wall plate, a short arm and the body with its
-  // lens toward `facing`. length: m from the plate to the lens; minPx: never drawn shorter on screen.
-  // coneAlpha / edgeAlpha: its field of view on the floor (fill, outline); ghost: a free mount's
-  // dashed outline while the defender picks where they go (ui/CameraMounts.js).
-  camera: Object.freeze({ length: 0.7, width: 0.3, minPx: 18, color: [1, 0.33, 0.3], coneAlpha: 0.13, edgeAlpha: 0.6, ghostAlpha: 0.45, spotPulse: 1.2 }),
+  // Defender cameras (sim/cameras.js), seen from above and to scale: a wall plate, a short arm and the
+  // body with its lens toward `facing`. length / width: m. What makes them easy to find is the red
+  // recording light: it blinks (blink: s per on/off) with a halo that grows to haloPx, and is never
+  // drawn smaller than ledPx (screen px). coneAlpha / edgeAlpha: its field of view on the floor
+  // (fill, outline); ghost: a free mount's dashed outline while the defender picks (ui/CameraMounts.js).
+  camera: Object.freeze({ length: 0.42, width: 0.2, ledPx: 2.6, haloPx: 9, blink: 0.6, color: [1, 0.33, 0.3], coneAlpha: 0.13, edgeAlpha: 0.6, ghostAlpha: 0.45, spotPulse: 1.2 }),
   trap: Object.freeze({ size: 0.28, color: [1, 0.62, 0.18] }), // Trampero's traps (sim/traps.js)
   entryMarker: 0.2, // m, half-size of the doorway marker
   grenadeRadius: 0.09, // m, a grenade in flight / on the floor

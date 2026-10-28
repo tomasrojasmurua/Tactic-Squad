@@ -470,9 +470,8 @@ export class OverlayLayer {
   cameraBody(t, x, y, facing, mpp, alive, time, hot) {
     const C = OVERLAY.camera;
     const c = C.color;
-    const s = Math.max(1, (C.minPx * mpp) / C.length); // never smaller than minPx on screen
-    const L = C.length * s;
-    const W = C.width * s * 0.5;
+    const L = C.length;
+    const W = C.width * 0.5;
     const ux = Math.cos(facing);
     const uy = Math.sin(facing);
     const vx = -uy;
@@ -480,34 +479,35 @@ export class OverlayLayer {
     // A box along the facing from a0 to a1 (m from the plate), half width h.
     const box = (a0, a1, h, col) =>
       t.quad(x + ux * a0 + vx * h, y + uy * a0 + vy * h, x + ux * a1 + vx * h, y + uy * a1 + vy * h, x + ux * a1 - vx * h, y + uy * a1 - vy * h, x + ux * a0 - vx * h, y + uy * a0 - vy * h, col);
-    const ol = 2 * mpp; // outline
+    const ol = Math.min(mpp, 0.03); // outline
     const body = alive ? rgba(0.88, 0.9, 0.92, 1) : rgba(0.3, 0.3, 0.32, 1); // a white housing, like a real one
-    const trim = alive ? rgba(c[0], c[1], c[2], 1) : rgba(0.45, 0.45, 0.47, 1);
     // Wall plate and arm.
-    box(-0.04 * L, 0.08 * L, W * 1.15 + ol, BLACK(0.9));
-    box(-0.04 * L + ol, 0.08 * L - ol, W * 1.15, trim);
+    box(-0.04 * L, 0.1 * L, W * 1.15, BLACK(0.9));
     t.line(x + ux * 0.06 * L, y + uy * 0.06 * L, x + ux * 0.3 * L, y + uy * 0.3 * L, W * 0.55, BLACK(0.9));
     // Body (outlined), then the hood over the lens, a bit wider.
     box(0.26 * L - ol, 0.86 * L + ol, W + ol, BLACK(0.9));
     box(0.26 * L, 0.86 * L, W, body);
-    box(0.26 * L, 0.34 * L, W, trim);
-    box(0.8 * L - ol, 1.0 * L + ol, W * 1.2 + ol, BLACK(0.9));
     box(0.8 * L, 1.0 * L, W * 1.2, alive ? rgba(0.1, 0.11, 0.12, 1) : body);
-    const lx = x + ux * 0.9 * L;
-    const ly = y + uy * 0.9 * L;
-    if (alive) {
-      t.circle(lx, ly, W * 0.62, hot ? WHITE(1) : rgba(0.55, 0.85, 1, 0.95), 14);
-      t.circle(lx - vx * W * 0.2 - ux * W * 0.1, ly - vy * W * 0.2 - uy * W * 0.1, W * 0.2, WHITE(0.9), 8); // glint
-      // The recording light blinks on the body.
-      const rec = Math.sin(time * 4) > 0 ? 1 : 0.35;
-      t.circle(x + ux * 0.5 * L + vx * W * 0.45, y + uy * 0.5 * L + vy * W * 0.45, W * 0.24, rgba(1, 0.2, 0.15, rec), 8);
-    } else {
-      const k = W * 1.3;
+    if (!alive) {
+      const k = W * 1.6;
       const mx = x + ux * 0.6 * L;
       const my = y + uy * 0.6 * L;
-      t.line(mx - k, my - k, mx + k, my + k, 2.4 * mpp, rgba(c[0], c[1], c[2], 0.9));
-      t.line(mx - k, my + k, mx + k, my - k, 2.4 * mpp, rgba(c[0], c[1], c[2], 0.9));
+      t.line(mx - k, my - k, mx + k, my + k, 1.6 * mpp, rgba(c[0], c[1], c[2], 0.9));
+      t.line(mx - k, my + k, mx + k, my - k, 1.6 * mpp, rgba(c[0], c[1], c[2], 0.9));
+      return;
     }
+    t.circle(x + ux * 0.9 * L, y + uy * 0.9 * L, W * 0.62, hot ? WHITE(1) : rgba(0.55, 0.85, 1, 0.95), 12);
+    // The recording light: blinks on the body, with a halo that grows while it is on (it is what you spot).
+    const lx = x + ux * 0.55 * L;
+    const ly = y + uy * 0.55 * L;
+    const phase = (time / C.blink) % 2; // 0..1 on, 1..2 off
+    const on = hot || phase < 1;
+    if (on) {
+      const k = hot ? (time * 3) % 1 : phase;
+      t.ring(lx, ly, (3 + (C.haloPx - 3) * k) * mpp, 1.4 * mpp, rgba(1, 0.2, 0.15, 0.75 * (1 - k)), 16);
+      t.circle(lx, ly, Math.max(W * 0.35, C.ledPx * mpp) * 1.8, rgba(1, 0.2, 0.15, 0.3), 12, rgba(1, 0.2, 0.15, 0));
+    }
+    t.circle(lx, ly, Math.max(W * 0.35, C.ledPx * mpp), on ? rgba(1, 0.22, 0.16, 1) : rgba(0.45, 0.08, 0.06, 1), 10);
   }
 
   /**
