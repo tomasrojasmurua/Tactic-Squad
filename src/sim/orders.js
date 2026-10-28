@@ -275,6 +275,7 @@ function addWaypoint(sim, unit, { x, y, user = true, quiet = false }, kind = 'ad
   const path = sim.world.nav.findPath(from.x, from.y, p.x, p.y, NAV.snapRadius);
   if (!path || !path.length) return quiet ? undefined : reject(sim, unit, REJECT.unreachable);
   const start = unit.route.length;
+  if (start) unit.route[start - 1].cover = false; // cubrir zona belongs to the end of the route
   const pace = unit.route.length ? from.pace : null; // a new leg keeps the pace of the one before
   path.forEach((q, i) => {
     unit.route.push(routePoint(q.x, q.y, { user: user && i === path.length - 1, pace }));

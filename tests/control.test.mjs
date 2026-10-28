@@ -234,3 +234,13 @@ test('cubrir zona: el atacante barre alrededor de su mirada al final de la ruta 
   sim.flushCommands();
   assert.equal(d.cover, false);
 });
+
+test('cubrir zona queda solo en el final de la ruta', () => {
+  const sim = new Simulation(MAPS[DEFAULT_MAP], { seed: 3, phases: false });
+  const a = sim.teams.attackers[0];
+  const c = (x) => { sim.enqueue({ team: 'attackers', ...x }); sim.flushCommands(); };
+  c({ type: 'addWaypoint', unitId: a.id, x: a.x + 2, y: a.y, user: true });
+  c({ type: 'setCover', unitId: a.id, on: true });
+  c({ type: 'addWaypoint', unitId: a.id, x: a.x + 3, y: a.y, user: true });
+  assert.equal(a.route.filter((p) => p.cover).length, 0);
+});
