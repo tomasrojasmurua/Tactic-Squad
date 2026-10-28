@@ -17,7 +17,7 @@ export const EV = Object.freeze({
   ENTRY_CHOSEN: 'entryChosen', // {entry}: the attackers start from another entry (preparation)
   // Buy and defender set-up (sim/prep.js)
   ROLE_CHANGED: 'roleChanged', // {unitId, role, points}: an operator changed class (buy phase / preparation)
-  SCOUT_PULSE: 'scoutPulse', // {unitId, x, y, radius, found}: an Explorador's turn-end sweep (found: defenders detected)
+  FIBER_CAM: 'fiberCam', // {unitId, doorId, x, y}: an Explorador threaded his fiber-optic camera under a door (sim/entries.js)
   GEAR_CHANGED: 'gearChanged', // {unitId, item, count, points}: bought or given back (buy phase / preparation)
   SITE_CHOSEN: 'siteChosen', // {site}: the defenders moved the bomb (and reset their set-up to that site's)
   SETUP_CHANGED: 'setupChanged', // {unitId, kind:'place'|'watch'}: a defender placed or given a watch order

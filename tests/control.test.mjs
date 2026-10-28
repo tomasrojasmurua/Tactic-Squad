@@ -177,31 +177,11 @@ test('clases: Brecha y Explorador una vez, cada una con su equipo; dentro de la 
   assert.deepEqual([zorro.gear.flash, zorro.gear.frag, zorro.gear.smoke], [1, 1, 0]);
   assert.equal(zorro.points, BUY.points, 'lo comprado vuelve con la clase anterior: recupera sus puntos');
   assert.equal(setRole(sim, aguila, 'scout'), null);
-  assert.equal(aguila.ability, 'scoutPulse');
+  assert.equal(aguila.ability, 'fiberCam');
   rejects(sim);
   // Ya en la ronda, ninguna orden cambia la clase.
   order({ type: 'setRole', unitId: aguila.id, role: 'assault' });
   assert.deepEqual(rejects(sim), ['notNow']);
-});
-
-test('Explorador: al terminar el turno detecta a los defensores cerca, con paredes de por medio', () => {
-  const { sim, squad } = round();
-  const zorro = squad.find((u) => u.role === 'scout');
-  const d = sim.teams.defenders[0];
-  // Al otro lado de la pared del pasillo, a 5 m.
-  zorro.x = 14;
-  zorro.y = 12.7;
-  d.x = 14;
-  d.y = 17.5;
-  d.behavior = { type: 'hold', reactsToNoise: false };
-  sim.memory.attackers.clear();
-  let pulse = null;
-  playTurn(sim, () => {
-    for (const e of sim.drainEvents()) if (e.type === 'scoutPulse') pulse = e;
-  });
-  for (const e of sim.drainEvents()) if (e.type === 'scoutPulse') pulse = e;
-  assert.ok(pulse && pulse.found >= 1, 'lo detectó');
-  assert.ok(sim.memory.attackers.has(d.id), 'queda marcado para el plan');
 });
 
 test('cubrir zona: el atacante barre alrededor de su mirada al final de la ruta o donde está', async () => {

@@ -22,6 +22,12 @@ export const WEAPON_ICONS = {
     `<path fill="currentColor" d="M50 14 L150 14 L152 18 L150 28 L96 28 L92 34 L84 58 L62 58 L70 32 L56 28 Z"/>
      <rect x="62" y="18" width="80" height="3" fill="#000" opacity=".3"/>`,
   ),
+  dmr: svg(
+    '0 0 220 64',
+    `<path fill="currentColor" d="M4 25 L42 19 L48 16 L136 16 L138 13 L150 13 L152 16 L210 16 L210 22 L152 22 L148 28 L132 28 L126 31 L118 31
+     L112 50 L100 48 L106 30 L88 29 L82 36 L74 36 L76 29 L52 29 L16 43 L6 41 Z"/>
+     <rect x="70" y="5" width="46" height="8" rx="3" fill="currentColor"/><rect x="88" y="12" width="6" height="5" fill="currentColor"/>`,
+  ),
   sniper: svg(
     '0 0 220 64',
     `<path fill="currentColor" d="M2 26 L40 20 L46 18 L140 18 L140 21 L216 21 L216 25 L140 25 L136 30 L104 30 L98 44 L88 44 L92 30 L52
@@ -168,6 +174,13 @@ export const ENTRY_ICON = {
     '0 0 24 24',
     `<rect x="3" y="8" width="18" height="10" rx="1.5" fill="currentColor"/><rect x="6" y="11" width="5" height="4" fill="#111"/>
      <circle cx="16.5" cy="13" r="1.6" fill="#ff3020"/><path d="M12 8 C12 5 14 4 16 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/>`,
+  ),
+  // Cámara de fibra óptica: a door, and the cable snaking under it to a lens
+  cam: svg(
+    '0 0 24 24',
+    `<path d="M3 20 V3 H11 V20" fill="none" stroke="currentColor" stroke-width="2"/><path d="M1 22 H23" stroke="currentColor" stroke-width="1.6"/>
+     <path d="M6 15 C6 19 9 20.5 13 20.5 H18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+     <circle cx="20" cy="19" r="2.6" fill="currentColor"/><circle cx="20" cy="19" r="1" fill="#111"/>`,
   ),
 };
 

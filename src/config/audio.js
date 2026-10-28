@@ -188,6 +188,14 @@ export const GUN_SOUNDS = Object.freeze({
     mech: { hz: 2700, modes: [1, 1.38, 2.9], decay: 0.035 }, tail: { hz: 850, decay: 0.09, attack: 0.005, lengths: [0.65, 1, 1.5] },
     refl: { hz: 800, decay: 0.02 },
   },
+  dmr: {
+    length: 1.1, bodyLength: 0.28, spread: 0.17, drive: 3.6, counts: { body: 4, mech: 3, tail: 3, refl: 2 },
+    snap: { width: 0.0008, gain: 0.85 }, crack: { hz: 3300, q: 0.65, decay: 0.007, gain: 0.75 },
+    body: { hz: 6000, endHz: 380, sweep: 0.065, decay: 0.04, gain: 1 }, boom: { hz: 210, q: 0.7, decay: 0.09, gain: 1.15 },
+    thump: { hz: 140, endHz: 70, sweep: 0.04, decay: 0.035, gain: 0.42 },
+    mech: { hz: 2100, modes: [1, 1.5, 2.3], decay: 0.035 }, tail: { hz: 450, decay: 0.26, attack: 0.01, lengths: [0.65, 1, 1.4] },
+    refl: { hz: 450, decay: 0.04 },
+  },
   sniper: {
     length: 1.6, bodyLength: 0.35, spread: 0.15, drive: 3.8, counts: { body: 4, mech: 2, tail: 3, refl: 2 },
     snap: { width: 0.001, gain: 0.9 }, crack: { hz: 3000, q: 0.6, decay: 0.008, gain: 0.8 },
@@ -204,7 +212,7 @@ export const GUN_SOUNDS = Object.freeze({
  * later in bigger spaces (zone, config ZONES) and is sometimes absent (an open side).
  */
 export const GUN_MIX = Object.freeze({
-  level: { rifle: 1, smg: 0.85, pistol: 0.8, sniper: 1.1 },
+  level: { rifle: 1, smg: 0.85, pistol: 0.8, dmr: 1.05, sniper: 1.1 },
   body: { gain: 1, db: 1.2, at: [0, 0] },
   mech: { gain: 0.2, db: 3, at: [0.012, 0.03] },
   tail: { gain: 0.34, db: 2.5, at: [0, 0.006] },
@@ -216,6 +224,7 @@ export const RELOADS = Object.freeze({
   rifle: { rate: 1, parts: [['magRelease', 0.08], ['magOut', 0.18], ['magDrop', 0.55], ['magIn', 1.25], ['charge', 1.85]] },
   smg: { rate: 1.12, parts: [['magRelease', 0.06], ['magOut', 0.14], ['magDrop', 0.5], ['magIn', 1.05], ['charge', 1.6]] },
   pistol: { rate: 1.28, parts: [['magRelease', 0.05], ['magOut', 0.1], ['magDrop', 0.38], ['magIn', 0.85], ['slide', 1.28]] },
+  dmr: { rate: 0.98, parts: [['magRelease', 0.08], ['magOut', 0.2], ['magDrop', 0.6], ['magIn', 1.4], ['charge', 2.1]] },
   sniper: { rate: 0.94, parts: [['magRelease', 0.1], ['magOut', 0.22], ['magIn', 1.6], ['bolt', 2.4]] },
 });
 

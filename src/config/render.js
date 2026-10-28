@@ -86,6 +86,7 @@ export const WEAPON_MODELS = Object.freeze({
   rifle: { length: 0.78 },
   smg: { length: 0.58 },
   pistol: { length: 0.34 },
+  dmr: { length: 0.9 },
   sniper: { length: 1.0 },
 });
 
@@ -198,7 +199,7 @@ export const OVERLAY = Object.freeze({
     prep: 0.47, // progress arc of an entry being prepared (cracking a door, planting a charge)
   }),
   // Door entries: dashed link waypoint -> doorway and a marker on the doorway, per mode (rgb).
-  entryColors: Object.freeze({ kick: [1, 1, 1], slow: [0.6, 0.85, 1], flash: [1, 0.96, 0.62], frag: [0.72, 0.85, 0.45], breach: [1, 0.69, 0.18], smoke: [0.78, 0.8, 0.82], molotov: [1, 0.45, 0.15] }),
+  entryColors: Object.freeze({ kick: [1, 1, 1], slow: [0.6, 0.85, 1], flash: [1, 0.96, 0.62], frag: [0.72, 0.85, 0.45], breach: [1, 0.69, 0.18], cam: [0.6, 0.88, 0.36], smoke: [0.78, 0.8, 0.82], molotov: [1, 0.45, 0.15], gas: [0.86, 0.9, 0.55] }),
   smokeColor: [0.72, 0.74, 0.76], // a smoke cloud (sim/smoke.js)
   // Defender cameras (sim/cameras.js), seen from above and to scale: a wall plate, a short arm and the
   // body with its lens toward `facing`. length / width: m. What makes them easy to find is the red
@@ -221,7 +222,7 @@ export const PINGS = Object.freeze({
   go: { life: 0.7, r0: 0.4, r1: 2.0, widthPx: 4, color: [0.56, 0.89, 0.42], follow: true },
   door: { life: 0.35, r0: 0.3, r1: 1.5, widthPx: 3, color: [1, 1, 1] },
   kill: { life: 0.8, r0: 0.3, r1: 0.9, widthPx: 3, color: [1, 0.25, 0.2] },
-  scout: { life: 1.6, r0: 0.5, r1: 8, widthPx: 3, color: [0.6, 0.88, 0.36] }, // SCOUT.radius
+  scout: { life: 0.9, r0: 0.3, r1: 1.6, widthPx: 3, color: [0.6, 0.88, 0.36] }, // the Explorador threads his camera
 });
 
 export const FX = Object.freeze({

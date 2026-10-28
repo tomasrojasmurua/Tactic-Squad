@@ -42,6 +42,19 @@ export const WEAPONS = Object.freeze({
     reserve: 36,
     reloadTime: 1.6,
   },
+  // Designated marksman rifle (the attacking Tirador): one aimed shot at a time, hits hard.
+  dmr: {
+    name: 'Fusil de tirador',
+    fireInterval: 0.32,
+    burst: [1, 2],
+    burstPause: 0.15,
+    damage: [62, 74],
+    spread: 0.7 * DEG,
+    movingSpread: 4.5 * DEG,
+    magazine: 20,
+    reserve: 60,
+    reloadTime: 2.6,
+  },
   sniper: {
     name: 'Francotirador',
     fireInterval: 1.25,

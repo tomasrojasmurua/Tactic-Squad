@@ -31,7 +31,7 @@ import { T } from './texts.js';
 import { buyableItems } from '../sim/prep.js';
 
 // The door wheel: every entry around the door point, clockwise from the top.
-const WHEEL = ['none', 'kick', 'breach', 'frag', 'flash', 'slow'];
+const WHEEL = ['none', 'kick', 'breach', 'frag', 'flash', 'slow', 'cam']; // 'cam': only for whoever carries the fiber-optic camera
 const GAP_PX = 26; // between the point and the popover (a point away from doors)
 const EDGE_PX = 8; // kept from the screen edges
 const RING_R = 64; // px from the door point to the center of each wheel button
@@ -67,16 +67,15 @@ export class EntryPicker {
       e.preventDefault();
       this.bus.emit(EV.REQUEST, { action });
     };
-    WHEEL.forEach((mode, n) => {
-      const a = (n / WHEEL.length) * Math.PI * 2;
+    WHEEL.forEach((mode) => {
       const b = el('button', `ebtn ebtn-${mode}`, `<span class="ei">${ENTRY_ICON[mode]}</span><span class="el">${mode === 'none' ? T.entry.none : T.entry.modes[mode]}</span><span class="en"></span>`);
-      b.style.left = `${(RING_OUT + Math.sin(a) * RING_R).toFixed(1)}px`;
-      b.style.top = `${(RING_OUT - Math.cos(a) * RING_R).toFixed(1)}px`;
       b.title = T.entry.hints[mode];
       b.addEventListener('pointerdown', fire(`entry_${mode}`));
       this.ring.appendChild(b);
       this.buttons.set(mode, { b, count: b.querySelector('.en') });
     });
+    this.wheelKey = '';
+    this.placeWheel(false);
     this.ring.style.width = this.ring.style.height = `${RING_OUT * 2}px`;
     this.node.querySelector('.ep-hub').addEventListener('pointerdown', fire('pickerClose'));
     this.node.querySelector('.ep-x').addEventListener('pointerdown', fire('pickerClose'));
@@ -119,6 +118,22 @@ export class EntryPicker {
     root.appendChild(this.node);
   }
 
+  /** Spreads the wheel's buttons evenly around the point: with the camera (the Explorador) or without it. */
+  placeWheel(cam) {
+    const key = cam ? 'cam' : 'plain';
+    if (this.wheelKey === key) return;
+    this.wheelKey = key;
+    const modes = WHEEL.filter((m) => cam || m !== 'cam');
+    for (const [mode, { b }] of this.buttons) {
+      const n = modes.indexOf(mode);
+      b.hidden = n < 0;
+      if (n < 0) continue;
+      const a = (n / modes.length) * Math.PI * 2;
+      b.style.left = `${(RING_OUT + Math.sin(a) * RING_R).toFixed(1)}px`;
+      b.style.top = `${(RING_OUT - Math.cos(a) * RING_R).toFixed(1)}px`;
+    }
+  }
+
   /** Which point the picker shows for, or null. */
   target(sim, session) {
     if (!canEditRoutes(session) || session.phase === 'ended') return null;
@@ -158,10 +173,11 @@ export class EntryPicker {
     for (const [k2, b] of this.pace) toggle(b, 'active', k2 === 'sneak' ? p.pace === 'sneak' : p.pace !== 'sneak');
     // A throw from a door point replaces its entry: then no wheel mode is lit.
     const current = p.ask || p.toss ? null : p.entry || 'none';
+    this.placeWheel(u.ability === 'fiberCam');
     for (const [mode, { b, count }] of this.buttons) {
       const item = ENTRY_GEAR[mode];
       const left = item ? gearLeft(u, item, i) : -1;
-      const ok = mode === 'none' || (entryModeFits(sim, k, mode) && (!item || left > 0 || current === mode));
+      const ok = mode === 'none' || (entryModeFits(sim, k, mode, u) && (!item || left > 0 || current === mode));
       if (b.disabled !== !ok) b.disabled = !ok;
       toggle(b, 'active', current === mode);
       setText(count, item ? T.entry.left(Math.max(0, left)) : '');

@@ -10,6 +10,9 @@
 //   frag    same with a fragmentation grenade
 //   breach  on arrival he plants a charge on the door; on release it blows
 //           the door away and hurts / stuns whoever is close behind it
+//   cam     (the Explorador) on arrival he threads a fiber-optic camera under
+//           the closed door and, while he waits, sees the room beyond it
+//           (sim/queries.js peekEye); on release he opens it and goes
 //
 // Lifecycle (unit.entry): 'prep' (cracking / planting, cannot move) ->
 // 'armed' (done; waits while waitingGo or goDelay) -> 'act' (opening,
@@ -35,7 +38,7 @@ import { startBash, breakBarricade } from './barricades.js';
 import { cutWiresNear } from './wires.js';
 
 /** Seconds each mode works on arrival before it is armed (0 = armed at once). */
-const PREP = Object.freeze({ slow: ENTRY.slow.prepTime, breach: ENTRY.breach.prepTime });
+const PREP = Object.freeze({ slow: ENTRY.slow.prepTime, breach: ENTRY.breach.prepTime, cam: ENTRY.cam.prepTime });
 
 /**
  * Called when a unit reaches a waypoint with a throw (waypoint.toss: {item,
@@ -126,6 +129,7 @@ export function updateEntries(sim, dt) {
 
 function finishPrep(sim, u, e) {
   e.phase = 'armed';
+  if (e.mode === 'cam') sim.emit(EV.FIBER_CAM, { unitId: u.id, doorId: sim.world.doorways[e.doorway].id, x: u.x, y: u.y });
   if (e.mode === 'breach') {
     if ((u.gear.breach || 0) <= 0) return reject(sim, u, e);
     u.gear.breach--;
@@ -147,7 +151,8 @@ function release(sim, u, e) {
       u.entry = null;
       return;
     case 'slow':
-      u.entry = null; // the door is ajar: his route through it pushes it open
+    case 'cam':
+      u.entry = null; // the door is ajar / he pulls the camera back: his route through it opens it
       return;
     case 'toss':
       if ((u.gear[e.item] || 0) <= 0) return reject(sim, u, e);

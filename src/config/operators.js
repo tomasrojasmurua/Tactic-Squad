@@ -6,12 +6,18 @@
 // in sim/abilities/ registered by its id. Modifiers multiply the global
 // numbers of config/balance.js; 1 = unchanged.
 //
-// Classes: attackers Asaltante / Brecha / Explorador (Brecha and Explorador
-// one each), defenders Defensor / Ancla / Merodeador / Trampero (at most `max`
-// of each; the map layout gives the AI's). A player picks his before the game
-// (the menu's class pick: session/Lobby.js, Simulation opts.roles; the rules
-// are sim/prep.js setRole / setDefenderRole) and keeps them all game. Each
-// side picks blind: neither sees the other's classes.
+// Classes (each one changes a decision of the plan, with real close-quarters
+// gear: nothing futuristic). Attackers: Asaltante, Brecha, Explorador, Escudo,
+// Tirador, Granadero; defenders: Defensor, Ancla, Merodeador, Trampero, Vigía,
+// Tirador (at most `max` of each; the map layout gives the AI's). A player
+// picks his before the game (the menu's class pick: session/Lobby.js,
+// Simulation opts.roles; the rules are sim/prep.js setRole / setDefenderRole)
+// and keeps them all game. Each side picks blind: neither sees the other's.
+//
+// Counters (the design's): Brecha > Ancla (his charge stuns whoever waits
+// behind the door), Explorador > Merodeador (he hears him exactly), Escudo >
+// Tirador (the shield stops the precise shot), Granadero > Vigía (gas and
+// smoke blind cameras and drive him off his monitor).
 
 /** Neutral modifiers: every role starts from these. */
 export const BASE_MODIFIERS = Object.freeze({
@@ -24,51 +30,92 @@ export const BASE_MODIFIERS = Object.freeze({
   breachPrep: 1, // ENTRY.breach.prepTime (planting a charge)
   bash: 1, // BARRICADE.breakTime (breaking a barricade by hand)
   stepNoise: 1, // NOISE.radius.step (how far his footsteps are heard)
+  shotNoise: 1, // how far his shots are heard (NOISE.radius.shot, COMBAT.hearingRadius): a suppressor
+  doorwayReaction: 1, // reaction multiplier for a while after he comes through a doorway (COMBAT.doorwayTime), no doorway penalty if < 1
+  holdReaction: 1, // extra reaction multiplier when he holds the angle (focused, still: COMBAT.holdFactor)
+  breachStun: 1, // ENTRY.breach.stun: how long his charge freezes whoever is behind the door
+  trapSpot: 1, // TRAP.spot: how far he notices a trap (he also notices them walking normally if > 1)
+  tossRange: 1, // ENTRY.tossRange: how far he throws (a launcher)
 });
 
 /**
  * Role fields: label (UI), weapon (config/weapons.js id), ability (id in
- * sim/abilities/index.js or null), modifiers (subset of BASE_MODIFIERS),
- * maxHp (optional, default UNIT.maxHp), gear (door-entry utility carried:
- * {flash, frag, smoke, breach} counts: the class's kit, free and full again
- * every round; utility points add to it, config/balance.js BUY).
+ * sim/abilities/index.js or a signature the systems read, or null),
+ * modifiers (subset of BASE_MODIFIERS), maxHp (optional, default
+ * UNIT.maxHp), gear (utility carried: {flash, frag, smoke, breach, gas}
+ * counts: the class's kit, free and full again every round; utility points
+ * add to it, config/balance.js BUY). Optional flags: sharpEars (the noises
+ * he hears are exact: sim/noise.js), cutsWire (crosses barbed wire without
+ * slowing: sim/wires.js), ownWeapon (a defender keeps the class's weapon,
+ * not his post's), cameras (extra cameras his side mounts), wires (extra
+ * barbed wire his side lays).
+ *
+ * Signature abilities: 'fiberCam' (Explorador: the 'cam' door entry,
+ * sim/entries.js), 'shield' (Escudo: sim/combat.js), 'launcher' (Granadero:
+ * gas, sim/gas.js), 'monitor' (Vigía: sim/cameras.js), 'prepared' (Ancla:
+ * sim/combat.js preparedPosition).
  */
 export const ROLES = Object.freeze({
   // Player squad (attackers). `pick`: offered in the buy phase; `unique`: one per squad.
   assault: {
-    label: 'Asaltante', pick: true, unique: false, weapon: 'rifle', ability: null, modifiers: {}, gear: { flash: 1, frag: 1 },
-    blurb: 'Rifle, flash y granada. El que gana los duelos.',
+    label: 'Asaltante', pick: true, unique: false, weapon: 'rifle', ability: null, modifiers: { doorwayReaction: 0.6 }, gear: { flash: 1, frag: 1 },
+    blurb: 'El primero en cruzar la puerta. Corta el ángulo al entrar: justo después de pasar una puerta reacciona mucho más rápido.',
   },
   entry: {
-    label: 'Brecha', pick: true, unique: true, weapon: 'smg', ability: null, modifiers: { breachPrep: 0.5, bash: 0.6 }, gear: { flash: 1, breach: 2 },
-    blurb: 'Dos cargas, las planta en la mitad de tiempo y rompe barricadas rápido.',
+    label: 'Brecha', pick: true, unique: true, weapon: 'smg', ability: null, modifiers: { breachPrep: 0.5, bash: 0.6, breachStun: 2.5 }, cutsWire: true, gear: { flash: 1, breach: 2 },
+    blurb: 'Abre lo cerrado y castiga al que espera detrás: su carga deja inmóvil a quien esté tras la puerta. Corta el alambre con alicate.',
   },
   scout: {
-    label: 'Explorador', pick: true, unique: true, weapon: 'rifle', ability: 'scoutPulse', modifiers: { speed: 1.08, visionRange: 1.1 }, gear: { flash: 1, smoke: 1 },
-    blurb: 'Al final de cada turno detecta a los defensores cerca (8 m), aun tras las paredes.',
+    label: 'Explorador', pick: true, unique: true, weapon: 'rifle', ability: 'fiberCam', modifiers: { speed: 1.08, trapSpot: 1.6 }, sharpEars: true, gear: { flash: 1, smoke: 1 },
+    blurb: 'Sabe antes de entrar: pasa una cámara de fibra óptica bajo la puerta, oye con precisión y ve las trampas de lejos.',
   },
-  // Defenders (their weapon comes from each map spawn). `defPick`: offered in the defender's
-  // preparation; `max`: how many a side may have.
+  shield: {
+    label: 'Escudo', pick: true, unique: true, weapon: 'pistol', ability: 'shield', modifiers: { speed: 0.82, turnRate: 0.8, spread: 1.25, bash: 1.4 }, gear: { flash: 1 },
+    blurb: 'Escudo balístico y pistola. Las balas de frente no le pasan, y cubre al que va pegado detrás. Lento, y vulnerable por los lados.',
+  },
+  marksman: {
+    label: 'Tirador', pick: true, unique: true, weapon: 'dmr', ability: null, modifiers: { holdReaction: 0.55, turnRate: 0.75, speed: 0.94 }, gear: { smoke: 1 },
+    blurb: 'Fusil de tirador. Quieto cubriendo una zona, dispara primero a quien aparezca. Lento girando y malo de cerca.',
+  },
+  grenadier: {
+    label: 'Granadero', pick: true, unique: true, weapon: 'smg', ability: 'launcher', modifiers: { tossRange: 2, spread: 1.15 }, gear: { gas: 2, smoke: 1 },
+    blurb: 'Lanzagranadas de 40 mm con gas lacrimógeno: saca a la gente de las salas sin entrar. Lanza el doble de lejos.',
+  },
+  // Defenders (their weapon comes from each map spawn, unless `ownWeapon`). `defPick`: offered in the
+  // defender's preparation; `max`: how many a side may have.
   defender: {
     label: 'Defensor', defPick: true, max: 4, weapon: 'rifle', ability: null, modifiers: {}, gear: { flash: 1 },
     blurb: 'El de siempre. Lleva una flash.',
   },
-  // Site anchor: holds his angle; tougher and quicker to shoot first.
+  // Site anchor: holds his angle from a prepared position; tougher and quicker to shoot first.
   anchor: {
-    label: 'Ancla', defPick: true, max: 2, weapon: 'rifle', ability: null, modifiers: { reaction: 0.85 }, maxHp: 120, gear: { frag: 1 },
-    blurb: 'Sostiene el sitio: 120 de vida, dispara antes y lleva una granada para la puerta.',
+    label: 'Ancla', defPick: true, max: 2, weapon: 'rifle', ability: 'prepared', modifiers: { reaction: 0.85 }, maxHp: 120, gear: { frag: 1 },
+    blurb: 'Sostiene el sitio: chaleco pesado (120 de vida) y una posición preparada con parapeto. Mientras no se mueva de ella, le cuesta más caer.',
   },
-  // Roamer: off the site, hunting the attackers' flank; quick and quiet. The Explorador's pulse finds him.
+  // Roamer: off the site, hunting the attackers' flank; quick and quiet. The Explorador hears him.
   roamer: {
-    label: 'Merodeador', defPick: true, max: 1, weapon: 'smg', ability: null, modifiers: { speed: 1.12, stepNoise: 0.35 }, gear: { flash: 1 },
-    blurb: 'Fuera del sitio: más rápido, sus pasos casi no se oyen y lleva una flash.',
+    label: 'Merodeador', defPick: true, max: 1, weapon: 'smg', ability: null, modifiers: { speed: 1.12, stepNoise: 0.35, shotNoise: 0.3 }, ownWeapon: true, gear: { flash: 1 },
+    blurb: 'Caza fuera del sitio: rápido, pasos que casi no se oyen y subfusil con supresor (oyen que hubo tiros, no de dónde).',
   },
-  // Trapper: lays TRAP.perTrapper traps in the preparation (sim/traps.js).
+  // Trapper: lays TRAP.perTrapper traps in the preparation (sim/traps.js) and one more barbed wire.
   trapper: {
-    label: 'Trampero', defPick: true, max: 1, weapon: 'rifle', ability: null, modifiers: {}, gear: { smoke: 1 },
-    blurb: 'Pone 2 trampas (atrapan al que las pisa y lo delatan) y lleva un humo.',
+    label: 'Trampero', defPick: true, max: 1, weapon: 'rifle', ability: null, modifiers: {}, wires: 1, gear: { smoke: 1 },
+    blurb: 'Decide por dónde se pasa: 2 cepos (atrapan y delatan), un alambre de púas más para el equipo y un humo.',
+  },
+  // Lookout: one more camera and the monitor (sim/cameras.js).
+  lookout: {
+    label: 'Vigía', defPick: true, max: 1, weapon: 'rifle', ability: 'monitor', modifiers: {}, cameras: 1, gear: { flash: 1 },
+    blurb: 'Los ojos del equipo: una cámara más y el monitor. Mirándolo, las cámaras avisan al instante de todo lo que ven, pero él no cuida su ángulo.',
+  },
+  // Defending marksman: a sniper rifle on one long lane.
+  sniper: {
+    label: 'Tirador', defPick: true, max: 1, weapon: 'sniper', ability: null, modifiers: { holdReaction: 0.55, turnRate: 0.7 }, ownWeapon: true, gear: { flash: 1 },
+    blurb: 'Fusil de precisión en una línea larga: quien la cruza recibe un disparo casi letal. Fuera de ese ángulo, lento.',
   },
 });
+
+/** A role's flag (ROLES[id][key]), false for an unknown role. */
+export const roleFlag = (roleId, key) => !!(ROLES[roleId] && ROLES[roleId][key]);
 
 /** The attacker classes offered in the buy phase, in panel order. */
 export const PICK_ROLES = Object.freeze(Object.keys(ROLES).filter((id) => ROLES[id].pick));

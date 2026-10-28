@@ -530,7 +530,7 @@ export class PlanningController {
     const next = mode === 'none' || (mode === p.entry && !p.ask) ? null : mode;
     this.command({ type: 'setEntry', unitId: u.id, mode: next, index: i });
     // A door point waits for nobody unless the player says when; a plain stack waits for GO A.
-    if (next && !p.hold && !p.ask && entryModeFits(this.getSim(), entryDoorwayAt(this.getSim().world, p.x, p.y), next)) {
+    if (next && !p.hold && !p.ask && entryModeFits(this.getSim(), entryDoorwayAt(this.getSim().world, p.x, p.y), next, u)) {
       this.command({ type: 'setHold', unitId: u.id, code: ENTRY.goCodes[0], index: i });
     }
     return true;
@@ -555,7 +555,7 @@ export class PlanningController {
       at = (at + 1) % order.length;
       const m = order[at];
       const item = m && ENTRY_GEAR[m];
-      if (m === null || (entryModeFits(sim, k, m) && (!item || gearLeft(u, item, i) > 0))) {
+      if (m === null || (entryModeFits(sim, k, m, u) && (!item || gearLeft(u, item, i) > 0))) {
         this.setEntry(m === null ? 'none' : m);
         return true;
       }

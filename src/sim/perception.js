@@ -1,9 +1,11 @@
 // Who sees whom this tick, target acquisition and reaction times.
-import { VISION, COMBAT, ENTRY } from '../config/balance.js';
+import { VISION, COMBAT } from '../config/balance.js';
 import { angleDiff, angleTo } from '../core/math.js';
 import { canSee } from './vision.js';
 import { EV } from '../core/events.js';
 import { peekEye } from './queries.js';
+import { rememberSeen } from './view.js';
+import { camSeesTraps } from './traps.js';
 
 export function updatePerception(sim) {
   const { units, world } = sim;
@@ -25,14 +27,17 @@ export function updatePerception(sim) {
     }
   }
 
-  // Peeking through a door cracked ajar: whoever is in view is revealed to his
-  // side (shown, spotted), but he does not target him — the door is still shut.
+  // Peeking through a door cracked ajar, or under it with the fiber-optic
+  // camera: whoever is in view is revealed to his side (shown, spotted,
+  // remembered), but he does not target him — the door is still shut.
   for (const viewer of units) {
     if (viewer.blind > 0 || !peekEye(sim, viewer, eye)) continue;
-    peekCfg.range = viewer.vision.range;
     for (const other of units) {
-      if (other.alive && other.team !== viewer.team && canSee(world, eye, other.x, other.y, peekCfg)) other.seenByEnemy = true;
+      if (!other.alive || other.team === viewer.team || !canSee(world, eye, other.x, other.y, eye)) continue;
+      other.seenByEnemy = true;
+      rememberSeen(sim, viewer.team, other);
     }
+    if (viewer.entry.mode === 'cam') camSeesTraps(sim, eye);
   }
 
   for (const u of units) {
@@ -43,8 +48,7 @@ export function updatePerception(sim) {
   }
 }
 
-const eye = { x: 0, y: 0, facing: 0 };
-const peekCfg = { fov: ENTRY.slow.peekFov, range: 0 };
+const eye = { x: 0, y: 0, facing: 0, fov: 0, range: 0 };
 
 function selectTarget(sim, u) {
   const current = u.target >= 0 ? sim.units[u.target] : null;

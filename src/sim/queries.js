@@ -290,7 +290,7 @@ export function nextGoCode(sim, team = humanTeam(sim)) {
 // ------------------------------------------------------------ door entries (sim/entries.js)
 
 /** Which piece of gear an entry mode spends (config/operators.js gear), or null. */
-export const ENTRY_GEAR = Object.freeze({ kick: null, slow: null, flash: 'flash', frag: 'frag', breach: 'breach' });
+export const ENTRY_GEAR = Object.freeze({ kick: null, slow: null, cam: null, flash: 'flash', frag: 'frag', breach: 'breach' });
 
 /** Index (world.doorways) of the doorway a waypoint at (x, y) can enter through, or -1. */
 export function entryDoorwayAt(world, x, y) {
@@ -307,9 +307,14 @@ export function entryDoorwayAt(world, x, y) {
   return best;
 }
 
-/** May this mode be used through doorway k? Kick / slow / breach need a door still standing. */
-export function entryModeFits(sim, k, mode) {
+/**
+ * May this mode be used through doorway k (by unit u, when given)? Kick /
+ * slow / breach / cam need a door still standing; the fiber-optic camera
+ * also a closed one and an operator who carries it (ability 'fiberCam').
+ */
+export function entryModeFits(sim, k, mode, u = null) {
   if (k < 0 || !ENTRY.modes.includes(mode)) return false;
+  if (mode === 'cam' && (!u || u.ability !== 'fiberCam')) return false;
   if (mode === 'flash' || mode === 'frag') return true;
   const door = k < sim.doors.length ? sim.doors[k] : null;
   return !!door && !door.destroyed && (mode === 'breach' || !door.open);
@@ -337,12 +342,16 @@ export function gearLeft(u, item, skip = -1) {
  * his face at the gap, just outside the wall (ENTRY.slow.peekBack), looking
  * through it. Lines of sight still go through the world, so the cracked slab
  * and the jamb frame what he sees: a wedge of the room past the latch side,
- * not the whole room. Writes {x, y, facing} into `out`; false when he is not
- * peeking (door still swinging, opened, or no such entry).
+ * not the whole room. Or the Explorador's fiber-optic camera ('cam'): the
+ * lens on the floor just past the closed door (ENTRY.cam.under), wide, facing
+ * into the room. Writes {x, y, facing, fov, range} into `out` (it doubles as
+ * the vision config); false when he is not looking through a door.
  */
 export function peekEye(sim, u, out) {
   const e = u.entry;
-  if (!u.alive || !e || e.mode !== 'slow' || e.phase !== 'armed' || e.doorway >= sim.doors.length) return false;
+  if (!u.alive || !e || e.phase !== 'armed' || e.doorway >= sim.doors.length) return false;
+  if (e.mode === 'cam') return camEye(sim, u, e, out);
+  if (e.mode !== 'slow') return false;
   const door = sim.doors[e.doorway];
   if (!door.cracked || door.angle !== door.target) return false;
   const d = sim.world.doorways[e.doorway];
@@ -357,6 +366,21 @@ export function peekEye(sim, u, out) {
   out.x = gx - d.normalX * back;
   out.y = gy - d.normalY * back;
   out.facing = Math.atan2(gy - out.y, gx - out.x);
+  out.fov = ENTRY.slow.peekFov;
+  out.range = u.vision.range;
+  return true;
+}
+
+function camEye(sim, u, e, out) {
+  const door = sim.doors[e.doorway];
+  if (door.open || door.destroyed) return false; // nothing to look under: he sees the room himself
+  const d = sim.world.doorways[e.doorway];
+  const C = ENTRY.cam;
+  out.x = d.cx + d.normalX * e.side * C.under;
+  out.y = d.cy + d.normalY * e.side * C.under;
+  out.facing = Math.atan2(d.normalY * e.side, d.normalX * e.side);
+  out.fov = C.fov;
+  out.range = C.range;
   return true;
 }
 

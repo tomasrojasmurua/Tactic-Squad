@@ -366,7 +366,7 @@ export class OverlayLayer {
     else if (e && e.phase !== 'act') this.entryMarker(t, pos.x, pos.y, e.mode, e.doorway, selected, mpp);
     if (e && e.phase === 'prep') {
       // Progress of the crack / the plant around the operator.
-      const total = e.mode === 'breach' ? ENTRY.breach.prepTime * u.mods.breachPrep : ENTRY.slow.prepTime;
+      const total = e.mode === 'breach' ? ENTRY.breach.prepTime * u.mods.breachPrep : ENTRY[e.mode].prepTime;
       const k = 1 - Math.max(0, e.t) / total;
       const ec = OVERLAY.entryColors[e.mode];
       t.arc(pos.x, pos.y, OVERLAY.unitRing.prep, 3 * mpp, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2, rgba(ec[0], ec[1], ec[2], 0.95), 28);
@@ -413,7 +413,8 @@ export class OverlayLayer {
   /**
    * Noise the viewer's side heard of the enemy in the last turns (sim/noise.js,
    * read through the side's view): soft rings at a rough position, fading
-   * with each turn. Loud kinds (shots, blasts) are red, the rest amber.
+   * with each turn. Loud kinds (shots, blasts) are red, the rest amber. A
+   * noise the Explorador heard himself (p.exact) is a small, sharp mark.
    */
   noise(g, view, turn, mpp, time) {
     for (const p of view.pulses) {
@@ -422,7 +423,7 @@ export class OverlayLayer {
       if (fade <= 0) continue;
       const loud = NOISE.rank.indexOf(p.kind) >= NOISE.rank.indexOf('shot');
       const col = loud ? [1, 0.32, 0.25] : [1, 0.72, 0.2];
-      const r = NOISE.cell * 0.42;
+      const r = NOISE.cell * (p.exact ? 0.16 : 0.42);
       const beat = age === 0 ? 0.5 + 0.5 * Math.sin(time * 4) : 0;
       g.circle(p.x, p.y, r, rgba(col[0], col[1], col[2], 0.1 * fade), 28, rgba(col[0], col[1], col[2], 0));
       g.ring(p.x, p.y, r * (0.75 + 0.25 * beat), 2.4 * mpp, rgba(col[0], col[1], col[2], (0.35 + 0.35 * beat) * fade), 32);
