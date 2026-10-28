@@ -60,7 +60,7 @@ test('el tutorial enseña el asalto: planificar, puerta, GO de color y el primer
   cmd({ type: 'setEntry', unitId: a.id, mode: 'flash', index: i });
   tut.update(sim);
   assert.equal(t.id, 'hold');
-  cmd({ type: 'setHold', unitId: a.id, code: 'A', index: i });
+  cmd({ type: 'setHold', unitId: a.id, code: 'A', index: a.route.findIndex((p) => p.entry) }); // beside the frame now
   tut.update(sim);
   assert.equal(t.id, 'look');
   assert.ok(tut.blocksReady());

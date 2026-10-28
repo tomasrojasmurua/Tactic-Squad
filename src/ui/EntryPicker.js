@@ -148,7 +148,7 @@ export class EntryPicker {
     toggle(this.node, 'door', door);
     toggle(this.node, 'ask', !!p.ask);
     toggle(this.node, 'here', !!here);
-    setText(this.title, aiming ? T.entry.aimTitle[aiming] : here ? T.entry.here : p.ask ? T.entry.askTitle : door ? T.entry.title : T.entry.point);
+    setText(this.title, aiming ? T.entry.aimTitle[aiming] : here ? T.entry.here : p.ask ? T.entry.askTitle : door && p.waitDoor >= 0 && !p.entry ? T.entry.waitTitle : door ? T.entry.title : T.entry.point);
     for (const [k2, b] of this.pace) toggle(b, 'active', k2 === 'sneak' ? p.pace === 'sneak' : p.pace !== 'sneak');
     // A throw from a door point replaces its entry: then no wheel mode is lit.
     const current = p.ask || p.toss ? null : p.entry || 'none';

@@ -185,6 +185,10 @@ export const ENTRY = Object.freeze({
   // and goes through — the "?" only offers a better entry) or 'stop' (strict: he waits for a decision).
   undecided: 'open',
   lookPast: 1.6, // m past the doorway a stacked operator aims (through the crack / at the room)
+  // Throwing through a door or blowing it, he stacks beside the frame, not in front of the opening:
+  // `jamb` m past the door jamb, as close to the wall as he can walk (`wall` m from the wall plane at
+  // most), on the side his route comes from (sim/orders.js stackBeside). He steps in after the bang.
+  beside: { modes: Object.freeze(['flash', 'frag', 'breach']), wall: 1, jamb: 0.6 },
   followGap: 0.12, // s after the grenade / charge goes off before the rest of the code moves in
   // De golpe: the door bursts open (no breach pause), loud, and whoever stands right behind it reels.
   kick: { hearing: 12, dazeRadius: 1.4, daze: 0.45 },

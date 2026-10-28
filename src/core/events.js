@@ -52,7 +52,7 @@ export const EV = Object.freeze({
   ROUND_END: 'roundEnd', // {winner, reason}
   ROUND_PHASE: 'roundPhase', // {phase: sim/round.js PHASE, previous, turn}: the round changed phase
   ORDER_REJECTED: 'orderRejected', // {unitId, reason: REJECT code (sim/orders.js)}
-  ROUTE_CHANGED: 'routeChanged', // {unitId, kind}
+  ROUTE_CHANGED: 'routeChanged', // {unitId, kind, moved?: {from, to}} (moved: the decided point is at another index now)
 
   // --- session / UI ---
   COMMAND: 'command', // a sim command object, queued for the simulation

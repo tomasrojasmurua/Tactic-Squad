@@ -162,7 +162,9 @@ test('granada: daña según la distancia y la baja cuenta como explosión', () =
 test('carga de brecha: se coloca al llegar, el GO revienta la puerta y daña al que está detrás', () => {
   const { sim, a, b, d0, door } = atTheDoor({ defender: [11.3, 12.7], facing: Math.PI });
   stack(sim, b, 11.75, 'A', 'breach');
-  runFor(sim, 1.6);
+  sim.flushCommands();
+  assert.ok(b.route.find((q) => q.entry === 'breach').beside, 'la carga se pone desde el costado del marco');
+  for (let n = 0; n < 300 && !b.entry; n++) sim.step();
   assert.equal(b.entry?.phase, 'prep');
   assert.equal(isGoReady(sim, T), false, 'colocando la carga');
   runFor(sim, ENTRY.breach.prepTime * b.mods.breachPrep + 0.2);

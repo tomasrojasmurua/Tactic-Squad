@@ -13,7 +13,10 @@
 //   {type:'setHold', unitId, code, index?}     that waypoint (default: last) waits for `code` ('A'|'B'|'C'; null: no hold;
 //                                              index 'here' as for setToss)
 //   {type:'setEntry', unitId, mode, index?}    how he goes through the doorway next to that waypoint (default: last):
-//                                              ENTRY.modes ('kick'|'slow'|'flash'|'frag'|'breach') or null (just walk through)
+//                                              ENTRY.modes ('kick'|'slow'|'flash'|'frag'|'breach') or null (just walk through).
+//                                              A throw or a charge moves the point beside the frame (ENTRY.beside),
+//                                              the others back in front of the door: its index may change
+//                                              (EV.ROUTE_CHANGED moved)
 //
 // A route drawn through a closed door gets a "?" point just before it
 // (waypoint.ask, .door = the doorway): the operator stops there until the
@@ -77,7 +80,7 @@
 // turns codes into text (ui/texts.js T.rejectReason), the sim never does.
 import { NAV, ENTRY, MOVE } from '../config/balance.js';
 import { EV } from '../core/events.js';
-import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode, codeInUse, humanTeam, ASK_CODE, HERE } from './queries.js';
+import { routeTail, lastUserIndex, doorwayNear, defuseCandidate, nextGoCode, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode, codeInUse, humanTeam, ASK_CODE, tossDoorway, doorClaimed, HERE } from './queries.js';
 import { segmentCrossesDoorway } from './doors.js';
 import { startDefuse } from './objectives.js';
 import { cancelEntry, releaseDelay } from './entries.js';
@@ -231,13 +234,13 @@ export function applyCommand(sim, cmd, by = 'human') {
   }
 }
 
-function changed(sim, unit, kind) {
+function changed(sim, unit, kind, moved = null) {
   // Waiting on a "?" point that is gone (undone, cleared): nothing to wait for.
   if (unit.waitingGo && unit.waitCode === ASK_CODE && !(unit.route.length && unit.route[0].ask)) {
     unit.waitingGo = false;
     unit.waitCode = null;
   }
-  sim.emit(EV.ROUTE_CHANGED, { unitId: unit.id, kind });
+  sim.emit(EV.ROUTE_CHANGED, moved ? { unitId: unit.id, kind, moved } : { unitId: unit.id, kind });
   // A leader's plan changed: his file follows it (sim/follow.js). Only while deciding: during a
   // turn (a late GO drops a hold) the followers keep walking what they have.
   if (!sim.round.enabled || sim.round.phase !== 'exec') rebuildFollowers(sim, unit);
@@ -358,8 +361,11 @@ function toggleHold(sim, unit) {
 function setHold(sim, unit, code, index) {
   const i = userIndex(unit, index);
   if (i < 0) return reject(sim, unit, REJECT.noWaypoint);
-  applyHold(unit.route[i], ENTRY.goCodes.includes(code) ? code : null);
+  const p = unit.route[i];
+  const asked = p.ask;
+  applyHold(p, ENTRY.goCodes.includes(code) ? code : null);
   settleAsk(unit, i);
+  if (asked && p.door >= 0) waitOnOwner(sim, unit, p.door); // "open it on GO" decides the door too
   changed(sim, unit, 'hold');
 }
 
@@ -371,6 +377,7 @@ function setHold(sim, unit, code, index) {
  */
 function markDoors(sim, unit, from) {
   const r = unit.route;
+  const waiters = [];
   for (let i = Math.max(0, from); i < r.length; i++) {
     const a = i > 0 ? r[i - 1] : unit;
     const b = r[i];
@@ -396,12 +403,19 @@ function markDoors(sim, unit, from) {
         ask.y = d.cy + d.normalY * side * ENTRY.askDistance;
         if (i > 0 && !a.user) {
           r[i - 1] = ask; // that corner is replaced by the stack point
+          if (doorClaimed(sim, unit, k)) waiters.push(ask);
           continue;
         }
       }
       r.splice(i, 0, ask);
+      if (doorClaimed(sim, unit, k)) waiters.push(ask);
       break; // the leg after the new point is checked next
     }
+  }
+  // A door a teammate already decided: no "?", he waits for that entry beside the frame.
+  for (const ask of waiters) {
+    const i = r.indexOf(ask);
+    if (i >= 0) toWaiter(sim, unit, i, ask.door);
   }
 }
 
@@ -410,7 +424,7 @@ function stackedOn(sim, r, i, k) {
   for (let j = i - 1; j >= 0; j--) {
     const q = r[j];
     if (!q.user) continue;
-    if (!(q.ask || q.entry || q.hold)) return false;
+    if (!(q.ask || q.entry || q.hold || q.toss || q.waitDoor >= 0)) return false;
     return (q.door >= 0 ? q.door : entryDoorwayAt(sim.world, q.x, q.y)) === k;
   }
   return false;
@@ -463,8 +477,11 @@ function setEntry(sim, unit, mode, index) {
     p.entry = null;
     p.entryDoor = -1;
     p.toss = null; // "just open it" also replaces a throw from here
+    const k = p.door;
     settleAsk(unit, i); // "just open it and go" is a decision too
-    return changed(sim, unit, 'entry');
+    stackInFront(sim, unit, i);
+    if (k >= 0 && p.waitDoor < 0) waitOnOwner(sim, unit, k);
+    return changed(sim, unit, 'entry', movedFrom(unit, i, p));
   }
   const k = p.door >= 0 ? p.door : entryDoorwayAt(sim.world, p.x, p.y);
   if (!entryModeFits(sim, k, mode)) return reject(sim, unit, REJECT.noDoor);
@@ -472,9 +489,119 @@ function setEntry(sim, unit, mode, index) {
   if (item && gearLeft(unit, item, i) <= 0) return reject(sim, unit, REJECT.noGear);
   p.entry = mode;
   p.entryDoor = k;
+  p.waitDoor = -1; // he does it himself now
   p.toss = null; // one action per point: the door entry replaces a throw
   settleAsk(unit, i);
-  changed(sim, unit, 'entry');
+  waitOnOwner(sim, unit, k);
+  if (ENTRY.beside.modes.includes(mode)) stackBeside(sim, unit, i, k);
+  else stackInFront(sim, unit, i);
+  changed(sim, unit, 'entry', movedFrom(unit, i, p));
+}
+
+/** {from, to} when point p (once at index i) moved to another index, else null. */
+function movedFrom(unit, i, p) {
+  const j = unit.route.indexOf(p);
+  return j >= 0 && j !== i ? { from: i, to: j } : null;
+}
+
+/**
+ * Throwing through a door or blowing it, he stacks beside the frame
+ * (ENTRY.beside), out of the line of fire the open doorway leaves: the point
+ * moves there (the legs to it and from it are found again). None walkable:
+ * he stays where he was.
+ */
+function stackBeside(sim, unit, i, k) {
+  const r = unit.route;
+  const p = r[i];
+  if (p.beside) return;
+  const spot = besideSpot(sim, unit, k, p, anchorBefore(r, i) >= 0 ? r[anchorBefore(r, i)] : unit);
+  if (!spot) return;
+  const keep = { entry: p.entry, entryDoor: p.entryDoor, toss: p.toss };
+  if (moveWaypoint(sim, unit, i, spot.x, spot.y, true) === false) return;
+  Object.assign(p, keep, { beside: true, door: k });
+}
+
+/**
+ * The spot beside doorway k's frame on the side of the wall `near` is on:
+ * ENTRY.beside.jamb past the jamb, as close to the wall as one can walk. Of
+ * the two jambs, the one closer to `from` that no teammate stacks on; null
+ * when neither is walkable (or reaches `near` in a straight line).
+ */
+function besideSpot(sim, unit, k, near, from) {
+  const d = sim.world.doorways[k];
+  const side = (near.x - d.cx) * d.normalX + (near.y - d.cy) * d.normalY >= 0 ? 1 : -1;
+  const B = ENTRY.beside;
+  const nav = sim.world.nav;
+  let best = null;
+  for (const s of [-1, 1]) {
+    const along = s * (d.length / 2 + B.jamb);
+    // Hugging the wall: the closest walkable spot off it (cells of NAV.cellSize).
+    let x = 0;
+    let y = 0;
+    let ok = false;
+    for (let w = NAV.cellSize; w <= B.wall && !ok; w += NAV.cellSize / 2) {
+      x = d.cx + d.normalX * side * w + d.normalY * along;
+      y = d.cy + d.normalY * side * w - d.normalX * along;
+      ok = nav.walkable(x, y);
+    }
+    if (!ok || !nav.lineWalkable(x, y, near.x, near.y)) continue;
+    const cost = Math.hypot(x - from.x, y - from.y) + (stackTaken(sim, unit, x, y) ? 100 : 0);
+    if (!best || cost < best.cost) best = { x, y, cost };
+  }
+  return best;
+}
+
+/** Back from beside the frame (an entry done standing in the doorway: open, kick, crack): to its center line. */
+function stackInFront(sim, unit, i) {
+  const p = unit.route[i];
+  if (!p.beside) return;
+  const d = sim.world.doorways[p.door];
+  const side = (p.x - d.cx) * d.normalX + (p.y - d.cy) * d.normalY >= 0 ? 1 : -1;
+  const keep = { entry: p.entry, entryDoor: p.entryDoor, toss: p.toss };
+  if (moveWaypoint(sim, unit, i, d.cx + d.normalX * side * ENTRY.askDistance, d.cy + d.normalY * side * ENTRY.askDistance, true) === false) return;
+  Object.assign(p, keep, { beside: false });
+}
+
+/** Does a teammate of u already stack on (x, y), or stand there? */
+function stackTaken(sim, u, x, y) {
+  for (const a of sim.teams[u.team]) {
+    if (a === u || !a.alive) continue;
+    if (Math.hypot(a.x - x, a.y - y) < 0.3) return true;
+    for (const q of a.route) if (q.user && Math.hypot(q.x - x, q.y - y) < 0.3) return true;
+  }
+  return false;
+}
+
+/**
+ * Door k was just decided by `owner` (how he goes through it): a teammate
+ * whose route still asks "?" there does not decide it again — he waits for
+ * that entry, stacked beside the frame (the free side), and goes through
+ * after it (point.waitDoor; sim/movement.js).
+ */
+function waitOnOwner(sim, owner, k) {
+  for (const t of sim.teams[owner.team]) {
+    if (t === owner || !t.alive) continue;
+    const r = t.route;
+    const i = r.findIndex((q) => q.ask && q.door === k);
+    if (i < 0) continue;
+    toWaiter(sim, t, i, k);
+    changed(sim, t, 'wait');
+  }
+}
+
+/** Turns "?" point i (door k) into a wait for the teammate who decided it, beside the frame when there is room. */
+function toWaiter(sim, unit, i, k) {
+  const r = unit.route;
+  const p = r[i];
+  p.ask = false;
+  p.waitDoor = k;
+  p.door = k;
+  if (unit.waitingGo && unit.waitCode === ASK_CODE && i === 0) {
+    unit.waitingGo = false;
+    unit.waitCode = null;
+  }
+  const spot = besideSpot(sim, unit, k, p, anchorBefore(r, i) >= 0 ? r[anchorBefore(r, i)] : unit);
+  if (spot && moveWaypoint(sim, unit, i, spot.x, spot.y, true) !== false) p.beside = true;
 }
 
 /** Index of the user point (not a "?") before / after route index i, or -1. */
@@ -493,20 +620,21 @@ function anchorAfter(r, i) {
  * marked again). Its look, hold and pace stay; an entry stays only if a
  * doorway it fits is still next to it.
  */
-function moveWaypoint(sim, unit, i, x, y) {
+function moveWaypoint(sim, unit, i, x, y, quiet = false) {
   const r = unit.route;
-  if (!(i >= 0 && i < r.length && r[i].user && !r[i].ask)) return reject(sim, unit, REJECT.noWaypoint);
+  const fail = (reason) => (quiet ? false : reject(sim, unit, reason));
+  if (!(i >= 0 && i < r.length && r[i].user && !r[i].ask)) return fail(REJECT.noWaypoint);
   const pa = anchorBefore(r, i);
   const na = anchorAfter(r, i);
   const from = pa >= 0 ? r[pa] : unit;
   const target = snapToDoorway(sim.world, x, y);
   const nav = sim.world.nav;
   const toPoint = nav.findPath(from.x, from.y, target.x, target.y, NAV.snapRadius);
-  if (!toPoint || !toPoint.length) return reject(sim, unit, REJECT.unreachable);
+  if (!toPoint || !toPoint.length) return fail(REJECT.unreachable);
   const end = toPoint[toPoint.length - 1];
   const next = na >= 0 ? r[na] : null;
   const onward = next ? nav.findPath(end.x, end.y, next.x, next.y, NAV.snapRadius) : [];
-  if (!onward) return reject(sim, unit, REJECT.unreachable);
+  if (!onward) return fail(REJECT.unreachable);
   const moved = r[i];
   moved.x = end.x;
   moved.y = end.y;
@@ -524,11 +652,11 @@ function moveWaypoint(sim, unit, i, x, y) {
     for (let j = 0; j < onward.length - 1; j++) out.push(routePoint(onward[j].x, onward[j].y, { pace: next.pace }));
     for (let j = na; j < r.length; j++) out.push(r[j]);
   }
-  if (out.length > NAV.maxRoutePoints) return reject(sim, unit, REJECT.routeTooLong);
+  if (out.length > NAV.maxRoutePoints) return fail(REJECT.routeTooLong);
   r.length = 0;
   for (const p of out) r.push(p);
   markDoors(sim, unit, pa + 1);
-  changed(sim, unit, 'move');
+  if (!quiet) changed(sim, unit, 'move');
 }
 
 /** A new user point on the leg that ends at route[index] (dragging a stretch of the route). */
@@ -554,7 +682,13 @@ function setToss(sim, unit, item, x, y, index) {
   p.entry = null; // one action per point: the throw replaces a door entry
   p.entryDoor = -1;
   settleAsk(unit, i);
-  changed(sim, unit, 'toss');
+  const k = tossDoorway(sim.world, p, x, y);
+  if (k >= 0) {
+    p.waitDoor = -1;
+    stackBeside(sim, unit, i, k); // through a door: from beside its frame
+    waitOnOwner(sim, unit, k);
+  }
+  changed(sim, unit, 'toss', movedFrom(unit, i, p));
 }
 
 /** Pace of the leg ending at user point `index` (default: the last one): every point since the user point before. */
