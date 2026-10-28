@@ -376,7 +376,7 @@ body.touch .help-box { max-height: calc(100dvh - 66px - var(--sat)); overflow: a
 .tbar-col { right: calc(8px + var(--sar)); top: 50%; transform: translateY(-50%); flex-direction: column; align-items: stretch; }
 .tbar-row { right: calc(8px + var(--sar)); top: calc(6px + var(--sat)); flex-direction: row; }
 .tbtn {
-  pointer-events: auto; touch-action: manipulation; min-width: 60px; min-height: 48px; padding: 4px 6px; border-radius: 6px;
+  pointer-events: auto; touch-action: none; min-width: 60px; min-height: 48px; padding: 4px 6px; border-radius: 6px;
   font-family: var(--font); color: #fff; background: rgba(8, 9, 11, 0.8); border: 1px solid rgba(255, 255, 255, 0.18);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: transform 0.06s, background 0.1s;
 }
@@ -603,7 +603,7 @@ body.touch .weapon-plate { left: var(--sal); }
 .entry-picker .ep-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; letter-spacing: 0.12em; white-space: nowrap; }
 .entry-picker .ep-title { font-weight: 800; text-transform: uppercase; color: var(--cyan); }
 .entry-picker .ep-x {
-  pointer-events: auto; touch-action: manipulation; min-width: 28px; min-height: 24px; padding: 0; margin: -3px -3px 0 0; font-size: 17px; line-height: 1;
+  pointer-events: auto; touch-action: none; min-width: 28px; min-height: 24px; padding: 0; margin: -3px -3px 0 0; font-size: 17px; line-height: 1;
   color: var(--muted); background: none; border: 0; cursor: pointer;
 }
 .entry-picker .ep-x:hover { color: #fff; }
@@ -625,12 +625,12 @@ body.touch .weapon-plate { left: var(--sal); }
 .entry-picker .ep-ring .ebtn .en { top: 4px; right: 8px; }
 .entry-picker .ep-hub {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%;
-  pointer-events: auto; touch-action: manipulation; cursor: pointer; font-size: 20px; line-height: 1; color: #cfd6db;
+  pointer-events: auto; touch-action: none; cursor: pointer; font-size: 20px; line-height: 1; color: #cfd6db;
   background: rgba(8, 9, 11, 0.85); border: 1px solid rgba(255, 255, 255, 0.3);
 }
 .entry-picker .ep-hub:hover { color: #fff; border-color: rgba(255, 255, 255, 0.6); }
 .ebtn {
-  pointer-events: auto; touch-action: manipulation; min-width: 58px; min-height: 46px; padding: 4px 6px; position: relative;
+  pointer-events: auto; touch-action: none; min-width: 58px; min-height: 46px; padding: 4px 6px; position: relative;
   font-family: var(--font); color: #fff; background: rgba(20, 23, 27, 0.95); border: 1px solid rgba(255, 255, 255, 0.18);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer;
 }
@@ -656,7 +656,7 @@ body.touch .entry-picker .ep-panel { padding: 4px 5px 5px; }
 .mounts.on { display: block; }
 .cmount {
   position: absolute; left: 0; top: 0; width: 18px; height: 18px; padding: 0; border-radius: 50%; pointer-events: auto; cursor: pointer;
-  touch-action: manipulation; will-change: transform; display: flex; align-items: center; justify-content: center;
+  touch-action: none; will-change: transform; display: flex; align-items: center; justify-content: center;
   color: #ffd9d6; background: rgba(10, 11, 13, 0.72); border: 1px dashed rgba(255, 90, 80, 0.85);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
@@ -685,23 +685,23 @@ body.touch .entry-picker .ep-panel { padding: 4px 5px 5px; }
 .ptag.under-hud { visibility: hidden; }
 /* A door on the route: a small "?" that opens the door picker (it is opened on the way if nobody decides). */
 .ptag.ask {
-  pointer-events: auto; cursor: pointer; touch-action: manipulation; width: 20px; height: 20px; padding: 0; margin-top: -4px; border-radius: 50%;
+  pointer-events: auto; cursor: pointer; touch-action: none; width: 20px; height: 20px; padding: 0; margin-top: -4px; border-radius: 50%;
   justify-content: center; font-size: 13px; color: #1a1000; background: #d9dee2; opacity: 0.9;
 }
 .ptag.ask.sel { background: #fff; }
 .ptag.ask::before { content: ''; position: absolute; inset: -12px; } /* a finger-size target */
 .ptag.ask.target { box-shadow: 0 0 0 2px var(--cyan), 0 1px 0 rgba(0, 0, 0, 0.9); }
 /* Waypoint tags with a GO hold wear their group's color (config/ui.js GO_GROUPS). */
-.ptag.go { background: var(--g); pointer-events: auto; cursor: pointer; touch-action: manipulation; }
+.ptag.go { background: var(--g); pointer-events: auto; cursor: pointer; touch-action: none; }
 .ptag.go::before { content: ''; position: absolute; inset: -8px -4px; }
-.ptag.entry { pointer-events: auto; cursor: pointer; touch-action: manipulation; }
+.ptag.entry { pointer-events: auto; cursor: pointer; touch-action: none; }
 .ptag.entry::before { content: ''; position: absolute; inset: -8px -4px; }
 .gdot { display: inline-block; font-style: normal; color: var(--g); margin-right: 4px; text-shadow: 0 0 1px #000; }
 .entry-picker.ask .ep-title { color: #d9dee2; }
 .entry-picker .ep-when { display: flex; align-items: center; gap: 4px; }
 .entry-picker .ep-wl { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #cfd6db; margin-right: 4px; }
 .wbtn {
-  pointer-events: auto; touch-action: manipulation; min-height: 30px; padding: 2px 10px; font-family: var(--font); font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+  pointer-events: auto; touch-action: none; min-height: 30px; padding: 2px 10px; font-family: var(--font); font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
   text-transform: uppercase; color: #fff; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16);
 }
 .wbtn.active { background: rgba(255, 255, 255, 0.14); border-color: #fff; }
