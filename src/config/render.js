@@ -205,7 +205,7 @@ export const OVERLAY = Object.freeze({
   // drawn smaller than ledPx (screen px). coneAlpha / edgeAlpha: its field of view on the floor
   // (fill, outline); ghost: a free mount's dashed outline while the defender picks (ui/CameraMounts.js).
   camera: Object.freeze({ length: 0.42, width: 0.2, ledPx: 2.6, haloPx: 9, blink: 0.6, color: [1, 0.33, 0.3], coneAlpha: 0.13, edgeAlpha: 0.6, ghostAlpha: 0.45, spotPulse: 1.2 }),
-  trap: Object.freeze({ size: 0.28, color: [1, 0.62, 0.18] }), // Trampero's traps (sim/traps.js)
+  trap: Object.freeze({ size: 0.28, color: [1, 0.62, 0.18], steel: [0.78, 0.8, 0.83] }), // Trampero's traps (sim/traps.js)
   entryMarker: 0.2, // m, half-size of the doorway marker
   grenadeRadius: 0.09, // m, a grenade in flight / on the floor
 });

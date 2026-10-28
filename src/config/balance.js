@@ -370,12 +370,13 @@ export const CAMERA = Object.freeze({
   max: 2, // cameras a side mounts (map `cameraMounts`; the AI: `aiCameras[site]`)
   fov: (80 * Math.PI) / 180,
   range: 15, // m
-  detect: 0.5, // s in sight before it reports
+  detect: 0.3, // s in sight before it reports
   realert: 2, // s between two reports while it keeps seeing someone
   alertSeconds: 6, // s the defenders watch the reported spot
-  shootRange: 16, // m (beyond its range: a camera you know of, you break before it sees you)
-  shootDelay: 0.7, // s the attacker spends finding and aiming at it
-  shootDelayKnown: 0.2, // s when it was already known (the drone found it): he walks in aiming at it
+  spot: 9, // m: small and high on the wall, an attacker notices one he did not know of only this close (the drone: anywhere in its cone)
+  shootRange: 12, // m (inside its range: even a known camera sees you coming before you can break it)
+  shootDelay: 1.2, // s the attacker spends finding and aiming at it
+  shootDelayKnown: 0.6, // s when it was already known (the drone found it): he walks in aiming at it
 });
 
 /** Explorador (sim/abilities/scoutPulse.js): at each turn's end, defenders this close (and traps) are detected through walls. */

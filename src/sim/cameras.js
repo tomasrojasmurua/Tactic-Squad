@@ -8,8 +8,9 @@
 // angle he will come through (sim/ai.js alertAiUnit). Lines of sight are the
 // world's, so doors and smoke blind it too.
 //
-// The attackers see cameras like enemies: in an operator's cone or the
-// drone's, a camera becomes known (CAMERA_FOUND, drawn on the map). A mount
+// The attackers find cameras: in the drone's cone, or in an operator's within
+// CAMERA.spot (small and high, he misses one farther away), a camera becomes
+// known (CAMERA_FOUND, drawn on the map). A mount
 // they found stays known (sim.knownMounts): taking a camera down and putting
 // it back up there does not hide it. An operator with a known camera in sight
 // within CAMERA.shootRange and no enemy to shoot breaks it after
@@ -132,11 +133,14 @@ function attackersSee(sim, c, dt) {
   let shooter = null;
   const wasKnown = c.known;
   const r2 = CAMERA.shootRange * CAMERA.shootRange;
+  const spot2 = CAMERA.spot * CAMERA.spot;
   for (const u of sim.teams.attackers) {
-    if (!u.alive || u.blind > 0 || !canSee(sim.world, u, c.x, c.y, u.vision)) continue;
+    if (!u.alive || u.blind > 0) continue;
+    const d2 = (u.x - c.x) ** 2 + (u.y - c.y) ** 2;
+    if ((!c.known && d2 > spot2) || !canSee(sim.world, u, c.x, c.y, u.vision)) continue;
     if (!c.known) found(sim, c, false);
     const free = u.target < 0 && u.reloadTimer <= 0 && !(u.entry && u.entry.phase === 'act') && !u.defusing;
-    if (free && (u.x - c.x) ** 2 + (u.y - c.y) ** 2 <= r2 && (!shooter || u.id === c.aimBy)) shooter = u;
+    if (free && d2 <= r2 && (!shooter || u.id === c.aimBy)) shooter = u;
   }
   if (!shooter) {
     c.aim = 0;
