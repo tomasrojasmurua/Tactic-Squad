@@ -36,6 +36,8 @@ Para agregar una clase de operador: una entrada en `config/operators.js` (`ROLES
 
 Al abrir el juego aparece el menú principal con cuatro opciones: **Atacar** y **Defender** (una ronda contra la IA, que juega el otro bando), **Alambre de púas** (`sim/wires.js`, `WIRE`). El defensor pone `PREP.wires` (1) por ronda en una puerta de `barricadeSlots` sin barricada. El atacante que lo cruza va a `WIRE.slow` (50 %) y hace ruido; el defensor pasa libre; una granada o una carga cerca lo corta. El atacante lo conoce al verlo o pisarlo (`sim.intel.wires`).
 
+**Incendiaria** (`sim/fire.js`, `ENTRY.molotov`). Solo del defensor, 2 puntos. Se lanza como cualquier utilidad y deja fuego (`radius` 1,8 m, `seconds` 7, `dps` 22) que quema a quien esté adentro; una nube de humo que la alcanza la apaga. La IA atacante no entra al fuego (`movement.js` `fireAhead`).
+
 **Partida al mejor de 7** (`session/Match.js`: rondas seguidas, el primero en ganar 4; el jugador ataca las 3 primeras y después defiende; el bando que pierde una ronda tiene un punto de utilidad más en la siguiente) y **Tutorial guiado** (siempre de atacante).
 
 **Fases que se suman.** La primera partida va directo a planificar; la entrada se suma en la 2.ª ronda y la compra y el dron en la 3.ª (`FLOW.unlockAfterRounds` en `config/ui.js`), cada una con una tarjeta la primera vez. La opción "Ronda completa" de la Ayuda las muestra siempre; la partida al mejor de 7 se juega siempre completa. Intro ataca. Desde la partida se vuelve al menú con el botón MENÚ (en escritorio, en la barra de abajo; en el celular, dentro de Ayuda; también al final de la ronda). Si ya hay un plan, pide una segunda pulsación para confirmar.

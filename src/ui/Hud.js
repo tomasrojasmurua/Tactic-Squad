@@ -147,6 +147,7 @@ export class Hud {
     bus.on(EV.BARRICADE_BROKEN, (e) => this.pushInfo(e.how === 'breach' ? T.feed.barricadeBlown : T.feed.barricadeBroken));
     bus.on(EV.WIRE_SPOTTED, () => this.viewer.team === 'attackers' && this.pushInfo(T.feed.wire));
     bus.on(EV.WIRE_CUT, () => this.pushInfo(T.feed.wireCut));
+    bus.on(EV.FIRE_OUT, (e) => e.why === 'smoke' && this.pushInfo(T.feed.fireOut));
     bus.on(EV.GRENADE_THROWN, (e) => {
       const u = this.sim && this.sim.units[e.unitId];
       if (u && u.team === this.viewer.team) this.pushInfo(T.feed.grenade[e.kind]);

@@ -162,6 +162,7 @@ export class OverlayLayer {
 
     this.cameras(t, g, sim, own, mpp, time, own === 'defenders' && (session.phase === 'prep' || session.phase === 'drone'));
     this.traps(t, sim, own, mpp);
+    this.fires(t, sim, frame);
     this.smokes(t, sim, frame);
     this.grenades(t, sim, frame, mpp);
     if (own === 'attackers') this.drone(t, g, sim, vision, frame, mpp, time);
@@ -421,7 +422,7 @@ export class OverlayLayer {
     pts.push(ex, ey);
     t.dashed(pts, 3.6 * mpp, 0.12, 0.12, 0, BLACK(0.55 * alpha));
     t.dashed(pts, 2 * mpp, 0.12, 0.12, 0, rgba(c[0], c[1], c[2], 0.95 * alpha));
-    const r = item === 'smoke' ? ENTRY.smoke.radius : item === 'frag' ? ENTRY.frag.radius : 0.45;
+    const r = item === 'smoke' ? ENTRY.smoke.radius : item === 'frag' ? ENTRY.frag.radius : item === 'molotov' ? ENTRY.molotov.radius : 0.45;
     t.ring(ex, ey, r, 3.4 * mpp, BLACK(0.35 * alpha), 32);
     t.ring(ex, ey, r, 2 * mpp, rgba(c[0], c[1], c[2], 0.8 * alpha), 32);
     t.circle(ex, ey, 0.12, rgba(c[0], c[1], c[2], alpha), 12);
@@ -564,6 +565,19 @@ export class OverlayLayer {
   }
 
   /** Smoke clouds (sim/smoke.js): a soft gray disc, denser in the middle; it fills the sight cone's gap. */
+  /** Incendiaria pools (sim/fire.js): flickering orange discs that shrink as they burn down. */
+  fires(t, sim, frame) {
+    const M = ENTRY.molotov;
+    for (const f of sim.fires) {
+      if (f.age >= M.seconds) continue;
+      const left = 1 - f.age / M.seconds;
+      const r = M.radius * (0.75 + 0.25 * Math.min(1, left * 4));
+      const flick = 0.06 * Math.sin(frame.time * 9 + f.x * 3) + 0.04 * Math.sin(frame.time * 13 + f.y * 5);
+      t.circle(f.x, f.y, r * (1 + flick), rgba(1, 0.42, 0.1, 0.55), 28, rgba(1, 0.3, 0.05, 0.25));
+      t.circle(f.x, f.y, r * 0.55 * (1 - flick), rgba(1, 0.8, 0.3, 0.6), 20, rgba(1, 0.55, 0.15, 0));
+    }
+  }
+
   smokes(t, sim, frame) {
     const c = OVERLAY.smokeColor;
     for (const s of sim.smokes) {

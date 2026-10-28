@@ -223,9 +223,18 @@ export function setBarricade(sim, doorId, on) {
 
 // ------------------------------------------------------------ AI
 
-/** As the buy ends: an AI defending side buys AI_UTILITY.buy with each defender's points. */
+/**
+ * As the buy ends: an AI defending side buys an incendiaria for
+ * AI_UTILITY.molotovs defenders (who react to noise, closest to the bomb), then AI_UTILITY.buy with
+ * what each one's points still reach.
+ */
 export function aiBuy(sim) {
   if (sim.controllers.defenders !== 'ai') return;
+  // Those who turn to noise first (an angle held deaf never throws), then the closest to the bomb.
+  const deaf = (u) => (u.behavior && u.behavior.reactsToNoise === false ? 1 : 0);
+  const d2 = (u) => (u.x - sim.bomb.x) ** 2 + (u.y - sim.bomb.y) ** 2;
+  const byBomb = sim.teams.defenders.slice().sort((a, b) => deaf(a) - deaf(b) || d2(a) - d2(b) || a.id - b.id);
+  for (const u of byBomb.slice(0, AI_UTILITY.molotovs)) buyItem(sim, u, 'molotov', 1);
   for (const u of sim.teams.defenders) for (const item of AI_UTILITY.buy) buyItem(sim, u, item, 1); // what the points reach
 }
 

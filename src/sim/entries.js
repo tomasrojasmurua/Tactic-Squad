@@ -24,6 +24,7 @@ import { angleTo } from '../core/math.js';
 import { rayCast } from '../core/geom.js';
 import { solidLineOfSight } from './vision.js';
 import { spawnSmoke } from './smoke.js';
+import { spawnFire } from './fire.js';
 import { openDoor, crackDoor, destroyDoor } from './doors.js';
 import { alertAiUnit } from './ai.js';
 import { applyBlast } from './combat.js';
@@ -319,6 +320,7 @@ function detonate(sim, g) {
   sim.emit(EV.GRENADE_DETONATE, { id: g.id, kind: g.kind, unitId: g.ownerId, x: g.x, y: g.y });
   if (g.kind === 'flash') flashAt(sim, g);
   else if (g.kind === 'smoke') spawnSmoke(sim, g.x, g.y);
+  else if (g.kind === 'molotov') spawnFire(sim, g.x, g.y, owner);
   else {
     blastAt(sim, g.x, g.y, ENTRY.frag.radius, ENTRY.frag.damage, ENTRY.frag.minDamage, 0, owner, g.cover);
     cutWiresNear(sim, g.x, g.y, WIRE.fragCut, owner); // barbed wire (sim/wires.js)

@@ -53,7 +53,7 @@ export class AudioDirector {
     on(EV.BARRICADE_BROKEN, (ev) => ev.how === 'bash' && this.at('door.slam', ev.x, ev.y, L.doorSlam, 'door'));
     on(EV.DRONE_DESTROYED, () => this.ui('undo'));
     on(EV.GRENADE_THROWN, (ev) => this.at('grenade.pin', ev.x, ev.y, L.grenadePin, 'foley'));
-    on(EV.GRENADE_DETONATE, (ev) => (ev.kind === 'smoke' ? this.at('smoke', ev.x, ev.y, L.smoke, 'door') : this.bang(ev.kind === 'flash' ? 'flashbang' : 'blast', ev.x, ev.y)));
+    on(EV.GRENADE_DETONATE, (ev) => (ev.kind === 'smoke' || ev.kind === 'molotov' ? this.at('smoke', ev.x, ev.y, L.smoke, 'door') : this.bang(ev.kind === 'flash' ? 'flashbang' : 'blast', ev.x, ev.y)));
     on(EV.CHARGE_BLAST, (ev) => this.bang('blast', ev.x, ev.y));
     on(EV.CHARGE_READY, () => this.ui('hold', 0.7));
     on(EV.CHARGE_FIRE, () => this.ui('plant', 1));

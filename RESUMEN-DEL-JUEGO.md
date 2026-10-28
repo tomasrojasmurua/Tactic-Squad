@@ -52,7 +52,7 @@ apuntaba, la mitad; si además **sostiene el ángulo** (0,6 s quieto con la mira
 otro 25 % menos; recién cruzada una puerta, +0,05 s. Resultado: quien entra a lo bruto
 pierde contra quien lo espera, y gana si entra con un flash, un humo o por otro lado. El
 equilibrio se mide con `node scripts/balance.mjs` (rondas IA contra IA, meta 45-55 % por
-bando; hoy 47 % atacantes en 200 rondas: 49 % en A, 44 % en B).
+bando; hoy 52 % atacantes en 200 rondas: 55 % en A, 49 % en B).
 
 | Fase | Plazo | Qué pasa |
 | --- | --- | --- |
@@ -169,6 +169,8 @@ Las clases se eligen antes de la partida, a ciegas (no ve las del
 atacante, y el atacante no ve las suyas). La IA las toma de los puestos del mapa.
 
 **Alambre de púas.** Solo del defensor: uno por ronda, en una puerta que podría atrancar (nunca junto a una barricada). No para a nadie ni hace daño: el atacante que lo cruza va a la mitad de velocidad y **suena** (los defensores cercanos se giran hacia ahí). El defensor pasa libre. Una granada o una carga cerca lo quita. El atacante lo ve como una barricada: a la vista, con el dron o al pisarlo. La IA pone el suyo en una de sus puertas sin barricada.
+
+**Incendiaria.** Solo del defensor, 2 puntos (máx. 1). Se lanza como una granada y deja **fuego de 1,8 m de radio durante 7 s**: quema a quien esté adentro, de cualquier bando (22 de daño por segundo). **El humo la apaga.** Sirve para cortar una puerta o cubrir la bomba: la IA defensora la compra para uno de los suyos y la lanza a la puerta que vigila o sobre la bomba si alguien la está desactivando. La IA atacante espera a que se consuma antes de cruzarla.
 
 **Utilidad del defensor.** Con sus puntos suma flash, granada o humo (las cargas son
 solo del atacante). Un jugador defensor la lanza planificando, como el atacante. La IA
