@@ -13,6 +13,9 @@
 //   CUÁNDO  right away, or with a GO group (a color: config/ui.js GO_GROUPS)
 //   LANZAR  a flash / grenade / smoke from this point to wherever the player
 //           taps next (session.ui.tossPick); pressing the active one removes it
+// A tap on the selected operator himself opens it on the spot he stands on
+// (pointTarget.index HERE): only LANZAR and CUÁNDO — he throws (or waits for
+// a GO) from there, then walks his route.
 //   ASOMARSE  at the end of the route: he stands there MOVE.peekTime s looking
 //           at the point's look and walks back (sim/orders.js setPeek)
 //
@@ -20,7 +23,7 @@
 import { EV } from '../core/events.js';
 import { ENTRY } from '../config/balance.js';
 import { GO_GROUPS } from '../config/ui.js';
-import { controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode, lastUserIndex } from '../sim/queries.js';
+import { controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode, lastUserIndex, HERE } from '../sim/queries.js';
 import { canEditRoutes, targetIndex } from '../session/Session.js';
 import { el, setText, toggle, setStyle } from './dom.js';
 import { ENTRY_ICON } from './icons.js';
@@ -115,13 +118,16 @@ export class EntryPicker {
     if (!canEditRoutes(session) || session.phase === 'ended') return null;
     const u = controllableUnit(sim, session.selectedId, session.team);
     if (!u) return null;
+    const t = session.pointTarget;
+    if (t && t.unitId === u.id && t.index === HERE) return { u, i: HERE, p: { x: u.x, y: u.y, hold: false, code: null, toss: null, ask: false, pace: null }, k: -1, here: true };
     const i = targetIndex(session, u);
     if (i < 0) return null;
     const p = u.route[i];
     const k = p.door >= 0 ? p.door : entryDoorwayAt(sim.world, p.x, p.y);
+    // His first point on the spot he stands on (a throw / wait set "from here") keeps that menu.
+    const here = i === 0 && !p.ask && Math.hypot(p.x - u.x, p.y - u.y) < 0.05;
     // Only when asked for: a tap on a door, a "?", a tag or a waypoint (session.pointTarget).
-    const t = session.pointTarget;
-    return t && t.unitId === u.id && t.index === i ? { u, i, p, k } : null;
+    return t && t.unitId === u.id && t.index === i ? { u, i, p, k: here ? -1 : k, here } : null;
   }
 
   update(sim, session, camera) {
@@ -131,7 +137,8 @@ export class EntryPicker {
       this.layoutKey = '';
       return;
     }
-    const { u, i, p, k } = tg;
+    const { u, i, p, k, here } = tg;
+    const at = i === HERE ? -1 : i; // gear left: what his route does not spend already
     const door = k >= 0;
     // Aiming a throw: only the head is left ("where does it land?" + ×), the map stays clear around the point.
     const tp = session.ui.tossPick;
@@ -140,7 +147,8 @@ export class EntryPicker {
     const wheel = door && !aiming;
     toggle(this.node, 'door', door);
     toggle(this.node, 'ask', !!p.ask);
-    setText(this.title, aiming ? T.entry.aimTitle[aiming] : p.ask ? T.entry.askTitle : door ? T.entry.title : T.entry.point);
+    toggle(this.node, 'here', !!here);
+    setText(this.title, aiming ? T.entry.aimTitle[aiming] : here ? T.entry.here : p.ask ? T.entry.askTitle : door ? T.entry.title : T.entry.point);
     for (const [k2, b] of this.pace) toggle(b, 'active', k2 === 'sneak' ? p.pace === 'sneak' : p.pace !== 'sneak');
     // A throw from a door point replaces its entry: then no wheel mode is lit.
     const current = p.ask || p.toss ? null : p.entry || 'none';
@@ -155,7 +163,7 @@ export class EntryPicker {
     for (const [code, b] of this.when) toggle(b, 'active', code === 'now' ? !p.hold : p.hold && holdCode(p) === code);
     for (const [item, { b, label, count }] of this.toss) {
       const has = p.toss && p.toss.item === item;
-      const left = gearLeft(u, item, i);
+      const left = gearLeft(u, item, at);
       const ok = has || left > 0;
       if (b.disabled !== !ok) b.disabled = !ok;
       toggle(b, 'active', has && !aiming);
@@ -165,14 +173,14 @@ export class EntryPicker {
     }
 
     // Asomarse: the end of the route (or a peek already set, or its way back).
-    const peekAt = p.back ? anchorBefore(u.route, i) : i;
+    const peekAt = here ? -1 : p.back ? anchorBefore(u.route, i) : i;
     const peeking = peekAt >= 0 && u.route[peekAt].pause > 0;
-    const canPeek = peeking || (!p.ask && i === lastUserIndex(u));
+    const canPeek = !here && (peeking || (!p.ask && i === lastUserIndex(u)));
     this.peekRow.hidden = !canPeek;
     toggle(this.peek, 'active', peeking);
     setText(this.peek, peeking ? T.peek.on : T.peek.off);
 
-    const key = `${door}|${aiming}|${canPeek}|${session.touch}|${camera.width}`;
+    const key = `${door}|${aiming}|${canPeek}|${here}|${session.touch}|${camera.width}`;
     if (!this.size || this.layoutKey !== key) {
       const r = this.panel.getBoundingClientRect();
       // On touch the button column stays usable: the menu keeps to its left.

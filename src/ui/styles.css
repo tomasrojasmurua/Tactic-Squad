@@ -609,6 +609,7 @@ body.touch .weapon-plate { left: var(--sal); }
 .entry-picker .ep-x:hover { color: #fff; }
 .entry-picker.door:not(.aiming) .ep-x { display: none; } /* the wheel's hub closes it */
 .entry-picker .ep-pace { display: flex; align-items: center; gap: 4px; }
+.entry-picker.here .ep-pace { display: none; } /* from where he stands: no leg to pace */
 .entry-picker.aiming .ep-panel > :not(.ep-head) { display: none; } /* aiming a throw: just "where?" and × */
 .entry-picker.aiming .ep-panel { border-top-color: var(--amber); }
 .entry-picker.aiming .ep-title { color: var(--amber); }
