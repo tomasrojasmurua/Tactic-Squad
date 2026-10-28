@@ -4,8 +4,8 @@
 //   fixed   ángulo fijo: holds his facing, deaf to noise
 //   sweep   barrer: sweeps PREP.sweepArc around his facing, turns to noise
 //   alert   atento: holds his facing, turns to noise
-// A fallback from the map's layout ("replegarse": on the first firefight he
-// moves to a planned spot) is kept whatever the mode.
+// A player's defenders never move on their own: the map's patrols and
+// fallbacks are only for the AI (sim/prep.js layoutBehavior).
 import { PREP } from '../config/balance.js';
 
 export const WATCH_MODES = Object.freeze(['fixed', 'sweep', 'alert']);

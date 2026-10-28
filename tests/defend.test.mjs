@@ -73,11 +73,8 @@ test('los modos de vigilancia del panel se leen como se dieron', () => {
     cmd(sim, { type: 'setWatch', unitId: d.id, watch: watchOrder(mode, 1, null) });
     assert.equal(watchOf(d).mode, mode);
   }
-  // A fallback from the map's layout survives a change of mode.
-  const g = sim.teams.defenders.find((u) => u.behavior && u.behavior.rotate);
-  const before = watchOf(g).fallback;
-  cmd(sim, { type: 'setWatch', unitId: g.id, watch: watchOrder('fixed', 0, before) });
-  assert.deepEqual(watchOf(g).fallback, before);
+  // A player's defenders bring no fallback of the map's: they move only when sent.
+  assert.ok(sim.teams.defenders.every((u) => watchOf(u).fallback === null && watchOf(u).mode !== 'patrol'));
 });
 
 test('la vigilancia de un defensor humano sigue sola en el asalto (barrer gira)', () => {

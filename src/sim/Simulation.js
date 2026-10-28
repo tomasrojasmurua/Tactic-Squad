@@ -29,7 +29,7 @@ import { createBomb, updateObjectives, endRound } from './objectives.js';
 import { createRound, advancePhase, canStep, afterTick, phaseTick, isLive, PHASE } from './round.js';
 import { createNoise, collectNoise } from './noise.js';
 import { createMemory, updateMemory } from './view.js';
-import { initPoints } from './prep.js';
+import { initPoints, layoutBehavior } from './prep.js';
 import { updateDrone } from './drone.js';
 import { createIntel, updateBash, spotBarricades } from './barricades.js';
 import { spotWires, updateWires } from './wires.js';
@@ -159,7 +159,7 @@ export class Simulation {
           facing: s.facing,
           role: this.roles.defenders[i] || s.role || DEFAULT_DEFENDER_ROLE,
           weaponId: s.weapon,
-          behavior: s.behavior,
+          behavior: layoutBehavior(this, s.behavior),
         }),
       );
     });

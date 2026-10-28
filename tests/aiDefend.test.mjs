@@ -58,12 +58,24 @@ test('con la bomba amenazada rotan hasta dos defensores, nunca los anclas, y van
   }
 });
 
-test('los defensores de un jugador conservan su repliegue ante el primer tiroteo', () => {
-  const sim = new Simulation(MAP, { seed: 4, site: 'A', controllers: { attackers: 'ai', defenders: 'human' } });
-  sim.skipToAssault();
-  assert.equal(sim.defendAi, null);
-  const guard = sim.teams.defenders.find((d) => d.behavior && d.behavior.rotate);
-  alertAiUnit(guard, 0, 0, COMBAT.alertDuration, true);
-  assert.equal(guard.ai.rotating, 'pending');
-  assert.deepEqual(guard.ai.rotateTo, guard.behavior.rotate);
+test('los defensores de un jugador no se mueven solos: ni patrullas ni repliegues del mapa', () => {
+  for (const site of ['A', 'B']) {
+    const sim = new Simulation(MAP, { seed: 4, site, controllers: { attackers: 'human', defenders: 'human' } });
+    sim.skipToAssault();
+    assert.equal(sim.defendAi, null);
+    for (const d of sim.teams.defenders) {
+      assert.ok(!d.behavior || (d.behavior.type !== 'patrol' && !d.behavior.rotate), `sitio ${site}: ${d.name}`);
+    }
+    const start = sim.teams.defenders.map((d) => [d.x, d.y]);
+    sim.advancePhase(); // plan -> exec
+    gunfireAt(sim, sim.bomb.x + 1.5, sim.bomb.y, 600);
+    sim.teams.defenders.forEach((d, i) => {
+      assert.ok(Math.hypot(d.x - start[i][0], d.y - start[i][1]) < 0.3, `sitio ${site}: ${d.name} se movió solo`);
+    });
+  }
+});
+
+test('la IA defensora conserva las patrullas y repliegues del mapa', () => {
+  const ai = new Simulation(MAP, { seed: 4, site: 'A', controllers: { attackers: 'human', defenders: 'ai' } });
+  assert.ok(ai.teams.defenders.some((d) => d.behavior && (d.behavior.type === 'patrol' || d.behavior.rotate)));
 });
