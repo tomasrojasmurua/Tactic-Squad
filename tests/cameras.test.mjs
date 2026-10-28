@@ -116,29 +116,44 @@ test('cada soporte del mapa ve algo: su cono no choca con la pared de al lado', 
   }
 });
 
-test('la cámara del pasillo ve entrar al atacante y avisa; él la descubre y la rompe', () => {
+test('la cámara del pasillo ve entrar al atacante y avisa; él la descubre de cerca y la rompe', () => {
   const { sim, cmd, squad } = round('A');
   const [a] = squad;
-  cmd({ type: 'addWaypoint', unitId: a.id, x: 18, y: 12.7, user: true });
+  cmd({ type: 'addWaypoint', unitId: a.id, x: 23, y: 12.7, user: true });
   const ev = run(sim, 60 * 14);
   const types = ev.map((e) => e.type);
+  assert.ok(types.includes('cameraSpot'), 'avisó');
   assert.ok(types.includes('cameraFound'), 'la vio');
-  assert.ok(types.includes('cameraDestroyed'), 'la rompió');
+  assert.ok(types.indexOf('cameraSpot') < types.indexOf('cameraDestroyed'), 'avisó antes de romperse');
   assert.equal(sim.cameras[0].alive, false);
   const destroyed = ev.find((e) => e.type === 'cameraDestroyed');
   assert.equal(destroyed.unitId, a.id);
 });
 
-test('una cámara conocida de antes (dron) se rompe antes de que alcance a avisar', () => {
+test('desde lejos el atacante no nota una cámara que no conocía, y ella sigue avisando', () => {
+  const { sim, cmd, squad } = round('A');
+  const [a] = squad;
+  cmd({ type: 'addWaypoint', unitId: a.id, x: 18, y: 12.7, user: true }); // a más de CAMERA.spot de ella
+  const ev = run(sim, 60 * 14);
+  assert.ok(Math.hypot(a.x - sim.cameras[0].x, a.y - sim.cameras[0].y) > CAMERA.spot);
+  assert.ok(ev.some((e) => e.type === 'cameraSpot'), 'avisó');
+  assert.ok(!ev.some((e) => e.type === 'cameraFound' || e.type === 'cameraDestroyed'), 'no la vio');
+  assert.equal(sim.cameras[0].alive, true);
+});
+
+test('una cámara conocida de antes (dron) se rompe rápido, pero alcanza a avisar una vez', () => {
   const play = (known) => {
     const { sim, cmd, squad } = round('A');
     const [a] = squad;
     sim.cameras[0].known = known;
-    cmd({ type: 'addWaypoint', unitId: a.id, x: 18, y: 12.7, user: true });
+    cmd({ type: 'addWaypoint', unitId: a.id, x: 23, y: 12.7, user: true });
     const ev = run(sim, 60 * 14);
-    return ev.filter((e) => e.type === 'cameraSpot').length;
+    const types = ev.map((e) => e.type);
+    return { spots: types.filter((t) => t === 'cameraSpot').length, broken: types.includes('cameraDestroyed') };
   };
-  assert.equal(play(true), 0, 'pre-apuntada: no avisa');
+  const known = play(true);
+  assert.ok(known.broken, 'la rompe');
+  assert.ok(known.spots >= 1, 'pero avisó antes');
 });
 
 test('con humo delante la cámara no ve nada', () => {

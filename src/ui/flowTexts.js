@@ -192,8 +192,8 @@ export const FLOW_TEXTS = Object.freeze({
       introDrone: {
         title: 'Nuevo: dron de reconocimiento',
         text: {
-          touch: `Tienes ${DRONE.seconds} s de dron, en tiempo real. Muévelo con el mando de la izquierda. Pasa por debajo de las puertas, pero no por las barricadas. Lo que ve queda marcado: defensores, barricadas (barra naranja), cámaras (punto rojo con su cono) y la bomba. Una cámara que ya conoces la rompen de un tiro antes de que te vea. Si un defensor ve el dron, lo derriba. RETIRAR lo termina antes.`,
-          desk: `Tienes ${DRONE.seconds} s de dron, en tiempo real. Muévelo con WASD o las flechas. Pasa por debajo de las puertas, pero no por las barricadas. Lo que ve queda marcado: defensores, barricadas (barra naranja), cámaras (punto rojo con su cono) y la bomba. Una cámara que ya conoces la rompen de un tiro antes de que te vea. Si un defensor ve el dron, lo derriba. Espacio lo retira antes.`,
+          touch: `Tienes ${DRONE.seconds} s de dron, en tiempo real. Muévelo con el mando de la izquierda. Pasa por debajo de las puertas, pero no por las barricadas. Lo que ve queda marcado: defensores, barricadas (barra naranja), cámaras (punto rojo con su cono) y la bomba. Una cámara que ya conoces la rompen más rápido, aunque alcanza a verte un momento. Si un defensor ve el dron, lo derriba. RETIRAR lo termina antes.`,
+          desk: `Tienes ${DRONE.seconds} s de dron, en tiempo real. Muévelo con WASD o las flechas. Pasa por debajo de las puertas, pero no por las barricadas. Lo que ve queda marcado: defensores, barricadas (barra naranja), cámaras (punto rojo con su cono) y la bomba. Una cámara que ya conoces la rompen más rápido, aunque alcanza a verte un momento. Si un defensor ve el dron, lo derriba. Espacio lo retira antes.`,
         },
       },
       barricade: {
