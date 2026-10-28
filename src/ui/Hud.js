@@ -214,7 +214,9 @@ export class Hud {
     // Banner: phase, turn and the clock (a limited decision phase counts down; a turn shows what is left of it)
     setClassName(this.banner, `banner ${phase}`);
     const inAssault = sim.turn > 0 && phase !== 'ended';
-    setText(this.phaseText, inAssault ? `${T.phase[phase]} · ${T.turn(sim.turn)}` : T.phase[phase]);
+    // A phone's banner is narrow: the turn goes on the clock line ("TURNO 2 · sin límite").
+    const turnOnClock = inAssault && session.touch;
+    setText(this.phaseText, inAssault && !turnOnClock ? `${T.phase[phase]} · ${T.turn(sim.turn)}` : T.phase[phase]);
     const c = session.clock;
     let clock = '';
     let fill = 0;
@@ -230,7 +232,7 @@ export class Hud {
       clock = T.execLeft(Math.ceil(left));
       fill = left / ROUND.turnSeconds;
     }
-    setText(this.clockText, clock);
+    setText(this.clockText, turnOnClock ? (clock ? `${T.turn(sim.turn)} · ${clock}` : T.turn(sim.turn)) : clock);
     toggle(this.clockText, 'low', isDecisionPhase(session) && !c.unlimited && c.left <= HUD.clockWarnSeconds);
     setStyle(this.clockBar, 'transform', `scaleX(${fill.toFixed(3)})`);
     // Sub line: the coach's next step for a new player, else the phase's default.
