@@ -31,7 +31,7 @@ import { AutoPause } from './AutoPause.js';
 import { Tutorial } from './Tutorial.js';
 
 import { createMatch, matchLoadout, endMatchRound } from './Match.js';
-import { createLobby, savedLobby, lobbySet, lobbyStart, openPick } from './Lobby.js';
+import { createLobby, savedLobby, lobbySet, lobbyStart, openPick, pickMissing } from './Lobby.js';
 
 export class SessionController {
   /**
@@ -399,6 +399,13 @@ export class SessionController {
           return;
         }
         if (session.lobby.view !== 'pick') return;
+        const missing = pickMissing(session.lobby);
+        if (missing) {
+          // A squad still short of its 3: show it (the button says how many are missing).
+          session.lobby.pickSide = missing;
+          this.sound('undo');
+          return;
+        }
         if (session.touch) requestFullscreenLandscape();
         session.lobby.ready = true;
         const { mode, team, bestOf } = lobbyStart(session.lobby);

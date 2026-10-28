@@ -5,16 +5,15 @@
 //   play    CONTRA LA IA · MULTIJUGADOR (coming soon) · VOLVER
 //   lobby   format (a single round, best of 3 / 5 / 7), starting side, map
 //           (more coming soon); ELEGIR CLASES goes on to
-//   pick    the class pick, like a MOBA's pick phase: each operator's class
-//           for the whole game (a tab per side in a match), who is in and
-//           ready; CONFIRMAR starts once everyone is
+//   pick    the roster (ui/Roster.js), like a MOBA's pick phase: 3
+//           characters from a pool for the whole game (a tab per side in a
+//           match), who is in and ready; CONFIRMAR starts once everyone is
 // Emits EV.REQUEST {action: 'play' | 'vsAi' | 'tutorial' | 'lesson_<id>' | 'back' | 'lobbyReady' |
-// 'lobby_bestOf_<n>' | 'lobby_side_<team>' | 'lobby_pickSide_<team>' | 'lobby_role_<team>_<i>_<roleId>'}.
+// 'lobby_bestOf_<n>' | 'lobby_side_<team>'} and the roster's (ui/Roster.js).
 import { EV } from '../core/events.js';
-import { ROLES } from '../config/operators.js';
-import { SQUAD, DEFENDER_NAME } from '../config/squad.js';
 import { MAPS } from '../data/maps/index.js';
-import { BEST_OF, canPick, pickRoles, pickSides } from '../session/Lobby.js';
+import { BEST_OF } from '../session/Lobby.js';
+import { Roster } from './Roster.js';
 import { LESSONS, nextLesson } from '../config/lessons.js';
 import { el, setText, toggle } from './dom.js';
 import { T } from './texts.js';
@@ -97,46 +96,9 @@ export class Menu {
     next.addEventListener('click', () => this.request('lobbyReady'));
     q('.lb-actions').append(next, button('back', M.back, null, 'back'));
 
-    // Class pick: each operator's class for the whole game, one side at a time
-    const P = T.flow.pick;
-    this.pick = el(
-      'div',
-      'menu-view lobby pick',
-      `<h2 class="mv-title">${P.title}</h2>
-      <div class="pk-head"><div class="lb-opts pk-sides"></div><div class="lb-note pk-note"></div></div>
-      <div class="pk-teams"></div>
-      <div class="lb-actions"><div class="lb-players"></div></div>`,
-    );
-    const pq = (s) => this.pick.querySelector(s);
-    this.pickNote = pq('.pk-note');
-    this.pickSides = ['attackers', 'defenders'].map((t) => opt(pq('.pk-sides'), L.sides[t === 'attackers' ? 'attackersTeam' : 'defendersTeam'], `lobby_pickSide_${t}`, t));
-    this.players = pq('.lb-players');
-    this.players.innerHTML = `<div class="lb-player you"><b>${L.you}</b><span class="st"></span></div><div class="lb-player ai"><b>${L.ai}</b><span class="st ok">${P.aiPicks}</span></div>`;
-    this.youState = this.players.querySelector('.you .st');
-    this.roleButtons = [];
-    this.teams = {};
-    this.blurbs = [];
-    for (const side of ['attackers', 'defenders']) {
-      const box = el('div', `lb-team ${side}`);
-      for (let i = 0; i < 3; i++) {
-        const row = el('div', 'lb-slot', `<span class="lb-name"></span><div class="lb-opts"></div><div class="pk-blurb"></div>`);
-        const name = row.firstChild;
-        setText(name, side === 'attackers' ? SQUAD[i].callsign : `${DEFENDER_NAME} ${i + 1}`);
-        if (side === 'attackers') name.style.color = SQUAD[i].color;
-        for (const id of pickRoles(side)) {
-          const b = opt(row.children[1], ROLES[id].label, `lobby_role_${side}_${i}_${id}`, id);
-          b.title = ROLES[id].blurb;
-          this.roleButtons.push({ b, side, i, id });
-        }
-        this.blurbs.push({ node: row.children[2], side, i });
-        box.appendChild(row);
-      }
-      this.teams[side] = box;
-      pq('.pk-teams').appendChild(box);
-    }
-    this.ready = el('button', 'btn primary lb-ready', `${P.ready}<span class="key desk-only">${L.readyKey}</span>`);
-    this.ready.addEventListener('click', () => this.request('lobbyReady'));
-    pq('.lb-actions').prepend(this.ready, button('back', M.back, null, 'back'));
+    // The roster: a pool of characters per side, 3 make the squad (ui/Roster.js)
+    this.roster = new Roster(bus, button('back', M.back, null, 'back'));
+    this.pick = this.roster.root;
 
     box.append(this.main, this.lessons, this.play, this.lobby, this.pick);
   }
@@ -179,21 +141,6 @@ export class Menu {
       for (const b of this.side) toggle(b, 'on', b.dataset.key === lobby.side);
       setText(this.mapBtn, MAPS[lobby.map].name);
     }
-    if (view !== 'pick') return;
-    const sides = pickSides(lobby);
-    for (const b of this.pickSides) {
-      toggle(b, 'on', b.dataset.key === lobby.pickSide);
-      b.hidden = sides.length < 2;
-    }
-    setText(this.pickNote, T.flow.pick.note(sides.length > 1));
-    for (const side of ['attackers', 'defenders']) this.teams[side].hidden = side !== lobby.pickSide;
-    for (const { b, side, i, id } of this.roleButtons) {
-      const mine = lobby.roles[side][i] === id;
-      toggle(b, 'on', mine);
-      toggle(b, 'off', !mine && !canPick(lobby, side, i, id));
-    }
-    for (const { node, side, i } of this.blurbs) setText(node, ROLES[lobby.roles[side][i]].blurb);
-    setText(this.youState, lobby.ready ? L.youReady : L.youWaiting);
-    toggle(this.youState, 'ok', lobby.ready);
+    if (view === 'pick') this.roster.update(lobby);
   }
 }
