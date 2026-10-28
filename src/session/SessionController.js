@@ -30,6 +30,7 @@ import { AutoPause } from './AutoPause.js';
 import { Tutorial } from './Tutorial.js';
 
 import { createMatch, matchLoadout, endMatchRound } from './Match.js';
+import { createLobby, savedLobby, lobbySet, lobbyStart } from './Lobby.js';
 
 export class SessionController {
   /**
@@ -51,14 +52,12 @@ export class SessionController {
     this.restart = restart;
     this.seed = SIM.seed; // the scenario: kept on retry (same plan = same round); "reroll" changes it
     this.postRoundTimer = 0;
-    this.locks = null; // phases skipped in this attempt (lockedPhases)
     this.helpPaused = false; // the help opened while a turn ran (closing it resumes)
     this.recorder = new PlanRecorder();
     this.clock = new PhaseClock({ session, advance: () => this.advance() });
     this.autoPause = new AutoPause({ session, pause: (reason) => this.pause(reason) });
     this.tutorial = new Tutorial(session);
-    session.progress.roundsDone = loadPref(FLOW.storageKeys.roundsDone, 0) | 0;
-    session.progress.fullRound = !!loadPref(FLOW.storageKeys.fullRound, false);
+    session.lobby = createLobby(loadPref(FLOW.storageKeys.lobby, null));
     session.progress.stopOnContact = !!loadPref(FLOW.storageKeys.stopOnContact, true);
 
     bus.on(EV.COMMAND, (cmd) => this.record(cmd));
@@ -125,7 +124,6 @@ export class SessionController {
     }
     if (sim.phase === 'end') {
       if (this.session.phase !== 'ended') {
-        this.countRound();
         if (this.session.mode === 'match' && this.session.match) endMatchRound(this.session.match, sim); // score and pay, once
       }
       this.postRoundTimer = SIM.postRoundSeconds;
@@ -161,7 +159,9 @@ export class SessionController {
     const s = this.session;
     const tutorial = s.mode === 'tutorial' ? { site: TUTORIAL.site, defenders: TUTORIAL.defenders } : {};
     const loadout = s.mode === 'match' && s.match ? { loadout: matchLoadout(s.match) } : {};
-    return { ...tutorial, ...loadout, stopOnContact: s.mode === 'tutorial' || s.progress.stopOnContact };
+    // The player's classes from the lobby (his side only: the AI keeps its own).
+    const roles = s.mode === 'tutorial' ? {} : { roles: { [s.team]: s.lobby.roles[s.team] } };
+    return { ...tutorial, ...loadout, ...roles, stopOnContact: s.mode === 'tutorial' || s.progress.stopOnContact };
   }
 
   /** Help option: the turn ends when the squad sees a new enemy (from the next round / attempt on). */
@@ -173,39 +173,12 @@ export class SessionController {
   }
 
   /**
-   * Round phases before the assault that this player has not unlocked yet
-   * (config/ui.js FLOW.unlockAfterRounds): they are skipped with defaults.
-   * The guided tutorial skips them all; "Ronda completa" (help) and the defenders keep them all.
+   * Round phases before the assault skipped with defaults (no purchase, the
+   * map's entry, no drone): only the guided tutorial's, which teaches the assault.
+   * A game from the lobby is played whole from its first round.
    */
   lockedPhases() {
-    return this.locks || (this.locks = this.computeLocks());
-  }
-
-  /** Fixed for an attempt and its retries (a replayed plan must meet the same phases). */
-  computeLocks() {
-    const s = this.session;
-    if (s.mode === 'tutorial') return ['buy', 'prep', 'drone'];
-    if (s.mode === 'match') return []; // a match is played whole: its money is spent in the buy phase
-    if (s.team === 'defenders') return []; // the set-up is the defender's round: nothing to unlock
-    if (s.progress.fullRound) return [];
-    const n = s.progress.roundsDone;
-    return Object.keys(FLOW.unlockAfterRounds).filter((p) => n < FLOW.unlockAfterRounds[p]);
-  }
-
-  /** A round of the play mode finished: one more toward unlocking the phases before the assault. */
-  countRound() {
-    if (this.session.mode !== 'play' && this.session.mode !== 'match') return;
-    const p = this.session.progress;
-    p.roundsDone++;
-    savePref(FLOW.storageKeys.roundsDone, p.roundsDone);
-  }
-
-  /** Help option "Ronda completa": always play buy, entry and drone (or let them come with experience). */
-  toggleFullRound() {
-    const p = this.session.progress;
-    p.fullRound = !p.fullRound;
-    savePref(FLOW.storageKeys.fullRound, p.fullRound);
-    this.notice(p.fullRound ? 'fullRoundOn' : 'fullRoundOff');
+    return this.session.mode === 'tutorial' ? ['buy', 'prep', 'drone'] : [];
   }
 
   /** Ends the current decision phase (LISTO, deadline, replay): the next phase or the turn's execution. */
@@ -377,15 +350,38 @@ export class SessionController {
     }
     switch (action) {
       case 'start':
-      case 'defend':
+        // Enter / Space on the menu: its main button (JUGAR, CONTRA LA IA, LISTO).
+        if (phase === 'title') this.handleRequest({ main: 'play', play: 'vsAi', lobby: 'lobbyReady' }[session.lobby.view]);
+        return;
+      case 'play':
+      case 'vsAi':
+        // Main menu -> JUGAR (against the AI or, later, others) -> the lobby.
+        if (phase !== 'title') return;
+        this.audio.unlock();
+        session.lobby.view = action === 'play' ? 'play' : 'lobby';
+        session.lobby.ready = false;
+        this.sound('select');
+        return;
+      case 'back':
+        if (phase !== 'title' || session.lobby.view === 'main') return;
+        session.lobby.view = session.lobby.view === 'lobby' ? 'play' : 'main';
+        this.sound('undo');
+        return;
+      case 'lobbyReady': {
+        // Everyone ready (against the AI: the player; the AI always is): the game starts.
+        if (phase !== 'title' || session.lobby.view !== 'lobby') return;
+        if (session.touch) requestFullscreenLandscape();
+        session.lobby.ready = true;
+        const { mode, team, bestOf } = lobbyStart(session.lobby);
+        this.beginMode(mode, team, bestOf);
+        return;
+      }
       case 'tutorial':
-      case 'match':
-        // Main menu: attack or defend against the AI (start / defend), "Partida al mejor de 7" (match)
-        // or the guided tutorial (always attacking).
+        // The guided tutorial (always attacking).
         if (phase !== 'title') return;
         this.audio.unlock();
         if (session.touch) requestFullscreenLandscape();
-        this.beginMode(action === 'start' || action === 'defend' ? 'play' : action, action === 'defend' ? 'defenders' : 'attackers');
+        this.beginMode('tutorial');
         return;
       case 'nextRound':
         // Match result screen: the next round (or, when it is over, a new match).
@@ -495,9 +491,6 @@ export class SessionController {
       case 'help':
         this.toggleHelp();
         return;
-      case 'fullRound':
-        this.toggleFullRound();
-        return;
       case 'stopOnContact':
         this.toggleStopOnContact();
         return;
@@ -521,6 +514,7 @@ export class SessionController {
           session.ui.holdMenu = false;
         }
         else if (action.startsWith('door_')) this.targetDoor(action);
+        else if (action.startsWith('lobby_') && phase === 'title') this.lobbySet(action.slice(6));
         else if (action.startsWith('chooseEntry_') && (phase === 'prep' || phase === 'planning')) this.chooseEntry(action.slice(12));
         else if (action.startsWith('buy_') && phase === 'buy') this.buy(action);
         else if (action.startsWith('role_') && phase === 'buy') this.setRole(action);
@@ -609,11 +603,10 @@ export class SessionController {
   }
 
   /** From the menu: a fresh round against the AI, or the guided tutorial's round (config/ui.js TUTORIAL). */
-  beginMode(mode, team = PLAYER_TEAM) {
+  beginMode(mode, team = PLAYER_TEAM, bestOf = undefined) {
     this.session.mode = mode;
     this.session.team = mode === 'tutorial' ? PLAYER_TEAM : team;
-    this.locks = null;
-    this.session.match = mode === 'match' ? createMatch(this.session.team) : null;
+    this.session.match = mode === 'match' ? createMatch(this.session.team, bestOf) : null;
     // A match: every round its own scenario (site, spread...), a fresh series each match.
     this.matchSeed = mode === 'match' ? (Math.random() * 1e9) | 0 : 0;
     this.seed = mode === 'tutorial' ? TUTORIAL.seed : mode === 'match' ? this.matchSeed + 1 : SIM.seed;
@@ -632,16 +625,23 @@ export class SessionController {
     const m = this.session.match;
     if (m.over) {
       this.setPhase('title');
-      this.beginMode('match');
+      this.beginMode('match', this.session.lobby.side, m.bestOf); // the same game again
       return;
     }
-    this.locks = null;
-    this.session.team = m.team; // after MATCH.switchAfter rounds the player defends
+    this.session.team = m.team; // after match.switchAfter rounds the player switches sides
     this.seed = this.matchSeed + m.round;
     this.recorder.beginAttempt([]);
     this.session.replay.attempt = 0;
     this.restart(this.seed); // Game.newRound: puts the screen in the new round's first phase
     this.framing.frameStart();
+    this.sound('select');
+  }
+
+  /** A lobby setting changed (session/Lobby.js lobbySet): kept on the device. */
+  lobbySet(what) {
+    const lobby = this.session.lobby;
+    if (!lobbySet(lobby, what)) return;
+    savePref(FLOW.storageKeys.lobby, savedLobby(lobby));
     this.sound('select');
   }
 
@@ -651,7 +651,8 @@ export class SessionController {
     this.session.mode = 'play';
     this.session.team = PLAYER_TEAM;
     this.session.match = null;
-    this.locks = null;
+    this.session.lobby.view = 'main';
+    this.session.lobby.ready = false;
     this.setPhase('title');
     this.seed = SIM.seed;
     this.recorder.beginAttempt([]);
@@ -691,7 +692,6 @@ export class SessionController {
   /** Fresh round on the session seed, replaying the given recorded phases (empty: a new plan). */
   newAttempt(segments) {
     const retry = segments.length > 1 || (segments.length === 1 && segments[0].length > 0);
-    if (!retry) this.locks = null; // a new plan meets the phases this player has now
     this.recorder.beginAttempt(segments);
     this.restart(this.seed);
     if (this.tutorial.active) this.tutorial.begin(this.sim); // the guided round starts over with it

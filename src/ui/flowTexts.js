@@ -1,6 +1,6 @@
 // Session flow texts (owner: gameplay): main menu, confirmations, smart pause,
 // retry, guided tutorial. Merged into ui/texts.js as T.flow.
-import { ROUND, BUY, BARRICADE, DRONE, MATCH } from '../config/balance.js';
+import { ROUND, BUY, BARRICADE, DRONE } from '../config/balance.js';
 
 const TURN = ROUND.turnSeconds;
 
@@ -14,12 +14,13 @@ export const FLOW_TEXTS = Object.freeze({
   tutorialSkip: 'Saltar tutorial',
   /** Main menu (ui/Screens.js). */
   menu: {
-    play: 'Atacar',
-    playNote: 'Contra la IA: encuentra la bomba y desactívala',
-    defend: 'Defender',
-    defendNote: `Contra la IA: esconde la bomba y aguanta ${ROUND.timeLimit} s`,
-    match: 'Partida al mejor de 7',
-    matchNote: `Contra la IA: atacas ${MATCH.switchAfter} rondas y después defiendes; el dinero y el equipo de los vivos pasan a la siguiente`,
+    play: 'Jugar',
+    playNote: 'Una ronda o una partida al mejor de 3, 5 o 7',
+    vsAi: 'Contra la IA',
+    vsAiNote: 'Tú y tu escuadra contra la IA, en el bando que elijas',
+    multi: 'Multijugador',
+    soon: 'Próximamente',
+    back: 'Volver',
     tutorial: 'Tutorial guiado',
     tutorialNote: 'Paso a paso, en una ronda más fácil',
     tutorialNew: 'Recomendado para empezar',
@@ -28,10 +29,33 @@ export const FLOW_TEXTS = Object.freeze({
     confirm: '¿Salir?',
     pitch: 'Asalto táctico por turnos. Planificas sin ver al rival y todo se ejecuta a la vez. Ataca para desactivar la bomba, o defiéndela.',
   },
+  /** The lobby (ui/Menu.js, session/Lobby.js). */
+  lobby: {
+    title: 'Partida contra la IA',
+    format: 'Formato',
+    bestOf: (n) => (n === 1 ? 'Una ronda' : `Mejor de ${n}`),
+    formatNote: (n) =>
+      n === 1
+        ? 'Una ronda suelta: puedes repetir tu plan o probar otra suerte'
+        : `Gana el primero en llegar a ${Math.floor(n / 2) + 1}. A la mitad se cambia de bando; el dinero y el equipo de los vivos pasan a la siguiente`,
+    side: 'Empiezas',
+    sides: { attackers: 'Atacando', defenders: 'Defendiendo', attackersTeam: 'Cuando atacas', defendersTeam: 'Cuando defiendes' },
+    map: 'Mapa',
+    moreMaps: 'Más mapas · próximamente',
+    players: 'Jugadores',
+    you: 'Tú',
+    youWaiting: 'Eligiendo',
+    youReady: 'Listo',
+    ai: 'IA',
+    aiReady: 'Lista',
+    team: 'Tu equipo',
+    teamNote: 'La clase de cada uno al empezar. En la compra (o la preparación) la puedes cambiar ronda a ronda',
+    ready: 'Listo',
+    readyKey: 'Intro',
+  },
   rerollButton: 'Nueva tirada',
   /** Help option (ui/Screens.js): the phases before the assault. */
   stopOnContact: (on) => `Cortar el turno al ver un enemigo: ${on ? 'SÍ' : 'NO'}`,
-  fullRound: (on) => `Ronda completa (compra, entrada, dron): ${on ? 'SÍ' : 'SEGÚN EXPERIENCIA'}`,
   /** EV.NOTICE codes -> toast text. */
   notice: {
     confirm_restart: { touch: 'Toca REINICIAR otra vez para borrar todo el plan', desk: 'Pulsa R otra vez para borrar todo el plan' },
@@ -56,8 +80,6 @@ export const FLOW_TEXTS = Object.freeze({
     contactCut: '¡Contacto! El turno se cortó para que puedas reaccionar',
     contactOn: 'El turno se cortará al ver un enemigo (desde el próximo plan)',
     contactOff: 'Los turnos duran siempre 5 s (desde el próximo plan)',
-    fullRoundOn: 'Ronda completa: compra, entrada y dron desde el próximo plan',
-    fullRoundOff: 'Compra, entrada y dron se suman a medida que juegas',
   },
   /** Banner hint while a turn is paused, by session.pauseReason. */
   pause: {

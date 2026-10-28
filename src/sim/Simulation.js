@@ -5,7 +5,7 @@ import { Rng } from '../core/rng.js';
 import { EV } from '../core/events.js';
 import { SIM, ROUND } from '../config/balance.js';
 import { SQUAD, DEFENDERS, DEFENDER_NAME, DEFENDER_COLOR, TEAMS, CONTROLLERS } from '../config/squad.js';
-import { DEFAULT_DEFENDER_ROLE } from '../config/operators.js';
+import { DEFAULT_DEFENDER_ROLE, ROLES } from '../config/operators.js';
 import { initAbilities, updateAbilities } from './abilities/index.js';
 import { compileMap } from './mapCompiler.js';
 import { World } from './World.js';
@@ -44,10 +44,12 @@ export class Simulation {
    *                    false: no phases, it always runs and takes orders (mechanics tests).
    * @param opts.stopOnContact the execution turn ends early (ROUND.minContactSeconds at the earliest)
    *                    when the attackers see a new enemy: the player gets to react (against the AI).
+   * @param opts.roles   the class of each slot the lobby chose ({attackers?: [roleId], defenders?: [roleId | null]};
+   *                      null or an invalid pick: the default, the squad's or the map post's). A loadout's role wins.
    * @param opts.loadout per attacker slot {money, gear?, role?} carried over from the last round of a
    *                    match (session/Match.js); omitted: BUY.startMoney and the role's gear.
    */
-  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, defenders = null, phases = true, stopOnContact = false, loadout = null } = {}) {
+  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, defenders = null, phases = true, stopOnContact = false, loadout = null, roles = null } = {}) {
     this.seed = seed;
     this.stopOnContact = stopOnContact;
     this.loadout = loadout;
@@ -64,6 +66,7 @@ export class Simulation {
     this.entry = this.compiled.entries.find((e) => e.id === (entry || this.compiled.defaultEntry));
     if (!this.entry) throw new Error(`Entrada desconocida: ${entry}`);
     this.defenderSlots = defenders;
+    this.roles = validRoles(roles); // also kept for a new site's layout (sim/prep.js applyLayout)
     this.world = new World(this.compiled);
     this.doors = this.compiled.doors.map(createDoorState);
     this.world.updateDoorSegments(this.doors);
@@ -129,8 +132,8 @@ export class Simulation {
           x: s.at[0],
           y: s.at[1],
           facing: s.facing,
-          role: op.role,
-          weaponId: op.weapon, // optional override of the role's weapon
+          role: this.roles.attackers[i] || op.role,
+          weaponId: this.roles.attackers[i] ? undefined : op.weapon, // optional override of the role's weapon
         }),
       );
     });
@@ -145,7 +148,7 @@ export class Simulation {
           x: s.at[0],
           y: s.at[1],
           facing: s.facing,
-          role: s.role || DEFAULT_DEFENDER_ROLE,
+          role: this.roles.defenders[i] || s.role || DEFAULT_DEFENDER_ROLE,
           weaponId: s.weapon,
           behavior: s.behavior,
         }),
@@ -288,4 +291,30 @@ export class Simulation {
     this.tick++;
     this.time += dt;
   }
+}
+
+/**
+ * The lobby's classes, checked per side: every attacker slot a buy-phase class
+ * (one Brecha, one Explorador), every defender slot a preparation class (at
+ * most ROLES[id].max of each). A side with a missing or impossible pick keeps
+ * its defaults whole (mixing them could repeat a one-per-side class).
+ */
+function validRoles(roles) {
+  const out = { attackers: [], defenders: [] };
+  const sides = [
+    ['attackers', SQUAD.length, (r, n) => r.pick && (!r.unique || n === 0)],
+    ['defenders', DEFENDERS, (r, n) => r.defPick && n < r.max],
+  ];
+  for (const [team, size, ok] of sides) {
+    const ids = (roles && roles[team]) || [];
+    const count = {};
+    const fine = ids.length >= size && ids.slice(0, size).every((id) => {
+      const r = ROLES[id];
+      if (!r || !ok(r, count[id] || 0)) return false;
+      count[id] = (count[id] || 0) + 1;
+      return true;
+    });
+    if (fine) out[team] = ids.slice(0, size);
+  }
+  return out;
 }

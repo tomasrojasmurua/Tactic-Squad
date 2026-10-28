@@ -3,7 +3,7 @@
 // Owned by session/SessionController; read by render, input and ui.
 //
 // Phases mirror the round's (sim/round.js) plus what only the screen has:
-//   title              the main menu (play against the AI / guided tutorial)
+//   title              the menu: main, JUGAR, the lobby (session.lobby: session/Lobby.js)
 //   buy, prep          the round's first decision phases (time stopped)
 //   drone              the attackers drive their recon drone (real time, like a turn)
 //   planning           a turn's planning: orders apply instantly (routes update live)
@@ -29,7 +29,7 @@ export const isDecisionPhase = (session) => session.phase === 'buy' || session.p
 export function createSession({ touch }) {
   return {
     phase: 'title',
-    mode: 'play', // 'play' (against the AI) | 'tutorial' (the guided round: config/ui.js TUTORIAL)
+    mode: 'play', // 'play' (a single round against the AI) | 'match' (a series) | 'tutorial' (the guided round: config/ui.js TUTORIAL)
     team: PLAYER_TEAM, // the side this player commands (orders are stamped with it); the menu picks it, the AI plays the other
     selectedId: -1, // unit id of the player's side, -1 = none
     // The waypoint the player tapped ({unitId, index}: a "?" door, a tag, a waypoint): the door
@@ -42,10 +42,11 @@ export function createSession({ touch }) {
     replay: { pending: 0, attempt: 0, exec: false }, // recorded phases still to replay; retries of this plan; this turn is a replayed one
     clock: { left: 0, total: 0, unlimited: false, auto: false }, // session/PhaseClock.js (decision phases)
     tutorial: { active: false, step: 0, id: null, info: false, card: false, count: 0, done: false }, // session/Tutorial.js
-    // Per-device progress (session/storage.js): finished rounds unlock the phases before the assault.
-    progress: { roundsDone: 0, fullRound: false, stopOnContact: true },
-    match: null, // a best-of-7 against the AI (session/Match.js), mode 'match'
-    locked: [], // round phases skipped in this attempt ('buy' | 'prep' | 'drone'), set by SessionController
+    // Per-device options (session/storage.js).
+    progress: { stopOnContact: true },
+    lobby: null, // the menu and the game's settings (session/Lobby.js), set by SessionController
+    match: null, // a best of 3/5/7 against the AI (session/Match.js), mode 'match'
+    locked: [], // round phases skipped in this attempt (the tutorial's 'buy' | 'prep' | 'drone'), set by SessionController
     hoverUnitId: -1,
     helpOpen: false,
     musicOn: true, // mirrors the audio (set by SessionController); the UI shows it

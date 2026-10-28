@@ -63,15 +63,28 @@ test('gana el primero en llegar a 4, contando las rondas del jugador en los dos 
   assert.equal(m.history.length, 6);
 });
 
+test('al mejor de 3 gana el que llega a 2 y se cambia de bando tras la primera; al mejor de 5, a 3 y tras la segunda', () => {
+  const m3 = createMatch('defenders', 3);
+  assert.equal(m3.toWin, 2);
+  assert.ok(finished(m3, 'defenders').switched, 'empezó defendiendo: ahora ataca');
+  assert.equal(m3.team, 'attackers');
+  finished(m3, 'attackers');
+  assert.equal(m3.over, 'player');
+  const m5 = createMatch('attackers', 5);
+  assert.equal(m5.toWin, 3);
+  assert.equal(finished(m5, 'attackers').switched, false);
+  assert.ok(finished(m5, 'attackers').switched);
+});
+
 test('cambio de bando tras la ronda 3: el jugador defiende y los atacantes empiezan de cero', () => {
   const m = createMatch();
-  for (let i = 0; i < MATCH.switchAfter - 1; i++) assert.equal(finished(m, 'attackers').switched, false);
+  for (let i = 0; i < m.switchAfter - 1; i++) assert.equal(finished(m, 'attackers').switched, false);
   assert.equal(m.team, 'attackers');
   const half = finished(m, 'defenders');
   assert.ok(half.switched);
   assert.equal(half.team, 'attackers', 'la ronda jugada fue de atacante');
   assert.equal(m.team, 'defenders');
-  assert.equal(m.round, MATCH.switchAfter + 1);
+  assert.equal(m.round, m.switchAfter + 1);
   assert.equal(m.slots, null);
   assert.equal(m.lossStreak, 0);
   assert.equal(matchLoadout(m), null);
@@ -95,4 +108,19 @@ test('el tope de dinero', () => {
   for (const sl of m.slots) sl.money = MATCH.cap - 10;
   finished(m, 'attackers');
   assert.ok(m.slots.every((sl) => sl.money === MATCH.cap));
+});
+
+test('las clases del lobby: cada puesto con la suya, también al cambiar de sitio; una elección imposible queda en la del puesto', () => {
+  const roles = { attackers: ['assault', 'assault', 'scout'], defenders: ['roamer', 'defender', 'anchor'] };
+  const sim = new Simulation(MAP, { seed: 3, site: 'A', controllers: controllersFor('defenders'), roles });
+  assert.deepEqual(sim.teams.attackers.map((u) => u.role), ['assault', 'assault', 'scout']);
+  assert.deepEqual(sim.teams.defenders.map((u) => u.role), ['roamer', 'defender', 'anchor']);
+  assert.equal(sim.traps.length, 0, 'sin Trampero no hay trampas');
+  sim.advancePhase(); // compra -> preparación
+  sim.enqueue({ team: 'defenders', type: 'chooseSite', site: 'B' });
+  sim.flushCommands();
+  assert.equal(sim.site.id, 'B');
+  assert.deepEqual(sim.teams.defenders.map((u) => u.role), ['roamer', 'defender', 'anchor']);
+  const bad = new Simulation(MAP, { seed: 3, roles: { attackers: ['scout', 'scout', 'anchor'] } });
+  assert.deepEqual(bad.teams.attackers.map((u) => u.role), ['assault', 'entry', 'scout'], 'los de siempre');
 });

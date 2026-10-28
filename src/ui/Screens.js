@@ -1,40 +1,25 @@
-// Full-screen overlays: main menu (title), round result, controls help,
+// Full-screen overlays: the menu (title: ui/Menu.js), round result, controls help,
 // and the fatal / unsupported-browser message.
 import { EV } from '../core/events.js';
 import { teamUnits } from '../sim/queries.js';
 import { el, setText, toggle, formatTime } from './dom.js';
 import { T } from './texts.js';
 import { buildDebrief } from './debriefText.js';
-import { MATCH } from '../config/balance.js';
+import { Menu } from './Menu.js';
 
 export class Screens {
   constructor(root, bus) {
     this.bus = bus;
 
-    // Main menu: a round against the AI on either side, or the guided tutorial (session/Tutorial.js).
-    const M = T.flow.menu;
+    // The menu: main, JUGAR and the lobby (ui/Menu.js).
     this.title = el('div', 'screen title');
     this.title.innerHTML = `
       <div class="title-box">
         <h1>TACTIC <em>SQUAD</em></h1>
         <div class="subtitle">${T.subtitle}</div>
-        <p class="pitch">${M.pitch}</p>
-        <div class="menu">
-          <button class="btn primary menu-btn start"><span class="mb-l">${M.play}</span><span class="mb-n">${M.playNote}</span></button>
-          <button class="btn primary menu-btn defend"><span class="mb-l">${M.defend}</span><span class="mb-n">${M.defendNote}</span></button>
-          <button class="btn menu-btn match"><span class="mb-l">${M.match}</span><span class="mb-n">${M.matchNote}</span></button>
-          <button class="btn menu-btn tutorial"><span class="mb-l">${M.tutorial}</span><span class="mb-n">${M.tutorialNote}</span><span class="mb-badge"></span></button>
-        </div>
-        <ol class="howto desk-only">${T.howTo.desk.map(([n, v]) => `<li><b>${n}</b>${v}</li>`).join('')}</ol>
-        <div class="hint desk-only">${T.startHint}</div>
       </div>`;
-    this.title.querySelector('.start').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'start' }));
-    this.title.querySelector('.defend').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'defend' }));
-    this.title.querySelector('.tutorial').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'tutorial' }));
-    this.title.querySelector('.match').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'match' }));
+    this.menu = new Menu(this.title.querySelector('.title-box'), bus);
     this.title.addEventListener('pointerdown', (e) => e.stopPropagation());
-    this.tutorialBadge = this.title.querySelector('.mb-badge');
-    this.tutorialBtn = this.title.querySelector('.tutorial');
 
     this.result = el('div', 'screen result hidden');
     this.result.innerHTML = `
@@ -78,15 +63,13 @@ export class Screens {
         <h3>${T.help.title}</h3>
         <table class="desk-only">${T.help.rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
         <table class="touch-only">${T.touch.rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
-        <div class="help-options"><button class="btn stop-contact"></button><button class="btn full-round"></button></div>
+        <div class="help-options"><button class="btn stop-contact"></button></div>
         <div class="help-actions"><button class="btn primary close">${T.help.close}</button><button class="btn to-menu">${T.flow.menu.button}</button></div>
       </div>`;
     this.help.querySelector('.close').addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'help' }));
     this.helpMenu = this.help.querySelector('.to-menu');
     this.helpMenu.addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'menu' }));
     this.help.addEventListener('pointerdown', (e) => e.stopPropagation());
-    this.fullRound = this.help.querySelector('.full-round');
-    this.fullRound.addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'fullRound' }));
     this.stopContact = this.help.querySelector('.stop-contact');
     this.stopContact.addEventListener('click', () => bus.emit(EV.REQUEST, { action: 'stopOnContact' }));
 
@@ -100,17 +83,10 @@ export class Screens {
 
   update(sim, session) {
     toggle(this.title, 'hidden', session.phase !== 'title');
-    if (session.phase === 'title') {
-      const done = session.tutorial.done;
-      setText(this.tutorialBadge, done ? T.flow.menu.tutorialDone : T.flow.menu.tutorialNew);
-      toggle(this.tutorialBtn, 'done', done); // a first-timer sees it recommended (styles.css)
-    }
+    if (session.phase === 'title') this.menu.update(session);
     toggle(this.help, 'hidden', !session.helpOpen);
     if (session.helpOpen) {
       setText(this.helpMenu, session.confirm.action === 'menu' ? T.flow.menu.confirm : T.flow.menu.button);
-      setText(this.fullRound, T.flow.fullRound(session.progress.fullRound));
-      const on = session.progress.fullRound ? '1' : '';
-      if ((this.fullRound.dataset.on || '') !== on) this.fullRound.dataset.on = on;
       setText(this.stopContact, T.flow.stopOnContact(session.progress.stopOnContact));
       const sc = session.progress.stopOnContact ? '1' : '';
       if ((this.stopContact.dataset.on || '') !== sc) this.stopContact.dataset.on = sc;
@@ -135,7 +111,7 @@ export class Screens {
     const pay = this.result.querySelector('.match-pay');
     // What the player's attackers earned, or the half-time switch (a defender earns nothing).
     pay.hidden = !match || !!match.over || (team !== 'attackers' && !last.switched);
-    if (match && !match.over && last.switched) setText(pay, T.match.switchSides);
+    if (match && !match.over && last.switched) setText(pay, T.match.switchSides(match.team));
     else if (match && !match.over && team === 'attackers') setText(pay, `${T.match.payTitle}: ${teamUnits(sim, team).map((u, i) => T.match.pay(u.name, last.income[i])).join(' · ')}`);
     setText(this.result.querySelector('.next-round'), match && match.over ? T.match.again : T.match.next);
     setText(this.result.querySelector('.reason'), (team === 'defenders' ? T.result.reasonDefend : T.result.reason)[o.reason]);
@@ -148,7 +124,7 @@ export class Screens {
     setText(this.result.querySelector('.st-losses'), squad.filter((u) => !u.alive).length);
     setText(this.result.querySelector('.st-acc'), shots ? `${Math.round((hits / shots) * 100)}%` : '—');
 
-    setText(this.result.querySelector('.retry'), match ? T.match.toWin(MATCH.toWin) : this.touch ? T.result.retryTouch : T.result.retry);
+    setText(this.result.querySelector('.retry'), match ? T.match.toWin(match.toWin) : this.touch ? T.result.retryTouch : T.result.retry);
 
     // Why: one line per fallen operator / outcome note, plus the tip that matters most.
     const { lines, tip } = buildDebrief(sim, team);
