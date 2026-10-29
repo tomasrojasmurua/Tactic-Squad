@@ -7,9 +7,9 @@
 //   evidence  what the side's operators notice in a step: an enemy they are
 //             shooting at, and every alert (gunfire, footsteps, pain, a
 //             camera, a trap, a barricade being hit) — where it came from
-//   threat    evidence within AI_DEFEND.threatRadius of the bomb: the site is
+//   threat    evidence within the plan's `threat` m (AI_DEFEND.threatRadius) of the bomb: the site is
 //             being hit. Fights far from the bomb are left to whoever is there
-//   rotation  on a threat, up to AI_DEFEND.rotators defenders who are not the
+//   rotation  on a threat, up to the plan's `rotators` (AI_DEFEND.rotators) defenders who are not the
 //             site's anchors, not fighting and not already near the threat
 //             walk to the bomb once and hold the angle the threat comes
 //             through: their map-authored fallback when they have one
@@ -19,6 +19,7 @@
 // Like the attacking AI it uses no sim.rng, so an AI round replays exactly.
 import { AI_DEFEND, NAV } from '../config/balance.js';
 import { startRotation, pathAroundBarricades } from './ai.js';
+import { planFor } from '../config/operators.js';
 
 const TEAM = 'defenders';
 
@@ -26,7 +27,9 @@ const TEAM = 'defenders';
 export function createDefendAi(sim) {
   if (sim.controllers.defenders !== 'ai') return null;
   for (const u of sim.teams[TEAM]) u.ai.commanded = true;
-  return { threat: null, sent: 0 };
+  // The squad's plan (config/operators.js COMPOSITIONS): how many rotate, and how early.
+  const plan = planFor(TEAM, sim.teams[TEAM].map((u) => u.role));
+  return { threat: null, sent: 0, rotators: plan.rotators ?? AI_DEFEND.rotators, threatRadius: plan.threat ?? AI_DEFEND.threatRadius };
 }
 
 /** Every execution step, after the units have perceived and been alerted. */
@@ -34,7 +37,7 @@ export function defendAiTick(sim) {
   const ai = sim.defendAi;
   if (!ai) return;
   const bomb = sim.bomb;
-  const r2 = AI_DEFEND.threatRadius * AI_DEFEND.threatRadius;
+  const r2 = ai.threatRadius * ai.threatRadius;
   let threat = null;
   let best = Infinity;
   for (const u of sim.teams[TEAM]) {
@@ -50,7 +53,7 @@ export function defendAiTick(sim) {
   }
   if (!threat) return;
   ai.threat = { x: threat.x, y: threat.y, time: sim.time };
-  if (ai.sent < AI_DEFEND.rotators) rotate(sim, ai, threat);
+  if (ai.sent < ai.rotators) rotate(sim, ai, threat);
 }
 
 /** Sends the free defenders farthest from the threat to the bomb, one rotation each. */
@@ -60,7 +63,7 @@ function rotate(sim, ai, threat) {
     u.alive && u.role !== 'anchor' && u.target < 0 && !u.ai.rotated && !u.ai.rotating && (u.x - threat.x) ** 2 + (u.y - threat.y) ** 2 > near2);
   free.sort((a, b) => (b.x - threat.x) ** 2 + (b.y - threat.y) ** 2 - ((a.x - threat.x) ** 2 + (a.y - threat.y) ** 2) || a.id - b.id);
   for (const u of free) {
-    if (ai.sent >= AI_DEFEND.rotators) return;
+    if (ai.sent >= ai.rotators) return;
     const spot = (u.behavior && u.behavior.rotate) || coverSpot(sim, threat, ai.sent);
     if (!spot) continue;
     startRotation(u, spot);

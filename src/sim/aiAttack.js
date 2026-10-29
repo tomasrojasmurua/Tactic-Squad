@@ -30,6 +30,8 @@ import { canSee } from './vision.js';
 import { applyCommand } from './orders.js';
 import { codeWaiting, codeInUse, isGoReady, gearLeft, defuseCandidate, entryModeFits } from './queries.js';
 import { PHASE } from './round.js';
+import { planFor } from '../config/operators.js';
+import { segmentCrossesDoorway } from './doors.js';
 
 const TEAM = 'attackers';
 
@@ -42,6 +44,8 @@ export function createAttackAi(sim) {
     drone: { legs: [], leg: 0, point: 0, lastX: 0, lastY: 0, still: 0 },
     goWait: {}, // GO code -> s since someone started waiting for it
     goReady: {}, // GO code -> s everyone of it has been in position
+    // The squad's game plan (config/operators.js COMPOSITIONS): its archetype's, or what its classes suggest.
+    plan: planFor(TEAM, sim.teams.attackers.map((u) => u.role)),
   };
 }
 
@@ -151,15 +155,83 @@ function plan(sim, ai) {
   const site = siteById(sim, target);
   const squad = sim.teams.attackers.filter((u) => u.alive);
   if (defuseCandidate(sim) && sim.bomb.defuserId < 0) order(sim, { type: 'defuseNow' });
+  const plan = ai.plan;
+  const ways = plan.split && (retarget || first) && squad.length ? siteDoors(sim, site, squad[0]) : [];
   squad.forEach((u, i) => {
     if (u.defusing) return;
-    if (retarget || first) order(sim, { type: 'clearRoute', unitId: u.id });
+    const fresh = retarget || first;
+    if (fresh) order(sim, { type: 'clearRoute', unitId: u.id });
     else if (u.route.length || u.entry || u.bash) return; // still on his way
     const [x, y] = spot(sim, site, i);
     if ((u.x - x) ** 2 + (u.y - y) ** 2 < 0.25) return; // already there
+    // Overwatch: the Tirador stops short of the site the first time and holds the way in (a turn later he joins).
+    if (fresh && plan.overwatch === u.role && overwatch(sim, u, x, y)) return;
+    // A pinch: the second operator comes in through another door of the site.
+    const via = ways.length > 1 && i === 1 ? ways[1] : null;
+    if (fresh && via) order(sim, { type: 'addWaypoint', unitId: u.id, x: via.x, y: via.y, user: true });
     order(sim, { type: 'addWaypoint', unitId: u.id, x, y, user: true });
+    if (fresh && plan.sneak) sneakApproach(sim, u, site);
   });
-  stackDoors(sim, squad);
+  stackDoors(sim, squad, plan);
+}
+
+/**
+ * The ways into a site, nearest to `from` first: doorways within
+ * AI_ATTACK.siteDoorReach (walking) of the bomb, as the point just outside
+ * each (the side away from the bomb). The first is the squad's main way in;
+ * a split plan sends one operator through the second.
+ */
+function siteDoors(sim, site, from) {
+  const nav = sim.world.nav;
+  const out = [];
+  for (const d of sim.world.doorways) {
+    const s = (site.bombX - d.cx) * d.normalX + (site.bombY - d.cy) * d.normalY > 0 ? -1 : 1;
+    const x = d.cx + d.normalX * s * AI_ATTACK.viaOffset;
+    const y = d.cy + d.normalY * s * AI_ATTACK.viaOffset;
+    if (!nav.walkable(x, y)) continue;
+    const inside = travel(sim, d.cx, d.cy, site.bombX, site.bombY);
+    if (inside > AI_ATTACK.siteDoorReach || travel(sim, x, y, site.bombX, site.bombY) <= inside) continue;
+    out.push({ x, y, d: travel(sim, from.x, from.y, x, y) });
+  }
+  return out.filter((o) => o.d < Infinity).sort((a, b) => a.d - b.d);
+}
+
+/**
+ * The Tirador of an overwatch plan: walks the way to the site only up to
+ * AI_ATTACK.overwatchShort m (walking) before the bomb and holds there looking
+ * down the rest of the way, still, so his holdReaction applies to whoever
+ * comes out to meet the squad. False when the way is too short for that.
+ */
+function overwatch(sim, u, x, y) {
+  const path = sim.world.nav.findPath(u.x, u.y, x, y, NAV.snapRadius);
+  if (!path || pathLength(u, path) < AI_ATTACK.overwatchShort * 1.5) return false;
+  let left = AI_ATTACK.overwatchShort;
+  for (let i = path.length - 1; i > 0; i--) {
+    const a = path[i - 1];
+    const b = path[i];
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len >= left) {
+      const k = left / (len || 1);
+      const px = b.x + (a.x - b.x) * k;
+      const py = b.y + (a.y - b.y) * k;
+      if (crossesDoor(sim, px, py, b.x, b.y)) return false; // a door in between: he would see nothing
+      order(sim, { type: 'addWaypoint', unitId: u.id, x: px, y: py, user: true });
+      order(sim, { type: 'setLook', unitId: u.id, angle: Math.atan2(b.y - py, b.x - px) });
+      return true;
+    }
+    left -= len;
+  }
+  return false;
+}
+
+const crossesDoor = (sim, ax, ay, bx, by) => sim.world.doorways.some((d, k) => k < sim.doors.length && segmentCrossesDoorway(ax, ay, bx, by, d) >= 0);
+
+/** A quiet plan: the legs that end at a door within AI_ATTACK.sneakRange of the bomb are walked in silence. */
+function sneakApproach(sim, u, site) {
+  const r2 = AI_ATTACK.sneakRange * AI_ATTACK.sneakRange;
+  u.route.forEach((p, i) => {
+    if (p.user && p.ask && (p.x - site.bombX) ** 2 + (p.y - site.bombY) ** 2 < r2) order(sim, { type: 'setPace', unitId: u.id, pace: 'sneak', index: i });
+  });
 }
 
 /** What the squad has learnt this far: the bomb, or a site walked into with no bomb in it. */
@@ -220,14 +292,15 @@ function spot(sim, site, i) {
  * same code, right after the bang; an Explorador among them looks under
  * the door with his fiber-optic camera while they wait.
  */
-function stackDoors(sim, squad) {
+function stackDoors(sim, squad, plan = {}) {
   const doors = [];
   for (const u of squad) u.route.forEach((p) => p.ask && !doors.includes(p.door) && doors.push(p.door));
   const free = ENTRY.goCodes.filter((c) => !codeInUse(sim, TEAM, c));
   doors.forEach((k, n) => {
     const code = free[n] || null;
-    const barricade = sim.intel.barricades.has(k);
     const at = (u) => u.route.findIndex((p) => (p.ask || p.waitDoor === k) && p.door === k);
+    // A known barricade is blown; a breach plan blows every closed door on the way (while charges last).
+    const barricade = sim.intel.barricades.has(k) || (!!plan.breach && squad.some((u) => at(u) >= 0 && gearLeft(u, 'breach', at(u)) > 0));
     const stacked = squad.filter((u) => at(u) >= 0);
     // The throwers decide the door first; the rest then wait for them beside the frame (sim/orders.js).
     const throwers = [];

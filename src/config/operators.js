@@ -123,25 +123,63 @@ export const ROLES = Object.freeze({
 });
 
 /**
- * The squads an AI side picks from, blind (session/Lobby.js aiRoles: one per
- * round, from its seed). Defenders by post of the map's layout.
+ * Archetypal compositions (docs/diseno/composiciones.md): three classes and
+ * the game plan they enable, as data the AI reads (sim/aiAttack.js,
+ * sim/aiDefend.js). An AI side picks one blind (AI_SQUADS); a squad that is
+ * none of them (a player's) gets the plan its classes suggest (planFor).
+ *
+ * Attack plan fields: `breach` (charges on every closed door on the way, not
+ * only on known barricades), `split` (each operator takes a different door
+ * into the site: a pinch), `sneak` (the approach in silence: traps seen,
+ * steps not heard), `overwatch` (that class stops short of the site, holds
+ * the way in for a turn, then joins).
+ * Defense plan fields: `rotators` (how many leave their posts for the bomb
+ * when it is threatened), `threat` (m from the bomb that counts as a threat:
+ * farther = earlier rotation).
  */
-export const AI_SQUADS = Object.freeze({
+export const COMPOSITIONS = Object.freeze({
   attackers: Object.freeze([
-    Object.freeze(['assault', 'entry', 'scout']),
-    Object.freeze(['shield', 'entry', 'scout']),
-    Object.freeze(['assault', 'entry', 'marksman']),
-    Object.freeze(['shield', 'entry', 'grenadier']),
-    Object.freeze(['assault', 'entry', 'grenadier']),
+    Object.freeze({ id: 'hardBreach', roles: Object.freeze(['shield', 'entry', 'assault']), plan: Object.freeze({ breach: true }) }),
+    Object.freeze({ id: 'infoFlank', roles: Object.freeze(['scout', 'assault', 'entry']), plan: Object.freeze({ split: true, sneak: true }) }),
+    Object.freeze({ id: 'utility', roles: Object.freeze(['grenadier', 'entry', 'scout']), plan: Object.freeze({ sneak: true }) }),
+    Object.freeze({ id: 'longPick', roles: Object.freeze(['marksman', 'shield', 'assault']), plan: Object.freeze({ overwatch: 'marksman' }) }),
+    Object.freeze({ id: 'rush', roles: Object.freeze(['assault', 'grenadier', 'assault']), plan: Object.freeze({ split: true }) }),
   ]),
   defenders: Object.freeze([
-    Object.freeze(['anchor', 'shotgunner', 'trapper']),
-    Object.freeze(['shotgunner', 'lookout', 'roamer']),
-    Object.freeze(['anchor', 'lookout', 'trapper']),
-    Object.freeze(['anchor', 'sniper', 'roamer']),
-    Object.freeze(['anchor', 'lookout', 'roamer']),
+    Object.freeze({ id: 'fortress', roles: Object.freeze(['anchor', 'anchor', 'trapper']), plan: Object.freeze({ rotators: 1, threat: 8 }) }),
+    Object.freeze({ id: 'retake', roles: Object.freeze(['anchor', 'roamer', 'sniper']), plan: Object.freeze({ rotators: 2, threat: 12 }) }),
+    Object.freeze({ id: 'infoNet', roles: Object.freeze(['lookout', 'trapper', 'anchor']), plan: Object.freeze({ rotators: 2, threat: 10 }) }),
+    Object.freeze({ id: 'ambush', roles: Object.freeze(['shotgunner', 'shotgunner', 'roamer']), plan: Object.freeze({ rotators: 1, threat: 6 }) }),
+    Object.freeze({ id: 'hunt', roles: Object.freeze(['lookout', 'roamer', 'shotgunner']), plan: Object.freeze({ rotators: 2, threat: 12 }) }),
   ]),
 });
+
+/**
+ * The squads an AI side picks from, blind (session/Lobby.js aiRoles: one per
+ * round, from its seed): the archetypal compositions. Defenders by post of the map's layout.
+ */
+export const AI_SQUADS = Object.freeze({
+  attackers: Object.freeze(COMPOSITIONS.attackers.map((c) => c.roles)),
+  defenders: Object.freeze(COMPOSITIONS.defenders.map((c) => c.roles)),
+});
+
+const sameClasses = (a, b) => a.length === b.length && [...a].sort().join() === [...b].sort().join();
+
+/**
+ * The plan of a side's squad (`roles`: its classes): its archetype's when it
+ * is one, else the one its classes suggest (the Tirador covers, a Brecha with
+ * an Escudo breaks in, an Explorador moves quiet...). Always a fresh object.
+ */
+export function planFor(team, roles) {
+  const own = COMPOSITIONS[team].find((c) => sameClasses(c.roles, roles));
+  if (own) return { id: own.id, ...own.plan };
+  const has = (r) => roles.includes(r);
+  if (team === 'attackers') {
+    return { id: null, breach: has('entry') && has('shield'), split: has('scout') && !has('grenadier'), sneak: has('scout'), overwatch: has('marksman') ? 'marksman' : null };
+  }
+  const near = roles.filter((r) => r === 'anchor' || r === 'shotgunner').length;
+  return { id: null, rotators: near >= 2 ? 1 : 2, threat: has('roamer') || has('sniper') ? 12 : 8 };
+}
 
 /** A role's flag (ROLES[id][key]), false for an unknown role. */
 export const roleFlag = (roleId, key) => !!(ROLES[roleId] && ROLES[roleId][key]);

@@ -183,6 +183,11 @@ export const AI_ATTACK = Object.freeze({
   gasDepth: 3.5, // m into the room an AI Granadero aims his gas
   goPause: 0.25, // s a group waits in position before its GO (it reads as a call, not a reflex)
   goTimeout: 4, // s waiting for a GO before it is given anyway (someone is stuck or fighting)
+  // Composition plans (config/operators.js COMPOSITIONS):
+  siteDoorReach: 9, // m walking from a doorway to the bomb: it is a way into the site (a split plan's second door)
+  viaOffset: 1.2, // m outside that doorway: where the flanker goes before stepping in
+  overwatchShort: 7, // m walking short of the bomb where an overwatch Tirador stops and holds
+  sneakRange: 14, // m from the bomb: a quiet plan sneaks the legs ending at doors this close
 });
 
 /** Round debrief (sim/debrief.js). */
