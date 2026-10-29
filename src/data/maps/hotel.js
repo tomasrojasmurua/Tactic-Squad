@@ -320,8 +320,9 @@ export default {
       // Bedroom guard on the connecting door, behind the partition: he does not
       // see the suite door (lays the traps; on the first firefight he comes to the living room).
       { at: [33.6, 8.4], facing: -128 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'hold', reactsToNoise: true, rotate: { to: [36.4, 14.2], look: 180 * DEG } } },
-      // Roamer walking the corridor's east half: the first shot down the corridor.
-      { at: [28.6, 14.0], facing: 180 * DEG, weapon: 'smg', role: 'roamer', behavior: { type: 'patrol', points: [[28.6, 14.0], [21.0, 14.0]], wait: 2.4, reactsToNoise: true } },
+      // Third defender in the suite's entry hall, beside the door: whoever
+      // comes down the corridor and through it meets him at arm's length.
+      { at: [34.2, 12.2], facing: 180 * DEG, weapon: 'smg', role: 'roamer', behavior: { type: 'hold', reactsToNoise: true } },
       // Room 705, facing the connecting door from 704.
       { at: [29.3, 8.9], facing: -130 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: -150 * DEG, to: -100 * DEG, period: 6, reactsToNoise: true } },
     ],
@@ -331,8 +332,8 @@ export default {
       { at: [20.3, 24.2], facing: -161 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
       // By the linen shelves, on the door from 707 (lays the traps).
       { at: [14.8, 17.0], facing: 33 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'hold', reactsToNoise: true } },
-      // Roamer on the corridor's west half; on the first firefight he falls back into 707.
-      { at: [15.6, 14.0], facing: 180 * DEG, weapon: 'smg', role: 'roamer', behavior: { type: 'patrol', points: [[15.6, 14.0], [24.0, 14.0]], wait: 2.2, reactsToNoise: true, rotate: { to: [23.6, 20.2], look: 180 * DEG } } },
+      // Third defender at the corridor's east end, looking down it toward the lobby.
+      { at: [25.5, 14.0], facing: 180 * DEG, weapon: 'smg', role: 'roamer', behavior: { type: 'hold', reactsToNoise: true } },
       // Room 707, facing its corridor door.
       { at: [24.8, 20.6], facing: -115 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: -140 * DEG, to: -95 * DEG, period: 6, reactsToNoise: true } },
     ],
