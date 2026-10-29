@@ -33,4 +33,16 @@ export const PROPS = Object.freeze({
   cone: { w: 0.35, d: 0.35, h: 0.5, blocksMove: false },
   bin: { w: 0.45, d: 0.45, h: 0.8, blocksMove: true },
   bench: { w: 1.6, d: 0.45, h: 0.45, blocksMove: true },
+  // hotel
+  bed: { w: 1.6, d: 2.05, h: 0.62, blocksMove: true },
+  nightstand: { w: 0.45, d: 0.4, h: 0.55, blocksMove: true },
+  wardrobe: { w: 1.4, d: 0.6, h: 2.1, blocksMove: true, blocksVision: true },
+  hotelDesk: { w: 1.2, d: 0.55, h: 0.76, blocksMove: true },
+  floorLamp: { w: 0.35, d: 0.35, h: 1.6, blocksMove: false },
+  washer: { w: 0.7, d: 0.7, h: 0.9, blocksMove: true },
+  dryerStack: { w: 0.75, d: 0.7, h: 1.85, blocksMove: true, blocksVision: true },
+  laundryCart: { w: 1.2, d: 0.6, h: 1.0, blocksMove: true },
+  linenShelf: { w: 1.8, d: 0.45, h: 2.0, blocksMove: true, blocksVision: true },
+  luggageCart: { w: 1.2, d: 0.6, h: 1.7, blocksMove: true },
+  shower: { w: 0.9, d: 0.9, h: 2.0, blocksMove: true },
 });

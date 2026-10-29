@@ -16,6 +16,7 @@
 import { EV } from '../core/events.js';
 import { SIM, ENTRY } from '../config/balance.js';
 import { PLAYER_TEAM } from '../config/squad.js';
+import { DEFAULT_MAP } from '../data/maps/index.js';
 import { FLOW } from '../config/ui.js';
 import { lessonById, nextLesson } from '../config/lessons.js';
 import { loadPref, savePref } from './storage.js';
@@ -410,8 +411,8 @@ export class SessionController {
         }
         if (session.touch) requestFullscreenLandscape();
         session.lobby.ready = true;
-        const { mode, team, bestOf } = lobbyStart(session.lobby);
-        this.beginMode(mode, team, bestOf);
+        const { mode, team, bestOf, map } = lobbyStart(session.lobby);
+        this.beginMode(mode, team, bestOf, null, map);
         return;
       }
       case 'tutorial':
@@ -683,10 +684,12 @@ export class SessionController {
 
   /**
    * From the menu: a fresh round against the AI or a series (the lobby's), or
-   * the round of a lesson (`lesson`: its id; config/lessons.js scenario).
+   * the round of a lesson (`lesson`: its id; config/lessons.js scenario), on
+   * `map` (a lesson is always on the first map: its scenario is built on it).
    */
-  beginMode(mode, team = PLAYER_TEAM, bestOf = undefined, lesson = null) {
+  beginMode(mode, team = PLAYER_TEAM, bestOf = undefined, lesson = null, map = this.session.map) {
     this.session.mode = mode;
+    this.session.map = mode === 'tutorial' ? DEFAULT_MAP : map;
     if (mode === 'tutorial') this.session.tutorial.lesson = lesson;
     this.session.team = mode === 'tutorial' ? this.lesson.scenario.team : team;
     this.session.match = mode === 'match' ? createMatch(this.session.team, bestOf) : null;
@@ -753,6 +756,7 @@ export class SessionController {
     this.session.mode = 'play';
     this.session.team = PLAYER_TEAM;
     this.session.match = null;
+    this.session.map = DEFAULT_MAP;
     this.session.lobby.ready = false;
     this.setPhase('title');
     this.seed = SIM.seed;

@@ -4,16 +4,17 @@
 //           recommended, the ones still to come disabled
 //   play    CONTRA LA IA · MULTIJUGADOR (coming soon) · VOLVER
 //   lobby   format (a single round, best of 3 / 5 / 7), starting side, map
-//           (more coming soon); ELEGIR CLASES goes on to
+//           (or "al azar") with its card (ui/MapPreview.js); ELEGIR CLASES goes on to
 //   pick    the roster (ui/Roster.js), like a MOBA's pick phase: 3
 //           characters from a pool for the whole game (a tab per side in a
 //           match), who is in and ready; CONFIRMAR starts once everyone is
 // Emits EV.REQUEST {action: 'play' | 'vsAi' | 'tutorial' | 'lesson_<id>' | 'back' | 'lobbyReady' |
-// 'lobby_bestOf_<n>' | 'lobby_side_<team>'} and the roster's (ui/Roster.js).
+// 'lobby_bestOf_<n>' | 'lobby_side_<team>' | 'lobby_map_<id>'} and the roster's (ui/Roster.js).
 import { EV } from '../core/events.js';
 import { MAPS } from '../data/maps/index.js';
-import { BEST_OF } from '../session/Lobby.js';
+import { BEST_OF, MAP_CHOICES } from '../session/Lobby.js';
 import { Roster } from './Roster.js';
+import { MapPreview } from './MapPreview.js';
 import { LESSONS, nextLesson } from '../config/lessons.js';
 import { el, setText, toggle } from './dom.js';
 import { T } from './texts.js';
@@ -68,10 +69,11 @@ export class Menu {
       <div class="lb-cols">
         <div class="lb-col">
           <div class="lb-row"><span class="lb-l">${L.format}</span><div class="lb-opts bestof"></div><div class="lb-note fmt-note"></div></div>
+          <div class="lb-row"><span class="lb-l">${L.maps}</span><div class="lb-maps"></div></div>
         </div>
         <div class="lb-col">
           <div class="lb-row"><span class="lb-l">${L.side}</span><div class="lb-opts side"></div></div>
-          <div class="lb-row"><span class="lb-l">${L.map}</span><div class="lb-opts map"></div></div>
+          <div class="lb-row lb-card"><span class="lb-l">${L.map}</span></div>
         </div>
       </div>
       <div class="lb-actions"></div>`,
@@ -88,10 +90,19 @@ export class Menu {
     this.bestOf = BEST_OF.map((n) => opt(q('.bestof'), L.bestOf(n), `lobby_bestOf_${n}`, n));
     this.fmtNote = q('.fmt-note');
     this.side = ['attackers', 'defenders'].map((t) => opt(q('.side'), L.sides[t], `lobby_side_${t}`, t));
-    this.mapBtn = opt(q('.map'), '', null, 'map');
-    this.mapBtn.classList.add('on');
-    const more = opt(q('.map'), L.moreMaps, null, 'soon');
-    more.disabled = true;
+    // The map list (left; it scrolls once there are many) and the chosen map's plan and reading (right).
+    const nMaps = MAP_CHOICES.length - 1;
+    this.maps = MAP_CHOICES.map((id) => {
+      const m = MAPS[id];
+      const b = opt(q('.lb-maps'), '', `lobby_map_${id}`, id);
+      b.classList.add('lb-mapi');
+      b.innerHTML = '<span class="mi-n"></span><span class="mi-d"></span>';
+      setText(b.firstChild, m ? m.name : L.randomMap);
+      setText(b.lastChild, m ? L.mapInfo(m.size.w, m.size.h, m.entries.length) : L.randomInfo(nMaps));
+      return b;
+    });
+    this.mapCard = new MapPreview();
+    q('.lb-card').appendChild(this.mapCard.root);
     const next = el('button', 'btn primary lb-ready', `${L.toPick}<span class="key desk-only">${L.readyKey}</span>`);
     next.addEventListener('click', () => this.request('lobbyReady'));
     q('.lb-actions').append(next, button('back', M.back, null, 'back'));
@@ -139,7 +150,12 @@ export class Menu {
       for (const b of this.bestOf) toggle(b, 'on', +b.dataset.key === lobby.bestOf);
       setText(this.fmtNote, L.formatNote(lobby.bestOf));
       for (const b of this.side) toggle(b, 'on', b.dataset.key === lobby.side);
-      setText(this.mapBtn, MAPS[lobby.map].name);
+      for (const b of this.maps) toggle(b, 'on', b.dataset.key === lobby.map);
+      if (lobby.map !== this.shownMap) {
+        this.shownMap = lobby.map;
+        this.maps.find((b) => b.dataset.key === lobby.map)?.scrollIntoView({ block: 'nearest' });
+      }
+      this.mapCard.show(lobby.map);
     }
     if (view === 'pick') this.roster.update(lobby);
   }

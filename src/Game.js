@@ -96,12 +96,14 @@ export class Game {
   }
 
   /**
-   * Fresh simulation (same map; the session picks the seed: a retry keeps it); listeners reset on EV.ROUND_RESET.
+   * Fresh simulation (on session.map; the session picks the seed: a retry keeps it); listeners reset on EV.ROUND_RESET.
    * The player's side (session.team) decides who the AI plays. Its options
    * (tutorial round, stop on contact, a match's loadout) come from the session flow.
    */
   newRound(seed = SIM.seed) {
     this.stopKillcam();
+    this.mapDef = MAPS[this.session.map] ?? MAPS[DEFAULT_MAP]; // the lobby's map (session.map)
+    this.framing.mapDef = this.mapDef;
     this.roundArgs = { seed, controllers: controllersFor(this.session.team), ...this.flow.roundOptions(seed) };
     this.sim = new Simulation(this.mapDef, this.roundArgs);
     this.attempt++;

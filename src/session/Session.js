@@ -14,6 +14,7 @@
 // The deadlines of the decision phases are session/PhaseClock.js (session.clock).
 
 import { PLAYER_TEAM } from '../config/squad.js';
+import { DEFAULT_MAP } from '../data/maps/index.js';
 import { lastUserIndex, controllableUnit } from '../sim/queries.js';
 
 export const PHASES = Object.freeze(['title', 'buy', 'prep', 'drone', 'planning', 'running', 'paused', 'ended']);
@@ -31,6 +32,7 @@ export function createSession({ touch }) {
   return {
     phase: 'title',
     mode: 'play', // 'play' (a single round against the AI) | 'match' (a series) | 'tutorial' (the guided round: config/ui.js TUTORIAL)
+    map: DEFAULT_MAP, // the map being played (data/maps id): the lobby's, the first map in a lesson and on the menu
     team: PLAYER_TEAM, // the side this player commands (orders are stamped with it); the menu picks it, the AI plays the other
     selectedId: -1, // unit id of the player's side, -1 = none
     // The waypoint the player tapped ({unitId, index}: a "?" door, a tag, a waypoint): the door

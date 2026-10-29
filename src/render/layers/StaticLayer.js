@@ -20,6 +20,7 @@ export class StaticLayer {
 
   build(compiled) {
     const m = new MeshBuilder();
+    const P = compiled.palette; // the map's own wall colors (data/maps `palette`), else the default grey
     for (const w of compiled.walls) {
       const b = w.box;
       const cx = (b.minX + b.maxX) / 2;
@@ -31,9 +32,9 @@ export class StaticLayer {
         continue;
       }
       const exterior = w.thickness >= WALL.exteriorThickness;
-      const side = exterior ? WALL.exteriorSide : WALL.side;
+      const side = exterior ? P.exterior ?? WALL.exteriorSide : P.wall ?? WALL.side;
       const k = WALL.baseboardOut * 2;
-      m.box(cx, cy, 0, bw + k, bd + k, WALL.baseboardHeight, WALL.baseboard, { top: WALL.baseboard });
+      m.box(cx, cy, 0, bw + k, bd + k, WALL.baseboardHeight, P.baseboard ?? WALL.baseboard, { top: P.baseboard ?? WALL.baseboard });
       m.box(cx, cy, 0, bw, bd, HEIGHTS.wall, side, { top: WALL.top });
     }
     for (const w of compiled.windows || []) buildSill(m, w);

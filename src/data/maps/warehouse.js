@@ -21,6 +21,14 @@ export default {
   name: 'Operación Almacén',
   size: { w: 40, h: 28 },
 
+  // The map's reading on its card before the game (ui/MapPreview.js; hotel.js has the format).
+  traits: ['Tres entradas cercanas entre sí', 'Pasillo central de 18 m', 'Ventanas de la oficina y el baño al patio'],
+  siteNames: { A: 'la nave', B: 'la sala' },
+  siteTraits: {
+    A: ['Nave amplia con cajas y estanterías', 'Tres accesos: el pasillo, la sala y el arco de la cocina'],
+    B: ['Sala con sofás: cobertura baja', 'Tres puertas: el pasillo, el baño y la nave'],
+  },
+
   walls: [
     // building exterior
     { a: [10, 2], b: [39, 2], t: 0.4 },

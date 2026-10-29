@@ -9,7 +9,7 @@ test('por defecto: mejor de 3, atacando, las clases de siempre', () => {
   assert.equal(l.bestOf, 3);
   assert.equal(l.side, 'attackers');
   assert.deepEqual(l.roles, { attackers: [...DEFAULT_ROLES.attackers], defenders: [...DEFAULT_ROLES.defenders] });
-  assert.deepEqual(lobbyStart(l), { mode: 'match', team: 'attackers', bestOf: 3 });
+  assert.deepEqual(lobbyStart(l), { mode: 'match', team: 'attackers', bestOf: 3, map: 'warehouse' });
 });
 
 test('una ronda suelta es el modo de siempre (con reintentos); 3, 5 y 7 son partidas', () => {
@@ -98,4 +98,23 @@ test('el roster: mirar un personaje solo cambia la pantalla; una escuadra incomp
   assert.equal(l.inspect.attackers, 'entry', 'el Trampero no está en el grupo atacante');
   lobbySet(l, 'remove_attackers_0');
   assert.deepEqual(createLobby(JSON.parse(JSON.stringify(savedLobby(l)))).roles.attackers, [...DEFAULT_ROLES.attackers]);
+});
+
+test('el mapa: uno de la lista o al azar; el azar se sortea al pasar a las clases y se recuerda la elección', () => {
+  const l = createLobby();
+  assert.equal(l.map, 'warehouse');
+  assert.ok(lobbySet(l, 'map_hotel'));
+  assert.equal(lobbySet(l, 'map_hotel'), false, 'ya estaba');
+  assert.equal(lobbySet(l, 'map_luna'), false, 'no existe');
+  l.view = 'lobby';
+  openPick(l);
+  assert.equal(lobbyStart(l).map, 'hotel');
+  assert.ok(lobbySet(l, 'map_random'));
+  openPick(l, () => 0.99);
+  assert.equal(l.drawn, 'hotel');
+  assert.equal(lobbyStart(l).map, 'hotel');
+  openPick(l, () => 0);
+  assert.equal(lobbyStart(l).map, 'warehouse');
+  assert.equal(createLobby(savedLobby(l)).map, 'random', 'se guarda "al azar", no el mapa sorteado');
+  assert.equal(createLobby({ map: 'luna' }).map, 'warehouse');
 });

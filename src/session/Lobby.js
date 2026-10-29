@@ -10,9 +10,11 @@
 //           starts once every slot is filled and everyone is ready (against
 //           the AI only the player; the AI picks its own, blind)
 //
-//   lobby = {view, bestOf, side, map, roles: {attackers: [roleId|null x3], defenders: [roleId|null x3]}, inspect, pickSide, ready}
+//   lobby = {view, bestOf, side, map, drawn, roles: {attackers: [roleId|null x3], defenders: [roleId|null x3]}, inspect, pickSide, ready}
 //   bestOf  1 = a single round (retries allowed), else MATCH.formats (3, 5, 7)
 //   side    the side the player starts on (a match switches at half-time)
+//   map     a map id (data/maps) or 'random'; `drawn` is the map a 'random'
+//           drew, on the way to the class pick (the squad is chosen knowing it)
 //   roles   the player's classes per slot (Simulation opts.roles), null =
 //           an empty slot; they are not changed inside the game
 //   inspect the character each side's roster shows in detail (screen only)
@@ -23,9 +25,11 @@
 import { MATCH } from '../config/balance.js';
 import { ROLES, PICK_ROLES, DEF_PICK_ROLES, AI_SQUADS } from '../config/operators.js';
 import { SQUAD, DEFENDERS } from '../config/squad.js';
-import { DEFAULT_MAP } from '../data/maps/index.js';
+import { MAPS, DEFAULT_MAP } from '../data/maps/index.js';
 
 export const BEST_OF = Object.freeze([1, ...MATCH.formats]);
+/** The lobby's map choices: every map, then "al azar". */
+export const MAP_CHOICES = Object.freeze([...Object.keys(MAPS), 'random']);
 export const DEFAULT_ROLES = Object.freeze({
   attackers: Object.freeze(SQUAD.map((s) => s.role)),
   defenders: Object.freeze(['anchor', 'shotgunner', 'trapper'].slice(0, DEFENDERS)),
@@ -38,7 +42,8 @@ export function createLobby(saved = null) {
     view: 'main',
     bestOf: BEST_OF.includes(s.bestOf) ? s.bestOf : 3,
     side: s.side === 'defenders' ? 'defenders' : 'attackers',
-    map: DEFAULT_MAP,
+    map: MAP_CHOICES.includes(s.map) ? s.map : DEFAULT_MAP,
+    drawn: null,
     roles: { attackers: [...DEFAULT_ROLES.attackers], defenders: [...DEFAULT_ROLES.defenders] },
     inspect: { attackers: PICK_ROLES[0], defenders: DEF_PICK_ROLES[0] },
     pickSide: 'attackers',
@@ -62,7 +67,7 @@ export function aiRoles(seed, team) {
 }
 
 /** What the device keeps. */
-export const savedLobby = (lobby) => ({ bestOf: lobby.bestOf, side: lobby.side, roles: lobby.roles });
+export const savedLobby = (lobby) => ({ bestOf: lobby.bestOf, side: lobby.side, map: lobby.map, roles: lobby.roles });
 
 /** The classes a slot of that side may take. */
 export const pickRoles = (team) => (team === 'attackers' ? PICK_ROLES : DEF_PICK_ROLES);
@@ -90,15 +95,17 @@ export function canAdd(lobby, team, id) {
 /** Every side the player picks for has its 3 (CONFIRMAR needs it); else the first side still missing some. */
 export const pickMissing = (lobby) => pickSides(lobby).find((t) => freeSlot(lobby, t) >= 0) || null;
 
-/** From the lobby to the class pick: it opens on the side he starts on. */
-export function openPick(lobby) {
+/** From the lobby to the class pick: it opens on the side he starts on; "al azar" draws the map now (`rand`: 0..1). */
+export function openPick(lobby, rand = Math.random) {
+  const ids = MAP_CHOICES.filter((id) => id !== 'random');
+  lobby.drawn = lobby.map === 'random' ? ids[Math.min(ids.length - 1, Math.floor(rand() * ids.length))] : lobby.map;
   lobby.view = 'pick';
   lobby.pickSide = lobby.side;
   lobby.ready = false;
 }
 
 /**
- * One lobby request ('bestOf_<n>' | 'side_<team>' | 'pickSide_<team>' | the roster's
+ * One lobby request ('bestOf_<n>' | 'side_<team>' | 'map_<id | random>' | 'pickSide_<team>' | the roster's
  * 'inspect_<team>_<id>' (show it in detail) | 'add_<team>_<id>' (to the first empty slot) |
  * 'remove_<team>_<i>' (empty that slot) | 'role_<team>_<i>_<id>' (set a slot directly)).
  * Returns true when it changed something (to save it).
@@ -112,6 +119,10 @@ export function lobbySet(lobby, what) {
   } else if (key === 'side') {
     if (rest[0] !== 'attackers' && rest[0] !== 'defenders') return false;
     lobby.side = rest[0];
+  } else if (key === 'map') {
+    const id = rest.join('_');
+    if (!MAP_CHOICES.includes(id) || lobby.map === id) return false;
+    lobby.map = id;
   } else if (key === 'pickSide') {
     if (!pickSides(lobby).includes(rest[0]) || lobby.pickSide === rest[0]) return false;
     lobby.pickSide = rest[0];
@@ -139,7 +150,8 @@ export function lobbySet(lobby, what) {
   return true;
 }
 
-/** The mode and side the game starts in, and the match format. */
+/** The mode and side the game starts in, the match format and the map (the one drawn when it was "al azar"). */
 export function lobbyStart(lobby) {
-  return { mode: lobby.bestOf === 1 ? 'play' : 'match', team: lobby.side, bestOf: lobby.bestOf };
+  const map = lobby.map === 'random' ? lobby.drawn ?? DEFAULT_MAP : lobby.map;
+  return { mode: lobby.bestOf === 1 ? 'play' : 'match', team: lobby.side, bestOf: lobby.bestOf, map };
 }

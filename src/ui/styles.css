@@ -849,6 +849,13 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
 }
 .lobby .lb-opt.on { border-color: var(--cyan); background: var(--cyan-deep); color: #fff; }
 .lobby .lb-opt.off { opacity: 0.35; }
+/* The map list: one row per map, scrolls once it outgrows its box. */
+.lobby .lb-maps { display: grid; gap: 6px; max-height: 300px; overflow-y: auto; padding-right: 4px; max-width: 440px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.title-box .lobby .btn.lb-opt.lb-mapi { display: grid; justify-content: stretch; justify-items: start; gap: 2px; min-height: 52px; padding: 8px 14px; text-align: left; border-left: 3px solid var(--line-strong); }
+.title-box .lobby .btn.lb-opt.lb-mapi.on { border-left-color: var(--amber); }
+.lobby .lb-mapi .mi-n { font-size: 14px; }
+.lobby .lb-mapi .mi-d { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: none; color: var(--muted); }
+.lobby .lb-mapi.on .mi-d { color: #cfe9f2; }
 .lobby .lb-opt[disabled] { opacity: 0.45; cursor: default; }
 .lobby .lb-note { font-size: 12px; line-height: 1.35; color: #b9c3ca; max-width: 440px; }
 .lobby .lb-players { display: flex; gap: 8px; }
@@ -870,6 +877,20 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
 .pick [hidden] { display: none !important; }
 .pick .pk-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 22px; }
 .pick .pk-head .mv-title { margin-right: auto; }
+.title-box .pick .btn.pk-map { display: inline-flex; align-items: baseline; gap: 10px; min-height: 32px; padding: 4px 12px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber); border-color: rgba(255, 176, 46, 0.45); }
+.pick .pk-map .pk-mv { font-size: 10.5px; color: #dfe6ea; letter-spacing: 0.12em; }
+.pick .pk-map.on { background: rgba(255, 176, 46, 0.16); }
+.pick .pk-card { margin-top: 8px; }
+/* The map's card (ui/MapPreview.js): the plan on the left, its reading on the right. */
+.map-card { display: grid; grid-template-columns: minmax(150px, 300px) minmax(0, 1fr); gap: 12px; align-items: start; padding: 10px; background: var(--plate); border-left: 3px solid var(--amber); max-width: 620px; }
+.map-card .mc-plan { width: 100%; aspect-ratio: 40 / 28; display: block; cursor: pointer; }
+.map-card.random .mc-plan { cursor: default; }
+.map-card .mc-name { font-family: var(--font-display); font-size: 17px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.map-card .mc-sub { margin-top: 2px; font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); }
+.map-card .mc-traits { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.map-card .mc-traits li { position: relative; padding-left: 12px; font-size: 13px; line-height: 1.3; color: #dfe6ea; }
+.map-card .mc-traits li::before { content: ''; position: absolute; left: 0; top: 0.5em; width: 5px; height: 5px; background: var(--amber); }
+.map-card .mc-hint { margin-top: 8px; font-size: 11px; color: var(--muted); }
 .pick .pk-sides { gap: 6px; }
 .title-box .pick .btn.pk-side { display: inline-flex; align-items: center; gap: 8px; }
 .pick .pk-n { font-size: 11px; color: var(--amber); letter-spacing: 0.06em; }
@@ -1011,6 +1032,15 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
   .title-box .lobby .lb-slot .btn.lb-opt { min-height: 30px; padding: 3px 6px; font-size: 11px; letter-spacing: 0.02em; }
   .lobby .lb-slot { gap: 6px; }
   .lobby .lb-note { font-size: 11px; }
+  .map-card { grid-template-columns: 150px minmax(0, 1fr); gap: 8px; padding: 6px; }
+  .map-card .mc-name { font-size: 14px; }
+  .map-card .mc-sub, .map-card .mc-hint { font-size: 9.5px; }
+  .map-card .mc-traits li { font-size: 11px; }
+  .lobby .lb-maps { max-height: 150px; gap: 4px; }
+  .title-box .lobby .btn.lb-opt.lb-mapi { min-height: 40px; padding: 4px 10px; }
+  .lobby .lb-mapi .mi-n { font-size: 12px; }
+  .lobby .lb-mapi .mi-d { font-size: 10px; }
+  .title-box .pick .btn.pk-map { min-height: 30px; padding: 3px 9px; font-size: 11px; }
   .lobby .lb-actions { margin-top: 10px; position: sticky; bottom: 0; padding: 8px 0; background: rgba(0, 0, 0, 0.92); }
   .title-box .lobby .lb-ready { padding: 10px 34px; }
   .lobby .lb-col { flex-basis: 230px; }

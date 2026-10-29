@@ -48,4 +48,33 @@ export const MAP_DECOR = Object.freeze({
     { kind: 'drain', at: [33.5, 21.0] },
     { kind: 'stencil', at: [35.7, 24.9], text: 'CARGA', size: 0.55, rot: 0, color: '#e8e2d0' },
   ],
+  hotel: [
+    // --- service yard: the van's bay, tire marks, a drain, the doors stenciled
+    { kind: 'parking', a: [1.6, 16.5], b: [7.2, 16.5] },
+    { kind: 'parking', a: [1.6, 19.6], b: [7.2, 19.6] },
+    { kind: 'tires', a: [1.4, 17.4], b: [7.6, 17.7] },
+    { kind: 'stain', at: [5.4, 18.9], r: 0.5, color: '#0d0e10', alpha: 0.5 },
+    { kind: 'drain', at: [2.4, 11.0] },
+    { kind: 'stencil', at: [6.6, 4.75], text: 'INCENDIOS', size: 0.34, rot: 0, color: '#e8e2d0' },
+    { kind: 'stencil', at: [6.4, 23.25], text: 'SERVICIO', size: 0.34, rot: 0, color: '#e8e2d0' },
+    // --- corridor: the carpet's gold border
+    { kind: 'tapeLine', a: [8.4, 13.12], b: [30.6, 13.12], color: '#b58a3c', w: 0.06 },
+    { kind: 'tapeLine', a: [8.4, 14.88], b: [30.6, 14.88], color: '#b58a3c', w: 0.06 },
+    { kind: 'tapeLine', a: [8.4, 13.24], b: [30.6, 13.24], color: '#3a1118', w: 0.03 },
+    { kind: 'tapeLine', a: [8.4, 14.76], b: [30.6, 14.76], color: '#3a1118', w: 0.03 },
+    // --- rooms: a few lived-in marks
+    { kind: 'papers', at: [20.0, 9.6], n: 3, spread: 0.4 },
+    { kind: 'stain', at: [24.0, 7.2], r: 0.3, color: '#5a3b22', alpha: 0.3 },
+    { kind: 'papers', at: [28.6, 21.0], n: 2, spread: 0.3 },
+    // --- housekeeping and laundry: water, drains, lint
+    { kind: 'drain', at: [11.0, 21.0] },
+    { kind: 'drain', at: [17.6, 22.0] },
+    { kind: 'stain', at: [15.8, 24.4], r: 0.7, color: '#7f97a3', alpha: 0.28 },
+    { kind: 'stain', at: [18.9, 24.6], r: 0.45, color: '#7f97a3', alpha: 0.22 },
+    { kind: 'tape', rect: [14.5, 24.75, 5.4, 1.0], color: '#e8e2d0' },
+    // --- the suite: papers by the desk, wine on the rug
+    { kind: 'papers', at: [32.6, 8.6], n: 3, spread: 0.4 },
+    { kind: 'stain', at: [36.8, 20.6], r: 0.28, color: '#4a1018', alpha: 0.45 },
+    { kind: 'cable', pts: [[38.75, 18.6], [38.2, 18.2], [38.4, 17.6]] },
+  ],
 });
