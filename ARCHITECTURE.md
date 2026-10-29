@@ -147,7 +147,7 @@ canStep?  (en fases de decisión el tiempo no corre)
 | `entries.js` | Entradas a puerta estilo Door Kickers: `kick`, `slow` (entreabrir), `flash`, `frag`, `breach`, armadas en un punto de ruta y liberadas con un GO. Una puerta sin decidir se abre al pasar (`ENTRY.undecided = 'open'`). También el **lanzamiento libre** (`armToss`, modo `toss`): flash, granada o humo a un punto, cortado por `queries.tossLanding` |
 | `smoke.js` | Nubes de humo: crecen, duran y se disipan; `World.updateSmokeSegments` las convierte en polígonos que tapan la vista |
 | `cameras.js` | Cámaras del defensor (`CAMERA.max` en los `cameraMounts` del mapa; la IA y el inicio: `aiCameras[sitio]`; orden `camera` en preparación y dron): ven atacantes y alertan a la IA, se descubren (operadores, dron) y se rompen de un tiro |
-| `traps.js` | Trampas del Trampero (`aiTraps` del mapa, orden `placeTrap`): atrapan al atacante que las pisa y lo delatan; se descubren con sigilo, dron o pulso del Explorador y se rompen de un tiro |
+| `traps.js` | Trampas del Trampero (`aiTraps` del mapa, orden `placeTrap`): atrapan al atacante que las pisa y lo delatan; se descubren con sigilo, dron o la cámara de fibra del Explorador y se rompen de un tiro |
 | `barricades.js` | Barricadas: bloquean cuerpo, vista, balas y dron; romperlas a golpes o volarlas con carga. `sim.intel` = qué barricadas conocen los atacantes |
 | `fire.js` | Incendiaria del defensor: fuego que quema a quien esté adentro, se apaga con humo o al consumirse (`sim.fires`) |
 | `wires.js` | Alambre de púas del defensor: frena al atacante que lo cruza y suena; una granada o una carga lo corta. `sim.intel.wires` = los que conocen los atacantes |
@@ -158,7 +158,9 @@ canStep?  (en fases de decisión el tiempo no corre)
 | `view.js` | `teamView(sim, bando)`: **lo que un bando puede saber**. Es el filtro que aplicará el servidor online antes de mandar un frame |
 | `ai.js` | Comportamientos del defensor: mantener ángulo, barrer, patrullar, replegarse. Las alertas (tiros, dolor, pasos) lo hacen pre-apuntar la esquina o puerta por donde tiene que venir la amenaza |
 | `aiAttack.js` | La IA atacante como **comandante**, no como reflejos: da a su escuadra las mismas órdenes que un jugador, en los mismos momentos, y sabe solo lo que sabe su bando |
-| `abilities/` | Registro de habilidades por rol: un módulo `{id, init?, update?, turnEnd?}` por gadget. Hoy: `scoutPulse` (Explorador: al cerrar el turno, los defensores a `SCOUT.radius` entran en la memoria del bando) |
+| `abilities/` | Registro de habilidades por rol: un módulo `{id, init?, update?, turnEnd?}` por gadget. Hoy vacío: las habilidades de las clases viven en el sistema que tocan (cámara de fibra en `entries.js`, escudo en `combat.js`, parapeto, gas, monitor) |
+| `parapets.js` | Parapetos del Ancla: se arman al pasar de preparación a dron frente a su puesto; dan cobertura y bajan el daño (`PARAPET`) |
+| `gas.js` | Gas lacrimógeno del Granadero: nube que crece, dura y se disipa; solo afecta a los enemigos del que la tiró (vista corta, reacción y puntería peores, tos) (`ENTRY.gas`) |
 | `debrief.js` | El "por qué" del final, como hechos y códigos, nunca como texto: la causa de cada muerte y notas de la ronda. La UI los convierte en frases |
 | `queries.js` | Preguntas de solo lectura sobre el estado, el **único** helper de la sim (con `vision.js` y `view.js`) que input/ui/render pueden importar |
 
@@ -277,11 +279,14 @@ multiplicativos (`speed`, `turnRate`, `reaction`, `spread`, `visionRange`, `visi
 los atacantes `pick` / `unique` / `blurb` (lo que muestra la compra) y para los
 defensores `defPick` / `max` (panel de preparación, tope por bando). Un rol nuevo es una
 entrada ahí más, si tiene habilidad, un módulo en `sim/abilities/`. Hoy: `assault`
-(Asaltante), `entry` (Brecha), `scout` (Explorador, `scoutPulse`), `defender`, `anchor`
-(Ancla), `roamer` (Merodeador) y `trapper` (Trampero, sus trampas en `sim/traps.js`).
+(Asaltante), `entry` (Brecha), `scout` (Explorador, cámara de fibra), `shield` (Escudo),
+`marksman` (Tirador), `grenadier` (Granadero), `shotgunner` (Escopetero), `defender`
+(el genérico, `hidden`: tutorial y puestos sin clase), `anchor` (Ancla, parapeto),
+`roamer` (Merodeador), `trapper` (Trampero), `lookout` (Vigía, monitor) y `sniper`
+(Tirador defensor). `AI_SQUADS` son las escuadras que la IA elige a ciegas (`session/Lobby.js aiRoles`).
 `sim/units.js applyRole` cambia la clase de una unidad viva (compra, `setDefenderRole`).
 
-Bloques nuevos en `balance.js`: `CAMERA`, `SCOUT`, `MATCH`, `ENTRY.smoke`,
+Bloques nuevos en `balance.js`: `CAMERA`, `SHIELD`, `PARAPET`, `MONITOR`, `ENTRY.gas`, `ENTRY.cam`, `MATCH`, `ENTRY.smoke`,
 `ENTRY.tossItems` / `tossRange`, `MOVE.sneakFactor` / `sneakHearing` / `fileGap`,
 `ROUND.minContactSeconds`. En `config/ui.js`: `GO_GROUPS` (nombre, glifo, color y tecla
 de cada grupo GO; los códigos internos siguen siendo `'A'`, `'B'`, `'C'`) y
@@ -374,7 +379,7 @@ Una revisión de jugabilidad en tres fases, cada una en sus commits.
 **Fase 3 — profundidad**
 - Lanzar flash / granada / humo a cualquier punto (`setToss`) y humo que tapa la vista (`sim/smoke.js`).
 - Cámaras del defensor (`sim/cameras.js`, `aiCameras`).
-- Clases Asaltante / Brecha / Explorador / Ancla (`config/operators.js`, `setRole`, `abilities/scoutPulse.js`).
+- Clases Asaltante / Brecha / Explorador / Ancla (`config/operators.js`, `setRole`, cámara de fibra).
 - Partida al mejor de 7 con puntos de utilidad (`session/Match.js`, `BUY`).
 
 **Paredes blandas destructibles: descartadas.** Tomás decidió no implementarlas (27 oct 2026). No proponerlas como trabajo pendiente.

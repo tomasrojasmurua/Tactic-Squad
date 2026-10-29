@@ -5,8 +5,11 @@
 // advancing slowly while engaging is almost as accurate as standing —, × COMBAT.settledSpread
 // once the shooter has stood still with his aim set (MOVE.settleTime), + recoil.
 // Low cover (config COVER): bullets fly over desks and crates, but a body
-// right behind one only exposes its upper half — see coverBetween().
-import { COMBAT, COVER, MOVE, UNIT, VISION } from '../config/balance.js';
+// right behind one only exposes its upper half — see coverBetween(). The
+// Ancla's barrier works the same (sim/parapets.js); the Escudo's shield stops
+// what comes from the front (shieldFacing).
+import { COMBAT, COVER, MOVE, UNIT, VISION, SHIELD, PARAPET, ENTRY } from '../config/balance.js';
+import { parapetCovering } from './parapets.js';
 import { EV } from '../core/events.js';
 import { angleDiff, angleTo } from '../core/math.js';
 import { rayCast, rayCircle, segmentBlocked } from '../core/geom.js';
@@ -106,7 +109,7 @@ function fire(sim, u) {
   const walk = u.moving ? w.movingSpread * u.speedFraction * u.speedFraction * (u.focused ? COMBAT.focusedMovingSpread : 1) : 0;
   let spread = w.spread + walk;
   if (isSettled(u) || u.focused) spread *= COMBAT.settledSpread;
-  spread = spread * COMBAT.accuracy * u.mods.spread + u.recoil;
+  spread = spread * COMBAT.accuracy * u.mods.spread * (u.gassed > 0 ? ENTRY.gas.spread : 1) + u.recoil; // tear gas (sim/gas.js)
   const { ox, oy } = fireLine;
   // Aim error is measured from the line of fire; the facing only gates WHEN he can shoot.
   const angle = Math.atan2(fireLine.ty - oy, fireLine.tx - ox) + rng.gauss() * spread;
@@ -118,22 +121,42 @@ function fire(sim, u) {
   let hitT = wallT;
   for (const o of sim.units) {
     if (!o.alive || o.team === u.team) continue;
-    const t = rayCircle(ox, oy, dx, dy, o.x, o.y, UNIT.hitRadius);
+    // A raised shield facing the shot is wider than the body behind it; buckshot spreads with distance.
+    const pattern = w.cone ? Math.hypot(o.x - ox, o.y - oy) * Math.tan(w.cone) : 0;
+    const t = rayCircle(ox, oy, dx, dy, o.x, o.y, (shieldFacing(o, dx, dy) ? SHIELD.radius : UNIT.hitRadius) + pattern);
     if (t < hitT) {
       hitT = t;
       victim = o;
     }
   }
 
-  // Low cover right in front of the victim: the shot may hit the prop instead.
+  // The Escudo's shield: the bullet stops on it (and so never reaches whoever
+  // stands behind him), unless it finds a leg or an arm (SHIELD.leak).
+  let shielded = false;
+  let limb = false;
+  if (victim && shieldFacing(victim, dx, dy)) {
+    if (rng.chance(SHIELD.leak)) limb = true;
+    else {
+      shielded = true;
+      sim.emit(EV.SHIELD_HIT, { unitId: victim.id, attackerId: u.id, x: ox + dx * hitT, y: oy + dy * hitT });
+      victim = null;
+    }
+  }
+
+  // Low cover right in front of the victim (a prop, or the Ancla's barrier): the shot may hit it instead.
   let covered = false;
-  if (victim) {
-    const coverT = coverBetween(sim.world.lowCover, ox, oy, dx, dy, hitT);
+  let guard = 1;
+  let barrier = false; // the bullet struck the Ancla's barrier
+  if (victim && !limb) {
+    const parapet = parapetCovering(sim, victim, dx, dy);
+    const coverT = parapet ? hitT - UNIT.hitRadius : coverBetween(sim.world.lowCover, ox, oy, dx, dy, hitT);
     if (coverT >= 0) {
       covered = true;
+      if (parapet) guard = PARAPET.damage;
       if (!rng.chance(COVER.exposure)) {
         victim = null;
         hitT = coverT;
+        barrier = !!parapet;
       }
     }
   }
@@ -152,6 +175,7 @@ function fire(sim, u) {
   const hit = victim ? 'unit' : hitT < COMBAT.bulletRange ? 'wall' : 'none';
   const struckCover = covered && !victim;
   const coverProp = struckCover ? propNear(sim, toX, toY) : null;
+  const metal = shielded || barrier; // the shield, the Ancla's steel barrier
   sim.emit(EV.SHOT, {
     unitId: u.id,
     team: u.team,
@@ -165,19 +189,21 @@ function fire(sim, u) {
     victimId: victim ? victim.id : -1,
     cover: struckCover, // the bullet struck low cover (desk, crate...) in front of the target
     // Presentation facts (read by FX/audio, never by the sim): what was struck and how high.
-    material: hit === 'unit' ? 'flesh' : hit === 'wall' ? struckSurface(sim, toX, toY) : 'none',
-    impactZ: coverProp ? coverProp.h : -1, // m: top of the low cover struck, -1 = default bullet height
+    material: hit === 'unit' ? 'flesh' : metal ? 'metal' : hit === 'wall' ? struckSurface(sim, toX, toY) : 'none',
+    impactZ: coverProp && !barrier ? coverProp.h : barrier ? PARAPET.height : -1, // m: top of the low cover struck, -1 = default bullet height
     mag: u.mag, // rounds left after this shot
+    suppressed: u.mods.shotNoise < 1, // a suppressor: heard much less (presentation and sim/noise.js)
   });
 
-  // Gunfire is loud: nearby AI units (teammates of the shooter too) turn toward it.
-  const r2 = COMBAT.hearingRadius * COMBAT.hearingRadius;
+  // Gunfire is loud: nearby AI units (teammates of the shooter too) turn toward it. A suppressor (shotNoise) carries less.
+  const hearing = COMBAT.hearingRadius * u.mods.shotNoise;
+  const r2 = hearing * hearing;
   for (const o of sim.units) {
     if (o === u || !isAiControlled(sim, o)) continue;
     if ((o.x - u.x) ** 2 + (o.y - u.y) ** 2 < r2) alertAiUnit(o, u.x, u.y, COMBAT.alertDuration, true);
   }
 
-  if (victim) applyHit(sim, u, victim, toX, toY, dx, dy, covered);
+  if (victim) applyHit(sim, u, victim, toX, toY, dx, dy, covered, limb, guard);
 }
 
 /**
@@ -220,6 +246,16 @@ function rayBoxEntry(ox, oy, dx, dy, b, maxT) {
   return t0 <= t1 && t0 > 0 ? t0 : -1;
 }
 
+/**
+ * Is u holding his shield up toward a bullet flying along (dx, dy)? Only an
+ * Escudo, not flashed or stunned (he lowers it), and the shot from within
+ * SHIELD.arc of his facing.
+ */
+function shieldFacing(u, dx, dy) {
+  if (u.ability !== 'shield' || u.blind > 0 || u.stun > 0) return false;
+  return Math.abs(angleDiff(u.facing, Math.atan2(-dy, -dx))) <= SHIELD.arc;
+}
+
 /** Which body part a bullet lands on: 'head' | 'torso' | 'limb'. */
 function rollBodyPart(rng, shooter, covered) {
   if (covered) return rng.chance(COVER.headChance) ? 'head' : 'torso';
@@ -231,14 +267,23 @@ function rollBodyPart(rng, shooter, covered) {
   return r < head + COMBAT.limbChance ? 'limb' : 'torso';
 }
 
-function applyHit(sim, shooter, victim, x, y, dx, dy, covered) {
+/** Damage fraction left at distance d (m): buckshot loses its punch fast (weapon `falloff`). */
+function falloff(w, d) {
+  if (!w.falloff) return 1;
+  const [full, far, floor] = w.falloff;
+  if (d <= full) return 1;
+  return d >= far ? floor : 1 - ((d - full) / (far - full)) * (1 - floor);
+}
+
+/** `limb`: past a shield, only a leg or an arm shows; `guard`: damage multiplier (the Ancla's barrier). */
+function applyHit(sim, shooter, victim, x, y, dx, dy, covered, limb = false, guard = 1) {
   const rng = sim.rng;
   const w = shooter.weapon;
-  const part = rollBodyPart(rng, shooter, covered);
-  let damage = rng.range(w.damage[0], w.damage[1]);
+  const part = limb ? 'limb' : rollBodyPart(rng, shooter, covered);
+  let damage = rng.range(w.damage[0], w.damage[1]) * falloff(w, Math.hypot(x - shooter.x, y - shooter.y));
   if (part === 'head') damage *= COMBAT.headshotMultiplier;
   else if (part === 'limb') damage *= COMBAT.limbMultiplier;
-  damage = Math.round(damage);
+  damage = Math.round(damage * guard);
   victim.hp -= damage;
   shooter.stats.hits++;
   const lethal = victim.hp <= 0;

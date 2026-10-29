@@ -155,18 +155,6 @@ test('caminando no ve la trampa; con sigilo la descubre y la rompe de un tiro', 
   assert.ok(!sneak.includes(EV.TRAP_SPRUNG));
 });
 
-test('el pulso del Explorador detecta trampas cerca', () => {
-  const sim = assault('A');
-  const scout = sim.teams.attackers.find((u) => u.role === 'scout');
-  const t = sim.traps[0];
-  scout.x = t.x - 5;
-  scout.y = t.y + 1.5;
-  const ev = run(sim, 60 * 6);
-  const found = ev.find((e) => e.type === EV.TRAP_FOUND);
-  assert.ok(found, 'la encontró');
-  assert.equal(found.by, 'scout');
-});
-
 test('los pasos del Merodeador se oyen mucho más cerca', () => {
   const heardAt = (role) => {
     const sim = assault('A');

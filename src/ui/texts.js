@@ -1,7 +1,7 @@
 // Every user-facing string (Spanish). Keep UI copy here, not in components.
 
 import { FLOW_TEXTS } from './flowTexts.js';
-import { ROUND, DRONE, PREP, CAMERA } from '../config/balance.js';
+import { ROUND, DRONE, PREP } from '../config/balance.js';
 import { GO_GROUPS } from '../config/ui.js';
 
 const TURN = ROUND.turnSeconds;
@@ -40,7 +40,7 @@ export const T = Object.freeze({
   phaseSubDefend: {
     desk: {
       buy: 'Compra el equipo de cada defensor · ESPACIO: listo',
-      recon: `Elige el sitio, pon 2 barricadas y ${CAMERA.max} cámaras · ESPACIO: confirmar (quedan fijas)`,
+      recon: 'Elige el sitio, pon las barricadas, el alambre y las cámaras · ESPACIO: confirmar (quedan fijas)',
       prep: 'Coloca a cada defensor y oriéntalo · ESPACIO: listo',
       drone: 'El dron enemigo explora: si un defensor lo ve, lo derriba',
       planning: 'Puedes mover defensores (su vigilancia pasa a fija) · ESPACIO: listo',
@@ -110,6 +110,7 @@ export const T = Object.freeze({
     waitingCode: (c) => `Esperando ${goName(c)}`,
     cracking: 'Entreabriendo',
     planting: 'Colocando carga',
+    threading: 'Pasando la cámara',
     throwing: { flash: 'Lanzando flash', frag: 'Lanzando granada', smoke: 'Lanzando humo' },
     firing: 'Detonando',
     bang: 'Espera el estallido',
@@ -188,8 +189,8 @@ export const T = Object.freeze({
     now: 'Ya',
     close: 'Cerrar',
     none: 'Abrir',
-    modes: { kick: 'Patada', slow: 'Entreabrir', flash: 'Flash', frag: 'Granada', breach: 'Carga' },
-    tags: { kick: 'PATADA', slow: 'ENTREABRIR', flash: 'FLASH', frag: 'GRANADA', breach: 'CARGA', wait: 'ESPERA' },
+    modes: { kick: 'Patada', slow: 'Entreabrir', flash: 'Flash', frag: 'Granada', breach: 'Carga', cam: 'Cámara' },
+    tags: { kick: 'PATADA', slow: 'ENTREABRIR', flash: 'FLASH', frag: 'GRANADA', breach: 'CARGA', cam: 'CÁMARA', wait: 'ESPERA' },
     hints: {
       none: 'Abre la puerta y pasa',
       kick: 'De golpe: sin pausa, aturde al de detrás. Ruidosa',
@@ -197,12 +198,13 @@ export const T = Object.freeze({
       flash: 'Desde el costado del marco: con el GO abre y lanza un flash; el resto espera el estallido',
       frag: 'Desde el costado del marco: con el GO abre y lanza una granada; el resto espera el estallido',
       breach: 'Desde el costado del marco: al llegar coloca la carga; el GO revienta la puerta',
+      cam: 'Al llegar pasa la cámara de fibra óptica bajo la puerta y ve la sala sin abrirla, en silencio; con el GO abre y pasa',
     },
     left: (n) => `×${n}`,
     toss: 'Lanzar',
-    tossItems: { flash: 'Flash', frag: 'Granada', smoke: 'Humo', molotov: 'Incendiaria' },
+    tossItems: { flash: 'Flash', frag: 'Granada', smoke: 'Humo', molotov: 'Incendiaria', gas: 'Gas' },
     tossAim: 'Toca dónde',
-    aimTitle: { flash: '¿Dónde cae el flash?', frag: '¿Dónde cae la granada?', smoke: '¿Dónde cae el humo?' },
+    aimTitle: { flash: '¿Dónde cae el flash?', frag: '¿Dónde cae la granada?', smoke: '¿Dónde cae el humo?', molotov: '¿Dónde cae la incendiaria?', gas: '¿Dónde cae el gas?' },
   },
 
   /** The round's last kill shown again before its result (ui/Screens.js). */
@@ -383,9 +385,9 @@ export const T = Object.freeze({
     cameraDown: (n) => `${n} rompió la cámara`,
     trapCaught: (n) => `¡${n} cayó en una trampa!`,
     trapCaughtDefend: (n) => `Trampa: ${n} atrapado, ya sabes dónde está`,
-    trapFound: { sight: 'Trampa en el suelo a la vista', drone: 'El dron encontró una trampa', scout: 'El Explorador detectó una trampa' },
+    trapFound: { sight: 'Trampa en el suelo a la vista', drone: 'El dron encontró una trampa', scout: 'El Explorador vio una trampa' },
     trapDown: (n) => `${n} rompió una trampa`,
-    scout: (n, k) => (k ? `${n} detecta ${k === 1 ? 'un defensor' : `${k} defensores`} cerca` : `${n}: nadie cerca`),
+    fiberCam: (n) => `${n} pasa la cámara bajo la puerta`,
   },
 
   help: {
@@ -466,7 +468,7 @@ export const T = Object.freeze({
     title: 'Compra',
     note: 'Cada clase trae su equipo gratis y cada operador suma utilidad con sus puntos (● = 1 punto; lo que no gastes se pierde). Toca un objeto para sumar uno, − para devolverlo.',
     noteDefend: 'El atacante compra a la vez y no ve lo tuyo. Cada clase trae su equipo gratis y cada defensor suma granada, humo o flash con sus puntos (● = 1 punto). Toca un objeto para sumar uno, − para devolverlo.',
-    gear: { flash: 'flash', frag: 'granada', smoke: 'humo', breach: 'carga', molotov: 'incendiaria' },
+    gear: { flash: 'flash', frag: 'granada', smoke: 'humo', breach: 'carga', molotov: 'incendiaria', gas: 'gas' },
     price: (n) => `${'●'.repeat(n)}`,
     points: (n) => (n > 0 ? '●'.repeat(n) : 'sin puntos'),
     sell: '−',
@@ -507,7 +509,7 @@ export const T = Object.freeze({
     },
     watchOf: (n) => `Vigilancia de ${n}`,
     pickOne: 'Vigilancia: toca a un defensor',
-    watch: { fixed: 'Ángulo fijo', sweep: 'Barrer', alert: 'Atento' },
+    watch: { fixed: 'Ángulo fijo', sweep: 'Barrer', alert: 'Atento', monitor: 'Monitor' },
     watchTitle: 'Vigilancia',
     watchNote: 'Cámbiala en cada turno. Si lo mueves, la aplica donde llega, mirando hacia donde lo orientes.',
     traps: (n, max) => `Trampas ${n}/${max}`,
@@ -583,7 +585,7 @@ export const T = Object.freeze({
     notTrapper: 'Solo el Trampero pone trampas',
     tooManyTraps: 'Ya puso sus 2 trampas: toca una para levantarla',
     badMount: 'Ahí no se puede montar una cámara',
-    tooManyCameras: `Ya tienes tus ${CAMERA.max} cámaras: toca una para quitarla`,
+    tooManyCameras: 'Ya pusiste todas tus cámaras: toca una para quitarla',
   },
   webgl: 'Tu navegador no soporta WebGL2, necesario para Tactic Squad. Prueba con una versión reciente de Chrome, Edge o Firefox.',
   fatal: 'Se produjo un error al iniciar el juego.',

@@ -81,8 +81,9 @@ test('el roster: se quitan y se añaden personajes del grupo hasta tener 3, con 
   lobbySet(l, 'remove_defenders_2');
   assert.equal(pickMissing(l), 'defenders', 'en una partida faltan los de la defensa');
   assert.ok(lobbySet(l, 'add_defenders_roamer'));
-  assert.ok(lobbySet(l, 'add_defenders_defender'));
-  assert.deepEqual(l.roles.defenders, ['roamer', 'defender', 'defender']);
+  assert.equal(lobbySet(l, 'add_defenders_defender'), false, 'el Defensor genérico ya no está en el grupo');
+  assert.ok(lobbySet(l, 'add_defenders_shotgunner'));
+  assert.deepEqual(l.roles.defenders, ['roamer', 'shotgunner', 'shotgunner']);
   lobbySet(l, 'bestOf_1');
   lobbySet(l, 'remove_defenders_0');
   assert.equal(pickMissing(l), null, 'una ronda suelta atacando: solo cuenta tu bando');

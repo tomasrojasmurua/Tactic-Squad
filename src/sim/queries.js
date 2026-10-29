@@ -4,7 +4,8 @@
 // the ONLY sim helpers that input/ui/render may import besides vision.js.
 import { pointInBox, pointAabbDistance, pointSegDist2, rayCast } from '../core/geom.js';
 import { angleDiff } from '../core/math.js';
-import { MOVE, ROUND, ENTRY, DOORS } from '../config/balance.js';
+import { MOVE, ROUND, ENTRY, DOORS, CAMERA, PREP } from '../config/balance.js';
+import { ROLES } from '../config/operators.js';
 import { PROP_SURFACE, SURFACE_PROBE, DOOR_SURFACE, FENCE_SURFACE } from '../config/materials.js';
 import { TEAMS } from '../config/squad.js';
 
@@ -290,7 +291,7 @@ export function nextGoCode(sim, team = humanTeam(sim)) {
 // ------------------------------------------------------------ door entries (sim/entries.js)
 
 /** Which piece of gear an entry mode spends (config/operators.js gear), or null. */
-export const ENTRY_GEAR = Object.freeze({ kick: null, slow: null, flash: 'flash', frag: 'frag', breach: 'breach' });
+export const ENTRY_GEAR = Object.freeze({ kick: null, slow: null, cam: null, flash: 'flash', frag: 'frag', breach: 'breach' });
 
 /** Index (world.doorways) of the doorway a waypoint at (x, y) can enter through, or -1. */
 export function entryDoorwayAt(world, x, y) {
@@ -307,9 +308,14 @@ export function entryDoorwayAt(world, x, y) {
   return best;
 }
 
-/** May this mode be used through doorway k? Kick / slow / breach need a door still standing. */
-export function entryModeFits(sim, k, mode) {
+/**
+ * May this mode be used through doorway k (by unit u, when given)? Kick /
+ * slow / breach / cam need a door still standing; the fiber-optic camera
+ * also a closed one and an operator who carries it (ability 'fiberCam').
+ */
+export function entryModeFits(sim, k, mode, u = null) {
   if (k < 0 || !ENTRY.modes.includes(mode)) return false;
+  if (mode === 'cam' && (!u || u.ability !== 'fiberCam')) return false;
   if (mode === 'flash' || mode === 'frag') return true;
   const door = k < sim.doors.length ? sim.doors[k] : null;
   return !!door && !door.destroyed && (mode === 'breach' || !door.open);
@@ -337,12 +343,16 @@ export function gearLeft(u, item, skip = -1) {
  * his face at the gap, just outside the wall (ENTRY.slow.peekBack), looking
  * through it. Lines of sight still go through the world, so the cracked slab
  * and the jamb frame what he sees: a wedge of the room past the latch side,
- * not the whole room. Writes {x, y, facing} into `out`; false when he is not
- * peeking (door still swinging, opened, or no such entry).
+ * not the whole room. Or the Explorador's fiber-optic camera ('cam'): the
+ * lens on the floor just past the closed door (ENTRY.cam.under), wide, facing
+ * into the room. Writes {x, y, facing, fov, range} into `out` (it doubles as
+ * the vision config); false when he is not looking through a door.
  */
 export function peekEye(sim, u, out) {
   const e = u.entry;
-  if (!u.alive || !e || e.mode !== 'slow' || e.phase !== 'armed' || e.doorway >= sim.doors.length) return false;
+  if (!u.alive || !e || e.phase !== 'armed' || e.doorway >= sim.doors.length) return false;
+  if (e.mode === 'cam') return camEye(sim, u, e, out);
+  if (e.mode !== 'slow') return false;
   const door = sim.doors[e.doorway];
   if (!door.cracked || door.angle !== door.target) return false;
   const d = sim.world.doorways[e.doorway];
@@ -357,6 +367,21 @@ export function peekEye(sim, u, out) {
   out.x = gx - d.normalX * back;
   out.y = gy - d.normalY * back;
   out.facing = Math.atan2(gy - out.y, gx - out.x);
+  out.fov = ENTRY.slow.peekFov;
+  out.range = u.vision.range;
+  return true;
+}
+
+function camEye(sim, u, e, out) {
+  const door = sim.doors[e.doorway];
+  if (door.open || door.destroyed) return false; // nothing to look under: he sees the room himself
+  const d = sim.world.doorways[e.doorway];
+  const C = ENTRY.cam;
+  out.x = d.cx + d.normalX * e.side * C.under;
+  out.y = d.cy + d.normalY * e.side * C.under;
+  out.facing = Math.atan2(d.normalY * e.side, d.normalX * e.side);
+  out.fov = C.fov;
+  out.range = C.range;
   return true;
 }
 
@@ -393,14 +418,17 @@ export function tossDoorway(world, p, tx, ty) {
 }
 
 /**
- * Where a throw from (x, y) toward (tx, ty) lands: at most ENTRY.tossRange
- * away and short of the first wall / closed door on the way (ENTRY.wallMargin).
+ * Where a throw from (x, y) toward (tx, ty) lands: at most `range` (the
+ * thrower's: tossRangeOf) away and short of the first wall / closed door on the way (ENTRY.wallMargin).
  * Through doorway k (tossDoorway) it flies to the doorway center first and
  * from there toward the target, ignoring that doorway's own door (he opens
  * it to throw). Writes {x, y, reach, viaX, viaY, leg1, leg2} into `out`.
  * Shared by the sim (entries.js) and the plan preview.
  */
-export function tossLanding(world, x, y, tx, ty, out = {}, k = -1) {
+/** How far u throws: ENTRY.tossRange, farther with a launcher (the Granadero: modifiers.tossRange). */
+export const tossRangeOf = (u) => ENTRY.tossRange * u.mods.tossRange;
+
+export function tossLanding(world, x, y, tx, ty, out = {}, k = -1, range = ENTRY.tossRange) {
   const d = k >= 0 ? world.doorways[k] : null;
   const ox = d ? d.cx : x;
   const oy = d ? d.cy : y;
@@ -408,7 +436,7 @@ export function tossLanding(world, x, y, tx, ty, out = {}, k = -1) {
   const dx = tx - ox;
   const dy = ty - oy;
   const len = Math.hypot(dx, dy) || 1;
-  const want = Math.max(0, Math.min(len, ENTRY.tossRange - leg1));
+  const want = Math.max(0, Math.min(len, range - leg1));
   const nx = dx / len;
   const ny = dy / len;
   const segs = world.segments;
@@ -433,4 +461,29 @@ export function tossLanding(world, x, y, tx, ty, out = {}, k = -1) {
   }
   out.reach = leg1 + leg2;
   return out;
+}
+
+// ------------------------------------------------------------ defender set-up limits
+
+/** How many cameras the defenders mount: CAMERA.max, and one more for each class that brings one (the Vigía). */
+export function cameraLimit(sim) {
+  let n = CAMERA.max;
+  for (const u of sim.teams.defenders) n += ROLES[u.role].cameras || 0;
+  return n;
+}
+
+/** How many barbed wires the defenders may lay: PREP.wires, and one more for each class that brings one (the Trampero). */
+export function wireLimit(sim) {
+  let n = PREP.wires;
+  for (const u of sim.teams.defenders) n += ROLES[u.role].wires || 0;
+  return n;
+}
+
+/**
+ * Is u looking at his camera monitor now? A Vigía on the monitor watch order
+ * (sim/prep.js setWatch), standing still with nothing to shoot, not flashed
+ * nor hurt a moment ago (he looks up).
+ */
+export function isMonitoring(u) {
+  return u.alive && u.ability === 'monitor' && !!u.behavior && !!u.behavior.monitor && !u.route.length && !u.moving && u.target < 0 && u.blind <= 0 && u.alertTimer <= 0;
 }

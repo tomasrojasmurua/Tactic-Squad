@@ -151,6 +151,12 @@ export const CHARACTER = Object.freeze({
 
 export const BOMB_COLOR = Object.freeze({ body: '#2a2c22', top: '#3a3d2f', tape: '#c9a227', light: '#ff3020', panel: '#111', screen: '#3fae5a' });
 
+/** Class gear drawn as its own mesh (render/geometry/character.js): the Escudo's shield, the Ancla's barrier. */
+export const GEAR_COLOR = Object.freeze({
+  shield: Object.freeze({ body: '#2f363c', top: '#a9b7c4', viewport: '#16222b', stripe: '#c9cdd1' }),
+  parapet: Object.freeze({ body: '#454b42', top: '#6c7566', feet: '#2b2f2a', stripe: '#c9a227' }),
+});
+
 /**
  * What a bullet hits when it ends at a prop; walls are plaster. Resolved once
  * by the sim (sim/queries.js struckSurface -> EV.SHOT.material), so FX and

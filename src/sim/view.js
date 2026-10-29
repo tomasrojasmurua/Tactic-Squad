@@ -64,7 +64,13 @@ export function knownWires(sim, team) {
 export function teamView(sim, team) {
   const seen = new Set();
   for (const u of sim.teams[team]) if (u.alive) for (const id of u.visibleEnemies) seen.add(id);
-  if (team === 'defenders') for (const c of sim.cameras) if (c.alive && c.seeing >= 0) seen.add(c.seeing); // what their cameras show
+  if (team === 'defenders') {
+    for (const c of sim.cameras) {
+      if (!c.alive) continue;
+      if (c.seeing >= 0) seen.add(c.seeing); // what their cameras show
+      for (const id of c.also) seen.add(id); // and all of it, with a Vigía on the monitor
+    }
+  }
   const enemies = [];
   for (const e of sim.teams[enemyTeam(team)]) {
     if (seen.has(e.id)) enemies.push({ id: e.id, x: e.x, y: e.y, facing: e.facing, alive: e.alive, name: e.name });

@@ -22,6 +22,17 @@ export const WEAPON_ICONS = {
     `<path fill="currentColor" d="M50 14 L150 14 L152 18 L150 28 L96 28 L92 34 L84 58 L62 58 L70 32 L56 28 Z"/>
      <rect x="62" y="18" width="80" height="3" fill="#000" opacity=".3"/>`,
   ),
+  dmr: svg(
+    '0 0 220 64',
+    `<path fill="currentColor" d="M4 25 L42 19 L48 16 L136 16 L138 13 L150 13 L152 16 L210 16 L210 22 L152 22 L148 28 L132 28 L126 31 L118 31
+     L112 50 L100 48 L106 30 L88 29 L82 36 L74 36 L76 29 L52 29 L16 43 L6 41 Z"/>
+     <rect x="70" y="5" width="46" height="8" rx="3" fill="currentColor"/><rect x="88" y="12" width="6" height="5" fill="currentColor"/>`,
+  ),
+  shotgun: svg(
+    '0 0 220 64',
+    `<path fill="currentColor" d="M6 26 L44 19 L50 16 L120 16 L120 14 L208 14 L208 20 L120 20 L120 22 L108 22 L102 28 L88 28 L82 34 L74 34
+     L76 28 L54 28 L18 44 L8 42 Z"/><rect x="124" y="22" width="56" height="9" rx="2" fill="currentColor"/>`,
+  ),
   sniper: svg(
     '0 0 220 64',
     `<path fill="currentColor" d="M2 26 L40 20 L46 18 L140 18 L140 21 L216 21 L216 25 L140 25 L136 30 L104 30 L98 44 L88 44 L92 30 L52
@@ -169,6 +180,13 @@ export const ENTRY_ICON = {
     `<rect x="3" y="8" width="18" height="10" rx="1.5" fill="currentColor"/><rect x="6" y="11" width="5" height="4" fill="#111"/>
      <circle cx="16.5" cy="13" r="1.6" fill="#ff3020"/><path d="M12 8 C12 5 14 4 16 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/>`,
   ),
+  // Cámara de fibra óptica: a door, and the cable snaking under it to a lens
+  cam: svg(
+    '0 0 24 24',
+    `<path d="M3 20 V3 H11 V20" fill="none" stroke="currentColor" stroke-width="2"/><path d="M1 22 H23" stroke="currentColor" stroke-width="1.6"/>
+     <path d="M6 15 C6 19 9 20.5 13 20.5 H18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+     <circle cx="20" cy="19" r="2.6" fill="currentColor"/><circle cx="20" cy="19" r="1" fill="#111"/>`,
+  ),
 };
 
 export const CURSOR_SVG = svg(
@@ -219,7 +237,7 @@ export const ROLE_EMBLEM = {
   ),
   // Trampero: the jaws of a trap
   trapper: svg('0 0 48 48', `<circle cx="24" cy="24" r="19" fill="none" stroke="currentColor" stroke-width="4"/><path fill="currentColor" d="${ring(12, 18, 9, 0.2)}"/><circle cx="24" cy="24" r="3" fill="currentColor"/>`),
-  // Coming later (the design's other classes)
+  // Escudo, Tirador, Granadero, Vigía
   shield: svg('0 0 48 48', `<path fill="currentColor" d="M10 5 H38 V30 C38 37 31 42 24 44 C17 42 10 37 10 30 Z"/><rect x="15" y="12" width="18" height="4.5" rx="1.5" fill="#0a0c0e"/>`),
   marksman: svg(
     '0 0 48 48',
@@ -235,6 +253,9 @@ export const ROLE_EMBLEM = {
     `<path d="M3 24 C10 12 17 9 24 9 C31 9 38 12 45 24 C38 36 31 39 24 39 C17 39 10 36 3 24 Z" fill="none" stroke="currentColor" stroke-width="3.5"/><circle cx="24" cy="24" r="8" fill="currentColor"/><circle cx="24" cy="24" r="3" fill="#0a0c0e"/>`,
   ),
 };
+// Escopetero: three buckshot pellets spreading from a muzzle
+ROLE_EMBLEM.shotgunner = svg('0 0 48 48', `<rect x="3" y="20" width="16" height="8" rx="2" fill="currentColor"/><g fill="currentColor"><circle cx="30" cy="24" r="4.5"/><circle cx="38" cy="13" r="4.5" opacity=".75"/><circle cx="38" cy="35" r="4.5" opacity=".75"/><circle cx="44" cy="24" r="3" opacity=".5"/></g>`);
+ROLE_EMBLEM.sniper = ROLE_EMBLEM.marksman; // the defending Tirador: the same crosshair
 
 /** Utility in a class's kit (the roster's detail). */
 export const GEAR_ICON = {
@@ -242,5 +263,8 @@ export const GEAR_ICON = {
   frag: ENTRY_ICON.frag,
   breach: ENTRY_ICON.breach,
   smoke: svg('0 0 24 24', `<g fill="currentColor"><circle cx="8" cy="15" r="5"/><circle cx="15" cy="13" r="6"/><circle cx="11" cy="8" r="4.5" opacity=".7"/><rect x="4" y="18" width="16" height="3" rx="1.5"/></g>`),
+  // Gas lacrimógeno: a 40 mm round trailing its cloud
+  gas: svg('0 0 24 24', `<rect x="3" y="13" width="9" height="7" rx="1.5" fill="currentColor"/><rect x="12" y="14" width="3" height="5" fill="currentColor" opacity=".7"/>
+     <g fill="currentColor" opacity=".55"><circle cx="16" cy="8" r="3.4"/><circle cx="20.5" cy="6" r="2.6"/><circle cx="12" cy="6" r="2.2"/></g>`),
   molotov: svg('0 0 24 24', `<path fill="currentColor" d="M10 2 H14 V7 C17 8.5 18 11 18 13 V21 C18 22 17 23 16 23 H8 C7 23 6 22 6 21 V13 C6 11 7 8.5 10 7 Z"/><path d="M12 0.5 C13.5 2 13 3 12 4 C11 3 10.5 2 12 0.5Z" fill="#ff7a1a"/>`),
 };

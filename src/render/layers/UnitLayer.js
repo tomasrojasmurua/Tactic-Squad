@@ -13,6 +13,8 @@ import { buildCharacterGeometry, createPose, standingPose, deadPose, blendPose, 
 import { LIT_VS, LIT_FS } from '../shaders/lit.js';
 import { applyLit } from '../sceneUniforms.js';
 import { bombKnownTo } from '../../sim/queries.js';
+import { canSee } from '../../sim/vision.js';
+import { DRONE } from '../../config/balance.js';
 
 const PART_MESH = {
   legL: 'leg',
@@ -42,6 +44,8 @@ export class UnitLayer {
     this.guns = {};
     for (const [k, v] of Object.entries(geo.guns)) this.guns[k] = mk(v);
     this.bombMesh = mk(geo.bomb);
+    this.shieldMesh = mk(geo.shield);
+    this.parapetMesh = mk(geo.parapet);
     this.root = mat4.create();
     this.part = mat4.create();
     this.model = mat4.create();
@@ -118,6 +122,7 @@ export class UnitLayer {
       this.drawUnit(p, u, s, frame);
     }
     this.drawBomb(p, frame, sim);
+    this.drawParapets(p, frame, sim);
     p.f4('uTint', 0, 0, 0, 0);
     p.f3('uColorMul', 1, 1, 1);
   }
@@ -192,6 +197,15 @@ export class UnitLayer {
       mesh.draw();
       if (name === 'pack' && gear.extra) gear.extra.draw();
     }
+    // The Escudo's shield, held up in front of him (lowered while flashed or stunned: sim/combat.js).
+    if (u.alive && u.ability === 'shield') {
+      p.f3('uColorMul', 1, 1, 1);
+      const low = u.blind > 0 || u.stun > 0;
+      mat4.fromTransform(this.part, low ? -0.05 : 0, low ? 0.12 : 0, 0, low ? 0.5 : 0, 0, 1);
+      mat4.multiply(this.model, this.root, this.part);
+      p.mat4('uModel', this.model);
+      this.shieldMesh.draw();
+    }
 
   }
 
@@ -221,6 +235,30 @@ export class UnitLayer {
     p.mat4('uModel', this.model);
     this.bombMesh.draw();
   }
+
+  /**
+   * The Anclas' barriers (sim/parapets.js): the defenders know theirs; the
+   * attackers see one only while one of them (or the drone) has it in sight.
+   */
+  drawParapets(p, frame, sim) {
+    if (!sim.parapets.length) return;
+    p.f1('uFogEnabled', 1);
+    p.f4('uTint', 0, 0, 0, 0);
+    p.f3('uColorMul', 1, 1, 1);
+    for (const b of sim.parapets) {
+      if (frame.viewer !== 'defenders' && !inSightOf(sim, frame.viewer, b.x, b.y)) continue;
+      mat4.fromTransform(this.model, b.x, b.y, 0, b.facing);
+      p.mat4('uModel', this.model);
+      this.parapetMesh.draw();
+    }
+  }
+}
+
+/** Does any live unit of `team` (or its drone) see (x, y) now? */
+function inSightOf(sim, team, x, y) {
+  for (const u of sim.teams[team]) if (u.alive && canSee(sim.world, u, x, y, u.vision)) return true;
+  const d = sim.drone;
+  return !!(team === 'attackers' && d && d.active && canSee(sim.world, d, x, y, { fov: DRONE.fov, range: DRONE.range }));
 }
 
 /** Uniformly scales the rotation part of a transform (keeps translation). */

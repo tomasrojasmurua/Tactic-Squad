@@ -35,7 +35,9 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     name,
     role: roleId,
     mods: r.mods, // multiplicative modifiers (speed, turnRate, reaction, spread, vision*)
-    vision: r.vision, // {fov, range} used by perception and the fog of war
+    vision: r.vision, // {fov, range} used by perception and the fog of war (narrowed by gas / the monitor: sim/perception.js)
+    roleVision: r.vision, // the class's, unimpaired
+    visionScratch: null, // reused by sim/perception.js impairedVision
     ability: r.role.ability, // id in sim/abilities/index.js, or null
     abilityState: null, // owned by the ability module
     color,
@@ -75,6 +77,9 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     points: 0, // utility points left to buy with (buy phase / preparation: sim/prep.js)
     bash: null, // breaking a barricade: {door, t, next} (sim/barricades.js)
     blind: 0, // s flashed / stunned: sees nothing, does not shoot
+    gassed: 0, // s still choking on tear gas (sim/gas.js): sees little, aims and reacts worse, coughs
+    coughIn: 0, // s to his next cough while gassed
+    monitor: false, // a Vigía looking at his camera monitor now (sim/cameras.js): cameras report at once, he barely watches his angle
     lookOverride: null, // angle held while walking the current leg
     idleLook: null, // angle to face once the route is done
     cover: false, // an attacker covering a zone once still: sweeps around idleLook (sim/orders.js setCover)
@@ -125,6 +130,7 @@ export function applyRole(u, roleId) {
   u.role = roleId;
   u.mods = r.mods;
   u.vision = r.vision;
+  u.roleVision = r.vision;
   u.ability = r.role.ability;
   u.abilityState = null;
   u.maxHp = r.maxHp;

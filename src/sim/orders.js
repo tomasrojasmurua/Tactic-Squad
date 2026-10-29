@@ -13,7 +13,7 @@
 //   {type:'setHold', unitId, code, index?}     that waypoint (default: last) waits for `code` ('A'|'B'|'C'; null: no hold;
 //                                              index 'here' as for setToss)
 //   {type:'setEntry', unitId, mode, index?}    how he goes through the doorway next to that waypoint (default: last):
-//                                              ENTRY.modes ('kick'|'slow'|'flash'|'frag'|'breach') or null (just walk through).
+//                                              ENTRY.modes ('kick'|'slow'|'flash'|'frag'|'breach'|'cam') or null (just walk through).
 //                                              A throw or a charge moves the point beside the frame (ENTRY.beside),
 //                                              the others back in front of the door: its index may change
 //                                              (EV.ROUTE_CHANGED moved)
@@ -508,7 +508,7 @@ function setEntry(sim, unit, mode, index) {
     return changed(sim, unit, 'entry', movedFrom(unit, i, p));
   }
   const k = p.door >= 0 ? p.door : entryDoorwayAt(sim.world, p.x, p.y);
-  if (!entryModeFits(sim, k, mode)) return reject(sim, unit, REJECT.noDoor);
+  if (!entryModeFits(sim, k, mode, unit)) return reject(sim, unit, REJECT.noDoor);
   const item = ENTRY_GEAR[mode];
   if (item && gearLeft(unit, item, i) <= 0) return reject(sim, unit, REJECT.noGear);
   p.entry = mode;
@@ -664,7 +664,7 @@ function moveWaypoint(sim, unit, i, x, y, quiet = false) {
   moved.y = end.y;
   if (moved.entry) {
     const k = entryDoorwayAt(sim.world, moved.x, moved.y);
-    if (k < 0 || !entryModeFits(sim, k, moved.entry)) {
+    if (k < 0 || !entryModeFits(sim, k, moved.entry, unit)) {
       moved.entry = null;
       moved.entryDoor = -1;
     } else moved.entryDoor = k;

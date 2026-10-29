@@ -13,7 +13,7 @@ import { FOG } from '../../config/render.js';
 import { VISION } from '../../config/balance.js';
 import { visibilityPolygon } from '../../sim/vision.js';
 import { peekEye } from '../../sim/queries.js';
-import { ENTRY, DRONE } from '../../config/balance.js';
+import { DRONE } from '../../config/balance.js';
 import { ShaderProgram } from '../gl/ShaderProgram.js';
 import { RenderTarget } from '../gl/RenderTarget.js';
 import { ShapeBatch } from '../gl/ShapeBatch.js';
@@ -34,7 +34,7 @@ export class VisionLayer {
     /** Latest polygons per unit id, reused by the overlay for cone edges. */
     this.polygons = new Map();
     this.cache = { sim: null, tick: -1, segmentsVersion: -1, poses: [] };
-    this.eye = { x: 0, y: 0, facing: 0 }; // scratch peek eye
+    this.eye = { x: 0, y: 0, facing: 0, fov: 0, range: 0 }; // scratch peek eye
   }
 
   setMap(width, height) {
@@ -134,10 +134,10 @@ export class VisionLayer {
       if (p.near.buffer !== p.nearBuf.buffer) p.nearBuf = new Float32Array(p.near.length * 2);
       this.batch.fan(x, y, p.cone, WHITE, false);
       this.batch.fan(x, y, p.near, WHITE, true);
-      // Looking through a door cracked ajar (sim/queries.js peekEye): what the gap shows.
+      // Looking through a door cracked ajar, or under it (sim/queries.js peekEye): what the gap shows.
       if (peekEye(sim, u, this.eye)) {
         const e = this.eye;
-        p.peek = visibilityPolygon(sim.world, e.x, e.y, e.facing, ENTRY.slow.peekFov, u.vision.range, p.peekBuf);
+        p.peek = visibilityPolygon(sim.world, e.x, e.y, e.facing, e.fov, e.range, p.peekBuf);
         if (p.peek.buffer !== p.peekBuf.buffer) p.peekBuf = new Float32Array(p.peek.length * 2);
         this.batch.fan(e.x, e.y, p.peek, WHITE, false);
       }

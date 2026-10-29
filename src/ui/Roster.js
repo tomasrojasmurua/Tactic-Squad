@@ -7,7 +7,7 @@
 import { EV } from '../core/events.js';
 import { ROLES } from '../config/operators.js';
 import { WEAPONS } from '../config/weapons.js';
-import { UNIT, SCOUT, TRAP } from '../config/balance.js';
+import { UNIT, TRAP } from '../config/balance.js';
 import { SQUAD, DEFENDER_NAME } from '../config/squad.js';
 import { canAdd, freeSlot, pickRoles, pickSides, pickMissing } from '../session/Lobby.js';
 import { MAPS } from '../data/maps/index.js';
@@ -18,8 +18,8 @@ import { T } from './texts.js';
 
 const TEAMS = ['attackers', 'defenders'];
 
-/** The design's other classes, shown locked in the pool until they exist. */
-const SOON = { attackers: ['shield', 'marksman', 'grenadier'], defenders: ['lookout', 'marksman'] };
+/** Classes of the design still to come, shown locked in the pool until they exist (none now). */
+const SOON = { attackers: [], defenders: [] };
 
 /** Each character's color (its emblem and card accent). */
 export const ROLE_COLOR = {
@@ -30,6 +30,12 @@ export const ROLE_COLOR = {
   anchor: '#4fa3ff',
   roamer: '#c58bff',
   trapper: '#f0d34a',
+  shield: '#8fb3d9',
+  marksman: '#e6dcb4',
+  grenadier: '#c9d65a',
+  lookout: '#4fd1c5',
+  sniper: '#ff6f91',
+  shotgunner: '#ff9f43',
 };
 
 // Weapon bars: each stat against the best weapon there is (1 = the best).
@@ -55,8 +61,12 @@ export function roleTraits(id) {
   const P = T.flow.pick;
   const r = ROLES[id];
   const lines = [];
-  if (r.ability === 'scoutPulse') lines.push(P.abilities.scoutPulse(SCOUT.radius));
+  if (r.ability && P.abilities[r.ability]) lines.push(P.abilities[r.ability]);
+  if (r.sharpEars) lines.push(P.flags.sharpEars);
+  if (r.cutsWire) lines.push(P.flags.cutsWire);
   if (id === 'trapper') lines.push(P.traps(TRAP.perTrapper));
+  if (r.wires) lines.push(P.flags.wires(r.wires));
+  if (r.cameras) lines.push(P.flags.cameras(r.cameras));
   for (const [k, v] of Object.entries(r.modifiers)) {
     if (!P.mods[k] || v === 1) continue;
     const pct = Math.round((v - 1) * 100);

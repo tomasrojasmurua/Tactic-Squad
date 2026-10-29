@@ -79,8 +79,7 @@ lleva al **roster**, como el pick phase de un MOBA: un grupo de personajes por b
 cada uno con su símbolo y su color, del que se eligen los 3 de tu escuadra (en una
 partida, una pestaña para cuando atacas y otra para cuando defiendes). Al tocar uno se ve
 su ficha: arma (con barras de daño, cadencia y precisión), equipo de cada ronda y
-características; AÑADIR lo suma al primer puesto libre y tocar un puesto lo quita. Las
-clases que vienen (Escudo, Tirador, Granadero, Vigía) aparecen bloqueadas. Duran toda la
+características; AÑADIR lo suma al primer puesto libre y tocar un puesto lo quita. Duran toda la
 partida: dentro de ella no se cambian. Abajo, quién está y si está listo; CONFIRMAR
 empieza cuando las escuadras tienen sus 3 (contra la IA, la IA elige la suya a ciegas).
 El menú recuerda lo elegido.
@@ -166,16 +165,21 @@ marcador cuenta las rondas del jugador contra las de la IA, en los dos bandos.
 
 | Clase | Bando | Arma | Equipo de clase | Qué la hace distinta |
 | --- | --- | --- | --- | --- |
-| **Asaltante** | atacante | rifle | flash, granada | El que gana los duelos |
-| **Brecha** | atacante (una) | subfusil | flash, 2 cargas | Planta la carga en la mitad de tiempo y rompe barricadas a mano un 40 % más rápido |
-| **Explorador** | atacante (uno) | rifle | flash, humo | Algo más rápido y con más alcance de vista. **Al final de cada turno detecta a los defensores a 8 m, aun tras las paredes**: quedan marcados para el plan |
-| **Defensor** | defensor | según el puesto | flash | El de siempre |
-| **Ancla** | defensor (hasta 2) | según el puesto | granada | Los que sostienen el sitio: 120 de vida y reacción un 15 % más rápida |
-| **Merodeador** | defensor (uno) | según el puesto | flash | Fuera del sitio, a la caza del flanco: 12 % más rápido y **sus pasos se oyen a un tercio de distancia**. El pulso del Explorador lo encuentra igual |
-| **Trampero** | defensor (uno) | según el puesto | 2 trampas, humo | Las pone en la preparación. **El que pisa una queda 2 s atrapado, recibe 15 de daño, suena fuerte y los defensores saben dónde está.** Solo se ven yendo con sigilo (a 3,5 m), con el dron o con el pulso del Explorador; una trampa conocida se rompe de un tiro |
+| **Asaltante** | atacante | rifle | flash, granada | El que gana los duelos al cruzar una puerta: reacciona un 40 % más rápido en el umbral |
+| **Brecha** | atacante (una) | subfusil | flash, 2 cargas | Planta en la mitad de tiempo, rompe barricadas antes, su carga aturde 2,5 veces más y **corta el alambre en silencio con la tenaza** |
+| **Explorador** | atacante (uno) | rifle | flash, humo | **Cámara de fibra**: pasa la lente bajo una puerta cerrada y ve el cuarto sin abrirla (nueva entrada "Cámara"). Oído fino: los ruidos le llegan en el punto exacto. Ve las trampas desde más lejos |
+| **Escudo** | atacante (uno) | pistola | flash | Escudo balístico al frente: para las balas que vienen de adelante (algo se filtra a brazos y piernas). Más lento, gira y apunta peor; golpea más fuerte. Si lo ciegan o aturden, lo baja |
+| **Tirador** | atacante | fusil de tirador | humo | Mira larga: reacciona un 45 % más rápido mientras está quieto sosteniendo un ángulo, pero gira despacio y anda más lento |
+| **Granadero** | atacante | subfusil | 2 de gas, humo | Lanzador: tira el doble de lejos. **Gas lacrimógeno**: los enemigos adentro ven a 4 m, reaccionan más lento, apuntan peor y tosen (se los oye) |
+| **Escopetero** | defensor (hasta 2) | escopeta | flash, granada | Espera pegado a la puerta al que entra: a menos de 5 m tumba de un tiro y a menos de 4 m reacciona un 30 % más rápido. Lejos la rosa de perdigones se abre y pierde fuerza |
+| **Ancla** | defensor (hasta 2) | según el puesto | granada | 120 de vida y reacción un 15 % más rápida. **Parapeto**: en la preparación arma una cobertura de metal a la altura del pecho frente a su puesto |
+| **Merodeador** | defensor (uno) | su propia arma | flash | Fuera del sitio, a la caza del flanco: 12 % más rápido, sus pasos se oyen a un tercio de distancia y **sus tiros llevan silenciador** |
+| **Trampero** | defensor (uno) | según el puesto | 2 trampas, humo | Trampas en la preparación (2 s atrapado, 15 de daño, ruido y delación) y **un alambre más** para el equipo. Las trampas se ven con sigilo, dron o la cámara del Explorador |
+| **Vigía** | defensor (uno) | según el puesto | flash | **Una cámara más** y la orden "Monitor": se queda en el monitor y las cámaras detectan al instante y revelan a todos los que ven. Mientras mira, ve poco a su alrededor |
+| **Tirador** (defensor) | defensor (uno) | rifle de francotirador | flash | Sostiene un ángulo largo con reacción mucho más rápida, pero gira lento |
 
 Las clases se eligen antes de la partida, a ciegas (no ve las del
-atacante, y el atacante no ve las suyas). La IA las toma de los puestos del mapa.
+atacante, y el atacante no ve las suyas). La IA elige su escuadra a ciegas entre combinaciones con sentido, según la semilla de la ronda.
 
 **Alambre de púas.** Solo del defensor: uno por ronda, en una puerta que podría atrancar (nunca junto a una barricada). No para a nadie ni hace daño: el atacante que lo cruza va a la mitad de velocidad y **suena** (los defensores cercanos se giran hacia ahí). El defensor pasa libre. Una granada o una carga cerca lo quita. El atacante lo ve como una barricada: a la vista, con el dron o al pisarlo. La IA pone el suyo en una de sus puertas sin barricada.
 
@@ -243,7 +247,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 - 3 entradas, ocultas para el defensor. Dron de 15 s.
 - Rutas con pathfinding, editables (mover, insertar), ruta de escuadra en fila, miradas, esperas de color, paso sigiloso.
 - 6 formas de entrar por una puerta, con "abrir" por defecto; lanzar flash, granada o humo a cualquier punto.
-- El Explorador detecta a través de las paredes.
+- Cámara de fibra del Explorador, escudo, gas lacrimógeno, fusil de tirador.
 
 **Defensor**
 - Sitio A/B oculto, colocación, 4 órdenes de vigilancia, 2 barricadas, 2 cámaras en los soportes que elige (también durante el dron), Anclas.
@@ -259,8 +263,8 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 | El jugador elige bando | **Hecho** (en el lobby) |
 | Partida al mejor de 7 | **Hecho**, también al mejor de 3 y 5, con cambio de bando a la mitad |
 | Economía entre rondas | **Cambiado** (28 oct 2026): sin dinero. Equipo de clase gratis cada ronda y 2 puntos de utilidad por operador en los dos bandos, +1 al que perdió. Con mitades de 3 rondas el dinero casi no pesaba y solo compraba el atacante |
-| Clases de operador con habilidad | **Parcial.** Asaltante, Brecha, Explorador, Ancla, Merodeador y Trampero (las 3 por bando del primer paso), con elección a ciegas en los dos bandos. Faltan Escudo, Tirador, Granadero y Vigía |
-| Contras entre clases | **Parcial.** Brecha contra barricadas, Explorador contra Anclas escondidos, Merodeador y trampas, humo contra cámaras y anclas |
+| Clases de operador con habilidad | **Hecho** (28 oct 2026): 6 atacantes y 6 defensores, cada uno con algo que lo hace jugar distinto (el Defensor genérico queda solo para el tutorial); elección a ciegas en los dos bandos, también la IA |
+| Contras entre clases | **Parcial.** Brecha contra barricadas y alambre, cámara de fibra contra Anclas y trampas, gas contra parapetos, flash contra escudo, Merodeador y trampas, humo contra cámaras y anclas |
 | Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (soportes del mapa a elegir, gratis). Sensor y elección de refuerzos por el defensor: faltan |
 | Paredes blandas destructibles | **Descartado** por decisión de diseño (27 oct 2026): no se implementan |
 | Plazos de las fases | **Parcial.** El reloj existe (`PhaseClock`), pero contra la IA no hay límite |
@@ -279,7 +283,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 3. **El corte del turno al contacto.** ¿Ayuda a reaccionar o rompe el ritmo de 5 s?
 4. **Cámaras y dron.** ¿El dron ahora tiene un trabajo claro (encontrar la cámara antes
    de entrar)?
-5. **Clases.** ¿El Explorador es demasiado bueno? ¿La Brecha justifica su lugar?
+5. **Clases.** ¿El Tirador defensor es demasiado débil (en IA contra IA el atacante le gana un 59 %)? ¿La Brecha justifica su lugar?
 6. **Los puntos de utilidad.** ¿2 puntos alcanzan para adaptar el plan? ¿El punto extra del que pierde ayuda a volver? ¿La racha
    de derrotas alcanza para volver?
 7. **Celular.** Todo pensado para un celular horizontal. Vale probarlo ahí.

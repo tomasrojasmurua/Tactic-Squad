@@ -104,7 +104,7 @@ export class Game {
     this.stopKillcam();
     this.mapDef = MAPS[this.session.map] ?? MAPS[DEFAULT_MAP]; // the lobby's map (session.map)
     this.framing.mapDef = this.mapDef;
-    this.roundArgs = { seed, controllers: controllersFor(this.session.team), ...this.flow.roundOptions() };
+    this.roundArgs = { seed, controllers: controllersFor(this.session.team), ...this.flow.roundOptions(seed) };
     this.sim = new Simulation(this.mapDef, this.roundArgs);
     this.attempt++;
     this.flow.onRoundStart();
