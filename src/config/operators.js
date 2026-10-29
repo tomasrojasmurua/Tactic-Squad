@@ -60,7 +60,7 @@ export const BASE_MODIFIERS = Object.freeze({
 export const ROLES = Object.freeze({
   // Player squad (attackers). `pick`: offered in the buy phase; `unique`: one per squad.
   assault: {
-    label: 'Asaltante', pick: true, unique: false, weapon: 'rifle', ability: null, modifiers: { doorwayReaction: 0.6 }, gear: { flash: 1, frag: 1 },
+    label: 'Asaltante', pick: true, unique: false, weapon: 'rifle', ability: null, modifiers: { doorwayReaction: 0.5 }, gear: { flash: 1, frag: 1 },
     blurb: 'El primero en cruzar la puerta. Corta el ángulo al entrar: justo después de pasar una puerta reacciona mucho más rápido.',
   },
   entry: {
@@ -80,7 +80,7 @@ export const ROLES = Object.freeze({
     blurb: 'Fusil de tirador. Quieto cubriendo una zona, dispara primero a quien aparezca. Lento girando y malo de cerca.',
   },
   grenadier: {
-    label: 'Granadero', pick: true, unique: true, weapon: 'smg', ability: 'launcher', modifiers: { tossRange: 2, spread: 1.15 }, gear: { gas: 2, smoke: 1 },
+    label: 'Granadero', pick: true, unique: true, weapon: 'smg', ability: 'launcher', modifiers: { tossRange: 2, spread: 1.15 }, gear: { gas: 2, flash: 1 },
     blurb: 'Lanzagranadas de 40 mm con gas lacrimógeno: saca a la gente de las salas sin entrar. Lanza el doble de lejos.',
   },
   // Defenders (their weapon comes from each map spawn, unless `ownWeapon`). `defPick`: offered in the
@@ -92,12 +92,12 @@ export const ROLES = Object.freeze({
   },
   // Shotgunner: waits beside a door for whoever comes through it; deadly up close, little past 10 m.
   shotgunner: {
-    label: 'Escopetero', defPick: true, max: 2, weapon: 'shotgun', ability: null, modifiers: { closeReaction: 0.6 }, ownWeapon: true, gear: { flash: 1, frag: 1 },
+    label: 'Escopetero', defPick: true, max: 2, weapon: 'shotgun', ability: null, modifiers: { closeReaction: 0.65 }, ownWeapon: true, gear: { flash: 1, frag: 1 },
     blurb: 'Espera pegado a la puerta al que entra: escopeta que tumba de un tiro a quemarropa y reacción más rápida de cerca. Lejos, pierde.',
   },
   // Site anchor: holds his angle from a prepared position; tougher and quicker to shoot first.
   anchor: {
-    label: 'Ancla', defPick: true, max: 2, weapon: 'rifle', ability: 'prepared', modifiers: { reaction: 0.85 }, maxHp: 120, gear: { frag: 1 },
+    label: 'Ancla', defPick: true, max: 2, weapon: 'rifle', ability: 'prepared', modifiers: { reaction: 0.9 }, maxHp: 120, gear: { frag: 1 },
     blurb: 'Sostiene el sitio: chaleco pesado (120 de vida) y una posición preparada con parapeto. Mientras no se mueva de ella, le cuesta más caer.',
   },
   // Roamer: off the site, hunting the attackers' flank; quick and quiet. The Explorador hears him.
@@ -145,7 +145,7 @@ export const COMPOSITIONS = Object.freeze({
     Object.freeze({ id: 'infoFlank', roles: Object.freeze(['scout', 'assault', 'entry']), plan: Object.freeze({ split: true }) }),
     Object.freeze({ id: 'utility', roles: Object.freeze(['grenadier', 'entry', 'scout']), plan: Object.freeze({ buy: Object.freeze(['flash', 'smoke']) }) }),
     Object.freeze({ id: 'longPick', roles: Object.freeze(['marksman', 'shield', 'assault']), plan: Object.freeze({ overwatch: 'marksman' }) }),
-    Object.freeze({ id: 'rush', roles: Object.freeze(['assault', 'grenadier', 'assault']), plan: Object.freeze({ split: true, buy: Object.freeze(['frag', 'flash']) }) }),
+    Object.freeze({ id: 'rush', roles: Object.freeze(['assault', 'grenadier', 'assault']), plan: Object.freeze({ split: true, buy: Object.freeze(['flash', 'flash']) }) }),
   ]),
   defenders: Object.freeze([
     Object.freeze({ id: 'fortress', roles: Object.freeze(['anchor', 'shotgunner', 'trapper']), plan: Object.freeze({ rotators: 1, threat: 8 }) }),
