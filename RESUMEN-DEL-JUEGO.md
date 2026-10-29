@@ -41,7 +41,7 @@ puedas reaccionar en vez de mirar cómo te matan.
 
 ## 2. Cómo se juega una ronda
 
-Tres mapas, de 40 × 28 m. **Operación Almacén**, el equilibrado (patio de salida, oficina y
+Cuatro mapas, de 40 × 28 m. **Operación Almacén**, el equilibrado (patio de salida, oficina y
 cocina al norte, pasillo al centro, baño y sala con el sitio B al sur, nave con el sitio A
 al este). **Operación Hotel**, el de puertas: un pasillo recto de 23 m con habitaciones
 comunicadas a los lados (cada una con su baño junto a la entrada), la lavandería con el
@@ -54,6 +54,13 @@ de 31 m; el carril del medio y la explanada de camiones): premia a los Tiradores
 para cruzar, y al Merodeador entre las pilas. El sitio B es la cámara de frío de la bodega,
 con dos puertas pesadas que dan a la bodega, y a la bodega se entra por el andén, la puerta
 del frente o la aduana: premia al Ancla y al Trampero, y la abren la Brecha y el Granadero.
+**Operación Embajada**, el de ventanas: una residencia con un patio central y una galería que
+le da la vuelta completa. Se entra desde la calle por el garaje, la portada (que da al patio,
+a la vista de todos) o la cocina. El sitio A es el despacho, pegado al patio con ventanas a
+la galería: se ve desde lejos, premia a los Tiradores y al Vigía, y al Explorador para saber
+desde dónde lo miran. El sitio B es el comedor, al sur, con una abertura ancha a la galería y
+puertas a la cocina y al salón: premia rodear por la galería (Merodeador) y entrar por dos
+lados a la vez (Asaltante, Granadero).
 La ronda es **3 contra 3**: el mapa trae 4 puestos de defensa por sitio y se usan los 3
 primeros (`config/squad.js` `DEFENDERS`).
 
@@ -80,7 +87,7 @@ fase trae una tarjeta que la explica la primera vez. Solo las lecciones del tuto
 
 **Menú y lobby.** JUGAR → CONTRA LA IA (MULTIJUGADOR, próximamente) → el lobby:
 **formato** (una ronda suelta o al mejor de 3, 5 o 7), **con
-qué bando empiezas** y **mapa** (Almacén, Hotel, Puerto o al azar, en una lista a la izquierda con el plano del elegido a la derecha: el azar se sortea al pasar a las clases, para elegirlas sabiendo dónde se juega). Cada mapa tiene su **ficha**: el plano con sitios y entradas y tres rasgos; tocar A o B muestra la lectura de ese sitio. No sugiere clases: leer el mapa es parte del juego. En la elección de clases, VER PLANO la vuelve a abrir. ELEGIR CLASES
+qué bando empiezas** y **mapa** (Almacén, Hotel, Puerto, Embajada o al azar, en una lista a la izquierda con el plano del elegido a la derecha: el azar se sortea al pasar a las clases, para elegirlas sabiendo dónde se juega). Cada mapa tiene su **ficha**: el plano con sitios y entradas y tres rasgos; tocar A o B muestra la lectura de ese sitio. No sugiere clases: leer el mapa es parte del juego. En la elección de clases, VER PLANO la vuelve a abrir. ELEGIR CLASES
 lleva al **roster**, como el pick phase de un MOBA: un grupo de personajes por bando,
 cada uno con su símbolo y su color, del que se eligen los 3 de tu escuadra (en una
 partida, una pestaña para cuando atacas y otra para cuando defiendes). Al tocar uno se ve
@@ -274,7 +281,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 | Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (soportes del mapa a elegir, gratis). Sensor y elección de refuerzos por el defensor: faltan |
 | Paredes blandas destructibles | **Descartado** por decisión de diseño (27 oct 2026): no se implementan |
 | Plazos de las fases | **Parcial.** El reloj existe (`PhaseClock`), pero contra la IA no hay límite |
-| Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Parcial.** Tres mapas (Almacén, Hotel y Puerto; IA contra IA con escuadras al azar: 51 %, 52 % y 53 % para el atacante); Embajada en camino. 5v5 y dificultades: faltan |
+| Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Parcial.** Cuatro mapas (Almacén, Hotel, Puerto y Embajada; IA contra IA con escuadras al azar: 51 %, 52 %, 53 % y 46 % para el atacante). 5v5 y dificultades: faltan |
 | Online | **Falta.** El código está preparado (determinismo, órdenes serializables, grabador de planes, `teamView`). Bloquea que el render lea la sim entera |
 | Equilibrio 45-55 % | **Sin medir** con las clases y las cámaras nuevas |
 

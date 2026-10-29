@@ -388,6 +388,72 @@ const BUILDERS = {
     }
     m.box(0, 0, 0, 0.08, 0.08, h - 0.7, '#9aa1a8'); // drain pipe down to the floor
   },
+
+  // --- embassy (data/maps/embassy.js); `color` paints the cars
+  sedan(m, w, d, h, p) {
+    const c = p.color || '#1d2126';
+    const top = shift(c, 1.35);
+    for (const x of [-w * 0.3, w * 0.3]) for (const s of [-1, 1]) m.box(x, (s * (d - 0.2)) / 2, 0, 0.62, 0.22, 0.6, C.black);
+    m.box(0, 0, 0.25, w, d, 0.55, c, { top }); // body
+    m.box(w / 2 - 0.05, 0, 0.42, 0.1, d * 0.8, 0.18, '#d8d2bf'); // grille
+    m.box(-0.25, 0, 0.8, w * 0.5, d * 0.86, 0.6, c, { top }); // cabin
+    m.box(w * 0.04, 0, 0.84, 0.06, d * 0.82, 0.52, '#24313f'); // windshield
+    m.box(-w * 0.3 - 0.04, 0, 0.84, 0.06, d * 0.82, 0.48, '#24313f'); // rear window
+    for (const s of [-1, 1]) m.box(-0.25, (s * d * 0.86) / 2, 0.88, w * 0.44, 0.02, 0.38, '#24313f'); // side windows
+    for (const s of [-1, 1]) m.box(w / 2 - 0.02, s * d * 0.34, 0.5, 0.04, 0.24, 0.1, '#f2e8b8'); // headlights
+  },
+  fountain(m, w, d, h) {
+    const r = w / 2;
+    m.cylinder(0, 0, 0, r, h * 0.5, '#bfb39a', { sides: 16, top: '#d4c9b0' }); // basin rim
+    m.cylinder(0, 0, h * 0.5, r - 0.15, 0.01, '#3f7f94', { sides: 16 }); // water
+    m.cylinder(0, 0, h * 0.5, r * 0.62, 0.012, '#5aa0b3', { sides: 16 });
+    m.cylinder(0, 0, 0, 0.18, h, '#bfb39a', { sides: 8, top: '#d4c9b0' }); // column
+    m.cylinder(0, 0, h, 0.42, 0.12, '#bfb39a', { sides: 12, top: '#5aa0b3' }); // upper bowl
+    m.cylinder(0, 0, h + 0.12, 0.06, 0.25, '#bfb39a', { sides: 6, top: '#cfeaf2' });
+  },
+  planter(m, w, d, h) {
+    m.box(0, 0, 0, w, d, h * 0.7, '#a6896a', { top: '#bfa27f' });
+    m.box(0, 0, h * 0.7, w - 0.12, d - 0.12, 0.02, '#4a3624');
+    BUILDERS.plant(m);
+    for (const s of [-1, 1]) m.frustum(s * w * 0.3, 0, h * 0.7, 0.32, 0.22, 0.4, C.leafDark, { sides: 7, top: C.leaf, phase: s });
+    for (const s of [-1, 1]) m.frustum(s * w * 0.15, s * 0.12, h * 0.7, 0.18, 0.1, 0.2, '#b03a5a', { sides: 6, top: '#d8577a', phase: s * 2 }); // flowers
+  },
+  flagPole(m, w, d, h) {
+    m.cylinder(0, 0, 0, 0.18, 0.12, '#3a3d42', { sides: 8 });
+    m.cylinder(0, 0, 0.12, 0.04, h - 0.12, '#c9ced2', { sides: 6, top: '#d8b048' });
+    m.box(0.6, 0, h - 0.95, 1.1, 0.03, 0.7, '#f2f2ee'); // the flag, hanging off the pole
+    m.box(0.6, 0.02, h - 0.62, 1.1, 0.01, 0.12, '#2f6db0');
+  },
+  flagStand(m, w, d, h) {
+    m.cylinder(0, 0, 0, w / 2, 0.06, '#c9a24a', { sides: 10 });
+    m.cylinder(0, 0, 0.06, 0.025, h - 0.06, '#c9a24a', { sides: 6, top: '#d8b048' });
+    m.box(0.22, 0, h - 1.05, 0.42, 0.05, 0.9, '#f2f2ee'); // furled flag
+    m.box(0.22, 0.03, h - 0.75, 0.42, 0.01, 0.16, '#2f6db0');
+    m.box(0.22, 0.03, h - 0.45, 0.42, 0.01, 0.12, '#b0402e');
+  },
+  execDesk(m, w, d, h) {
+    m.box(0, 0, 0, w, d, h - 0.04, '#4a2c18', { top: '#5e3920' });
+    m.box(0, 0, h - 0.04, w + 0.06, d + 0.06, 0.04, '#5e3920', { top: '#2a4a3a' }); // leather top
+    m.box(-w * 0.28, -d * 0.1, h, 0.4, 0.28, 0.02, '#efe9dc', { yaw: 0.15 }); // documents
+    m.cylinder(w * 0.36, -d * 0.24, h, 0.07, 0.36, '#c9a24a', { sides: 8 }); // lamp
+    m.frustum(w * 0.36, -d * 0.24, h + 0.36, 0.14, 0.08, 0.1, '#2a6a4a', { sides: 10, top: '#3a8a5a' });
+    m.box(w * 0.05, -d * 0.28, h, 0.2, 0.08, 0.06, C.black); // phone
+  },
+  piano(m, w, d, h) {
+    // a grand piano from above: rounded body, raised lid, the keyboard at the front (+y)
+    for (const [x, y] of [[-0.5, 0.75], [0.5, 0.75], [0.2, -0.7]]) m.cylinder(x, y, 0, 0.05, h - 0.3, '#0e0f11', { sides: 6 });
+    m.box(0, 0.25, h - 0.3, w, d - 0.5, 0.28, '#111214', { top: '#1c1d20' });
+    m.frustum(0.1, -0.55, h - 0.3, 0.62, 0.62, 0.28, '#111214', { sides: 12, top: '#1c1d20', sy: 0.75 });
+    m.box(0, d / 2 - 0.12, h - 0.18, w - 0.1, 0.18, 0.04, '#f4f4ef'); // keys
+    for (let x = -w / 2 + 0.12; x < w / 2 - 0.1; x += 0.12) m.box(x, d / 2 - 0.16, h - 0.14, 0.04, 0.1, 0.02, '#0e0f11');
+    m.box(0, 0, h - 0.02, w - 0.2, d * 0.5, 0.02, '#26282c', { yaw: 0.12 }); // lid
+  },
+  globe(m, w, d, h) {
+    m.cylinder(0, 0, 0, 0.22, 0.05, '#4a2c18', { sides: 10 });
+    m.cylinder(0, 0, 0.05, 0.03, h * 0.45, '#4a2c18', { sides: 6 });
+    m.cylinder(0, 0, h * 0.45, w / 2, 0.06, '#c9a24a', { sides: 14 }); // meridian ring
+    m.frustum(0, 0, h * 0.5, 0.26, 0.26, h * 0.42, '#3f7f94', { sides: 12, top: '#4f9a6a' });
+  },
 };
 
 // A shipping container: corrugated sides, a darker roof frame and the door end at +x.

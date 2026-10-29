@@ -37,6 +37,12 @@ export const FLOORS = Object.freeze({
   customsTiles: { pattern: 'tiles', a: '#c9ccc4', b: '#9ea39a', scale: 0.5 },
   customsCarpet: { pattern: 'carpet', a: '#4a5b6e', b: '#3b4a5b', scale: 1.0 },
   coldFloor: { pattern: 'concrete', a: '#b8c6cc', b: '#93a5ad', scale: 2.0 },
+  // embassy (data/maps/embassy.js)
+  marbleTiles: { pattern: 'checker', a: '#e4ded2', b: '#4a4440', scale: 0.7 },
+  galleryTiles: { pattern: 'checker', a: '#b8653e', b: '#d9c7a4', scale: 0.5 },
+  courtyardStone: { pattern: 'tiles', a: '#c9bb9c', b: '#a8997a', scale: 0.9 },
+  embassyRug: { pattern: 'rug', a: '#1f3d2e', b: '#c9a24a', scale: 1.0 },
+  embassyCarpet: { pattern: 'carpet', a: '#5a2e34', b: '#4a252a', scale: 1.0 },
 });
 
 export const WALL = Object.freeze({
