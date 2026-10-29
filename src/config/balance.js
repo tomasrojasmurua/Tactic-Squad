@@ -130,10 +130,16 @@ export const COVER = Object.freeze({
 });
 
 /**
+ * The Explorador's call-out (sim/perception.js callOut): what his fiber-optic camera shows, the stack on
+ * that door (within `stack` m) keeps as a known target `memory` s after the last sight: they enter aimed at it.
+ */
+export const CALLOUT = Object.freeze({ stack: 3, memory: 1.6 });
+
+/**
  * Trained ears (sim/ears.js, the Explorador's sharpEars): an enemy walking close by makes him turn to
  * where that enemy will appear, for `seconds`; the spot is found again every `repathTicks` steps.
  */
-export const EARS = Object.freeze({ seconds: 1.2, repathTicks: 15 });
+export const EARS = Object.freeze({ range: 7, seconds: 1.2, repathTicks: 15 });
 
 /** Defender AI (sim/ai.js). */
 export const AI = Object.freeze({
@@ -252,7 +258,7 @@ export const ENTRY = Object.freeze({
   // does not hide anyone but hurts whoever breathes it: he sees only `vision` m, aims `spread` times worse,
   // reacts `reaction` times slower and coughs (heard, NOISE.radius.cough) every `coughEvery` s. An AI
   // defender caught in it gets out (falls back if he has where to). It kills nobody.
-  gas: { fuse: 0.8, hearing: 9, radius: 2.8, grow: 1.0, seconds: 10, fade: 2, vision: 4, spread: 2.5, reaction: 1.7, coughEvery: 1.4 },
+  gas: { fuse: 0.8, hearing: 9, radius: 3.0, grow: 0.8, seconds: 10, fade: 2, vision: 3, spread: 3, reaction: 2.1, coughEvery: 1.4 },
 });
 
 export const ROUND = Object.freeze({
@@ -435,7 +441,7 @@ export const MONITOR = Object.freeze({ detect: 0, fov: 0.35, reaction: 1.8 });
 // Each bullet stopped on it jolts him (sim/combat.js joltShield): `jolt` of aim error, recovered like recoil
 // (COMBAT.recoilRecovery), up to COMBAT.maxRecoil + `joltMax`, and `joltDelay` s more to a first shot he had
 // not fired yet. Sustained fire pins him behind it; one slow shot (the bolt-action sniper) does not.
-export const SHIELD = Object.freeze({ arc: 70 * DEG, radius: 0.42, leak: 0.1, jolt: 1.6 * DEG, joltMax: 3 * DEG, joltDelay: 0.08 });
+export const SHIELD = Object.freeze({ arc: 60 * DEG, radius: 0.42, leak: 0.15, jolt: 2.2 * DEG, joltMax: 3.5 * DEG, joltDelay: 0.1 });
 
 /**
  * Ancla (role ability 'prepared', sim/combat.js): at the start of the assault he puts up a portable
@@ -456,7 +462,7 @@ export const PARAPET = Object.freeze({ reach: 0.7, arc: 75 * DEG, damage: 0.8, a
 export const TRAP = Object.freeze({
   perTrapper: 2,
   trigger: 0.9, // m
-  stun: 2, // s
+  stun: 1.6, // s (2 left the Trampero at +21 points in the Hotel: scripts/balance-clases.mjs)
   damage: 15,
   spot: 3.5, // m
   droneSpot: 4, // m

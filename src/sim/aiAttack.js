@@ -232,10 +232,13 @@ function stackDoors(sim, squad) {
     // The throwers decide the door first; the rest then wait for them beside the frame (sim/orders.js).
     const throwers = [];
     const gasFirst = stacked.filter((u) => gearLeft(u, 'gas', at(u)) > 0).concat(stacked.filter((u) => gearLeft(u, 'gas', at(u)) <= 0));
+    // Gas does not blind: a door gassed gets a flash too, from the next one with a flash (gas, then flash).
+    const gassing = !barricade && gasFirst.length && gearLeft(gasFirst[0], 'gas', at(gasFirst[0])) > 0;
     for (const u of gasFirst) {
-      if (throwers.length >= (barricade ? 1 : AI_ATTACK.flashers)) break;
+      if (throwers.length >= (barricade ? 1 : AI_ATTACK.flashers + (gassing ? 1 : 0))) break;
       // A Granadero fires gas into the room instead of a flash (sim/gas.js).
-      const mode = barricade && gearLeft(u, 'breach', at(u)) > 0 ? 'breach' : !barricade && gearLeft(u, 'gas', at(u)) > 0 ? 'gas' : !barricade && gearLeft(u, 'flash', at(u)) > 0 ? 'flash' : null;
+      const gas = !barricade && !throwers.some(([, m]) => m === 'gas') && gearLeft(u, 'gas', at(u)) > 0;
+      const mode = barricade && gearLeft(u, 'breach', at(u)) > 0 ? 'breach' : gas ? 'gas' : !barricade && gearLeft(u, 'flash', at(u)) > 0 ? 'flash' : null;
       if (mode) throwers.push([u, mode]);
     }
     const order1 = (u, mode) => {

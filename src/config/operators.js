@@ -92,7 +92,7 @@ export const ROLES = Object.freeze({
   },
   // Shotgunner: waits beside a door for whoever comes through it; deadly up close, little past 10 m.
   shotgunner: {
-    label: 'Escopetero', defPick: true, max: 2, weapon: 'shotgun', ability: null, modifiers: { closeReaction: 0.7 }, ownWeapon: true, gear: { flash: 1, frag: 1 },
+    label: 'Escopetero', defPick: true, max: 2, weapon: 'shotgun', ability: null, modifiers: { closeReaction: 0.6 }, ownWeapon: true, gear: { flash: 1, frag: 1 },
     blurb: 'Espera pegado a la puerta al que entra: escopeta que tumba de un tiro a quemarropa y reacción más rápida de cerca. Lejos, pierde.',
   },
   // Site anchor: holds his angle from a prepared position; tougher and quicker to shoot first.

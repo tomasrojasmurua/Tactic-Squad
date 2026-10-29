@@ -1,5 +1,5 @@
 // Who sees whom this tick, target acquisition and reaction times.
-import { COMBAT, ENTRY, MONITOR } from '../config/balance.js';
+import { COMBAT, ENTRY, MONITOR, CALLOUT } from '../config/balance.js';
 import { angleDiff, angleTo } from '../core/math.js';
 import { canSee } from './vision.js';
 import { EV } from '../core/events.js';
@@ -39,7 +39,10 @@ export function updatePerception(sim) {
       other.seenByEnemy = true;
       rememberSeen(sim, viewer.team, other);
     }
-    if (viewer.entry.mode === 'cam') camSeesTraps(sim, eye);
+    if (viewer.entry.mode === 'cam') {
+      camSeesTraps(sim, eye);
+      callOut(sim, viewer);
+    }
   }
 
   for (const u of units) {
@@ -51,6 +54,43 @@ export function updatePerception(sim) {
 }
 
 const eye = { x: 0, y: 0, facing: 0, fov: 0, range: 0 };
+
+/**
+ * The Explorador under the door calls out what his fiber-optic camera shows
+ * ("one, left corner, by the desk"): he and every teammate stacked on that
+ * doorway (within CALLOUT.stack m of it, on his side) keep the nearest enemy
+ * in view as a known target (lastKnown, CALLOUT.memory s after the last
+ * sight): they aim at him through the closed door and, on the GO, walk in
+ * with the muzzle already on him (the focus cone of the duel rule), alerted.
+ * Without the camera they would come in aiming at the middle of the room.
+ */
+function callOut(sim, viewer) {
+  const d = sim.world.doorways[viewer.entry.doorway];
+  let best = null;
+  let bestD = Infinity;
+  for (const o of sim.teams[viewer.team === 'attackers' ? 'defenders' : 'attackers']) {
+    if (!o.alive || !canSee(sim.world, eye, o.x, o.y, eye)) continue;
+    const d2 = (o.x - d.cx) ** 2 + (o.y - d.cy) ** 2;
+    if (d2 < bestD) {
+      bestD = d2;
+      best = o;
+    }
+  }
+  if (!best) return;
+  const side = Math.sign((viewer.x - d.cx) * d.normalX + (viewer.y - d.cy) * d.normalY);
+  const r2 = CALLOUT.stack * CALLOUT.stack;
+  const until = sim.time + CALLOUT.memory;
+  for (const t of sim.teams[viewer.team]) {
+    if (!t.alive || t.target >= 0 || (t.x - d.cx) ** 2 + (t.y - d.cy) ** 2 > r2) continue;
+    if (Math.sign((t.x - d.cx) * d.normalX + (t.y - d.cy) * d.normalY) !== side) continue;
+    if (!t.lastKnown) t.lastKnown = { x: best.x, y: best.y, until };
+    else {
+      t.lastKnown.x = best.x;
+      t.lastKnown.y = best.y;
+      t.lastKnown.until = until;
+    }
+  }
+}
 
 /**
  * What a unit can see with right now: his class's vision, cut short by tear

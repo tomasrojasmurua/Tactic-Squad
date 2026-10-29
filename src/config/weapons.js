@@ -77,7 +77,7 @@ export const WEAPONS = Object.freeze({
     fireInterval: 1.25,
     burst: [1, 1],
     burstPause: 0,
-    damage: [95, 115],
+    damage: [112, 130], // a torso hit always drops a man (100, an Ancla's 120 most of the time); a limb does not
     spread: 0.4 * DEG,
     movingSpread: 7 * DEG,
     magazine: 5,
