@@ -245,23 +245,24 @@ Tomás lo probó en su iPhone (2532×1170, en el visor de archivos de la app): "
 - **Pixelado**: la luz y la visión se calculaban en una textura de 14 px/m (≈7 cm por texel) que en
   pantalla se ampliaba ~4 veces con filtrado bilineal, y la marcha a pasos fijos con ruido por píxel
   dejaba escalones. Además, el escalado adaptativo había bajado la escena a 1,35x (y "Antes" a 0,70x).
-- **30 fps y escalado**: el escalado medía el intervalo entre cuadros y asumía 60 Hz. Con la pantalla
-  limitada a 30 Hz (visor embebido o modo bajo consumo) todo cuadro dura 33 ms aunque la GPU use
-  mucho menos, así que el escalado bajaba la resolución sin motivo; por eso "Antes", que es barato,
-  terminó en 0,70x. En "Después", además, las 8 luces y la visión se trazaban **cada cuadro** (8 × 24
-  pasos + 3 líneas de vista por texel): ese sí era costo real.
+- **30 fps y escalado**: "Antes" corrió a 61 fps, así que la pantalla no estaba limitada a 30 Hz: los
+  30 fps de "Después" eran costo real. Las 8 luces y la visión se trazaban **cada cuadro** (8 × 24 pasos
+  + 3 líneas de vista por texel); al pasar de 16,7 ms, la sincronía vertical deja el cuadro en 33 ms.
+  El escalado tenía un error: solo subía la resolución con cuadros de menos de 14,5 ms, pero con
+  sincronía vertical a 60 Hz un cuadro nunca dura menos de 16,7 ms, así que **nunca volvía a subir**.
+  Como la escala es compartida entre modos, lo que bajó en "Después" quedó en 0,70x al cambiar a "Antes".
 - **Cambios**: las 4 lámparas fijas se hornean una vez a 32 px/m (costo por cuadro cero); por cuadro solo
   se trazan 4 luces dinámicas en una textura RGBA (las 3 linternas, que son también la línea de vista
   del equipo, y el fogonazo o la bomba); muestreo bicúbico (B-spline) y suavizado 3x3 de los mapas de
   luz; ruido de gradiente entrelazado para repartir los pasos; sombras de los personajes y borde del cono
   de la linterna calculados por píxel (nítidos a cualquier resolución); la escena se dibuja siempre a
   DPR 1,5-3 según la calidad, separada de la resolución de la luz; escalado nuevo que mide el tiempo de
-  GPU (`EXT_disjoint_timer_query_webgl2`) o, sin él, la cadencia real de la pantalla, y nunca baja de
-  1,0x. Selector de calidad baja/media/alta y contador con la resolución de cada pase.
+  GPU (`EXT_disjoint_timer_query_webgl2`) o, sin él (Safari en iOS no lo tiene), compara con la cadencia
+  real de la pantalla medida al arrancar, sube cuando los cuadros llegan a tiempo y nunca baja de 1,0x. Selector de calidad baja/media/alta y contador con la resolución de cada pase.
 - Capturas en `docs/diseno/graficos-capturas/prototipo-v2/`.
 
-Lección para el juego: el `AdaptiveResolution` del juego (`slowFrameMs: 25`) tiene el mismo punto
-ciego con pantallas a 30 Hz; conviene aplicarle la misma medición de cadencia/GPU en la etapa 8.
+Lección para el juego: el `AdaptiveResolution` del juego solo sube con cuadros de menos de 13 ms
+(`fastFrameMs`), que en una pantalla de 60 Hz con sincronía vertical nunca ocurre; conviene aplicarle la misma medición de cadencia/GPU en la etapa 8.
 
 Limitaciones honestas: los personajes son cajas, como en el juego; el humo y el fuego no están; la
 visión es un cálculo de presentación (en el juego la decide la sim); no se midió en un iPhone real
