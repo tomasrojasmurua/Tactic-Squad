@@ -129,21 +129,22 @@ export const ROLES = Object.freeze({
  * none of them (a player's) gets the plan its classes suggest (planFor).
  *
  * Attack plan fields: `breach` (charges on every closed door on the way, not
- * only on known barricades), `split` (each operator takes a different door
- * into the site: a pinch), `sneak` (the approach in silence: traps seen,
- * steps not heard), `overwatch` (that class stops short of the site, holds
- * the way in for a turn, then joins).
+ * only on known barricades), `split` (one operator comes in through another
+ * door of the site, when it is not a long detour: a pinch), `overwatch` (that
+ * class stops short of the site and holds the way in; a turn later he joins),
+ * `buy` (what each operator buys with his points, in order: AI_ATTACK.buy if
+ * none).
  * Defense plan fields: `rotators` (how many leave their posts for the bomb
  * when it is threatened), `threat` (m from the bomb that counts as a threat:
  * farther = earlier rotation).
  */
 export const COMPOSITIONS = Object.freeze({
   attackers: Object.freeze([
-    Object.freeze({ id: 'hardBreach', roles: Object.freeze(['shield', 'entry', 'assault']), plan: Object.freeze({ breach: true }) }),
-    Object.freeze({ id: 'infoFlank', roles: Object.freeze(['scout', 'assault', 'entry']), plan: Object.freeze({ split: true, sneak: true }) }),
-    Object.freeze({ id: 'utility', roles: Object.freeze(['grenadier', 'entry', 'scout']), plan: Object.freeze({ sneak: true }) }),
+    Object.freeze({ id: 'hardBreach', roles: Object.freeze(['shield', 'entry', 'assault']), plan: Object.freeze({ breach: true, buy: Object.freeze(['breach', 'flash']) }) }),
+    Object.freeze({ id: 'infoFlank', roles: Object.freeze(['scout', 'assault', 'entry']), plan: Object.freeze({ split: true }) }),
+    Object.freeze({ id: 'utility', roles: Object.freeze(['grenadier', 'entry', 'scout']), plan: Object.freeze({ buy: Object.freeze(['flash', 'smoke']) }) }),
     Object.freeze({ id: 'longPick', roles: Object.freeze(['marksman', 'shield', 'assault']), plan: Object.freeze({ overwatch: 'marksman' }) }),
-    Object.freeze({ id: 'rush', roles: Object.freeze(['assault', 'grenadier', 'assault']), plan: Object.freeze({ split: true }) }),
+    Object.freeze({ id: 'rush', roles: Object.freeze(['assault', 'grenadier', 'assault']), plan: Object.freeze({ split: true, buy: Object.freeze(['frag', 'flash']) }) }),
   ]),
   defenders: Object.freeze([
     Object.freeze({ id: 'fortress', roles: Object.freeze(['anchor', 'shotgunner', 'trapper']), plan: Object.freeze({ rotators: 1, threat: 8 }) }),
@@ -175,7 +176,7 @@ export function planFor(team, roles) {
   if (own) return { id: own.id, ...own.plan };
   const has = (r) => roles.includes(r);
   if (team === 'attackers') {
-    return { id: null, breach: has('entry') && has('shield'), split: has('scout') && !has('grenadier'), sneak: has('scout'), overwatch: has('marksman') ? 'marksman' : null };
+    return { id: null, breach: has('entry') && has('shield'), split: has('scout') && !has('grenadier'), overwatch: has('marksman') ? 'marksman' : null };
   }
   const near = roles.filter((r) => r === 'anchor' || r === 'shotgunner').length;
   return { id: null, rotators: near >= 2 ? 1 : 2, threat: has('roamer') || has('sniper') ? 12 : 8 };

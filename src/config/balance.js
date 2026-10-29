@@ -186,8 +186,10 @@ export const AI_ATTACK = Object.freeze({
   // Composition plans (config/operators.js COMPOSITIONS):
   siteDoorReach: 9, // m walking from a doorway to the bomb: it is a way into the site (a split plan's second door)
   viaOffset: 1.2, // m outside that doorway: where the flanker goes before stepping in
+  // ...and only if his walk through it (there, then to his spot) is at most splitSlack longer than going straight
+  splitSlack: 0.15,
+  splitExtra: 3, // m, plus this
   overwatchShort: 7, // m walking short of the bomb where an overwatch Tirador stops and holds
-  sneakRange: 14, // m from the bomb: a quiet plan sneaks the legs ending at doors this close
 });
 
 /** Round debrief (sim/debrief.js). */

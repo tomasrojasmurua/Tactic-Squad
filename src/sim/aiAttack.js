@@ -44,7 +44,7 @@ export function createAttackAi(sim) {
     goWait: {}, // GO code -> s since someone started waiting for it
     goReady: {}, // GO code -> s everyone of it has been in position
     // The squad's game plan (config/operators.js COMPOSITIONS): its archetype's, or what its classes suggest.
-    plan: planFor(TEAM, sim.teams.attackers.map((u) => u.role)),
+    plan: { ...planFor(TEAM, sim.teams.attackers.map((u) => u.role)), ...(globalThis.PLAN_OVERRIDE || {}) },
   };
 }
 
@@ -69,8 +69,9 @@ const order = (sim, cmd) => applyCommand(sim, { team: TEAM, ...cmd }, 'ai');
 // ------------------------------------------------------------ buy
 
 function buy(sim) {
+  const list = sim.attackAi.plan.buy || AI_ATTACK.buy; // the plan's shopping list (COMPOSITIONS), else the default
   for (const u of sim.teams.attackers) {
-    for (const item of AI_ATTACK.buy) {
+    for (const item of list) {
       if (u.points >= BUY.prices[item] && (u.gear[item] || 0) < BUY.max[item]) order(sim, { type: 'buy', unitId: u.id, item, count: 1 });
     }
   }
@@ -166,10 +167,9 @@ function plan(sim, ai) {
     // Overwatch: the Tirador stops short of the site the first time and holds the way in (a turn later he joins).
     if (fresh && plan.overwatch === u.role && overwatch(sim, u, x, y)) return;
     // A pinch: the second operator comes in through another door of the site.
-    const via = ways.length > 1 && i === 1 ? ways[1] : null;
+    const via = i === 1 ? flankDoor(sim, u, ways, x, y) : null;
     if (fresh && via) order(sim, { type: 'addWaypoint', unitId: u.id, x: via.x, y: via.y, user: true });
     order(sim, { type: 'addWaypoint', unitId: u.id, x, y, user: true });
-    if (fresh && plan.sneak) sneakApproach(sim, u, site);
   });
   stackDoors(sim, squad, plan);
 }
@@ -193,6 +193,21 @@ function siteDoors(sim, site, from) {
     out.push({ x, y, d: travel(sim, from.x, from.y, x, y) });
   }
   return out.filter((o) => o.d < Infinity).sort((a, b) => a.d - b.d);
+}
+
+/**
+ * The other door of the site for a pinch: the first way in (after the main
+ * one) whose walk, there and on to his spot, is at most AI_ATTACK.splitSlack
+ * longer (+ splitExtra m) than his straight walk. A long detour would leave
+ * him alone too long: then there is no pinch.
+ */
+function flankDoor(sim, u, ways, x, y) {
+  const direct = travel(sim, u.x, u.y, x, y);
+  for (const w of ways.slice(1)) {
+    const via = travel(sim, u.x, u.y, w.x, w.y) + travel(sim, w.x, w.y, x, y);
+    if (via <= direct * (1 + AI_ATTACK.splitSlack) + AI_ATTACK.splitExtra) return w;
+  }
+  return null;
 }
 
 /**
@@ -223,13 +238,7 @@ function overwatch(sim, u, x, y) {
   return false;
 }
 
-/** A quiet plan: the legs that end at a door within AI_ATTACK.sneakRange of the bomb are walked in silence. */
-function sneakApproach(sim, u, site) {
-  const r2 = AI_ATTACK.sneakRange * AI_ATTACK.sneakRange;
-  u.route.forEach((p, i) => {
-    if (p.user && p.ask && (p.x - site.bombX) ** 2 + (p.y - site.bombY) ** 2 < r2) order(sim, { type: 'setPace', unitId: u.id, pace: 'sneak', index: i });
-  });
-}
+
 
 /** What the squad has learnt this far: the bomb, or a site walked into with no bomb in it. */
 function learnSites(sim, ai) {
