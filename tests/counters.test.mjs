@@ -216,7 +216,7 @@ test('cada composición arquetípica es una escuadra válida y con un plan propi
   }
   // Una escuadra que no es arquetípica recibe el plan que sugieren sus clases.
   assert.equal(planFor('attackers', ['marksman', 'scout', 'entry']).overwatch, 'marksman');
-  assert.equal(planFor('attackers', ['shield', 'entry', 'scout']).breach, true);
+  assert.equal(planFor('attackers', ['shield', 'entry', 'scout']).lead, 'shield');
   assert.ok(Object.keys(ROLES).length >= 12);
 });
 

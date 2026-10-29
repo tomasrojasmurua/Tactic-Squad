@@ -128,8 +128,9 @@ export const ROLES = Object.freeze({
  * sim/aiDefend.js). An AI side picks one blind (AI_SQUADS); a squad that is
  * none of them (a player's) gets the plan its classes suggest (planFor).
  *
- * Attack plan fields: `breach` (charges on every closed door on the way, not
- * only on known barricades), `split` (one operator comes in through another
+ * Attack plan fields: `lead` (the class on point: he takes the bomb spot,
+ * throws the first flash at each door and goes through it first, soaking
+ * the first shots on his shield), `split` (one operator comes in through another
  * door of the site, when it is not a long detour: a pinch), `overwatch` (that
  * class stops short of the site and holds the way in; a turn later he joins),
  * `buy` (what each operator buys with his points, in order: AI_ATTACK.buy if
@@ -140,7 +141,7 @@ export const ROLES = Object.freeze({
  */
 export const COMPOSITIONS = Object.freeze({
   attackers: Object.freeze([
-    Object.freeze({ id: 'hardBreach', roles: Object.freeze(['shield', 'entry', 'assault']), plan: Object.freeze({ breach: true, buy: Object.freeze(['breach', 'flash']) }) }),
+    Object.freeze({ id: 'hardBreach', roles: Object.freeze(['shield', 'entry', 'assault']), plan: Object.freeze({ lead: 'shield' }) }),
     Object.freeze({ id: 'infoFlank', roles: Object.freeze(['scout', 'assault', 'entry']), plan: Object.freeze({ split: true }) }),
     Object.freeze({ id: 'utility', roles: Object.freeze(['grenadier', 'entry', 'scout']), plan: Object.freeze({ buy: Object.freeze(['flash', 'smoke']) }) }),
     Object.freeze({ id: 'longPick', roles: Object.freeze(['marksman', 'shield', 'assault']), plan: Object.freeze({ overwatch: 'marksman' }) }),
@@ -176,7 +177,7 @@ export function planFor(team, roles) {
   if (own) return { id: own.id, ...own.plan };
   const has = (r) => roles.includes(r);
   if (team === 'attackers') {
-    return { id: null, breach: has('entry') && has('shield'), split: has('scout') && !has('grenadier'), overwatch: has('marksman') ? 'marksman' : null };
+    return { id: null, lead: has('shield') ? 'shield' : null, split: has('scout') && !has('grenadier'), overwatch: has('marksman') ? 'marksman' : null };
   }
   const near = roles.filter((r) => r === 'anchor' || r === 'shotgunner').length;
   return { id: null, rotators: near >= 2 ? 1 : 2, threat: has('roamer') || has('sniper') ? 12 : 8 };

@@ -153,7 +153,8 @@ function plan(sim, ai) {
     if (entry !== sim.entry.id) order(sim, { type: 'chooseEntry', entry });
   }
   const site = siteById(sim, target);
-  const squad = sim.teams.attackers.filter((u) => u.alive);
+  // The plan's point man (a hard breach: the Escudo) goes first: the bomb spot, the first flash at each door, first through it.
+  const squad = sim.teams.attackers.filter((u) => u.alive).sort((a, b) => (b.role === ai.plan.lead) - (a.role === ai.plan.lead) || a.id - b.id);
   if (defuseCandidate(sim) && sim.bomb.defuserId < 0) order(sim, { type: 'defuseNow' });
   const plan = ai.plan;
   const ways = plan.split && (retarget || first) && squad.length ? siteDoors(sim, site, squad[0]) : [];
@@ -305,8 +306,7 @@ function stackDoors(sim, squad, plan = {}) {
   doors.forEach((k, n) => {
     const code = free[n] || null;
     const at = (u) => u.route.findIndex((p) => (p.ask || p.waitDoor === k) && p.door === k);
-    // A known barricade is blown; a breach plan blows every closed door on the way (while charges last).
-    const barricade = sim.intel.barricades.has(k) || (!!plan.breach && squad.some((u) => at(u) >= 0 && gearLeft(u, 'breach', at(u)) > 0));
+    const barricade = sim.intel.barricades.has(k); // a known barricade is blown
     const stacked = squad.filter((u) => at(u) >= 0);
     // The throwers decide the door first; the rest then wait for them beside the frame (sim/orders.js).
     const throwers = [];
