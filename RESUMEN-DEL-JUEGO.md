@@ -41,13 +41,19 @@ puedas reaccionar en vez de mirar cómo te matan.
 
 ## 2. Cómo se juega una ronda
 
-Dos mapas, de 40 × 28 m. **Operación Almacén**, el equilibrado (patio de salida, oficina y
+Tres mapas, de 40 × 28 m. **Operación Almacén**, el equilibrado (patio de salida, oficina y
 cocina al norte, pasillo al centro, baño y sala con el sitio B al sur, nave con el sitio A
 al este). **Operación Hotel**, el de puertas: un pasillo recto de 23 m con habitaciones
 comunicadas a los lados (cada una con su baño junto a la entrada), la lavandería con el
 sitio B y la suite al fondo con el sitio A, a la que solo se entra por dos puertas (la del
 pasillo, tras un recibidor, y la que la comunica con la 705). Premia abrir y mirar antes
 de entrar (Brecha, Explorador) y castiga cruzar el pasillo a la vista (Ancla, Trampero).
+**Operación Puerto**, el abierto: una terminal de contenedores con medio mapa al aire libre.
+El sitio A es el patio de contenedores, sin puertas y con tres carriles largos (el muelle,
+de 31 m; el carril del medio y la explanada de camiones): premia a los Tiradores y al Escudo
+para cruzar, y al Merodeador entre las pilas. El sitio B es la cámara de frío de la bodega,
+con dos puertas pesadas que dan a la bodega, y a la bodega se entra por el andén, la puerta
+del frente o la aduana: premia al Ancla y al Trampero, y la abren la Brecha y el Granadero.
 La ronda es **3 contra 3**: el mapa trae 4 puestos de defensa por sitio y se usan los 3
 primeros (`config/squad.js` `DEFENDERS`).
 
@@ -74,7 +80,7 @@ fase trae una tarjeta que la explica la primera vez. Solo las lecciones del tuto
 
 **Menú y lobby.** JUGAR → CONTRA LA IA (MULTIJUGADOR, próximamente) → el lobby:
 **formato** (una ronda suelta o al mejor de 3, 5 o 7), **con
-qué bando empiezas** y **mapa** (Almacén, Hotel o al azar: el azar se sortea al pasar a las clases, para elegirlas sabiendo dónde se juega). Cada mapa tiene su **ficha**: el plano con sitios y entradas y tres rasgos; tocar A o B muestra la lectura de ese sitio. No sugiere clases: leer el mapa es parte del juego. En la elección de clases, VER PLANO la vuelve a abrir. ELEGIR CLASES
+qué bando empiezas** y **mapa** (Almacén, Hotel, Puerto o al azar, en una lista a la izquierda con el plano del elegido a la derecha: el azar se sortea al pasar a las clases, para elegirlas sabiendo dónde se juega). Cada mapa tiene su **ficha**: el plano con sitios y entradas y tres rasgos; tocar A o B muestra la lectura de ese sitio. No sugiere clases: leer el mapa es parte del juego. En la elección de clases, VER PLANO la vuelve a abrir. ELEGIR CLASES
 lleva al **roster**, como el pick phase de un MOBA: un grupo de personajes por bando,
 cada uno con su símbolo y su color, del que se eligen los 3 de tu escuadra (en una
 partida, una pestaña para cuando atacas y otra para cuando defiendes). Al tocar uno se ve
@@ -268,7 +274,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 | Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (soportes del mapa a elegir, gratis). Sensor y elección de refuerzos por el defensor: faltan |
 | Paredes blandas destructibles | **Descartado** por decisión de diseño (27 oct 2026): no se implementan |
 | Plazos de las fases | **Parcial.** El reloj existe (`PhaseClock`), pero contra la IA no hay límite |
-| Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Parcial.** Dos mapas (Almacén y Hotel, IA contra IA 59 % y 52 % para el atacante); Puerto y Embajada en camino. 5v5 y dificultades: faltan |
+| Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Parcial.** Tres mapas (Almacén, Hotel y Puerto; IA contra IA con escuadras al azar: 51 %, 52 % y 53 % para el atacante); Embajada en camino. 5v5 y dificultades: faltan |
 | Online | **Falta.** El código está preparado (determinismo, órdenes serializables, grabador de planes, `teamView`). Bloquea que el render lea la sim entera |
 | Equilibrio 45-55 % | **Sin medir** con las clases y las cámaras nuevas |
 

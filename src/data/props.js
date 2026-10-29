@@ -45,4 +45,14 @@ export const PROPS = Object.freeze({
   linenShelf: { w: 1.8, d: 0.45, h: 2.0, blocksMove: true, blocksVision: true },
   luggageCart: { w: 1.2, d: 0.6, h: 1.7, blocksMove: true },
   shower: { w: 0.9, d: 0.9, h: 2.0, blocksMove: true },
+  // port (`color` in the map tints containers and trailers)
+  container: { w: 6.0, d: 2.4, h: 2.6, blocksMove: true, blocksVision: true },
+  containerStack: { w: 6.0, d: 2.4, h: 5.2, blocksMove: true, blocksVision: true },
+  trailer: { w: 8.4, d: 2.5, h: 3.9, blocksMove: true, blocksVision: true },
+  forklift: { w: 1.2, d: 2.4, h: 2.2, blocksMove: true },
+  bollard: { w: 0.45, d: 0.45, h: 0.6, blocksMove: true },
+  guardBooth: { w: 1.8, d: 1.8, h: 2.5, blocksMove: true, blocksVision: true },
+  xrayScanner: { w: 2.6, d: 1.1, h: 1.7, blocksMove: true, blocksVision: true },
+  coldRack: { w: 2.6, d: 0.9, h: 2.4, blocksMove: true, blocksVision: true },
+  evaporator: { w: 1.6, d: 0.5, h: 2.5, blocksMove: true },
 });

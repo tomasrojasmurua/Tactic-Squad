@@ -10,6 +10,7 @@ export const FLOOR_PATTERN = Object.freeze({
   concrete: 4,
   asphalt: 5,
   rug: 6,
+  water: 7,
 });
 
 /** Floor materials referenced by maps. scale = tile/plank size in meters. */
@@ -29,6 +30,13 @@ export const FLOORS = Object.freeze({
   suiteRug: { pattern: 'rug', a: '#2c4a6e', b: '#d8c27a', scale: 1.0 },
   laundryTiles: { pattern: 'tiles', a: '#dbe5e9', b: '#a7bcc6', scale: 0.4 },
   serviceLino: { pattern: 'checker', a: '#9aa0a3', b: '#8a9094', scale: 0.5 },
+  // port (data/maps/port.js)
+  harborWater: { pattern: 'water', a: '#16323d', b: '#24505c', scale: 1.0 },
+  quayConcrete: { pattern: 'concrete', a: '#a39d90', b: '#7d776b', scale: 4.0 },
+  portConcrete: { pattern: 'concrete', a: '#8f918c', b: '#6a6c67', scale: 6.0 },
+  customsTiles: { pattern: 'tiles', a: '#c9ccc4', b: '#9ea39a', scale: 0.5 },
+  customsCarpet: { pattern: 'carpet', a: '#4a5b6e', b: '#3b4a5b', scale: 1.0 },
+  coldFloor: { pattern: 'concrete', a: '#b8c6cc', b: '#93a5ad', scale: 2.0 },
 });
 
 export const WALL = Object.freeze({

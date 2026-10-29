@@ -882,7 +882,12 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
 .pick .pk-map.on { background: rgba(255, 176, 46, 0.16); }
 .pick .pk-card { margin-top: 8px; }
 /* The map's card (ui/MapPreview.js): the plan on the left, its reading on the right. */
-.map-card { display: grid; grid-template-columns: minmax(150px, 300px) minmax(0, 1fr); gap: 12px; align-items: start; padding: 10px; background: var(--plate); border-left: 3px solid var(--amber); max-width: 620px; }
+.map-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px; background: var(--plate); border-left: 3px solid var(--amber); max-width: 430px; }
+/* Desktop screens too short for the logo, the lobby and the map's picture: the lobby goes without the logo. */
+@media (min-height: 521px) and (max-height: 1000px) {
+  .title-box:has(.lobby.on)::before, .title-box:has(.lobby.on) h1, .title-box:has(.lobby.on) .subtitle { display: none; }
+}
+.pick .map-card { grid-template-columns: minmax(150px, 400px) minmax(0, 1fr); gap: 14px; max-width: 820px; }
 .map-card .mc-plan { width: 100%; aspect-ratio: 40 / 28; display: block; cursor: pointer; }
 .map-card.random .mc-plan { cursor: default; }
 .map-card .mc-name { font-family: var(--font-display); font-size: 17px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
@@ -1032,7 +1037,7 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
   .title-box .lobby .lb-slot .btn.lb-opt { min-height: 30px; padding: 3px 6px; font-size: 11px; letter-spacing: 0.02em; }
   .lobby .lb-slot { gap: 6px; }
   .lobby .lb-note { font-size: 11px; }
-  .map-card { grid-template-columns: 150px minmax(0, 1fr); gap: 8px; padding: 6px; }
+  .map-card, .pick .map-card { grid-template-columns: 200px minmax(0, 1fr); gap: 8px; padding: 6px; max-width: none; }
   .map-card .mc-name { font-size: 14px; }
   .map-card .mc-sub, .map-card .mc-hint { font-size: 9.5px; }
   .map-card .mc-traits li { font-size: 11px; }

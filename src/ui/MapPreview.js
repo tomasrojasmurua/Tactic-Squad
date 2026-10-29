@@ -1,10 +1,13 @@
-// The map's card before a game (lobby and class pick): a floor plan drawn
-// from the map's data (floors, walls with their doorways, windows, the two
-// sites and the attackers' entries) and its reading in words: the map's
-// `traits`, or a site's `siteTraits` while that site is tapped on the plan.
+// The map's card before a game (lobby and class pick): the map as it looks in
+// a game (render/MapSnapshot.js: the game's own renderer, from above, without
+// fog), with the attackers' entries drawn over it, and its reading in words:
+// the map's `traits`, or a site's `siteTraits` while that site is tapped on
+// the plan. Without WebGL2 the plan is drawn from the map's data instead
+// (floors, tall furniture, walls with their doorways, windows, the sites).
 // It names no class: reading the map is the player's job.
 // "Al azar" shows a card that says the map is drawn on the way to the classes.
 import { compileMap } from '../sim/mapCompiler.js';
+import { snapshotMap } from '../render/MapSnapshot.js';
 import { FLOORS } from '../config/materials.js';
 import { MAPS } from '../data/maps/index.js';
 import { el, setText, toggle } from './dom.js';
@@ -20,10 +23,14 @@ const C = Object.freeze({
   siteFill: 'rgba(242, 194, 48, 0.16)',
   siteOn: 'rgba(242, 194, 48, 0.38)',
   entry: '#2fd7ff',
+  cover: '#7b838a', // furniture that blocks sight (containers, shelves, wardrobes)
 });
 
 const compiled = new Map(); // map id -> compiled map (the plan is drawn from it)
 const compiledOf = (id) => compiled.get(id) || compiled.set(id, compileMap(MAPS[id])).get(id);
+const SNAPSHOT_WIDTH = 1000; // px: sharp at the card's size on a 2x screen
+const snapshots = new Map(); // map id -> {image, floor} | null (no WebGL2)
+const snapshotOf = (id) => (snapshots.has(id) ? snapshots.get(id) : snapshots.set(id, snapshotMap(compiledOf(id), SNAPSHOT_WIDTH)).get(id));
 
 export class MapPreview {
   constructor() {
@@ -111,39 +118,19 @@ export class MapPreview {
     this.view = { k, ox, oy, dpr };
     const R = (x, y, rw, rh) => [ox + x * k, oy + y * k, rw * k, rh * k];
 
-    for (const f of m.floors) {
-      g.fillStyle = shade(FLOORS[f.material]?.a || '#555', 0.42);
-      g.fillRect(...R(...f.rect));
-    }
-    for (const s of m.sites) {
-      g.fillStyle = s.id === this.site ? C.siteOn : C.siteFill;
-      g.fillRect(...R(...s.rect));
-      g.setLineDash([3 * dpr, 2 * dpr]);
-      g.strokeStyle = C.site;
-      g.lineWidth = 1 * dpr;
-      g.strokeRect(...R(...s.rect));
-      g.setLineDash([]);
-      g.fillStyle = C.site;
-      g.font = `800 ${Math.round(Math.min(s.rect[2], s.rect[3]) * k * 0.55)}px 'Barlow Condensed', sans-serif`;
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.fillText(s.id, ox + (s.rect[0] + s.rect[2] / 2) * k, oy + (s.rect[1] + s.rect[3] / 2) * k);
-    }
-    for (const wl of m.walls) {
-      const b = wl.box;
-      g.fillStyle = wl.kind === 'fence' ? C.fence : C.wall;
-      g.fillRect(...R(b.minX, b.minY, Math.max(b.maxX - b.minX, 0.25), Math.max(b.maxY - b.minY, 0.25)));
-    }
-    for (const wn of m.windows) {
-      const b = wn.box;
-      g.fillStyle = C.window;
-      g.fillRect(...R(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY));
-    }
-    for (const d of m.doors) {
-      const b = d.closedBox;
-      g.fillStyle = C.door;
-      g.fillRect(...R(b.minX - 0.06, b.minY - 0.06, b.maxX - b.minX + 0.12, b.maxY - b.minY + 0.12));
-    }
+    const snap = snapshotOf(this.mapId);
+    if (snap) {
+      // The picture's floor rectangle onto the plan's.
+      const [x0, y0, x1, y1] = snap.floor;
+      const f = (m.width * k) / (x1 - x0);
+      g.imageSmoothingQuality = 'high';
+      g.drawImage(snap.image, ox - x0 * f, oy - y0 * f, snap.image.width * f, snap.image.height * f);
+      const s = this.site && m.sites.find((t) => t.id === this.site);
+      if (s) {
+        g.fillStyle = C.siteOn;
+        g.fillRect(...R(...s.rect));
+      }
+    } else this.drawPlan(g, m, R, k, ox, oy, dpr);
     // Entries: an arrow from where the squad starts to its door.
     g.strokeStyle = C.entry;
     g.fillStyle = C.entry;
@@ -167,6 +154,49 @@ export class MapPreview {
       g.lineTo(bx - s * Math.cos(a + 0.5), by - s * Math.sin(a + 0.5));
       g.closePath();
       g.fill();
+    }
+  }
+
+  /** The plan from the map's data (no WebGL2 for the picture). */
+  drawPlan(g, m, R, k, ox, oy, dpr) {
+    for (const f of m.floors) {
+      g.fillStyle = shade(FLOORS[f.material]?.a || '#555', 0.42);
+      g.fillRect(...R(...f.rect));
+    }
+    for (const s of m.sites) {
+      g.fillStyle = s.id === this.site ? C.siteOn : C.siteFill;
+      g.fillRect(...R(...s.rect));
+      g.setLineDash([3 * dpr, 2 * dpr]);
+      g.strokeStyle = C.site;
+      g.lineWidth = 1 * dpr;
+      g.strokeRect(...R(...s.rect));
+      g.setLineDash([]);
+      g.fillStyle = C.site;
+      g.font = `800 ${Math.round(Math.min(s.rect[2], s.rect[3]) * k * 0.55)}px 'Barlow Condensed', sans-serif`;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(s.id, ox + (s.rect[0] + s.rect[2] / 2) * k, oy + (s.rect[1] + s.rect[3] / 2) * k);
+    }
+    g.fillStyle = C.cover;
+    for (const p of m.props) {
+      if (!p.blocksVision) continue;
+      const b = p.box;
+      g.fillRect(...R(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY));
+    }
+    for (const wl of m.walls) {
+      const b = wl.box;
+      g.fillStyle = wl.kind === 'fence' ? C.fence : C.wall;
+      g.fillRect(...R(b.minX, b.minY, Math.max(b.maxX - b.minX, 0.25), Math.max(b.maxY - b.minY, 0.25)));
+    }
+    for (const wn of m.windows) {
+      const b = wn.box;
+      g.fillStyle = C.window;
+      g.fillRect(...R(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY));
+    }
+    for (const d of m.doors) {
+      const b = d.closedBox;
+      g.fillStyle = C.door;
+      g.fillRect(...R(b.minX - 0.06, b.minY - 0.06, b.maxX - b.minX + 0.12, b.maxY - b.minY + 0.12));
     }
   }
 
