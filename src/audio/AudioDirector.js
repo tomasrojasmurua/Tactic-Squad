@@ -53,7 +53,7 @@ export class AudioDirector {
     on(EV.BARRICADE_BROKEN, (ev) => ev.how === 'bash' && this.at('door.slam', ev.x, ev.y, L.doorSlam, 'door'));
     on(EV.DRONE_DESTROYED, () => this.ui('undo'));
     on(EV.GRENADE_THROWN, (ev) => this.at('grenade.pin', ev.x, ev.y, L.grenadePin, 'foley'));
-    on(EV.GRENADE_DETONATE, (ev) => (ev.kind === 'smoke' || ev.kind === 'molotov' ? this.at('smoke', ev.x, ev.y, L.smoke, 'door') : this.bang(ev.kind === 'flash' ? 'flashbang' : 'blast', ev.x, ev.y)));
+    on(EV.GRENADE_DETONATE, (ev) => (ev.kind === 'smoke' || ev.kind === 'molotov' || ev.kind === 'gas' ? this.at('smoke', ev.x, ev.y, L.smoke, 'door') : this.bang(ev.kind === 'flash' ? 'flashbang' : 'blast', ev.x, ev.y)));
     on(EV.CHARGE_BLAST, (ev) => this.bang('blast', ev.x, ev.y));
     on(EV.CHARGE_READY, () => this.ui('hold', 0.7));
     on(EV.CHARGE_FIRE, () => this.ui('plant', 1));
@@ -183,16 +183,18 @@ export class AudioDirector {
     const far = s.far;
     const near = s.gain;
     const layers = this.gunLayers(ev.weaponId, acousticsAt(this.sim, ev.x, ev.y).zone);
+    const sup = ev.suppressed; // a suppressor (the Merodeador): a muffled, dull crack that does not carry
+    const lp = far > 0.1 ? DISTANCE_LOWPASS[0] * Math.pow(DISTANCE_LOWPASS[1] / DISTANCE_LOWPASS[0], far) : 0;
     this.at(layers[0].name, ev.x, ev.y, g, 'gun', {
       layers,
-      gain: GUN_MIX.level[ev.weaponId] ?? 1,
+      gain: (GUN_MIX.level[ev.weaponId] ?? 1) * (sup ? GUN_MIX.suppressed.gain : 1),
       always: true,
-      minGain: g.minGain, // gunfire carries further than anything else
+      minGain: sup ? 0 : g.minGain, // gunfire carries further than anything else
       // Air absorption + walls: only distant shots get a filter (one node fewer for close ones).
-      lowpass: far > 0.1 ? DISTANCE_LOWPASS[0] * Math.pow(DISTANCE_LOWPASS[1] / DISTANCE_LOWPASS[0], far) : 0,
-      sendMul: lerp(1, g.farSendMul, far),
+      lowpass: sup ? Math.min(lp || Infinity, GUN_MIX.suppressed.lowpass) : lp,
+      sendMul: lerp(1, g.farSendMul, far) * (sup ? GUN_MIX.suppressed.send : 1),
     });
-    if (near > 0.25) this.e.duckMusic(MUSIC.duckDb * clamp(near, 0, 1), MUSIC.duckRelease);
+    if (near > 0.25 && !sup) this.e.duckMusic(MUSIC.duckDb * clamp(near, 0, 1), MUSIC.duckRelease);
     this.music.onEvent('shot', clamp(0.4 + near, 0, 1));
 
     if (ev.hit === 'wall') {

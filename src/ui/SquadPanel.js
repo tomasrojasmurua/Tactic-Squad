@@ -114,7 +114,7 @@ function setStatus(node, u, sim) {
   } else if (u.reloadTimer > 0) {
     text = S.reloading;
   } else if (u.entry && u.entry.phase === 'prep') {
-    text = u.entry.mode === 'breach' ? S.planting : S.cracking;
+    text = u.entry.mode === 'breach' ? S.planting : u.entry.mode === 'cam' ? S.threading : S.cracking;
   } else if (u.entry && u.entry.phase === 'act') {
     text = u.entry.mode === 'breach' ? S.firing : S.throwing[u.entry.mode];
     cls = 'plant';

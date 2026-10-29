@@ -5,14 +5,17 @@
 // walls). At the end of every execution turn the heard noises become pulses
 // on the listener's map: one per NOISE.cell grid cell, named by its loudest
 // kind and shifted a little (a hash of seed, turn and cell: no sim.rng, so
-// the rest of the round is untouched). Where, roughly — never who.
+// the rest of the round is untouched). Where, roughly — never who. A noise
+// that an operator with trained ears (role flag sharpEars: the Explorador)
+// heard himself is placed exactly where it was (pulse.exact).
 //
-// sim.noise.pulses[team] = [{turn, kind, x, y}] heard BY that side, newest
+// sim.noise.pulses[team] = [{turn, kind, x, y, exact}] heard BY that side, newest
 // last, kept NOISE.keepTurns turns. Read through sim/view.js teamView.
 // (The AI's own ears — sim/ai.js — are unchanged for now.)
 import { NOISE } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { TEAMS } from '../config/squad.js';
+import { roleFlag } from '../config/operators.js';
 import { enemyTeam } from './queries.js';
 
 export function createNoise() {
@@ -35,7 +38,9 @@ function kindOf(ev) {
     case EV.CHARGE_BLAST:
       return 'breach';
     case EV.GRENADE_DETONATE:
-      return ev.kind === 'flash' ? 'flash' : 'frag';
+      return ev.kind === 'flash' ? 'flash' : ev.kind === 'gas' ? 'door' : 'frag'; // a 40 mm gas round only pops
+    case EV.COUGH:
+      return 'cough';
     case EV.DEFUSE_START:
       return 'defuse';
     case EV.BARRICADE_HIT:
@@ -59,16 +64,21 @@ export function collectNoise(sim, from) {
     const src = sim.units[ev.unitId];
     if (!src) continue;
     const listener = enemyTeam(src.team);
-    const r = NOISE.radius[kind] * (kind === 'step' ? src.mods.stepNoise : 1); // a Merodeador's steps carry less
+    // A Merodeador's steps and suppressed shots carry less.
+    const r = NOISE.radius[kind] * (kind === 'step' ? src.mods.stepNoise : kind === 'shot' ? src.mods.shotNoise : 1);
     const r2 = r * r;
     let heard = false;
+    let exact = false;
     for (const u of sim.teams[listener]) {
       if (u.alive && (u.x - ev.x) ** 2 + (u.y - ev.y) ** 2 <= r2) {
         heard = true;
-        break;
+        if (roleFlag(u.role, 'sharpEars')) {
+          exact = true;
+          break;
+        }
       }
     }
-    if (heard) sim.noise.heard.push({ team: listener, kind, x: ev.x, y: ev.y });
+    if (heard) sim.noise.heard.push({ team: listener, kind, x: ev.x, y: ev.y, exact });
   }
 }
 
@@ -82,8 +92,11 @@ export function summarizeNoise(sim) {
     const cy = Math.floor(h.y / NOISE.cell);
     const key = `${h.team}:${cx}:${cy}`;
     const p = cells.get(key);
-    if (!p) cells.set(key, { team: h.team, kind: h.kind, cx, cy });
-    else if (NOISE.rank.indexOf(h.kind) > NOISE.rank.indexOf(p.kind)) p.kind = h.kind;
+    if (!p) cells.set(key, { team: h.team, kind: h.kind, cx, cy, exact: h.exact ? h : null });
+    else {
+      if (NOISE.rank.indexOf(h.kind) > NOISE.rank.indexOf(p.kind)) p.kind = h.kind;
+      if (h.exact) p.exact = h; // the last one he heard exactly
+    }
   }
   n.heard.length = 0;
   for (const t of TEAMS) {
@@ -93,11 +106,15 @@ export function summarizeNoise(sim) {
     list.length = k;
   }
   for (const p of cells.values()) {
+    if (p.exact) {
+      n.pulses[p.team].push({ turn, kind: p.kind, x: p.exact.x, y: p.exact.y, exact: true });
+      continue;
+    }
     const a = hash01(sim.seed, turn, p.cx, p.cy, 1);
     const d = hash01(sim.seed, turn, p.cx, p.cy, 2);
     const x = (p.cx + 0.5) * NOISE.cell + Math.cos(a * Math.PI * 2) * d * NOISE.jitter;
     const y = (p.cy + 0.5) * NOISE.cell + Math.sin(a * Math.PI * 2) * d * NOISE.jitter;
-    n.pulses[p.team].push({ turn, kind: p.kind, x, y });
+    n.pulses[p.team].push({ turn, kind: p.kind, x, y, exact: false });
   }
 }
 

@@ -6,7 +6,8 @@
 // bump that shows where the head points), shoulders, vest, pack and a gun
 // with a light top face. Gear (head, pack, extra) comes from the operator
 // role (config/render.js ROLE_GEAR), so future classes differ by outline.
-import { CHARACTER as C, BOMB_COLOR } from '../../config/materials.js';
+import { CHARACTER as C, BOMB_COLOR, GEAR_COLOR } from '../../config/materials.js';
+import { PARAPET } from '../../config/balance.js';
 import { TEAMS } from '../../config/squad.js';
 import { MeshBuilder } from './MeshBuilder.js';
 
@@ -111,6 +112,17 @@ export function gunMesh(kind) {
   } else if (kind === 'pistol') {
     m.box(0.18, 0, -0.03, 0.22, 0.055, 0.065, g, top);
     m.box(0.12, 0, -0.1, 0.055, 0.05, 0.08, a);
+  } else if (kind === 'dmr') {
+    m.box(0.32, 0, -0.04, 0.5, 0.075, 0.085, g, top); // receiver + long handguard
+    m.box(0.02, 0, -0.06, 0.2, 0.065, 0.09, a, { top: C.gunAccentTop }); // stock
+    m.box(0.72, 0, -0.02, 0.3, 0.034, 0.034, g, top); // barrel
+    m.box(0.33, 0, -0.16, 0.07, 0.05, 0.11, g); // short mag
+    m.box(0.26, 0, 0.05, 0.22, 0.05, 0.04, a, { top: C.optic }); // scope
+  } else if (kind === 'shotgun') {
+    m.box(0.26, 0, -0.04, 0.36, 0.075, 0.085, g, top); // receiver
+    m.box(0.02, 0, -0.06, 0.2, 0.065, 0.09, a, { top: C.gunAccentTop }); // stock
+    m.box(0.62, 0, -0.01, 0.4, 0.045, 0.045, g, top); // barrel
+    m.box(0.56, 0, -0.065, 0.26, 0.05, 0.05, a, { top: C.gunAccentTop }); // pump under the barrel
   } else {
     m.box(0.36, 0, -0.04, 0.56, 0.075, 0.085, g, top);
     m.box(0.04, 0, -0.05, 0.22, 0.07, 0.09, a, { top: C.gunAccentTop });
@@ -124,13 +136,28 @@ export function gunMesh(kind) {
 export function buildCharacterGeometry() {
   return {
     teams: Object.fromEntries(TEAMS.map((team) => [team, teamParts(team)])), // palette per side (materials.js CHARACTER)
-    guns: { rifle: gunMesh('rifle'), smg: gunMesh('smg'), pistol: gunMesh('pistol'), sniper: gunMesh('sniper') },
+    guns: { rifle: gunMesh('rifle'), smg: gunMesh('smg'), pistol: gunMesh('pistol'), dmr: gunMesh('dmr'), shotgun: gunMesh('shotgun'), sniper: gunMesh('sniper') },
     bomb: mk((m) => {
       m.box(0, 0, 0, 0.34, 0.24, 0.12, BOMB_COLOR.body, { top: BOMB_COLOR.top });
       m.box(-0.08, 0, 0.12, 0.05, 0.25, 0.005, BOMB_COLOR.tape);
       m.box(0.08, 0, 0.12, 0.05, 0.25, 0.005, BOMB_COLOR.tape);
       m.box(0.0, -0.05, 0.12, 0.09, 0.07, 0.02, BOMB_COLOR.panel, { top: BOMB_COLOR.screen });
       m.box(0.0, 0.07, 0.12, 0.03, 0.03, 0.03, BOMB_COLOR.light);
+    }),
+    // The Escudo's ballistic shield, in the unit's space (x forward): a tall steel slab with its viewport.
+    shield: mk((m) => {
+      const S = GEAR_COLOR.shield;
+      m.box(0.4, -0.02, 0.18, 0.09, 0.6, 1.12, S.body, { top: S.top });
+      m.box(0.43, -0.02, 1.0, 0.012, 0.3, 0.1, S.viewport); // the visor
+      m.box(0.43, -0.02, 0.62, 0.012, 0.4, 0.05, S.stripe, { top: S.stripe }); // POLICÍA-style band, no lettering
+    }),
+    // The Ancla's portable barrier, in world metres (x forward = its facing): a low steel mantlet on feet.
+    parapet: mk((m) => {
+      const S = GEAR_COLOR.parapet;
+      const w = PARAPET.width;
+      m.box(0, 0, 0, 0.1, w, PARAPET.height, S.body, { top: S.top });
+      for (const y of [-w * 0.38, w * 0.38]) m.box(-0.14, y, 0, 0.3, 0.06, 0.08, S.feet);
+      m.box(0.055, 0, PARAPET.height - 0.14, 0.01, w * 0.94, 0.06, S.stripe, { top: S.stripe });
     }),
   };
 }

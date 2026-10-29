@@ -20,7 +20,7 @@ import { FLOW } from '../config/ui.js';
 import { lessonById, nextLesson } from '../config/lessons.js';
 import { loadPref, savePref } from './storage.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
-import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors, lastUserIndex, HERE } from '../sim/queries.js';
+import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors, lastUserIndex, enemyTeam, HERE } from '../sim/queries.js';
 import { phaseTick } from '../sim/round.js';
 import { SESSION_PHASE, isDecisionPhase, isPlanningTime, isLivePhase, pilotsDrone, isDefenderSetup, inRecon, watchInPlanning } from './Session.js';
 import { watchOf, watchOrder } from './watch.js';
@@ -31,7 +31,7 @@ import { AutoPause } from './AutoPause.js';
 import { Tutorial } from './Tutorial.js';
 
 import { createMatch, matchLoadout, endMatchRound } from './Match.js';
-import { createLobby, savedLobby, lobbySet, lobbyStart, openPick, pickMissing } from './Lobby.js';
+import { createLobby, savedLobby, lobbySet, lobbyStart, openPick, pickMissing, aiRoles } from './Lobby.js';
 
 export class SessionController {
   /**
@@ -161,15 +161,17 @@ export class SessionController {
 
   /**
    * Options of the next round's Simulation: the tutorial's easier round
-   * (config/lessons.js scenario), the lobby's classes and the player's "stop the turn on contact".
+   * (config/lessons.js scenario), the lobby's classes, the AI's (from the round's `seed`) and the
+   * player's "stop the turn on contact".
    */
-  roundOptions() {
+  roundOptions(seed) {
     const s = this.session;
     const sc = this.lesson && this.lesson.scenario;
     const tutorial = sc ? { site: sc.site, defenders: sc.defenders } : {};
     const loadout = s.mode === 'match' && s.match ? { loadout: matchLoadout(s.match), lossBonus: s.match.lossBonus } : {};
-    // The player's classes from the lobby (his side only: the AI keeps its own).
-    const roles = s.mode === 'tutorial' ? {} : { roles: { [s.team]: s.lobby.roles[s.team] } };
+    // The player's classes from the lobby; the AI picks its squad blind (session/Lobby.js aiRoles).
+    const ai = enemyTeam(s.team);
+    const roles = s.mode === 'tutorial' ? {} : { roles: { [s.team]: s.lobby.roles[s.team], [ai]: aiRoles(seed, ai) } };
     return { ...tutorial, ...loadout, ...roles, stopOnContact: s.mode === 'tutorial' || s.progress.stopOnContact };
   }
 

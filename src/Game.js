@@ -102,7 +102,7 @@ export class Game {
    */
   newRound(seed = SIM.seed) {
     this.stopKillcam();
-    this.roundArgs = { seed, controllers: controllersFor(this.session.team), ...this.flow.roundOptions() };
+    this.roundArgs = { seed, controllers: controllersFor(this.session.team), ...this.flow.roundOptions(seed) };
     this.sim = new Simulation(this.mapDef, this.roundArgs);
     this.attempt++;
     this.flow.onRoundStart();

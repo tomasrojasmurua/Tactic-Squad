@@ -11,7 +11,8 @@ import { WIRE, PREP, COMBAT } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { canSee } from './vision.js';
 import { alertAiUnit } from './ai.js';
-import { isAiControlled } from './queries.js';
+import { isAiControlled, wireLimit } from './queries.js';
+import { roleFlag } from '../config/operators.js';
 
 /** Doors wired now (indices into sim.doors). */
 export function wiredDoors(sim) {
@@ -26,7 +27,7 @@ export function setWire(sim, doorId, on) {
   if (!door || !sim.compiled.barricadeSlots.includes(doorId)) return 'badDoor';
   if (door.wired === !!on) return null;
   if (on && door.barricaded) return 'doorTaken';
-  if (on && wiredDoors(sim).length >= PREP.wires) return 'tooManyWires';
+  if (on && wiredDoors(sim).length >= wireLimit(sim)) return 'tooManyWires';
   door.wired = !!on;
   sim.emit(EV.WIRE_SET, { doorId, on: !!on });
   return null;
@@ -46,11 +47,25 @@ export function wireFactor(sim, u) {
   return u.team === 'attackers' && wireAt(sim, u) >= 0 ? WIRE.slow : 1;
 }
 
-/** Once per tick after movement: an attacker stepping into a wire rattles it (and the attackers learn it). */
+/**
+ * Once per tick after movement: an attacker stepping into a wire rattles it
+ * (and the attackers learn it). The Brecha (role flag cutsWire) kneels and
+ * cuts it with his pliers instead: WIRE.cutTime s still, and no rattle.
+ */
 export function updateWires(sim) {
   for (const u of sim.teams.attackers) {
     if (!u.alive) continue;
     const k = wireAt(sim, u);
+    if (k >= 0 && k !== u.wireDoor && roleFlag(u.role, 'cutsWire')) {
+      const d = sim.doors[k].def;
+      learn(sim, sim.doors[k]);
+      u.stun = Math.max(u.stun, WIRE.cutTime);
+      sim.doors[k].wired = false;
+      sim.intel.wires.delete(k);
+      sim.emit(EV.WIRE_CUT, { unitId: u.id, doorId: d.id, x: d.cx, y: d.cy, pliers: true });
+      u.wireDoor = -1;
+      continue;
+    }
     if (k >= 0 && k !== u.wireDoor) {
       const d = sim.doors[k].def;
       learn(sim, sim.doors[k]);

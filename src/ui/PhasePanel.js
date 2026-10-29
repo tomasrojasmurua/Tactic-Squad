@@ -18,11 +18,11 @@
 // 'site_<id>' | 'barricade_<doorId>' | 'wire_<doorId>' | 'watch_<mode>' | 'trapmode'}; LISTO is the usual button.
 import { EV } from '../core/events.js';
 import { ROLES } from '../config/operators.js';
-import { BUY, PREP, TRAP, CAMERA } from '../config/balance.js';
-import { controllableUnit } from '../sim/queries.js';
+import { BUY, PREP, TRAP } from '../config/balance.js';
+import { controllableUnit, cameraLimit, wireLimit } from '../sim/queries.js';
 import { buyableItems } from '../sim/prep.js';
 import { inRecon, watchInPlanning } from '../session/Session.js';
-import { watchOf, WATCH_MODES } from '../session/watch.js';
+import { watchOf, watchModeFits, WATCH_MODES } from '../session/watch.js';
 import { el, setText, toggle } from './dom.js';
 import { T } from './texts.js';
 
@@ -202,9 +202,10 @@ export class PhasePanel {
       if (on) wired++;
       toggle(b, 'on', on);
     }
-    for (const b of this.wireButtons) toggle(b, 'off', (wired >= PREP.wires || doorOf(b.dataset.key).barricaded) && !b.classList.contains('on'));
-    setText(this.wireRow.children[0], S.wires(wired, PREP.wires));
-    setText(this.camRow.children[0], S.cameras(sim.cameras.length, CAMERA.max));
+    const wires = wireLimit(sim);
+    for (const b of this.wireButtons) toggle(b, 'off', (wired >= wires || doorOf(b.dataset.key).barricaded) && !b.classList.contains('on'));
+    setText(this.wireRow.children[0], S.wires(wired, wires));
+    setText(this.camRow.children[0], S.cameras(sim.cameras.length, cameraLimit(sim)));
   }
 
   /** The defenders' operators: the selected one's watch order and the Trampero's traps. */
@@ -230,6 +231,8 @@ export class PhasePanel {
     for (const b of this.watchButtons) {
       toggle(b, 'on', b.dataset.key === mode);
       if (b.disabled !== !u) b.disabled = !u;
+      const hide = b.dataset.key === 'monitor' && !(u && watchModeFits(u, 'monitor')); // the Vigía's
+      if (b.hidden !== hide) b.hidden = hide;
     }
   }
 

@@ -6,7 +6,7 @@
 //
 // They are hard to see. An attacker notices a trap in his sight within
 // TRAP.spot only while sneaking; the drone within TRAP.droneSpot; the
-// Explorador's pulse within SCOUT.radius (abilities/scoutPulse.js). A known
+// Explorador (modifiers.trapSpot > 1) farther, and walking normally too. A known
 // trap in an attacker's sight within TRAP.shootRange he breaks with one shot,
 // as he does a camera. Deterministic: no randomness.
 //
@@ -96,16 +96,16 @@ function spring(sim, t) {
 }
 
 function attackersSee(sim, t, dt) {
-  const spot2 = TRAP.spot * TRAP.spot;
   const shoot2 = TRAP.shootRange * TRAP.shootRange;
   let shooter = null;
   for (const u of sim.teams.attackers) {
     if (!u.alive || u.blind > 0) continue;
     const d2 = (u.x - t.x) ** 2 + (u.y - t.y) ** 2;
-    if (d2 > (t.known ? shoot2 : spot2) || !canSee(sim.world, u, t.x, t.y, u.vision)) continue;
+    const spot = TRAP.spot * u.mods.trapSpot;
+    if (d2 > (t.known ? shoot2 : spot * spot) || !canSee(sim.world, u, t.x, t.y, u.vision)) continue;
     if (!t.known) {
-      if (!u.sneaking) continue; // walking normally he does not look at the floor
-      found(sim, t, 'sight');
+      if (!u.sneaking && u.mods.trapSpot <= 1) continue; // walking normally he does not look at the floor (the Explorador does)
+      found(sim, t, u.mods.trapSpot > 1 ? 'scout' : 'sight');
     }
     const free = u.target < 0 && u.reloadTimer <= 0 && !(u.entry && u.entry.phase === 'act') && !u.defusing;
     if (free && d2 <= shoot2 && (!shooter || u.id === t.aimBy)) shooter = u;
@@ -126,6 +126,11 @@ export function found(sim, t, by) {
   if (t.known || !t.alive) return;
   t.known = true;
   sim.emit(EV.TRAP_FOUND, { trapId: t.id, x: t.x, y: t.y, by });
+}
+
+/** The Explorador's fiber-optic camera under a door (sim/perception.js): traps in its view become known. */
+export function camSeesTraps(sim, eye) {
+  for (const t of sim.traps) if (t.alive && !t.known && canSee(sim.world, eye, t.x, t.y, eye)) found(sim, t, 'scout');
 }
 
 /** The drone's eye (sim/drone.js): traps it sees close by become known. */

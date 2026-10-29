@@ -88,6 +88,7 @@ export const COMBAT = Object.freeze({
   holdTime: 0.6, // s standing still without turning before the angle counts as held
   doorwayPenalty: 0.05, // s extra for a shooter who came through a doorway less than doorwayTime ago
   doorwayTime: 0.8, // s
+  closeRange: 4, // m: inside it a shooter's closeReaction applies (the Escopetero)
   aimTolerance: 5 * DEG, // must be this well aligned to shoot
   targetTurnCost: 2.5, // m: picking a target, one radian of turning weighs like this much distance
   settledSpread: 0.75, // spread multiplier when standing with the aim set (MOVE.settleTime) or pre-aimed (focused)
@@ -160,7 +161,8 @@ export const AI_ATTACK = Object.freeze({
   droneStuck: 0.6, // s without moving (a barricade, a prop) before it gives up on that point
   choiceSlack: 0.15, // entries / sites up to this much longer than the best are as good (the seed picks)
   spotSpacing: 0.9, // m between the operators' end points around the bomb
-  flashers: 1, // operators who throw a flashbang through each door (if they carry one); the rest follow
+  flashers: 1, // operators who throw a flashbang (a Granadero: gas) through each door (if they carry one); the rest follow
+  gasDepth: 3.5, // m into the room an AI Granadero aims his gas
   goPause: 0.25, // s a group waits in position before its GO (it reads as a call, not a reflex)
   goTimeout: 4, // s waiting for a GO before it is given anyway (someone is stuck or fighting)
 });
@@ -188,7 +190,7 @@ export const DOORS = Object.freeze({
  * the six modes lives here. Ranges in m, times in s.
  */
 export const ENTRY = Object.freeze({
-  modes: Object.freeze(['kick', 'slow', 'flash', 'frag', 'breach']), // order of the picker
+  modes: Object.freeze(['kick', 'slow', 'flash', 'frag', 'breach', 'cam']), // order of the picker ('cam': the Explorador only)
   goCodes: Object.freeze(['A', 'B', 'C']), // GO hold codes, in cycling and release order
   doorRange: 1.8, // m: a waypoint this close to a doorway can carry an entry for it
   // A route drawn through a closed door stops this far before it, on a "?" point: how and when to go
@@ -218,15 +220,25 @@ export const ENTRY = Object.freeze({
   flash: { fuse: 0.9, radius: 9, blind: 3.2, minBlind: 0.4, awayFactor: 0.3, hearing: 18 },
   frag: { fuse: 1.1, radius: 4.2, damage: 160, minDamage: 8, hearing: 22 },
   // Carga de brecha: planted on arrival (prepTime), fired by the release. The door is destroyed.
-  breach: { prepTime: 1.8, fuse: 0.35, radius: 3.0, damage: 75, blind: 1.8, hearing: 22, depth: 0.25 },
+  // `stun`: s whoever is behind it stands frozen, scaled by the planter's modifiers.breachStun (the Brecha's are longer).
+  breach: { prepTime: 1.8, fuse: 0.35, radius: 3.0, damage: 75, blind: 1.8, stun: 0.5, hearing: 22, depth: 0.25 },
+  // Cámara de fibra óptica (the Explorador's, roles with ability 'fiberCam'): on arrival he threads it under
+  // the closed door (prepTime) and, while he waits there, sees the room from the floor beyond it: an eye
+  // `under` m past the door, `fov` wide, `range` m. Silent; it only reveals. On release he opens the door.
+  cam: { prepTime: 1.0, fov: 150 * DEG, range: 11, under: 0.18 },
   // Thrown from any waypoint to a point the player picks (waypoint.toss; not only through a door).
-  tossItems: Object.freeze(['flash', 'frag', 'smoke', 'molotov']),
+  tossItems: Object.freeze(['flash', 'frag', 'smoke', 'molotov', 'gas']),
   tossRange: 9, // m at most from the thrower (short of the first wall on the way)
   // Humo: a cloud that blocks sight (not bullets) for `seconds`, growing to `radius` in `grow` s,
   // thinning out over the last `fade` s. Up to `max` clouds at once (the oldest clears first).
   // Incendiaria (defenders only, sim/fire.js): a pool `radius` wide burning `seconds`, `dps` to whoever is in it.
   molotov: { fuse: 0.5, hearing: 10, radius: 1.8, seconds: 7, dps: 22, tick: 0.25 },
   smoke: { fuse: 0.6, hearing: 6, radius: 2.6, grow: 1.4, seconds: 14, fade: 2, sides: 8, max: 4 },
+  // Gas lacrimógeno (the Granadero's 40 mm launcher, sim/gas.js): a cloud `radius` wide for `seconds` that
+  // does not hide anyone but hurts whoever breathes it: he sees only `vision` m, aims `spread` times worse,
+  // reacts `reaction` times slower and coughs (heard, NOISE.radius.cough) every `coughEvery` s. An AI
+  // defender caught in it gets out (falls back if he has where to). It kills nobody.
+  gas: { fuse: 0.8, hearing: 9, radius: 2.8, grow: 1.0, seconds: 10, fade: 2, vision: 4, spread: 2.5, reaction: 1.7, coughEvery: 1.4 },
 });
 
 export const ROUND = Object.freeze({
@@ -259,8 +271,8 @@ export const NOISE = Object.freeze({
   jitter: 0.9, // ...and shifted up to this much (deterministic, from the seed)
   keepTurns: 3, // a pulse stays on the map this many turns, fading
   // Radius heard (m) by kind; the loudest kind of a cell names its pulse.
-  radius: Object.freeze({ wire: 10, sneak: 2, step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, trap: 14, flash: 18, frag: 22, breach: 22 }),
-  rank: Object.freeze(['sneak', 'step', 'crack', 'door', 'wire', 'plant', 'defuse', 'kick', 'bash', 'trap', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
+  radius: Object.freeze({ cough: 7, wire: 10, sneak: 2, step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, trap: 14, flash: 18, frag: 22, breach: 22 }),
+  rank: Object.freeze(['sneak', 'step', 'cough', 'crack', 'door', 'wire', 'plant', 'defuse', 'kick', 'bash', 'trap', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
 });
 
 /**
@@ -321,6 +333,7 @@ export const WIRE = Object.freeze({
   hearing: 12, // m
   spotRange: 12, // m
   fragCut: 2.5, // m: a grenade this close clears it
+  cutTime: 0.8, // s the Brecha kneels to cut it with his pliers (silent)
 });
 
 /** Barricades (sim/barricades.js): block bodies, sight and the drone until broken or blown. */
@@ -392,15 +405,35 @@ export const CAMERA = Object.freeze({
   shootDelayKnown: 0.6, // s when it was already known (the drone found it): he walks in aiming at it
 });
 
-/** Explorador (sim/abilities/scoutPulse.js): at each turn's end, defenders this close (and traps) are detected through walls. */
-export const SCOUT = Object.freeze({ radius: 8 });
+/**
+ * Vigía (role ability 'monitor', sim/cameras.js): a defender on the monitor watch order looks at the
+ * screen, not at his angle. While he does, every live camera reports at once (`detect` s) every attacker
+ * it sees, not only the first; he himself sees only `fov` × his field and reacts `reaction` × slower.
+ */
+export const MONITOR = Object.freeze({ detect: 0, fov: 0.35, reaction: 1.8 });
+
+/**
+ * Escudo (role ability 'shield', sim/combat.js): a ballistic shield held in front. A bullet coming from
+ * within `arc` of his facing stops on it (`leak`: the chance it finds a leg or an arm instead); whoever
+ * is right behind him is covered too, because the bullet stops first. Grenades, fire and flashes are not
+ * stopped.
+ */
+export const SHIELD = Object.freeze({ arc: 70 * DEG, radius: 0.42, leak: 0.1 });
+
+/**
+ * Ancla (role ability 'prepared', sim/combat.js): at the start of the assault he puts up a portable
+ * ballistic barrier in front of his post (facing his watch). While he stays within `reach` m of it,
+ * a shot from within `arc` of its facing meets low cover (COVER) and he takes `damage` × of what gets
+ * through. Walk away and it stays there, useless to him.
+ */
+export const PARAPET = Object.freeze({ reach: 0.7, arc: 75 * DEG, damage: 0.8, ahead: 0.55, width: 1.0, height: 0.9 });
 
 /**
  * Trampero's traps (sim/traps.js). An attacker who steps within `trigger` is
  * caught: `stun` s without moving, `damage`, a loud snap, and the defenders
  * learn where he is. Hard to see: an attacker notices one in sight within
  * `spot` only while sneaking (the drone within `droneSpot`, the Explorador's
- * pulse within SCOUT.radius); a known one in sight within `shootRange` he
+ * notices them farther and walking normally: modifiers.trapSpot); a known one in sight within `shootRange` he
  * breaks with one shot after `shootDelay`.
  */
 export const TRAP = Object.freeze({
