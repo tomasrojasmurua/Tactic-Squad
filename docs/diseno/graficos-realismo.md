@@ -8,7 +8,7 @@ prueba de concepto. **No cambia todavía el render del juego.**
   completo, 70 capturas en PNG a 844×390 DPR 3 y 1440×900, se entregó aparte).
 - Prototipo: `prototipos/iluminacion-almacen.html` (un archivo, sin dependencias, 52 KB). Capturas en
   `docs/diseno/graficos-capturas/prototipo/`. Parámetros: `?t=6.3` congela el instante,
-  `?modo=antes` muestra la aproximación del render actual, `?escala=1` fija la resolución, `?limpio`
+  `?modo=antes` muestra la aproximación del render actual, `?calidad=baja|media|alta`, `?escala=1` fija la resolución, `?limpio`
   oculta los controles. Los botones prenden y apagan cada técnica para ver cuánto aporta cada una.
 
 > Nota sobre las capturas: se tomaron con Chromium sin GPU (SwiftShader). Sirven para ver la imagen,
@@ -236,6 +236,32 @@ por el pasillo y un defensor que se asoma, en un bucle de 11 s. Muestra:
 - Botón **Antes (aprox.)**: la misma escena con el modelo de luz del juego actual (direccional plana,
   charcos de lámpara, sombra desplazada, contornos) para comparar en el mismo encuadre.
 - Resolución adaptativa y pasos de marcha adaptativos, contador de fps.
+
+### v2 (tras la prueba en iPhone)
+
+Tomás lo probó en su iPhone (2532×1170, en el visor de archivos de la app): "Después" daba 30 fps a
+1,35x y se veía pixelado; "Antes" daba 61 fps pero había bajado a 0,70x.
+
+- **Pixelado**: la luz y la visión se calculaban en una textura de 14 px/m (≈7 cm por texel) que en
+  pantalla se ampliaba ~4 veces con filtrado bilineal, y la marcha a pasos fijos con ruido por píxel
+  dejaba escalones. Además, el escalado adaptativo había bajado la escena a 1,35x (y "Antes" a 0,70x).
+- **30 fps y escalado**: el escalado medía el intervalo entre cuadros y asumía 60 Hz. Con la pantalla
+  limitada a 30 Hz (visor embebido o modo bajo consumo) todo cuadro dura 33 ms aunque la GPU use
+  mucho menos, así que el escalado bajaba la resolución sin motivo; por eso "Antes", que es barato,
+  terminó en 0,70x. En "Después", además, las 8 luces y la visión se trazaban **cada cuadro** (8 × 24
+  pasos + 3 líneas de vista por texel): ese sí era costo real.
+- **Cambios**: las 4 lámparas fijas se hornean una vez a 32 px/m (costo por cuadro cero); por cuadro solo
+  se trazan 4 luces dinámicas en una textura RGBA (las 3 linternas, que son también la línea de vista
+  del equipo, y el fogonazo o la bomba); muestreo bicúbico (B-spline) y suavizado 3x3 de los mapas de
+  luz; ruido de gradiente entrelazado para repartir los pasos; sombras de los personajes y borde del cono
+  de la linterna calculados por píxel (nítidos a cualquier resolución); la escena se dibuja siempre a
+  DPR 1,5-3 según la calidad, separada de la resolución de la luz; escalado nuevo que mide el tiempo de
+  GPU (`EXT_disjoint_timer_query_webgl2`) o, sin él, la cadencia real de la pantalla, y nunca baja de
+  1,0x. Selector de calidad baja/media/alta y contador con la resolución de cada pase.
+- Capturas en `docs/diseno/graficos-capturas/prototipo-v2/`.
+
+Lección para el juego: el `AdaptiveResolution` del juego (`slowFrameMs: 25`) tiene el mismo punto
+ciego con pantallas a 30 Hz; conviene aplicarle la misma medición de cadencia/GPU en la etapa 8.
 
 Limitaciones honestas: los personajes son cajas, como en el juego; el humo y el fuego no están; la
 visión es un cálculo de presentación (en el juego la decide la sim); no se midió en un iPhone real

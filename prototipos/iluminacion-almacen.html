@@ -24,6 +24,7 @@ body.clean #ui,body.clean #stats{display:none}
 <canvas id="c"></canvas>
 <div id="ui">
   <button id="mode">Después</button>
+  <button id="quality">Calidad: media</button>
   <button data-k="shadows" class="on">Sombras</button>
   <button data-k="normals" class="on">Relieve</button>
   <button data-k="bloom" class="on">Bloom</button>
@@ -40,7 +41,12 @@ body.clean #ui,body.clean #stats{display:none}
 // mapa, materiales procedurales con relieve y rugosidad, AO de contacto,
 // HDR + bloom + tonemapping fílmico + grano + viñeta, y la niebla de guerra
 // resuelta con el mismo trazado de visibilidad. Cero dependencias.
-// Parámetros: ?t=6.4 (congela el tiempo) ?modo=antes ?escala=2 ?limpio
+// v2: las sombras se trazan sobre un campo de distancias 2D con altura (SDF)
+// en vez de marchar a pasos fijos; luces fijas horneadas una vez a 32 px/m;
+// luces dinámicas y visión en una sola textura RGBA a resolución por calidad;
+// personajes como sombras analíticas por píxel; muestreo bicúbico; la escena
+// se dibuja a resolución alta y separada de la resolución de la luz.
+// Parámetros: ?t=6.4 (congela el tiempo) ?modo=antes ?calidad=baja|media|alta ?escala=2 ?limpio
 const Q = new URLSearchParams(location.search);
 const FREEZE = Q.has('t') ? parseFloat(Q.get('t')) : null;
 if (Q.has('limpio')) document.body.classList.add('clean');
@@ -52,8 +58,8 @@ const OUT_SCALE = HDR ? 1 : 0.25; // sin HDR, la escena se guarda comprimida en 
 
 // ------------------------------------------------------------ mapa y escena
 const MAP = { w: 24, h: 13 };
-const HPPM = 20; // heightmap px/m
-const VPPM = 14; // luz/visión px/m
+const HPPM = 20; // heightmap y campo de distancias px/m
+const SPPM = 32; // luces fijas horneadas px/m
 const FPPM = 48; // suelo horneado px/m
 const lin = (hex) => { const n = parseInt(hex.slice(1), 16); return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255].map((v) => Math.pow(v, 2.2)); };
 
@@ -236,69 +242,55 @@ float vnoise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.0-2.0*f);
  return mix(mix(hash12(i),hash12(i+vec2(1,0)),u.x),mix(hash12(i+vec2(0,1)),hash12(i+vec2(1,1)),u.x),u.y);}
 float fbm(vec2 p){float s=0.0,a=0.5;for(int i=0;i<4;i++){s+=a*vnoise(p);p=p*2.03+17.1;a*=0.5;}return s;}
 `;
-const VBLUR_FS = HEAD + `in vec2 vUv; uniform sampler2D uA; uniform sampler2D uB; uniform sampler2D uC; uniform vec2 uT;
-layout(location=0) out vec4 o0; layout(location=1) out vec4 o1; layout(location=2) out vec4 o2;
-const vec2 K[9]=vec2[9](vec2(0,0),vec2(1,0),vec2(-1,0),vec2(0,1),vec2(0,-1),vec2(1,1),vec2(-1,1),vec2(1,-1),vec2(-1,-1));
-const float W[9]=float[9](0.2,0.12,0.12,0.12,0.12,0.08,0.08,0.08,0.08);
-void main(){vec4 a=vec4(0),b=vec4(0),c=vec4(0);for(int i=0;i<9;i++){vec2 q=vUv+K[i]*uT*1.6;a+=texture(uA,q)*W[i];b+=texture(uB,q)*W[i];c+=texture(uC,q)*W[i];}o0=a;o1=b;o2=c;}`;
 const FS_TRI_VS = HEAD + `out vec2 vUv;void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));vUv=p;gl_Position=vec4(p*2.0-1.0,0.0,1.0);}`;
 
-// Pasada de visibilidad en espacio de mapa: por cada luz, sombra suave 2.5D
-// marchando sobre el heightmap (+ cápsulas de personajes); y la visión del equipo.
-const VIS_FS = HEAD + NOISE + `
-in vec2 vUv;
-uniform sampler2D uHeight; uniform vec2 uMap;
-uniform vec4 uLP[8]; uniform float uLK[8]; uniform int uLOwner[8]; uniform int uLN;
-uniform vec4 uCh[4]; uniform int uChN; uniform vec4 uEye[3]; uniform int uSteps;
-layout(location=0) out vec4 o0; layout(location=1) out vec4 o1; layout(location=2) out vec4 o2;
+// Sombra suave 2.5D: marcha sobre el heightmap desde el punto del mapa hacia la luz,
+// solo en la franja de altura donde hay oclusores (z < 2.75 m). Ruido de gradiente
+// entrelazado (estable, sin manchas) para repartir los pasos.
+const MARCH = `
+uniform sampler2D uHeight; uniform vec2 uMap; uniform int uSteps;
 float H(vec2 p){return texture(uHeight,p/uMap).r;}
-float march(vec3 P, vec3 L, int owner, float k, bool chars){
+float ign(vec2 p){return fract(52.9829189*fract(dot(p,vec2(0.06711056,0.00583715))));}
+float march(vec3 P, vec3 L, float k, float j){
   vec3 d=L-P; float dist=length(d.xy); float dl=length(d);
-  if(dist<0.08) return 1.0;
-  float t0=min(0.32/dist,0.9);
+  if(dist<0.05) return 1.0;
+  float t0=min(0.1/dist,0.9);
   float tmax=d.z>0.01?clamp((2.75-P.z)/d.z,t0+0.02,1.0):1.0;
-  float j=hash12(P.xy*37.0+fract(float(owner)*0.37));
   float vis=1.0;
-  for(int i=0;i<64;i++){
+  for(int i=0;i<96;i++){
     if(i>=uSteps) break;
     float t=t0+(tmax-t0)*(float(i)+j)/float(uSteps);
     vec3 q=P+d*t;
-    float h=H(q.xy);
     float rd=max(t*dl,0.05);
-    vis=min(vis,k*(q.z-h)/rd);
-    if(chars){
-      for(int c=0;c<4;c++){
-        if(c>=uChN) break;
-        if(c==owner) continue;
-        vec4 C=uCh[c];
-        if(q.z<C.z) vis=min(vis,k*(length(q.xy-C.xy)-C.w)/rd);
-      }
-    }
+    vis=min(vis,k*(q.z-H(q.xy))/rd);
     if(vis<=0.0) return 0.0;
   }
   return smoothstep(0.0,1.0,clamp(vis,0.0,1.0));
-}
-void main(){
-  vec2 p=vUv*uMap; float zs=H(p)+0.02;
-  vec4 a=vec4(1.0), b=vec4(1.0);
-  for(int i=0;i<8;i++){
-    if(i>=uLN) break;
-    float v=march(vec3(p,zs),uLP[i].xyz,uLOwner[i],uLK[i],true);
-    if(i<4) a[i]=v; else b[i-4]=v;
-  }
-  o0=a; o1=b;
-  float vis=0.0;
-  for(int k=0;k<3;k++){
-    vec4 e=uEye[k]; if(e.w<0.5) continue;
-    vec2 dd=p-e.xy; float r=length(dd);
-    float cone=smoothstep(0.52,0.62,dot(dd/max(r,1e-3),vec2(cos(e.z),sin(e.z))));
-    float nearR=1.0-smoothstep(1.3,1.9,r);
-    float c=max(cone,nearR); if(c<=0.0) continue;
-    float los=march(vec3(p,min(zs,1.5)),vec3(e.xy,1.6),-1,14.0,false);
-    vis=max(vis,c*los);
-  }
-  o2=vec4(vis,0.0,0.0,1.0);
 }`;
+// Luces fijas (lámparas): se hornean una vez por mapa a alta resolución.
+const BAKE_LIGHT_FS = HEAD + MARCH + `
+in vec2 vUv; uniform vec4 uLP[4]; uniform float uLK[4]; out vec4 o;
+void main(){
+  vec2 p=vUv*uMap; vec3 P=vec3(p,H(p)+0.02); vec4 r=vec4(1.0);
+  float j=ign(gl_FragCoord.xy);
+  for(int i=0;i<4;i++) r[i]=march(P,uLP[i].xyz,uLK[i],fract(j+float(i)*0.618));
+  o=r;
+}`;
+// Luces dinámicas por cuadro (3 linternas = también la línea de vista de cada operador, + fogonazo/bomba).
+const DYN_FS = HEAD + MARCH + `
+in vec2 vUv; uniform vec4 uLP[4]; uniform float uLK[4]; uniform int uLN; out vec4 o;
+void main(){
+  vec2 p=vUv*uMap; vec3 P=vec3(p,H(p)+0.02); vec4 r=vec4(1.0);
+  float j=ign(gl_FragCoord.xy);
+  for(int i=0;i<4;i++){ if(i>=uLN) break; r[i]=march(P,uLP[i].xyz,uLK[i],fract(j+float(i)*0.618)); }
+  o=r;
+}`;
+// Suavizado 3x3 (tienda) para borrar el patrón de los pasos.
+const SOFT_FS = HEAD + `in vec2 vUv; uniform sampler2D uSrc; uniform vec2 uT; out vec4 o;
+void main(){vec4 c=texture(uSrc,vUv)*0.25;
+ c+=(texture(uSrc,vUv+vec2(uT.x,0))+texture(uSrc,vUv-vec2(uT.x,0))+texture(uSrc,vUv+vec2(0,uT.y))+texture(uSrc,vUv-vec2(0,uT.y)))*0.125;
+ c+=(texture(uSrc,vUv+uT)+texture(uSrc,vUv-uT)+texture(uSrc,vUv+vec2(uT.x,-uT.y))+texture(uSrc,vUv-vec2(uT.x,-uT.y)))*0.0625;
+ o=c;}`;
 
 // Horneado del suelo: albedo + rugosidad, normal + AO (una vez por mapa).
 const BAKE_FS = HEAD + NOISE + `
@@ -362,15 +354,38 @@ void main(){
 }`;
 
 const LIGHT = `
-uniform vec4 uLP[8]; uniform vec4 uLD[8]; uniform vec4 uLC[8]; uniform int uLN;
-uniform sampler2D uVis0; uniform sampler2D uVis1; uniform sampler2D uVision; uniform sampler2D uHeight;
+uniform vec4 uLP[8]; uniform vec4 uLD[8]; uniform vec4 uLC[8]; uniform int uLN; uniform int uLO[8]; uniform float uLK[8];
+uniform sampler2D uStat; uniform sampler2D uDyn; uniform sampler2D uHeight;
+uniform vec2 uStatSize; uniform vec2 uDynSize; uniform vec4 uCh[4]; uniform int uChN; uniform vec4 uEye[3];
 uniform vec2 uMap; uniform vec3 uCam; uniform vec3 uAmbTop; uniform vec3 uAmbBot;
 uniform vec4 uTog; // sombras, relieve, visión, modo antes
 uniform float uOut; uniform float uTime;
-vec3 lightAll(vec3 P, vec3 N, vec3 alb, float rough, float metal, float ao, vec2 vuv){
-  vec2 tx=0.55/(uMap*14.0);
-  vec4 va=0.25*(texture(uVis0,vuv+vec2(tx.x,tx.y*0.4))+texture(uVis0,vuv-vec2(tx.x,tx.y*0.4))+texture(uVis0,vuv+vec2(-tx.x*0.4,tx.y))+texture(uVis0,vuv-vec2(-tx.x*0.4,tx.y)));
-  vec4 vb=0.25*(texture(uVis1,vuv+vec2(tx.x,tx.y*0.4))+texture(uVis1,vuv-vec2(tx.x,tx.y*0.4))+texture(uVis1,vuv+vec2(-tx.x*0.4,tx.y))+texture(uVis1,vuv-vec2(-tx.x*0.4,tx.y)));
+// B-spline bicúbico con 4 muestras bilineales: borra los escalones al ampliar un mapa de baja resolución.
+vec4 bicubic(sampler2D t, vec2 uv, vec2 size){
+  vec2 x=uv*size-0.5; vec2 i=floor(x); vec2 f=x-i; vec2 f2=f*f, f3=f2*f;
+  vec2 w0=(-f3+3.0*f2-3.0*f+1.0)/6.0, w1=(3.0*f3-6.0*f2+4.0)/6.0, w2=(-3.0*f3+3.0*f2+3.0*f+1.0)/6.0, w3=f3/6.0;
+  vec2 s0=w0+w1, s1=w2+w3;
+  vec2 p0=(i-0.5+w1/s0)/size, p1=(i+1.5+w3/s1)/size;
+  return s0.y*(s0.x*texture(t,vec2(p0.x,p0.y))+s1.x*texture(t,vec2(p1.x,p0.y)))
+        +s1.y*(s0.x*texture(t,vec2(p0.x,p1.y))+s1.x*texture(t,vec2(p1.x,p1.y)));
+}
+// Sombra analítica de los personajes (cápsulas) por píxel: nítida a cualquier resolución.
+float charShadow(vec3 P, vec3 L, float k, int owner){
+  vec3 d=L-P; float dl=length(d); float vis=1.0; float dd=max(dot(d.xy,d.xy),1e-5);
+  for(int c=0;c<4;c++){
+    if(c>=uChN) break;
+    if(c==owner) continue;
+    vec4 C=uCh[c];
+    if(length(P.xy-C.xy)<C.w+0.06) continue; // su propio cuerpo
+    float t=clamp(dot(C.xy-P.xy,d.xy)/dd,0.0,1.0);
+    if(d.z>0.0) t=min(t,(C.z-P.z)/d.z);
+    if(t<=0.0) continue;
+    vec3 q=P+d*t;
+    vis=min(vis,max(k,6.0)*2.2*(length(q.xy-C.xy)-C.w)/max(t*dl,0.05)); // penumbra corta: cuerpo cerca del suelo
+  }
+  return smoothstep(0.0,1.0,clamp(vis,0.0,1.0));
+}
+vec3 lightAll(vec3 P, vec3 N, vec3 alb, float rough, float metal, float ao, vec4 st, vec4 dy){
   vec3 V=normalize(uCam-P);
   vec3 col=alb*mix(uAmbBot,uAmbTop,clamp(N.z*0.5+0.5,0.0,1.0))*ao;
   vec3 F0=mix(vec3(0.04),alb,metal); vec3 dif=alb*(1.0-metal)/3.14159;
@@ -383,7 +398,8 @@ vec3 lightAll(vec3 P, vec3 N, vec3 alb, float rough, float metal, float ao, vec2
     if(sd.z>-1.5){ vec3 dir=normalize(vec3(sd.xy,-0.16)); att*=smoothstep(sd.z,sd.w,dot(-L,dir)); }
     float ndl=max(dot(N,L),0.0);
     if(ndl<=0.0||att<=0.0) continue;
-    float sh=i<4?va[i]:vb[i-4]; sh=mix(1.0,sh,uTog.x);
+    float sh=i<4?st[i]:dy[i-4];
+    if(uTog.x>0.5) sh*=charShadow(P,uLP[i].xyz,uLK[i],uLO[i]); else sh=1.0;
     vec3 Hh=normalize(L+V); float ndh=max(dot(N,Hh),0.0), vdh=max(dot(V,Hh),0.0);
     float dd=ndh*ndh*(a2-1.0)+1.0; float D=a2/(3.14159*dd*dd);
     vec3 F=F0+(1.0-F0)*pow(1.0-vdh,5.0);
@@ -392,9 +408,23 @@ vec3 lightAll(vec3 P, vec3 N, vec3 alb, float rough, float metal, float ao, vec2
   }
   return col;
 }
-vec3 fogOf(vec3 lit, vec3 alb, vec2 vuv){
+// Visión del equipo = linternas: cono analítico por píxel (borde nítido) x línea de vista de la linterna.
+float visionAt(vec2 p, vec4 dy){
+  float vis=0.0;
+  for(int k=0;k<3;k++){
+    vec4 e=uEye[k]; if(e.w<0.5) continue;
+    vec2 dd=p-e.xy; float r=length(dd);
+    float ca=dot(dd/max(r,1e-3),vec2(cos(e.z),sin(e.z)));
+    float aa=fwidth(ca)*1.5+0.02;
+    float cone=smoothstep(0.55-aa,0.55+aa,ca);
+    float nearR=1.0-smoothstep(1.4,1.8,r);
+    vis=max(vis,max(cone,nearR)*dy[k]);
+  }
+  return vis;
+}
+vec3 fogOf(vec3 lit, vec3 alb, vec2 p, vec4 dy){
   if(uTog.z<0.5) return lit;
-  float v=texture(uVision,vuv).r;
+  float v=visionAt(p,dy);
   float l=dot(alb,vec3(0.3,0.59,0.11));
   vec3 mem=vec3(l)*vec3(0.05,0.065,0.09)+vec3(0.002,0.003,0.005);
   return mix(mem,lit,v);
@@ -421,18 +451,19 @@ vec3 beforeShade(vec3 P, vec3 N, vec3 alb, bool floorK){
 const FLOOR_VS = HEAD + `layout(location=0) in vec2 aP; uniform mat4 uVP; out vec2 vP; void main(){vP=aP;gl_Position=uVP*vec4(aP,0.0,1.0);}`;
 const FLOOR_FS = HEAD + NOISE + LIGHT + `
 in vec2 vP; out vec4 o;
-uniform sampler2D uAlb; uniform sampler2D uNrm; uniform vec4 uCh[4]; uniform int uChN;
+uniform sampler2D uAlb; uniform sampler2D uNrm;
 void main(){
   vec2 uv=vP/uMap; vec4 A=texture(uAlb,uv), Nn=texture(uNrm,uv);
   if(Nn.a<0.5) discard;
   vec2 nxy=Nn.xy*2.0-1.0;
   vec3 N=uTog.y>0.5?vec3(nxy,sqrt(max(1.0-dot(nxy,nxy),0.0))):vec3(0.0,0.0,1.0);
   float ao=Nn.b;
-  for(int c=0;c<4;c++){ if(c>=uChN) break; float d=length(vP-uCh[c].xy); ao*=1.0-0.6*(1.0-smoothstep(0.12,0.6,d))*step(1.0,uCh[c].z); }
+  for(int c=0;c<4;c++){ if(c>=uChN) break; float d=length(vP-uCh[c].xy); ao*=1.0-0.45*(1.0-smoothstep(0.1,0.42,d))*step(1.0,uCh[c].z); }
   vec3 col;
   if(uTog.w>0.5) col=beforeShade(vec3(vP,0.0),N,A.rgb,true);
-  else col=lightAll(vec3(vP,0.0),N,A.rgb,A.a,0.0,ao,uv);
-  col=fogOf(col,A.rgb,uv);
+  vec4 st=bicubic(uStat,uv,uStatSize), dy=bicubic(uDyn,uv,uDynSize);
+  if(uTog.w<0.5) col=lightAll(vec3(vP,0.0),N,A.rgb,A.a,0.0,ao,st,dy);
+  col=fogOf(col,A.rgb,vP,dy);
   o=vec4(col*uOut,1.0);
 }`;
 
@@ -479,8 +510,8 @@ void main(){
     col=beforeShade(vP,N,alb,false)+emis*0.3;
     float aa=fwidth(e)*1.2; float line=1.0-smoothstep(0.028-aa,0.028+aa,e);
     col=mix(col,col*0.16,line*0.78);
-  } else col=lightAll(vP,N,alb,rough,metal,ao,vuv)+emis;
-  if(!nofog) col=fogOf(col,alb,vuv);
+  } else col=lightAll(vP,N,alb,rough,metal,ao,bicubic(uStat,vuv,uStatSize),bicubic(uDyn,vuv,uDynSize))+emis;
+  if(!nofog) col=fogOf(col,alb,vp,bicubic(uDyn,vuv,uDynSize));
   o=vec4(col*uOut,1.0);
 }`;
 
@@ -521,9 +552,9 @@ void main(){
 
 // ------------------------------------------------------------ recursos
 const P = {
-  vis: program(FS_TRI_VS, VIS_FS, 'vis'), bake: program(FS_TRI_VS, BAKE_FS, 'bake'),
+  bakeLight: program(FS_TRI_VS, BAKE_LIGHT_FS, 'bakeLight'), dyn: program(FS_TRI_VS, DYN_FS, 'dyn'), soft: program(FS_TRI_VS, SOFT_FS, 'soft'), bake: program(FS_TRI_VS, BAKE_FS, 'bake'),
   floor: program(FLOOR_VS, FLOOR_FS, 'floor'), mesh: program(MESH_VS, MESH_FS, 'mesh'), fx: program(FX_VS, FX_FS, 'fx'),
-  bright: program(FS_TRI_VS, BRIGHT_FS, 'bright'), vblur: program(FS_TRI_VS, VBLUR_FS, 'vblur'), blur: program(FS_TRI_VS, BLUR_FS, 'blur'), final: program(FS_TRI_VS, FINAL_FS, 'final'),
+  bright: program(FS_TRI_VS, BRIGHT_FS, 'bright'), blur: program(FS_TRI_VS, BLUR_FS, 'blur'), final: program(FS_TRI_VS, FINAL_FS, 'final'),
 };
 const emptyVao = gl.createVertexArray();
 gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
@@ -565,14 +596,17 @@ const nrmTex = tex(FW, FH, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
   gl.bindVertexArray(emptyVao); gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.deleteFramebuffer(f);
 }
-// visibilidad (luces + visión)
-const VW = MAP.w * VPPM, VH = MAP.h * VPPM;
-const vis0 = tex(VW, VH, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
-const vis1 = tex(VW, VH, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
-const visn = tex(VW, VH, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
-const raw0 = tex(VW, VH, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR), raw1 = tex(VW, VH, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR), rawn = tex(VW, VH, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
-const rawFbo = fbo([raw0, raw1, rawn]);
-const visFbo = fbo([vis0, vis1, visn]);
+// luces fijas: horneadas una vez (abajo, cuando ya están definidas); luces dinámicas: por calidad
+const SW = MAP.w * SPPM, SH = MAP.h * SPPM;
+const statRaw = tex(SW, SH, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR), statTex = tex(SW, SH, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
+const statRawF = fbo([statRaw]), statF = fbo([statTex]);
+let DYN = null;
+function makeDyn(ppm) {
+  if (DYN) { gl.deleteTexture(DYN.raw); gl.deleteTexture(DYN.tex); gl.deleteFramebuffer(DYN.rawF); gl.deleteFramebuffer(DYN.f); }
+  const w = MAP.w * ppm, h = MAP.h * ppm;
+  const raw = tex(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR), t = tex(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
+  DYN = { ppm, w, h, raw, tex: t, rawF: fbo([raw]), f: fbo([t]) };
+}
 
 function bindTex(prog, name, t, unit) { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t); if (prog.u[name]) gl.uniform1i(prog.u[name], unit); }
 
@@ -746,21 +780,89 @@ modeBtn.onclick = () => { before = !before; syncMode(); };
 for (const b of document.querySelectorAll('[data-k]')) b.onclick = () => { tog[b.dataset.k] ^= 1; b.classList.toggle('on', !!tog[b.dataset.k]); };
 document.getElementById('pause').onclick = (e) => { paused = !paused; e.target.classList.toggle('on', paused); };
 
-const touch = matchMedia('(pointer: coarse)').matches;
-const maxScale = Q.has('escala') ? parseFloat(Q.get('escala')) : Math.min(devicePixelRatio || 1, touch ? 1.5 : 2);
-let scale = maxScale, steps = touch ? 24 : 32;
-const perf = { acc: 0, n: 0, fastWins: 0, ms: 16.7, ceilUntil: 0 };
+// Calidad: resolución de la escena (relativa al DPR del aparato, con tope), de la luz dinámica (px/m)
+// y pasos de la marcha. La escena siempre se dibuja nítida; la luz se calcula aparte y se amplía bicúbica.
+const QUALITY = {
+  baja: { scene: 1.5, dynPpm: 8, steps: 20, bloom: false },
+  media: { scene: 2.0, dynPpm: 12, steps: 28, bloom: true },
+  alta: { scene: 3.0, dynPpm: 16, steps: 40, bloom: true },
+};
+const QNAMES = ['baja', 'media', 'alta'];
+let qName = QNAMES.includes(Q.get('calidad')) ? Q.get('calidad') : 'media';
+let quality = QUALITY[qName];
+const qBtn = document.getElementById('quality');
+function setQuality(n) {
+  qName = n; quality = QUALITY[n]; qBtn.textContent = 'Calidad: ' + n;
+  makeDyn(quality.dynPpm); resetAdapt();
+}
+qBtn.onclick = () => setQuality(QNAMES[(QNAMES.indexOf(qName) + 1) % 3]);
+const DPR = devicePixelRatio || 1;
+const fixedScale = Q.has('escala') ? parseFloat(Q.get('escala')) : null;
+const maxScale = () => fixedScale ?? Math.min(DPR, quality.scene);
+// Escalado adaptativo, corregido:
+// - mide el tiempo de GPU real (EXT_disjoint_timer_query_webgl2) cuando existe; el intervalo entre
+//   cuadros no sirve en pantallas limitadas a 30 Hz (modo bajo consumo, visor embebido): ahí todo cuadro
+//   "tarda" 33 ms aunque la GPU use 5, y la versión anterior bajaba la resolución sin motivo.
+// - si no hay temporizador, detecta la cadencia de la pantalla (el mínimo de los intervalos) y solo
+//   baja cuando los cuadros llegan tarde respecto a esa cadencia, no respecto a 60 Hz.
+// - escalones de 0,25 con histéresis; nunca por debajo de 1,0 (la causa principal del pixelado).
+const timerExt = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+const perf = { acc: 0, n: 0, ms: 0, gpu: 0, gpuN: 0, gpuMs: -1, fastWins: 0, ceilUntil: 0, ceilFor: 0, cadence: 16.7 };
+const queries = [];
+let scale = 1;
+function resetAdapt() { scale = maxScale(); perf.fastWins = 0; perf.ceilUntil = 0; perf.ceilFor = 0; perf.acc = perf.n = perf.gpu = perf.gpuN = 0; }
+function pollGpu() {
+  while (queries.length) {
+    const q = queries[0];
+    if (!gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) break;
+    queries.shift();
+    if (!gl.getParameter(timerExt.GPU_DISJOINT_EXT)) { perf.gpu += gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6; perf.gpuN++; }
+    gl.deleteQuery(q);
+  }
+}
+// Cadencia real de la pantalla: se mide al arrancar con cuadros vacíos (30 Hz = modo bajo consumo o
+// visor que limita; 60 o 120 Hz = normal). Sin esto, un tope de 30 Hz parece "GPU lenta".
+const calib = { n: 0, dts: [] };
 function adapt(dt, now) {
-  if (Q.has('escala')) return;
   perf.acc += dt; perf.n++;
   if (perf.acc < 1) return;
-  const ms = (perf.acc / perf.n) * 1000; perf.ms = ms; perf.acc = 0; perf.n = 0;
-  if (ms > 19.5) { if (scale > 0.7) scale = Math.max(0.7, scale - 0.15); else steps = Math.max(14, steps - 6); perf.fastWins = 0; perf.ceilUntil = now + 20; }
-  else if (ms < 14.5 && now > perf.ceilUntil && ++perf.fastWins >= 3) { scale = Math.min(maxScale, scale + 0.1); perf.fastWins = 0; }
+  const ms = (perf.acc / perf.n) * 1000; perf.ms = ms;
+  perf.gpuMs = perf.gpuN ? perf.gpu / perf.gpuN : -1;
+  perf.acc = perf.n = perf.gpu = perf.gpuN = 0;
+  if (fixedScale) return;
+  let slow, roomy;
+  if (perf.gpuMs >= 0) { slow = perf.gpuMs > perf.cadence * 0.85; roomy = perf.gpuMs < perf.cadence * 0.5; }
+  else { slow = ms > perf.cadence * 1.2; roomy = ms < perf.cadence * 1.05; } // sin temporizador: solo sabemos si llegamos a la cadencia
+  if (slow) {
+    if (scale > 1.0) { scale = Math.max(1.0, scale - 0.25); perf.ceilFor = Math.min(120, (perf.ceilFor || 8) * 2); perf.ceilUntil = now + perf.ceilFor; }
+    perf.fastWins = 0;
+  } else if (roomy && now > perf.ceilUntil && ++perf.fastWins >= 2 && scale < maxScale()) {
+    scale = Math.min(maxScale(), scale + 0.25); perf.fastWins = 0;
+  }
 }
 
+// Horneado de las luces fijas (posiciones constantes; el parpadeo del fluorescente es solo intensidad).
+const STATIC_LIGHTS = [[9.0, 4.6, 5.2, 15, 3.2], [16.4, 7.6, 5.2, 15, 3.2], [20.6, 3.6, 5.2, 14, 3.2], [2.4, 6.0, 2.6, 6, 7]];
+function bakeStatic() {
+  const lp = new Float32Array(16), lk = new Float32Array(4);
+  STATIC_LIGHTS.forEach((l, i) => { lp.set(l.slice(0, 4), i * 4); lk[i] = l[4]; });
+  gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, statRawF); gl.viewport(0, 0, SW, SH);
+  gl.useProgram(P.bakeLight.p); const u = P.bakeLight.u;
+  bindTex(P.bakeLight, 'uHeight', heightTex, 0);
+  gl.uniform2f(u.uMap, MAP.w, MAP.h); gl.uniform4fv(u.uLP, lp); gl.uniform1fv(u.uLK, lk); gl.uniform1i(u.uSteps, 96);
+  gl.bindVertexArray(emptyVao); gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, statF); gl.useProgram(P.soft.p);
+  bindTex(P.soft, 'uSrc', statRaw, 0); gl.uniform2f(P.soft.u.uT, 1 / SW, 1 / SH);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+makeDyn(quality.dynPpm);
+bakeStatic();
+qBtn.textContent = 'Calidad: ' + qName;
+resetAdapt();
+
 // ------------------------------------------------------------ frame
-let simT = FREEZE ?? 0, last = performance.now(), frames = 0, fpsT = 0, fps = 0;
+let simT = FREEZE ?? 0, lastBakeQ = '', last = performance.now(), frames = 0, fpsT = 0, fps = 0;
 const stats = document.getElementById('stats');
 const LP = new Float32Array(32), LD = new Float32Array(32), LC = new Float32Array(32), LK = new Float32Array(8), LO = new Int32Array(8);
 const CH = new Float32Array(16), EYE = new Float32Array(12);
@@ -770,8 +872,16 @@ function setLight(i, x, y, z, r, col, I, k, owner, spot = null) {
 }
 function frame(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (calib.n < 45) { // cuadros vacíos para medir la cadencia de la pantalla
+    if (calib.n++ > 5) calib.dts.push(dt * 1000);
+    if (calib.n === 45) { calib.dts.sort((a, b) => a - b); perf.cadence = Math.max(6.9, calib.dts[calib.dts.length >> 1]); }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    requestAnimationFrame(frame); return;
+  }
   if (FREEZE === null && !paused) simT = (simT + dt) % LOOP;
   adapt(dt, now / 1000);
+  let query = null;
+  if (timerExt) { pollGpu(); if (queries.length < 4) { query = gl.createQuery(); gl.beginQuery(timerExt.TIME_ELAPSED_EXT, query); } }
   frames++; fpsT += dt; if (fpsT >= 0.5) { fps = frames / fpsT; frames = 0; fpsT = 0; }
   const t = simT;
   const flash = updateScene(t);
@@ -804,17 +914,19 @@ function frame(now) {
   for (let i = 0; i < 4; i++) { const c = chars[i]; CH.set([c.x, c.y, c.dead ? 0.3 : 1.75, 0.24], i * 4); }
   for (let i = 0; i < 3; i++) { const c = chars[i]; EYE.set([c.x, c.y, c.yaw, 1], i * 4); }
 
-  // 1) visibilidad en espacio de mapa
-  gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, rawFbo); gl.viewport(0, 0, VW, VH);
-  gl.useProgram(P.vis.p); const vu = P.vis.u;
-  bindTex(P.vis, 'uHeight', heightTex, 0);
-  gl.uniform2f(vu.uMap, MAP.w, MAP.h); gl.uniform4fv(vu.uLP, LP); gl.uniform1fv(vu.uLK, LK); gl.uniform1iv(vu.uLOwner, LO);
-  gl.uniform1i(vu.uLN, NL); gl.uniform4fv(vu.uCh, CH); gl.uniform1i(vu.uChN, 4); gl.uniform4fv(vu.uEye, EYE); gl.uniform1i(vu.uSteps, steps);
-  gl.bindVertexArray(emptyVao); gl.drawArrays(gl.TRIANGLES, 0, 3);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, visFbo); gl.useProgram(P.vblur.p);
-  bindTex(P.vblur, 'uA', raw0, 0); bindTex(P.vblur, 'uB', raw1, 1); bindTex(P.vblur, 'uC', rawn, 2); gl.uniform2f(P.vblur.u.uT, 1 / VW, 1 / VH);
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  // 1) luces dinámicas (linternas = visión, fogonazo/bomba) en espacio de mapa, a dynPpm
+  const L4 = LP.subarray(16, 32), K4 = LK.subarray(4, 8);
+  { // también en "antes": la niebla de guerra sale de esta pasada
+    gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, DYN.rawF); gl.viewport(0, 0, DYN.w, DYN.h);
+    gl.useProgram(P.dyn.p); const du = P.dyn.u;
+    bindTex(P.dyn, 'uHeight', heightTex, 0);
+    gl.uniform2f(du.uMap, MAP.w, MAP.h); gl.uniform4fv(du.uLP, L4); gl.uniform1fv(du.uLK, K4); gl.uniform1i(du.uLN, NL - 4); gl.uniform1i(du.uSteps, quality.steps);
+    gl.bindVertexArray(emptyVao); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, DYN.f); gl.useProgram(P.soft.p);
+    bindTex(P.soft, 'uSrc', DYN.raw, 0); gl.uniform2f(P.soft.u.uT, 1 / DYN.w, 1 / DYN.h);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
 
   // 2) escena HDR
   gl.bindFramebuffer(gl.FRAMEBUFFER, RT.sceneF); gl.viewport(0, 0, pw, ph);
@@ -824,7 +936,9 @@ function frame(now) {
     const u = prog.u;
     gl.uniformMatrix4fv(u.uVP, false, VP);
     gl.uniform4fv(u.uLP, LP); gl.uniform4fv(u.uLD, LD); gl.uniform4fv(u.uLC, LC); gl.uniform1i(u.uLN, NL);
-    bindTex(prog, 'uVis0', vis0, 0); bindTex(prog, 'uVis1', vis1, 1); bindTex(prog, 'uVision', visn, 2); bindTex(prog, 'uHeight', heightTex, 3);
+    bindTex(prog, 'uStat', statTex, 0); bindTex(prog, 'uDyn', DYN.tex, 1); bindTex(prog, 'uHeight', heightTex, 3);
+    gl.uniform2f(u.uStatSize, SW, SH); gl.uniform2f(u.uDynSize, DYN.w, DYN.h);
+    gl.uniform1iv(u.uLO, LO); gl.uniform1fv(u.uLK, LK); gl.uniform4fv(u.uCh, CH); gl.uniform1i(u.uChN, dVis ? 4 : 3); gl.uniform4fv(u.uEye, EYE);
     gl.uniform2f(u.uMap, MAP.w, MAP.h); gl.uniform3fv(u.uCam, eye);
     gl.uniform3f(u.uAmbTop, 0.045, 0.05, 0.062); gl.uniform3f(u.uAmbBot, 0.016, 0.014, 0.012);
     gl.uniform4f(u.uTog, tog.shadows, tog.normals, tog.fog, before ? 1 : 0);
@@ -832,7 +946,6 @@ function frame(now) {
   };
   gl.useProgram(P.floor.p); common(P.floor);
   bindTex(P.floor, 'uAlb', albTex, 4); bindTex(P.floor, 'uNrm', nrmTex, 5);
-  gl.uniform4fv(P.floor.u.uCh, CH); gl.uniform1i(P.floor.u.uChN, dVis ? 4 : 3);
   gl.bindVertexArray(floorVao); gl.drawArrays(gl.TRIANGLES, 0, 6);
 
   // overlay de suelo (anillos, ruta, sangre): sin luz ni niebla, valores pensados para quedar legibles tras el tonemap
@@ -890,7 +1003,8 @@ function frame(now) {
 
   // 3) bloom a 1/4
   gl.bindVertexArray(emptyVao);
-  if (tog.bloom && !before) {
+  const bloomOn = tog.bloom && quality.bloom && !before;
+  if (bloomOn) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, RT.b0F); gl.viewport(0, 0, RT.qw, RT.qh);
     gl.useProgram(P.bright.p); bindTex(P.bright, 'uSrc', RT.scene, 0);
     gl.uniform2f(P.bright.u.uTexel, 1 / pw, 1 / ph); gl.uniform1f(P.bright.u.uIn, 1 / OUT_SCALE); gl.uniform1f(P.bright.u.uThr, 0.9);
@@ -905,12 +1019,19 @@ function frame(now) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, pw, ph);
   gl.useProgram(P.final.p); const fu = P.final.u;
   bindTex(P.final, 'uScene', RT.scene, 0); bindTex(P.final, 'uBloom', RT.b0, 1);
-  gl.uniform1f(fu.uIn, 1 / OUT_SCALE); gl.uniform1f(fu.uExp, 1.0); gl.uniform1f(fu.uBloomS, tog.bloom ? 0.55 : 0);
+  gl.uniform1f(fu.uIn, 1 / OUT_SCALE); gl.uniform1f(fu.uExp, 1.0); gl.uniform1f(fu.uBloomS, bloomOn ? 0.55 : 0);
   gl.uniform1f(fu.uGrain, tog.grain ? 0.035 : 0); gl.uniform1f(fu.uTime, now / 1000); gl.uniform1f(fu.uBefore, before ? 1 : 0);
   gl.uniform2f(fu.uRes, pw, ph);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
+  if (query) { gl.endQuery(timerExt.TIME_ELAPSED_EXT); queries.push(query); }
 
-  stats.textContent = `${fps.toFixed(0)} fps · ${perf.ms.toFixed(1)} ms\nres ${scale.toFixed(2)}x · ${pw}×${ph} · pasos ${steps}\n${HDR ? 'HDR 16F' : 'LDR (sin float)'} · ${NL} luces`;
+  const hz = Math.round(1000 / perf.cadence);
+  stats.textContent = `${fps.toFixed(0)} fps · ${perf.ms.toFixed(1)} ms` + (perf.gpuMs >= 0 ? ` · GPU ${perf.gpuMs.toFixed(1)} ms` : '') +
+    `\npantalla ${hz} Hz` + (hz < 50 ? ' (limitada)' : '') + ` · calidad ${qName}` +
+    `\nescena ${scale.toFixed(2)}x · ${pw}×${ph}` +
+    `\nluz fija ${SPPM} px/m · ${SW}×${SH} (horneada)` +
+    `\nluz dinámica ${DYN.ppm} px/m · ${DYN.w}×${DYN.h} · ${quality.steps} pasos` +
+    `\nbloom ${bloomOn ? RT.qw + '×' + RT.qh : 'apagado'} · ${HDR ? 'HDR 16F' : 'LDR'}`;
   stats.style.whiteSpace = 'pre';
   requestAnimationFrame(frame);
 }
