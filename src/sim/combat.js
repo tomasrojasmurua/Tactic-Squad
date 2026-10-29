@@ -139,6 +139,7 @@ function fire(sim, u) {
     else {
       shielded = true;
       sim.emit(EV.SHIELD_HIT, { unitId: victim.id, attackerId: u.id, x: ox + dx * hitT, y: oy + dy * hitT });
+      joltShield(victim);
       victim = null;
     }
   }
@@ -244,6 +245,18 @@ function rayBoxEntry(ox, oy, dx, dy, b, maxT) {
     t1 = Math.min(t1, c);
   }
   return t0 <= t1 && t0 > 0 ? t0 : -1;
+}
+
+/**
+ * A bullet stopped on the shield still hits it: every impact jolts the arm
+ * that holds it and the pistol in the other hand (SHIELD.jolt of aim error,
+ * recovered like recoil; SHIELD.joltDelay to a first shot he had not fired
+ * yet). A burst on the shield pins him behind it: he cannot answer well until
+ * it stops. A single slow shot (a bolt-action sniper) is shaken off at once.
+ */
+function joltShield(u) {
+  u.recoil = Math.min(COMBAT.maxRecoil + SHIELD.joltMax, u.recoil + SHIELD.jolt);
+  if (u.reaction > 0) u.reaction += SHIELD.joltDelay;
 }
 
 /**

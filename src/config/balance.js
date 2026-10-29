@@ -129,6 +129,12 @@ export const COVER = Object.freeze({
   headChance: 0.4, // head share of the hits on a covered body
 });
 
+/**
+ * Trained ears (sim/ears.js, the Explorador's sharpEars): an enemy walking close by makes him turn to
+ * where that enemy will appear, for `seconds`; the spot is found again every `repathTicks` steps.
+ */
+export const EARS = Object.freeze({ seconds: 1.2, repathTicks: 15 });
+
 /** Defender AI (sim/ai.js). */
 export const AI = Object.freeze({
   // When alerted by noise or pain a defender watches the spot where the threat
@@ -150,6 +156,12 @@ export const AI_DEFEND = Object.freeze({
   lookAhead: 3, // m farther down that path: what he aims at
   spacing: 0.9, // m sideways between two rotators covering the same way
 });
+
+/**
+ * Which post of the map's layout each class of an AI defending side takes (sim/prep.js aiPosts): the
+ * long-range classes the longest sight line, the close-range ones the shortest (rays across ±arc, m).
+ */
+export const AI_POSTS = Object.freeze({ longRoles: Object.freeze(['sniper']), closeRoles: Object.freeze(['shotgunner']), rays: 9, arc: 25 * DEG, range: 40 });
 
 /**
  * Attacking AI (sim/aiAttack.js): a commander that plays the attackers'
@@ -221,7 +233,9 @@ export const ENTRY = Object.freeze({
   frag: { fuse: 1.1, radius: 4.2, damage: 160, minDamage: 8, hearing: 22 },
   // Carga de brecha: planted on arrival (prepTime), fired by the release. The door is destroyed.
   // `stun`: s whoever is behind it stands frozen, scaled by the planter's modifiers.breachStun (the Brecha's are longer).
-  breach: { prepTime: 1.8, fuse: 0.35, radius: 3.0, damage: 75, blind: 1.8, stun: 0.5, hearing: 22, depth: 0.25 },
+  // `concussion`: s the Brecha's charge leaves reeling (blind and frozen) whoever is beyond the door within
+  // radius × his modifiers.breachConcussion (sim/entries.js concussion): half as long at the edge.
+  breach: { prepTime: 1.8, fuse: 0.35, radius: 3.0, damage: 75, blind: 1.8, stun: 0.5, hearing: 22, depth: 0.25, concussion: 1.1 },
   // Cámara de fibra óptica (the Explorador's, roles with ability 'fiberCam'): on arrival he threads it under
   // the closed door (prepTime) and, while he waits there, sees the room from the floor beyond it: an eye
   // `under` m past the door, `fov` wide, `range` m. Silent; it only reveals. On release he opens the door.
@@ -418,7 +432,10 @@ export const MONITOR = Object.freeze({ detect: 0, fov: 0.35, reaction: 1.8 });
  * is right behind him is covered too, because the bullet stops first. Grenades, fire and flashes are not
  * stopped.
  */
-export const SHIELD = Object.freeze({ arc: 70 * DEG, radius: 0.42, leak: 0.1 });
+// Each bullet stopped on it jolts him (sim/combat.js joltShield): `jolt` of aim error, recovered like recoil
+// (COMBAT.recoilRecovery), up to COMBAT.maxRecoil + `joltMax`, and `joltDelay` s more to a first shot he had
+// not fired yet. Sustained fire pins him behind it; one slow shot (the bolt-action sniper) does not.
+export const SHIELD = Object.freeze({ arc: 70 * DEG, radius: 0.42, leak: 0.1, jolt: 1.6 * DEG, joltMax: 3 * DEG, joltDelay: 0.08 });
 
 /**
  * Ancla (role ability 'prepared', sim/combat.js): at the start of the assault he puts up a portable

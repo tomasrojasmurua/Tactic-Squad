@@ -77,10 +77,17 @@ function updateWatchPoint(sim, u, dt) {
   u.ai.repath -= dt;
   if (u.ai.repath > 0) return;
   u.ai.repath = AI.repathInterval;
-  const nx = u.ai.noiseX;
-  const ny = u.ai.noiseY;
-  u.alertX = nx;
-  u.alertY = ny;
+  watchPointToward(sim, u, u.ai.noiseX, u.ai.noiseY, u);
+}
+
+/**
+ * Where to look for a threat heard at (nx, ny): the noise itself in plain
+ * sight, else a step past the first corner / doorway of the walking path
+ * toward it (where a body will appear). Written into out.alertX / alertY.
+ */
+export function watchPointToward(sim, u, nx, ny, out) {
+  out.alertX = nx;
+  out.alertY = ny;
   if (lineOfSight(sim.world, u.x, u.y, nx, ny)) return;
   const path = sim.world.nav.findPath(u.x, u.y, nx, ny, NAV.snapRadius);
   if (!path) return;
@@ -88,12 +95,11 @@ function updateWatchPoint(sim, u, dt) {
     const p = path[i];
     const d = Math.hypot(p.x - u.x, p.y - u.y);
     if (d < AI.watchMinDistance && i < path.length - 1) continue;
-    // Look a step past the corner, where a body will appear.
     const next = path[i + 1] || p;
     const len = Math.hypot(next.x - p.x, next.y - p.y) || 1;
     const k = Math.min(1, AI.watchMinDistance / len);
-    u.alertX = p.x + (next.x - p.x) * k;
-    u.alertY = p.y + (next.y - p.y) * k;
+    out.alertX = p.x + (next.x - p.x) * k;
+    out.alertY = p.y + (next.y - p.y) * k;
     return;
   }
 }

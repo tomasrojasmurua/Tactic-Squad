@@ -31,10 +31,11 @@ import { createBomb, updateObjectives, endRound } from './objectives.js';
 import { createRound, advancePhase, canStep, afterTick, phaseTick, isLive, PHASE } from './round.js';
 import { createNoise, collectNoise } from './noise.js';
 import { createMemory, updateMemory } from './view.js';
-import { initPoints, layoutBehavior } from './prep.js';
+import { initPoints, layoutBehavior, aiPosts } from './prep.js';
 import { updateDrone } from './drone.js';
 import { createIntel, updateBash, spotBarricades } from './barricades.js';
 import { spotWires, updateWires } from './wires.js';
+import { updateEars } from './ears.js';
 
 export class Simulation {
   /**
@@ -77,6 +78,9 @@ export class Simulation {
     this.world = new World(this.compiled);
     this.doors = this.compiled.doors.map(createDoorState);
     this.world.updateDoorSegments(this.doors);
+    // An AI defending side puts each class the lobby picked on the post that suits it (sim/prep.js aiPosts).
+    this.autoSlots = !defenders && controllers.defenders === 'ai' && this.roles.defenders.length > 0;
+    if (this.autoSlots) this.defenderSlots = aiPosts(this, this.compiled.defense[this.site.id], this.roles.defenders);
 
     this.tick = 0;
     this.time = 0;
@@ -282,6 +286,7 @@ export class Simulation {
       spotWires(this, u, u.vision.fov);
     }
     defendAiTick(this);
+    updateEars(this); // sim/ears.js: the Explorador turns to the footsteps he picks out
     for (const u of this.units) {
       if (!u.alive) continue;
       if (isAiControlled(this, u)) updateAiUnit(this, u, dt);

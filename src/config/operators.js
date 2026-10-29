@@ -35,6 +35,7 @@ export const BASE_MODIFIERS = Object.freeze({
   holdReaction: 1, // extra reaction multiplier when he holds the angle (focused, still: COMBAT.holdFactor)
   closeReaction: 1, // reaction multiplier against an enemy within COMBAT.closeRange
   breachStun: 1, // ENTRY.breach.stun: how long his charge freezes whoever is behind the door
+  breachConcussion: 1, // > 1: his charge's overpressure leaves reeling whoever is in the room beyond, out to ENTRY.breach.radius × this (ENTRY.breach.concussion)
   trapSpot: 1, // TRAP.spot: how far he notices a trap (he also notices them walking normally if > 1)
   tossRange: 1, // ENTRY.tossRange: how far he throws (a launcher)
 });
@@ -63,7 +64,7 @@ export const ROLES = Object.freeze({
     blurb: 'El primero en cruzar la puerta. Corta el ángulo al entrar: justo después de pasar una puerta reacciona mucho más rápido.',
   },
   entry: {
-    label: 'Brecha', pick: true, unique: true, weapon: 'smg', ability: null, modifiers: { breachPrep: 0.5, bash: 0.6, breachStun: 2.5 }, cutsWire: true, gear: { flash: 1, breach: 2 },
+    label: 'Brecha', pick: true, unique: true, weapon: 'smg', ability: null, modifiers: { breachPrep: 0.5, bash: 0.6, breachStun: 2.5, breachConcussion: 2.6 }, cutsWire: true, gear: { flash: 1, breach: 2 },
     blurb: 'Abre lo cerrado y castiga al que espera detrás: su carga deja inmóvil a quien esté tras la puerta. Corta el alambre con alicate.',
   },
   scout: {
