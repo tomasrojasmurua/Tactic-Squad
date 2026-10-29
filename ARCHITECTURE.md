@@ -1,7 +1,8 @@
 # Arquitectura de Tactic Squad
 
-Estado del código: rama `claude/revision-ux-fases` (sobre `main` tras el PR #9), 27 de octubre de 2026 (~21.300 líneas en `src/`).
-La sección 11 resume qué agregó esta rama y dónde.
+Estado del código: rama `main` al 29 de octubre de 2026, después del PR #40 (~27.150 líneas en 165 archivos de `src/`, 180 pruebas).
+La sección 11 resume cómo llegó el código hasta acá, PR por PR. El estado del proyecto, las decisiones
+y los pendientes están en `docs/traspaso/`.
 Este documento describe **cómo está construido el código**. El diseño del juego y las
 reglas están en `README.md`; acá va la estructura, el flujo de datos, las reglas que
 sostiene cada capa y los puntos por donde se extiende.
@@ -39,15 +40,15 @@ las capas de presentación solo pueden importar de `sim/` los lectores puros
 
 | Carpeta | Líneas | Qué es | Regla que cumple |
 | --- | --- | --- | --- |
-| `src/core/` | 424 | Matemática, geometría 2D, RNG sembrado, bus de eventos, bucle fijo, `mat4` | Sin dependencias, funciones puras o estructuras mínimas |
-| `src/config/` | 1.380 | Todos los números y fichas: `balance.js`, `weapons.js`, `operators.js`, `squad.js`, `render.js`, `audio.js`, `ui.js`, `input.js`, `materials.js` | Ningún número de juego vive en el código de la sim |
-| `src/data/` | 333 | Mapas (`maps/warehouse.js`) y catálogo de muebles, como datos puros | Un mapa nuevo = un archivo + una línea en `maps/index.js` |
-| `src/sim/` | 5.271 | Estado autoritativo y determinista de la ronda | Sin DOM, WebGL, audio ni reloj real. Solo avanza con `step(dt)` |
-| `src/session/` | 1.219 | Lo que no es de la sim: fases en pantalla, plazos de reloj de pared, tutorial, grabación de planes, menú y lobby, partidas al mejor de 3/5/7 | En el online, el servidor hará de `PhaseClock` |
-| `src/input/` | 1.330 | Mouse, teclado, táctil, dron; trazado de rutas | Nunca muta la sim: emite órdenes al bus |
-| `src/render/` | 5.116 | Renderer WebGL2 propio por capas, shaders GLSL ES 3.0, geometría, efectos | Solo lee la sim |
-| `src/ui/` | 2.400 | HUD en DOM, pantallas, textos en español | Todos los strings en `ui/texts.js` y `ui/flowTexts.js` |
-| `src/audio/` | 3.633 | Motor de audio procedural, sonidos horneados en un worker, música generativa | Solo escucha eventos |
+| `src/core/` | 439 | Matemática, geometría 2D, RNG sembrado, bus de eventos, bucle fijo, `mat4` | Sin dependencias, funciones puras o estructuras mínimas |
+| `src/config/` | 1.822 | Todos los números y fichas: `balance.js`, `weapons.js`, `operators.js`, `squad.js`, `lessons.js`, `render.js`, `audio.js`, `ui.js`, `input.js`, `materials.js` | Ningún número de juego vive en el código de la sim |
+| `src/data/` | 1.087 | Mapas (`maps/warehouse.js`, `hotel.js`, `port.js`) y catálogo de muebles (`props.js`), como datos puros | Un mapa nuevo = un archivo + una línea en `maps/index.js` |
+| `src/sim/` | 6.818 | Estado autoritativo y determinista de la ronda | Sin DOM, WebGL, audio ni reloj real. Solo avanza con `step(dt)` |
+| `src/session/` | 1.769 | Lo que no es de la sim: fases en pantalla, plazos de reloj de pared, tutorial en lecciones, grabación de planes, menú y lobby, partidas al mejor de 3/5/7, repetición de la última baja | En el online, el servidor hará de `PhaseClock` |
+| `src/input/` | 1.501 | Mouse, teclado, táctil, dron; trazado de rutas | Nunca muta la sim: emite órdenes al bus |
+| `src/render/` | 5.848 | Renderer WebGL2 propio por capas, shaders GLSL ES 3.0, geometría, efectos | Solo lee la sim |
+| `src/ui/` | 3.999 | HUD en DOM, pantallas, textos en español | Todos los strings en `ui/texts.js` y `ui/flowTexts.js` |
+| `src/audio/` | 3.640 | Motor de audio procedural, sonidos horneados en un worker, música generativa | Solo escucha eventos |
 
 ---
 
@@ -80,8 +81,8 @@ factor de interpolación `alpha` entre los dos últimos estados. Cuando `simulat
 
 ### Determinismo
 
-Es el requisito transversal del proyecto, y lo que hace posibles los turnos We-Go, el
-reintento y el online por lockstep más adelante:
+Es el requisito transversal del proyecto, y lo que hace posibles los turnos We-Go, la
+repetición de la última baja y el online por lockstep más adelante:
 
 - `core/rng.js` (mulberry32 sembrado) es la **única** fuente de azar de la sim. Nunca
   `Math.random()`.
@@ -181,9 +182,11 @@ es el trabajo pendiente para que el servidor online no mande lo que el jugador n
 | `Session.js` | Estado de "esta sesión de juego": fase de pantalla, selección, estado transitorio de UI. Las fases espejan las de la ronda y agregan `title`, `paused` y `ended` |
 | `SessionController.js` | El **único** lugar que decide qué significa cada petición del jugador en cada fase: cierra fases de decisión, corre el bucle solo mientras un turno se ejecuta, sella los GO y el mando del dron. Salta con valores por defecto las fases previas que una lección no usa (`scenario.skip` de `config/lessons.js`); toda ronda del lobby es completa. Lleva el modo (`play` / `tutorial` / `match`) |
 | `PhaseClock.js` | Plazos de reloj de pared de las fases de decisión. La sim nunca ve este reloj; online, lo tendrá el servidor. Se detiene mientras el jugador no puede planificar (ayuda abierta, página oculta, celular en vertical, tutorial) |
-| `Lobby.js` | El menú antes de jugar, reglas puras: vista (`main` / `play` / `lobby`), formato, bando inicial, clases del jugador por puesto (`opts.roles` de la `Simulation`, validadas también allí), "listo". Lo elegido se guarda en el dispositivo |
+| `Lobby.js` | El menú antes de jugar, reglas puras: vista (`main` / `play` / `lobby` / selección de clases), formato, bando inicial, **mapa** (o al azar, sorteado al pasar a las clases), clases del jugador por puesto (el roster: `opts.roles` de la `Simulation`, validadas también allí), la escuadra a ciegas de la IA (`aiRoles`, de `AI_SQUADS`), "listo". Lo elegido se guarda en el dispositivo |
 | `Match.js` | Partida al mejor de 3, 5 o 7 contra la IA: reglas puras (`createMatch(team, bestOf)`, `matchLoadout`, `endMatchRound`). Marcador del jugador contra la IA, cambio de bando tras `match.switchAfter` rondas (la mitad de la serie) (`match.team`, que el flujo copia a `session.team`), el punto extra del bando que perdió (`match.lossBonus` → `opts.lossBonus`) y la clase de cada atacante como `opts.loadout` de la próxima `Simulation` |
-| `PlanRecorder.js` | Todas las órdenes de un intento, agrupadas por fase. Es exactamente la lista de paquetes de turno We-Go: lo que mandaría una partida online y lo que necesita un replay. Sostiene el "reintentar" |
+| `PlanRecorder.js` | Todas las órdenes de una ronda, agrupadas por fase. Es exactamente la lista de paquetes de turno We-Go: lo que mandaría una partida online y lo que necesita un replay. Sostiene la repetición de la última baja (las rondas ya no se reintentan; solo una lección del tutorial se repite) |
+| `KillCam.js` | Repetición de la última baja al terminar la ronda: vuelve a jugar la ronda fuera de pantalla con la misma semilla y las órdenes de `PlanRecorder` hasta `KILLCAM.before` s antes de la baja, y la muestra encuadrando a todos los involucrados (`input/CameraFraming.js`) |
+| `watch.js` | Órdenes de vigilancia del defensor tal como las muestra el panel (ángulo fijo, barrer, atento; monitor para el Vigía). Se cambian en la preparación y en cada planificación del asalto. Los defensores del jugador nunca caminan solos: las patrullas y repliegues del mapa son solo para la IA |
 | `Tutorial.js` | Motor de las lecciones del tutorial: las lecciones son datos en `config/lessons.js` (escenario y pasos); cada paso "hacé" tiene su comprobación aquí (`stepDone`). Las lecciones hechas se guardan en el dispositivo. También las tarjetas de presentación de compra, entrada y dron la primera vez que aparecen (`PHASE_INTROS`) |
 | `AutoPause.js` | Pausa de sistema cuando el jugador no puede seguir el turno (página oculta, foco perdido, contexto WebGL perdido). Nunca por contacto |
 | `confirm.js` | Confirmación en dos pasos para lo que borra el plan |
@@ -213,6 +216,8 @@ el tramo que agregaría un clic, con el A* cacheado por celda.
 ---
 
 ## 6. `src/render/`: WebGL2 propio
+
+`MapSnapshot.js` dibuja una imagen fija del mapa con el mismo renderer (sin niebla ni operadores) para la ficha del lobby (`ui/MapPreview.js`).
 
 `Renderer.js` orquesta el frame: lee el estado de la simulación (nunca lo muta) y
 escucha eventos a través de `FxDirector`. Orden de pasadas:
@@ -292,7 +297,11 @@ Bloques nuevos en `balance.js`: `CAMERA`, `SHIELD`, `PARAPET`, `MONITOR`, `ENTRY
 de cada grupo GO; los códigos internos siguen siendo `'A'`, `'B'`, `'C'`) y
 `FLOW.unlockAfterRounds`.
 
-Un mapa (`src/data/maps/warehouse.js`, "Operación Almacén", 40×28 m) es datos puros en
+Hay tres mapas en `main`, todos de 40×28 m: `warehouse.js` ("Operación Almacén"), `hotel.js`
+("Operación Hotel") y `port.js` ("Operación Puerto"); el PR #41 suma `embassy.js` ("Operación
+Embajada"). Un mapa nuevo es un archivo más una línea en `maps/index.js`, y también trae sus
+muebles y pisos (`props.js`, `render/decor`), su IA (`defense`, `aiBarricades`, `aiCameras`,
+`aiTraps`…) y sus textos de ficha (`traits`, `siteTraits`). Un mapa es datos puros en
 metros: paredes como líneas centrales (los huecos de puerta se recortan solos),
 puertas con bisagra y marca `barricade`, aperturas sin puerta, muebles, zonas, pintura
 de piso, y los datos de la ronda: `sites` (A y B, con el punto de la bomba), `entries`
@@ -306,11 +315,12 @@ el comportamiento de cada puesto y su `role`), `aiBarricades`, `aiEntries` (con 
 
 ## 9. Pruebas y empaquetado
 
-`npm test` corre `node --test tests/*.test.mjs`: 14 archivos y 96 pruebas que juegan
-rondas sin pantalla (determinismo, fases y turnos, entradas a puerta, preparación y
-compra, dron y barricadas, jugabilidad, tutorial, IA contra IA, y los nuevos
-`control` — fila, editar rutas, sigilo, corte al contacto, clases —, `toss` — lanzar y
-humo —, `cameras`, `match`, `defend` y `defenderClasses`). La
+`npm test` corre `node --test tests/*.test.mjs`: 26 archivos y 180 pruebas que juegan
+rondas sin pantalla (determinismo, fases y turnos, entradas a puerta y rueda, preparación y
+compra, dron y barricadas, jugabilidad, tutorial y lecciones, IA atacante y defensora,
+duelos, clases de los dos bandos, lanzamientos y humo, cámaras, alambre, fuego, ventanas,
+repetición, lobby, partida y mapas). `node scripts/balance.mjs [N] [ciegas] [mapa]` juega N
+rondas IA contra IA y da el porcentaje de victorias por bando, sitio y clase (meta 45-55 %). La
 simulación se puede instanciar sin DOM ni WebGL, que es justo lo que hace posible
 probarla así; una `Simulation` con `{phases: false}` corre sin fases y acepta órdenes en
 cualquier momento, para probar mecánicas sueltas.
@@ -319,7 +329,7 @@ cualquier momento, para probar mecánicas sueltas.
 `dist/tactic-squad.html`: esbuild junta los módulos en un `<script type="module">`
 minificado, el CSS se inyecta en línea y el worker de audio se incrusta como texto y se
 carga desde un blob (si el navegador lo bloquea, `SoundBank` hornea en el hilo
-principal). El resultado son ~515 KB en un archivo que funciona con `file://`, a
+principal). El resultado son ~690 KB en un archivo que funciona con `file://`, a
 diferencia de `index.html`, que necesita un servidor porque los navegadores no cargan
 módulos ES desde disco. `.github/workflows/pages.yml` publica `main` en GitHub Pages
 cuando pasan las pruebas.
@@ -347,39 +357,39 @@ El código ya está ordenado para la versión en red, aunque no haya nada de red
 - El render lee la sim completa en vez de `teamView` (ver arriba). Es la pieza que
   bloquea el online y la que más cuesta. Las cámaras y el humo se dibujan leyendo
   `sim.cameras` / `sim.smokes` (filtrando por `known` para el atacante).
-- Un solo mapa. La ronda es 3 contra 3 (`config/squad.js` `DEFENDERS`, los primeros puestos de
-  `defense`); el 5 contra 5 necesita más puestos en el mapa.
-- Faltan las clases Escudo, Tirador, Granadero y Vigía.
+- La ronda es 3 contra 3 (`config/squad.js` `DEFENDERS`, los primeros puestos de
+  `defense`); el 5 contra 5 necesita más puestos en cada mapa.
+- `sim/abilities/` está vacío: las habilidades viven en el sistema que tocan. Si crecen,
+  conviene moverlas al registro.
 - Varios comentarios del código mencionan `docs/BRIEF.md` y `tests/sim-plans.mjs`, que
   no venían en el zip original y no existen en el repo.
+- Hay una carpeta suelta `undefined/` con `8-escopetero.png` en la raíz del repo: basura de
+  una captura, se puede borrar.
+- La incendiaria todavía suena como el humo (falta su sonido propio).
 
 ---
 
-## 11. Qué agregó la rama `claude/revision-ux-fases`
+## 11. Cómo llegó el código hasta acá
 
-Una revisión de jugabilidad en tres fases, cada una en sus commits.
+El zip original (un prototipo tipo Door Kickers con un mapa y pausa táctica) se subió a
+GitHub y se fue ampliando en PR chicos, cada uno revisado y fusionado por Tomás:
 
-**Fase 1 — claridad**
-- GO por **colores** (`config/ui.js GO_GROUPS`): violeta, rosa, blanco; teclas Z / X / C. Internamente siguen siendo `'A' / 'B' / 'C'`.
-- Puertas **abiertas por defecto** (`ENTRY.undecided = 'open'`; `'stop'` restaura el freno anterior).
-- Soportes de cámara (`ui/CameraMounts.js`): jugando de defensor, en la preparación y durante el dron enemigo, un botón redondo sobre cada soporte del mapa (+ pone la cámara, × la quita). Pide `mount_<id>`; durante el dron la orden `camera` va sellada con el paso, como el mando del dron.
-- Menú del punto (`ui/EntryPicker.js`): en una puerta, rueda con las seis entradas alrededor del punto y un panel al lado (cuándo, paso, lanzar); lejos de puertas, popover anclado. Tocar una puerta apila al operador junto a ella y abre la rueda (`PlanningController.stackAt`, `config/input.js` `DOOR_TAP`).
-- ESPERAR (táctil) abre los colores (`session.ui.holdMenu`).
-- Primera partida directo a planificar; compra, entrada y dron se desbloquean (`FLOW.unlockAfterRounds`), con tarjeta la primera vez.
-- Un solo canal de "qué hago ahora" (el banner): se quitaron la línea de GO del feed y la barra de pistas duplicada.
-- Ayuda de escritorio reescrita para los controles nuevos.
-
-**Fase 2 — control**
-- Ruta de escuadra en fila (`sim/follow.js`, botón ESCUADRA / Q, Mayús + clic).
-- Editar rutas: mover un punto, insertar en un tramo (`moveWaypoint`, `insertWaypoint`).
-- Arrastrar el suelo mueve la cámara (un dedo en táctil).
-- Paso sigiloso por tramo (`setPace`, rayas oscuras en la ruta).
-- Corte del turno al contacto (`stopOnContact`, opción en la ayuda, activa por defecto).
-
-**Fase 3 — profundidad**
-- Lanzar flash / granada / humo a cualquier punto (`setToss`) y humo que tapa la vista (`sim/smoke.js`).
-- Cámaras del defensor (`sim/cameras.js`, `aiCameras`).
-- Clases Asaltante / Brecha / Explorador / Ancla (`config/operators.js`, `setRole`, cámara de fibra).
-- Partida al mejor de 7 con puntos de utilidad (`session/Match.js`, `BUY`).
+| PR | Qué agregó |
+| --- | --- |
+| #2 | Objetivo invertido (la bomba está en el mapa y el atacante la desactiva), sitios A y B, 3 entradas; sin pausa al contacto |
+| #3 | Entradas a puerta coordinadas (abrir, patada, entreabrir, flash, granada, carga) con GO |
+| #4 | Fases de ronda dentro de la sim y asalto We-Go por turnos, pulso de ruido |
+| #5 | Preparación de ambos bandos: compra, dron de 15 s, barricadas |
+| #7–#10 | Menú y tutorial, ritmo (turnos de 5 s, bomba de 90 s), IA atacante, jugar de defensor |
+| #12 | Revisión de UX hecha desde otra cuenta (`claude/revision-ux-fases`): GO por colores, puertas abiertas por defecto, ruta de escuadra, editar rutas, sigilo, corte del turno al contacto, lanzar a un punto, humo, cámaras, primeras clases, partida al mejor de 3/5/7 |
+| #13 | Cambio de bando a la mitad de la partida, Merodeador y Trampero |
+| #15–#21 | Rueda de comandos en puertas, granada que espera la explosión, Entreabrir solo la rendija, paridad entre bandos y 3 contra 3, cámaras que avisan, asomarse y volver, menú JUGAR → lobby, tutorial en lecciones, celular |
+| #22–#25 | Lanzar desde donde está y desde el costado de la puerta, puerta compartida, kit de clase y puntos de utilidad (sin dinero), repetición de la última baja |
+| #26–#29 | Alambre de púas e incendiaria del defensor, cámaras nuevas con soportes, zoom en celular, lobby separado de la selección de clases, preparación del defensor en pasos |
+| #30–#37 | Lecciones 2 a 4, ventanas, ocultar paneles, cámaras que duran, vigilancia por turno y "Cubrir zona" para atacantes, alambre de concertina, roster, repetición bien encuadrada |
+| #14 | IA defensora que rota hacia la bomba; los defensores del jugador no se mueven solos |
+| #39 | 12 clases distintivas (6 por bando) |
+| #38, #40 | Mapas Hotel y Puerto, selección de mapa con "Al azar", ficha del mapa dibujada con el motor |
+| #41 (abierto) | Mapa Embajada |
 
 **Paredes blandas destructibles: descartadas.** Tomás decidió no implementarlas (27 oct 2026). No proponerlas como trabajo pendiente.

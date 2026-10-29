@@ -2,6 +2,8 @@
 
 Juego web táctico de escuadra en vista cenital. JavaScript puro (módulos ES, sin framework) y WebGL2 propio. Interfaz en español; se juega en escritorio y en celular.
 
+Para retomar el proyecto (estado, decisiones de diseño, clases, mapas y pendientes), empieza por [`docs/traspaso/LEEME-PRIMERO.md`](docs/traspaso/LEEME-PRIMERO.md). Qué es el juego: [`RESUMEN-DEL-JUEGO.md`](RESUMEN-DEL-JUEGO.md). Cómo está hecho: [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ## Cómo correrlo
 
 Se juega en línea en **https://tomasrojasmurua.github.io/Tactic-Squad/**. Cada push a `main` lo vuelve a publicar si pasan las pruebas (`.github/workflows/pages.yml`).

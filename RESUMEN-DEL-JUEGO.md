@@ -1,16 +1,11 @@
 # Tactic Squad — resumen del juego
 
-Estado al 27 de octubre de 2026, rama `claude/revision-ux-fases` (sale de `main` después del PR #9).
-Este documento es para que alguien de fuera entienda qué es el juego, qué está hecho y
-qué falta, sin leer el código. La arquitectura del código está en `ARCHITECTURE.md`; el
-juego se puede probar en el HTML único que acompaña a este resumen.
-
-> **Qué cambió en esta revisión** (detalle en la sección 5): GO por colores en vez de
-> letras, puertas que se abren solas si no decidís, menú del punto junto a la puerta,
-> menú con JUGAR y lobby (formato, bando, clases), ruta de escuadra en fila, editar rutas,
-> paso sigiloso, turno que se corta al ver un enemigo, lanzar flash/granada/humo a
-> cualquier punto, humo, cámaras de los defensores, clases (Asaltante, Brecha,
-> Explorador / Ancla), y partidas al mejor de 3, 5 o 7 con puntos de utilidad.
+Estado al 29 de octubre de 2026, rama `main` (después del PR #40; el PR #41, mapa Embajada,
+está abierto). Este documento es para que alguien de fuera entienda qué es el juego, qué
+está hecho y qué falta, sin leer el código. La arquitectura del código está en
+`ARCHITECTURE.md`; las decisiones de diseño, el estado y los pendientes, en `docs/traspaso/`.
+El juego se puede probar en https://tomasrojasmurua.github.io/Tactic-Squad/ o en el HTML
+único que se arma con `npm run build`.
 
 ---
 
@@ -41,7 +36,7 @@ puedas reaccionar en vez de mirar cómo te matan.
 
 ## 2. Cómo se juega una ronda
 
-Tres mapas, de 40 × 28 m. **Operación Almacén**, el equilibrado (patio de salida, oficina y
+Tres mapas en `main`, de 40 × 28 m (el cuarto, **Operación Embajada**, está en el PR #41). **Operación Almacén**, el equilibrado (patio de salida, oficina y
 cocina al norte, pasillo al centro, baño y sala con el sitio B al sur, nave con el sitio A
 al este). **Operación Hotel**, el de puertas: un pasillo recto de 23 m con habitaciones
 comunicadas a los lados (cada una con su baño junto a la entrada), la lavandería con el
@@ -63,7 +58,8 @@ apuntaba, la mitad; si además **sostiene el ángulo** (0,6 s quieto con la mira
 otro 25 % menos; recién cruzada una puerta, +0,05 s. Resultado: quien entra a lo bruto
 pierde contra quien lo espera, y gana si entra con un flash, un humo o por otro lado. El
 equilibrio se mide con `node scripts/balance.mjs` (rondas IA contra IA, meta 45-55 % por
-bando; hoy 52 % atacantes en 200 rondas: 55 % en A, 49 % en B).
+bando; el 29 de octubre, 200 rondas con escuadras a ciegas: Almacén 51 %, Hotel 52 %,
+Puerto 54 % para el atacante; Embajada 46 % en su PR).
 
 | Fase | Plazo | Qué pasa |
 | --- | --- | --- |
@@ -127,6 +123,9 @@ los atacantes.
     sigue su ruta. La línea punteada muestra dónde cae de verdad; en rojo si una granada
     lo alcanzaría a él. Mientras eliges dónde, el menú se reduce a "¿Dónde cae?" y ×
     (o Esc) cancela.
+  - **Cubrir zona** (atacante, en el último punto o donde está parado): barre 70° a cada
+    lado de la mirada que le des, como el Barrer del defensor. Sirve para cubrir al que
+    desactiva. El punto queda marcado CUBRE.
   - **Asomarse y volver** (en el último punto): se queda 1,5 s mirando hacia donde
     marcaste en ese punto y vuelve a donde estaba, mirando como antes. Sirve para
     chequear un pasillo sin abandonar el puesto. Vuelve sosteniendo el ángulo, más lento.
@@ -136,6 +135,13 @@ los atacantes.
   turno, el botón de ese color (o Z / X / C) libera a todos los que esperan con él. Una
   entrada coordinada de tres por dos puertas al mismo color funciona distinto que
   entrar de a uno.
+
+**Ventanas.** A través de una ventana se ve, se dispara y se lanza utilidad, pero nadie
+pasa.
+
+**Vigilancia del defensor.** Ángulo fijo, Barrer o Atento (y Monitor para el Vigía), por
+operador, en la preparación y otra vez en cada planificación del asalto. Los defensores del
+jugador nunca caminan solos: solo giran hacia un ruido en Atento o Barrer.
 
 **Ruido.** Pasos, puertas, golpes, disparos, cargas, granadas, humo y las herramientas
 de desactivar se oyen a través de las paredes dentro de un radio. Al final de cada turno
@@ -161,7 +167,7 @@ el que cayó en la anterior) y **2 puntos de utilidad**. Lo que no se gasta se p
 
 Pasa a la ronda siguiente la **clase** de cada atacante. En una partida no hay reintentos.
 El resultado muestra el marcador, quién tiene el punto extra y SIGUIENTE RONDA. El jugador
-ataca las 3 primeras rondas y después **cambia de bando** y defiende. Como en el medio
+juega la primera mitad con el bando que eligió en el lobby y después **cambia de bando**. Como en el medio
 tiempo, todo empieza de cero (sin punto extra). El
 marcador cuenta las rondas del jugador contra las de la IA, en los dos bandos.
 
@@ -224,7 +230,9 @@ comportamientos de la IA: mantener un ángulo, barrer, patrullar, o replegarse a
 con el primer tiroteo que oiga. Ante una alerta (ruido, dolor o **una cámara**) no se
 giran hacia el ruido, sino hacia la **primera esquina o puerta del camino hacia él**.
 Pre-apuntan la entrada que el atacante tiene que usar. Oyen mucho menos a quien va en
-sigilo.
+sigilo. Cuando atacan cerca de la bomba, hasta 2 defensores (nunca las Anclas) **rotan**
+a cubrirla. Elige su escuadra a ciegas (`AI_SQUADS`), compra una flash y una incendiaria,
+pone su alambre y usa las cámaras de su sitio.
 
 **IA atacante** (`sim/aiAttack.js`). Un comandante que da a su escuadra las mismas
 órdenes que un jugador, sabiendo solo lo que sabe su bando: compra, maneja el dron,
@@ -237,7 +245,7 @@ Ninguna usa el azar de la ronda para decidir: una ronda contra la IA se repite i
 
 ## 5. Qué está implementado y qué falta
 
-Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
+Todo lo de abajo está probado (180 pruebas) y jugable en el HTML.
 
 **Ronda y ritmo**
 - Fases dentro de la simulación: compra → preparación → dron → planificación ⇄ ejecución → fin.
@@ -246,17 +254,18 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 - Todas las fases desde la primera ronda, con tarjeta de presentación.
 - Repetición de la última baja al terminar la ronda (las rondas no se reintentan).
 - **Partidas al mejor de 3, 5 o 7**, marcador, clase que se conserva y +1 punto de utilidad para el que pierde.
-- Menú con lobby (formato, bando, mapa, clases), tutorial en lecciones (1. Básico, sobre una ronda real más fácil; 5. Ronda completa, con tarjeta en cada fase; las otras tres en camino), pantalla de "por qué".
+- Menú con lobby (formato, bando, mapa o al azar con su ficha) y selección de clases aparte en un roster; tutorial en 5 lecciones (Básico, Puertas, Escuadra y GO, Defender, Ronda completa); pantalla de "por qué".
 
 **Atacante**
-- Clases elegibles en la compra, cada una con su equipo; 2 puntos de utilidad por operador en los dos bandos.
+- 6 clases elegidas antes de la partida en el roster, cada una con su equipo; 2 puntos de utilidad por operador en los dos bandos.
 - 3 entradas, ocultas para el defensor. Dron de 15 s.
-- Rutas con pathfinding, editables (mover, insertar), ruta de escuadra en fila, miradas, esperas de color, paso sigiloso.
+- Rutas con pathfinding, editables (mover, insertar), ruta de escuadra en fila, miradas, esperas de color, paso sigiloso, cubrir zona.
 - 6 formas de entrar por una puerta, con "abrir" por defecto; lanzar flash, granada o humo a cualquier punto.
 - Cámara de fibra del Explorador, escudo, gas lacrimógeno, fusil de tirador.
 
 **Defensor**
-- Sitio A/B oculto, colocación, 4 órdenes de vigilancia, 2 barricadas, 2 cámaras en los soportes que elige (también durante el dron), Anclas.
+- Preparación en pasos (Compra, Reconocimiento, Preparación): sitio A/B oculto, 2 barricadas, 1 alambre, 2 cámaras en los soportes que elige (fijas toda la ronda), colocación y vigilancia (cambiable cada turno). 6 clases, incendiaria propia.
+- IA defensora que rota hacia la bomba cuando la atacan.
 
 **Simulación y presentación**
 - Determinista por semilla, paso fijo de 60 Hz. Visión compartida entre percepción y niebla de guerra (el humo entra en las dos).
@@ -274,9 +283,9 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 | Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (soportes del mapa a elegir, gratis). Sensor y elección de refuerzos por el defensor: faltan |
 | Paredes blandas destructibles | **Descartado** por decisión de diseño (27 oct 2026): no se implementan |
 | Plazos de las fases | **Parcial.** El reloj existe (`PhaseClock`), pero contra la IA no hay límite |
-| Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Parcial.** Tres mapas (Almacén, Hotel y Puerto; IA contra IA con escuadras al azar: 51 %, 52 % y 53 % para el atacante); Embajada en camino. 5v5 y dificultades: faltan |
+| Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Parcial.** Tres mapas en `main` (Almacén, Hotel y Puerto; IA contra IA con escuadras a ciegas: 51 %, 52 % y 54 % para el atacante); Embajada en el PR #41 (46 %). 5v5 y dificultades: faltan |
 | Online | **Falta.** El código está preparado (determinismo, órdenes serializables, grabador de planes, `teamView`). Bloquea que el render lea la sim entera |
-| Equilibrio 45-55 % | **Sin medir** con las clases y las cámaras nuevas |
+| Equilibrio 45-55 % | **Medido IA contra IA** (dentro de la meta en los cuatro mapas). Sin medir en partidas humanas. Por clase hay desvíos: el Tirador defensor (56-62 % para el atacante) y el Explorador (64-65 % en Almacén y Hotel) |
 
 ---
 
@@ -289,7 +298,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 3. **El corte del turno al contacto.** ¿Ayuda a reaccionar o rompe el ritmo de 5 s?
 4. **Cámaras y dron.** ¿El dron ahora tiene un trabajo claro (encontrar la cámara antes
    de entrar)?
-5. **Clases.** ¿El Tirador defensor es demasiado débil (en IA contra IA el atacante le gana un 59 %)? ¿La Brecha justifica su lugar?
+5. **Clases.** ¿El Tirador defensor es demasiado débil (en IA contra IA el atacante le gana un 56-62 %)? ¿El Explorador es demasiado fuerte en mapas de puertas?
 6. **Los puntos de utilidad.** ¿2 puntos alcanzan para adaptar el plan? ¿El punto extra del que pierde ayuda a volver? ¿La racha
    de derrotas alcanza para volver?
 7. **Celular.** Todo pensado para un celular horizontal. Vale probarlo ahí.
