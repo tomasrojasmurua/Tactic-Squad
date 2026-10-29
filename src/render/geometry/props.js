@@ -309,14 +309,111 @@ const BUILDERS = {
     m.box(0.3, -0.03, 0.17, 0.4, 0.3, 0.48, '#7a2633', { top: '#8e2f3d' });
     m.box(0.3, -0.03, 0.65, 0.34, 0.26, 0.2, '#4a4f55', { top: '#5d636a' });
   },
+
+  // --- port (data/maps/port.js); `color` tints containers and trailers
+  container(m, w, d, h, p) {
+    containerBox(m, 0, w, d, h, p.color || '#b0402e');
+  },
+  containerStack(m, w, d, h, p) {
+    const c = p.color || '#2f6db0';
+    containerBox(m, 0, w, d, h / 2, c);
+    containerBox(m, h / 2, w, d, h / 2, shift(c, 0.82));
+  },
+  trailer(m, w, d, h, p) {
+    const cab = 2.1;
+    const bed = w - cab - 0.15;
+    const bx = -w / 2 + bed / 2;
+    // chassis and wheels
+    m.box(bx, 0, 0.55, bed, d * 0.5, 0.25, '#2a2c30');
+    for (const x of [bx - bed / 2 + 0.7, bx - bed / 2 + 1.7, w / 2 - 0.6, w / 2 - 1.7]) for (const s of [-1, 1]) m.box(x, (s * (d - 0.3)) / 2, 0, 0.95, 0.3, 0.95, C.vanDark);
+    // the container on the bed
+    containerBox(m, 0.8, bed, d, h - 0.8, p.color || '#d6d2c8', bx);
+    // tractor cab
+    const cx = w / 2 - cab / 2;
+    m.box(cx, 0, 0.6, cab, d, 1.5, '#c23b2c', { top: '#d24a3a' });
+    m.box(cx + 0.1, 0, 2.1, cab - 0.5, d * 0.95, 0.9, '#c23b2c', { top: '#d8574a' });
+    m.box(w / 2 - 0.08, 0, 1.55, 0.06, d * 0.8, 0.75, '#24313f'); // windshield
+    m.box(cx - 0.2, 0, 3.0, 0.5, d * 0.5, 0.25, '#2a2c30'); // air deflector
+    for (const s of [-1, 1]) m.box(w / 2 - 0.25, (s * (d + 0.18)) / 2, 1.8, 0.1, 0.12, 0.3, C.black); // mirrors
+  },
+  forklift(m, w, d, h) {
+    // body, counterweight at the back (-y), mast and forks at the front (+y)
+    for (const [x, y] of [[-1, -0.6], [1, -0.6], [-1, 0.45], [1, 0.45]]) m.box((x * (w - 0.16)) / 2, y, 0, 0.18, 0.5, 0.5, C.black);
+    m.box(0, -0.2, 0.25, w - 0.1, d * 0.62, 0.65, '#e0a321', { top: '#efb83a' });
+    m.box(0, -d / 2 + 0.3, 0.25, w - 0.05, 0.55, 0.85, '#3b3d40', { top: '#4c4f53' }); // counterweight
+    m.box(0, -0.25, 0.9, 0.5, 0.45, 0.35, C.black); // seat
+    for (const [x, y] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) m.box((x * (w - 0.2)) / 2, -0.25 + y * 0.42, 0.9, 0.06, 0.06, 1.25, C.metalDark); // cage posts
+    m.box(0, -0.25, 2.12, w - 0.14, 0.95, 0.06, '#3b3d40', { top: '#55595e' }); // overhead guard
+    for (const s of [-1, 1]) m.box(s * 0.32, d / 2 - 0.6, 0.15, 0.1, 0.12, h - 0.15, '#3b3d40'); // mast
+    m.box(0, d / 2 - 0.6, 1.2, 0.74, 0.1, 0.08, '#3b3d40');
+    for (const s of [-1, 1]) m.box(s * 0.24, d / 2 - 0.28, 0.05, 0.12, 0.62, 0.05, C.metalDark); // forks
+  },
+  bollard(m, w, d, h) {
+    m.cylinder(0, 0, 0, w / 2, h * 0.75, '#2a2c30', { sides: 10, top: '#3a3d42' });
+    m.cylinder(0, 0, h * 0.75, w / 2 + 0.06, h * 0.25, '#2a2c30', { sides: 10, top: '#e3b51e' });
+  },
+  guardBooth(m, w, d, h) {
+    m.box(0, 0, 0, w, d, 1.0, '#d9dcd5', { top: '#d9dcd5' });
+    m.box(0, 0, 1.0, w, d, h - 1.25, '#9fc3d4', { top: '#9fc3d4' }); // glass all round
+    for (const [x, y] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) m.box((x * (w - 0.08)) / 2, (y * (d - 0.08)) / 2, 1.0, 0.08, 0.08, h - 1.25, '#5d636a');
+    m.box(0, 0, h - 0.25, w + 0.25, d + 0.25, 0.25, '#e3e5e1', { top: '#c23b2c' }); // roof
+    m.box(0, d / 2 + 0.02, 0.95, w * 0.7, 0.1, 0.05, C.black); // counter
+  },
+  xrayScanner(m, w, d, h) {
+    m.box(0, 0, 0, w, d * 0.7, 0.75, '#3b3d40', { top: '#2a2c30' }); // belt
+    for (let x = -w / 2 + 0.2; x < w / 2; x += 0.35) m.box(x, 0, 0.75, 0.04, d * 0.66, 0.01, '#55595e');
+    m.box(0, 0, 0.75, 1.3, d, h - 0.75, '#dcdfdb', { top: '#eceee9' }); // the tunnel's housing
+    m.box(-0.4, 0, h, 0.4, d * 0.5, 0.04, '#c23b2c'); // warning strip
+    for (const s of [-1, 1]) m.box((s * 1.3) / 2, 0, 0.78, 0.04, d * 0.6, 0.5, '#2a3b2e'); // lead curtains
+    m.box(0.25, -d / 2 + 0.1, h, 0.36, 0.2, 0.05, '#24313f'); // monitor on top
+  },
+  coldRack(m, w, d, h) {
+    for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) m.box((x * (w - 0.06)) / 2, (y * (d - 0.06)) / 2, 0, 0.06, 0.06, h, '#2f6db0');
+    for (let s = 0; s < 3; s++) {
+      const z = 0.12 + s * 0.78;
+      m.box(0, 0, z, w, d, 0.05, '#7d858c', { top: '#a7aeb4' });
+      for (let i = 0; i < 3; i++) {
+        if ((s * 2 + i) % 4 === 3) continue;
+        const bx = -w / 2 + 0.45 + i * 0.85;
+        const bh = 0.5 - ((s * 5 + i) % 3) * 0.07;
+        m.box(bx, 0, z + 0.05, 0.7, d * 0.82, bh, i % 2 ? '#d8d2c2' : '#c4b48e', { top: '#e9edef' }); // frosted boxes
+      }
+    }
+  },
+  evaporator(m, w, d, h) {
+    m.box(0, 0, h - 0.7, w, d, 0.7, '#cfd6d9', { top: '#e3e9eb' });
+    for (const s of [-1, 1]) {
+      m.cylinder(s * w * 0.25, d / 2 + 0.01, h - 0.62, 0.24, 0.02, '#2a2c30', { sides: 12 }); // fans
+      m.cylinder(s * w * 0.25, d / 2 + 0.02, h - 0.4, 0.05, 0.02, '#7d858c', { sides: 6 });
+    }
+    m.box(0, 0, 0, 0.08, 0.08, h - 0.7, '#9aa1a8'); // drain pipe down to the floor
+  },
 };
+
+// A shipping container: corrugated sides, a darker roof frame and the door end at +x.
+function containerBox(m, z0, w, d, h, color, x0 = 0) {
+  const dark = shift(color, 0.72);
+  m.box(x0, 0, z0, w, d, h, color, { top: shift(color, 1.08) });
+  for (let x = -w / 2 + 0.25; x < w / 2 - 0.1; x += 0.3) for (const s of [-1, 1]) m.box(x0 + x, (s * d) / 2, z0 + 0.12, 0.12, 0.03, h - 0.24, dark); // ribs
+  for (const s of [-1, 1]) m.box(x0, (s * (d - 0.1)) / 2, z0 + h, w, 0.1, 0.03, dark); // roof rails
+  for (let x = -w / 2 + 0.6; x < w / 2; x += 1.2) m.box(x0 + x, 0, z0 + h, 0.05, d - 0.2, 0.02, dark); // roof dents
+  m.box(x0 + w / 2 + 0.01, 0, z0 + 0.1, 0.03, d - 0.1, h - 0.2, dark); // door end
+  for (const s of [-1, 1]) m.box(x0 + w / 2 + 0.03, s * 0.35, z0 + 0.2, 0.03, 0.05, h - 0.4, C.metal); // lock bars
+}
+
+/** A hex color scaled by f (darker below 1). */
+function shift(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const c = (v) => Math.max(0, Math.min(255, Math.round(v * f)));
+  return `#${((c(n >> 16) << 16) | (c((n >> 8) & 255) << 8) | c(n & 255)).toString(16).padStart(6, '0')}`;
+}
 
 /** Appends one prop instance (compiled map prop) to the builder. */
 export function buildProp(m, prop) {
   const fn = BUILDERS[prop.type];
   if (!fn) return;
   m.setTransform(prop.x, prop.y, prop.rot);
-  fn(m, prop.w, prop.d, prop.h);
+  fn(m, prop.w, prop.d, prop.h, prop);
   m.setTransform();
 }
 

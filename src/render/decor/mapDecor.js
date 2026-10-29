@@ -77,4 +77,41 @@ export const MAP_DECOR = Object.freeze({
     { kind: 'stain', at: [36.8, 20.6], r: 0.28, color: '#4a1018', alpha: 0.45 },
     { kind: 'cable', pts: [[38.75, 18.6], [38.2, 18.2], [38.4, 17.6]] },
   ],
+  port: [
+    // --- truck staging: lanes to the gate, tire marks, oil
+    { kind: 'parking', a: [1.6, 12.4], b: [6.6, 12.4] },
+    { kind: 'parking', a: [1.6, 17.0], b: [6.6, 17.0] },
+    { kind: 'tires', a: [1.4, 14.2], b: [7.6, 14.9] },
+    { kind: 'stain', at: [3.2, 11.6], r: 0.6, color: '#0d0e10', alpha: 0.5 },
+    { kind: 'drain', at: [5.6, 24.4] },
+    // --- the quay: the yellow safety edge, the crane rails, stenciled berth
+    { kind: 'tapeLine', a: [8.3, 1.45], b: [38.7, 1.45], color: '#e3b51e', w: 0.14 },
+    { kind: 'tapeLine', a: [8.3, 2.35], b: [38.7, 2.35], color: '#5d5a52', w: 0.08 },
+    { kind: 'tapeLine', a: [8.3, 3.25], b: [38.7, 3.25], color: '#5d5a52', w: 0.08 },
+    { kind: 'stencil', at: [21.8, 2.8], text: 'MUELLE 3', size: 0.42, rot: 0, color: '#e8e2d0' },
+    // --- container yard: slot numbers painted on the concrete, the lane's center line
+    { kind: 'stencil', at: [9.4, 7.2], text: 'C-01', size: 0.36, rot: 0, color: '#e8e2d0' },
+    { kind: 'stencil', at: [30.4, 7.2], text: 'C-04', size: 0.36, rot: 0, color: '#e8e2d0' },
+    { kind: 'tapeLine', a: [8.3, 7.2], b: [22.0, 7.2], color: '#d8d2bf', w: 0.06 },
+    { kind: 'stain', at: [18.0, 6.6], r: 0.55, color: '#0d0e10', alpha: 0.4 },
+    { kind: 'stain', at: [35.0, 4.6], r: 0.45, color: '#0d0e10', alpha: 0.35 },
+    // --- truck lane: dashed center line, the dock's hatched apron, stop line
+    ...[9, 12, 15, 18, 21, 24, 27, 30, 33, 36].map((x) => ({ kind: 'tapeLine', a: [x, 13.6], b: [x + 1.6, 13.6], color: '#e8e2d0', w: 0.1 })),
+    { kind: 'hatch', rect: [25.6, 15.8, 2.8, 1.0] },
+    { kind: 'hatch', rect: [34.2, 15.8, 2.4, 1.0] },
+    { kind: 'tires', a: [8.4, 15.1], b: [27.0, 15.5] },
+    { kind: 'stencil', at: [27.0, 15.4], text: 'ANDÉN', size: 0.36, rot: 0, color: '#e3b51e' },
+    // --- customs: queue line to the scanner, papers on the desks
+    { kind: 'tape', rect: [8.5, 18.7, 4.0, 1.8], color: '#e3b51e' },
+    { kind: 'papers', at: [12.6, 23.6], n: 4, spread: 0.6 },
+    { kind: 'papers', at: [18.6, 18.6], n: 3, spread: 0.4 },
+    { kind: 'cable', pts: [[21.6, 21.0], [22.2, 21.2], [22.75, 21.2]] },
+    // --- cold store: forklift lanes, frost on the cold room's floor, drains
+    { kind: 'tapeLine', a: [23.4, 22.4], b: [30.6, 22.4], color: '#e3b51e', w: 0.08 },
+    { kind: 'tires', a: [24.0, 19.2], b: [30.6, 22.0] },
+    { kind: 'drain', at: [35.0, 22.4] },
+    { kind: 'stain', at: [37.6, 23.6], r: 0.8, color: '#e9f2f6', alpha: 0.35 },
+    { kind: 'stain', at: [32.2, 22.8], r: 0.6, color: '#e9f2f6', alpha: 0.3 },
+    { kind: 'stencil', at: [34.0, 19.95], text: '-22 °C', size: 0.34, rot: 0, color: '#2f6db0' },
+  ],
 });

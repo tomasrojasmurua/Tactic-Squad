@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createLobby, lobbySet, lobbyStart, savedLobby, canPick, canAdd, openPick, pickSides, pickMissing, freeSlot, DEFAULT_ROLES } from '../src/session/Lobby.js';
+import { MAPS } from '../src/data/maps/index.js';
 
 test('por defecto: mejor de 3, atacando, las clases de siempre', () => {
   const l = createLobby();
@@ -110,9 +111,10 @@ test('el mapa: uno de la lista o al azar; el azar se sortea al pasar a las clase
   openPick(l);
   assert.equal(lobbyStart(l).map, 'hotel');
   assert.ok(lobbySet(l, 'map_random'));
+  const ids = Object.keys(MAPS);
   openPick(l, () => 0.99);
-  assert.equal(l.drawn, 'hotel');
-  assert.equal(lobbyStart(l).map, 'hotel');
+  assert.equal(l.drawn, ids[ids.length - 1]);
+  assert.equal(lobbyStart(l).map, ids[ids.length - 1]);
   openPick(l, () => 0);
   assert.equal(lobbyStart(l).map, 'warehouse');
   assert.equal(createLobby(savedLobby(l)).map, 'random', 'se guarda "al azar", no el mapa sorteado');

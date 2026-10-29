@@ -1,5 +1,5 @@
 // Procedural floors: checker tiles, small tiles, wood planks, carpet,
-// concrete, asphalt and rugs — generated in a fragment shader and baked once
+// concrete, asphalt, rugs and water — generated in a fragment shader and baked once
 // per map into a map-space albedo texture (with shadows/AO), then sampled.
 // Pattern ids must match config/materials.js FLOOR_PATTERN.
 import { HEADER, NOISE, FOG, LIGHTS } from './common.js';
@@ -163,6 +163,17 @@ vec3 asphalt(vec2 p, float s) {
   return col;
 }
 
+// Harbor water (the port's dock): dark, with wind ripples and pale glints.
+vec3 water(vec2 p) {
+  float r = fbm(vec2(p.x * 0.6, p.y * 2.4) + 7.0);
+  vec3 col = mix(vA, vB, smoothstep(0.3, 0.8, r));
+  float glint = smoothstep(0.62, 0.7, vnoise(vec2(p.x * 1.1, p.y * 6.0) + r * 2.0));
+  col = mix(col, vec3(0.62, 0.74, 0.78), glint * 0.35);
+  // the quay's shadow along its edge
+  col *= 0.7 + 0.3 * smoothstep(0.0, 0.5, vRect.w - p.y);
+  return col;
+}
+
 vec3 rug(vec2 p) {
   vec2 lo = p - vRect.xy;
   vec2 hi = vRect.zw - p;
@@ -192,6 +203,7 @@ void main() {
   else if (pat == 3) col = carpet(vPos, s);
   else if (pat == 4) col = concrete(vPos, s);
   else if (pat == 5) col = asphalt(vPos, s);
+  else if (pat == 7) col = water(vPos);
   else col = rug(vPos);
 
   vec4 decor = texture(uDecor, vPos / uMapSize);

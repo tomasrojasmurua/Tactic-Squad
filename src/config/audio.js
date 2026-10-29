@@ -101,6 +101,7 @@ export const FLOOR_ACOUSTICS = Object.freeze({
   checker: { surface: 'tile', zone: 'room' }, tiles: { surface: 'tile', zone: 'room' }, wood: { surface: 'wood', zone: 'room' },
   carpet: { surface: 'carpet', zone: 'room' }, rug: { surface: 'carpet', zone: 'room' },
   concrete: { surface: 'concrete', zone: 'hall' }, asphalt: { surface: 'asphalt', zone: 'yard' },
+  water: { surface: 'asphalt', zone: 'yard' },
 });
 export const DEFAULT_ACOUSTICS = Object.freeze({ surface: 'asphalt', zone: 'yard' });
 

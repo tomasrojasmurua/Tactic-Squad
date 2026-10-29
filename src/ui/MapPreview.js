@@ -1,5 +1,5 @@
 // The map's card before a game (lobby and class pick): a floor plan drawn
-// from the map's data (floors, walls with their doorways, windows, the two
+// from the map's data (floors, tall furniture, walls with their doorways, windows, the two
 // sites and the attackers' entries) and its reading in words: the map's
 // `traits`, or a site's `siteTraits` while that site is tapped on the plan.
 // It names no class: reading the map is the player's job.
@@ -20,6 +20,7 @@ const C = Object.freeze({
   siteFill: 'rgba(242, 194, 48, 0.16)',
   siteOn: 'rgba(242, 194, 48, 0.38)',
   entry: '#2fd7ff',
+  cover: '#7b838a', // furniture that blocks sight (containers, shelves, wardrobes)
 });
 
 const compiled = new Map(); // map id -> compiled map (the plan is drawn from it)
@@ -128,6 +129,12 @@ export class MapPreview {
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.fillText(s.id, ox + (s.rect[0] + s.rect[2] / 2) * k, oy + (s.rect[1] + s.rect[3] / 2) * k);
+    }
+    g.fillStyle = C.cover;
+    for (const p of m.props) {
+      if (!p.blocksVision) continue;
+      const b = p.box;
+      g.fillRect(...R(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY));
     }
     for (const wl of m.walls) {
       const b = wl.box;
