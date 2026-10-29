@@ -55,4 +55,13 @@ export const PROPS = Object.freeze({
   xrayScanner: { w: 2.6, d: 1.1, h: 1.7, blocksMove: true, blocksVision: true },
   coldRack: { w: 2.6, d: 0.9, h: 2.4, blocksMove: true, blocksVision: true },
   evaporator: { w: 1.6, d: 0.5, h: 2.5, blocksMove: true },
+  // embassy
+  sedan: { w: 4.6, d: 1.9, h: 1.45, blocksMove: true },
+  fountain: { w: 2.4, d: 2.4, h: 0.9, blocksMove: true },
+  planter: { w: 2.0, d: 1.0, h: 0.7, blocksMove: true },
+  flagPole: { w: 0.35, d: 0.35, h: 3.2, blocksMove: true },
+  flagStand: { w: 0.5, d: 0.5, h: 2.2, blocksMove: true },
+  execDesk: { w: 2.0, d: 0.95, h: 0.78, blocksMove: true },
+  piano: { w: 1.5, d: 1.9, h: 1.0, blocksMove: true },
+  globe: { w: 0.6, d: 0.6, h: 1.0, blocksMove: true },
 });

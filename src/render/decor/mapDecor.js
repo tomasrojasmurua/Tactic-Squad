@@ -114,4 +114,36 @@ export const MAP_DECOR = Object.freeze({
     { kind: 'stain', at: [32.2, 22.8], r: 0.6, color: '#e9f2f6', alpha: 0.3 },
     { kind: 'stencil', at: [34.0, 19.95], text: '-22 °C', size: 0.34, rot: 0, color: '#2f6db0' },
   ],
+  embassy: [
+    // --- the street: parking bays along the curb, tire marks, a drain, the gates stenciled
+    { kind: 'parking', a: [1.6, 17.4], b: [6.8, 17.4] },
+    { kind: 'parking', a: [1.6, 23.6], b: [6.8, 23.6] },
+    { kind: 'tires', a: [1.4, 9.8], b: [7.6, 10.4] },
+    { kind: 'stain', at: [3.8, 21.2], r: 0.5, color: '#0d0e10', alpha: 0.45 },
+    { kind: 'drain', at: [6.8, 3.0] },
+    ...[3, 6, 9, 12, 15, 18, 21, 24].map((y) => ({ kind: 'tapeLine', a: [1.7, y], b: [1.7, y + 1.4], color: '#e8e2d0', w: 0.1 })),
+    // --- garage: the car's bay, oil, tires
+    { kind: 'parking', a: [9.0, 3.4], b: [9.0, 10.6] },
+    { kind: 'stain', at: [11.4, 8.4], r: 0.55, color: '#0d0e10', alpha: 0.5 },
+    { kind: 'tires', a: [10.6, 11.8], b: [10.6, 3.0] },
+    { kind: 'drain', at: [13.6, 11.6] },
+    // --- kitchen: grease by the stove, a drain, a spill
+    { kind: 'stain', at: [11.6, 24.6], r: 0.45, color: '#3b3424', alpha: 0.35 },
+    { kind: 'drain', at: [13.6, 19.6] },
+    { kind: 'stain', at: [12.4, 20.8], r: 0.3, color: '#7f97a3', alpha: 0.3 },
+    // --- library and secretariat: papers, cables under the desks
+    { kind: 'papers', at: [19.8, 4.6], n: 3, spread: 0.4 },
+    { kind: 'papers', at: [29.4, 4.4], n: 4, spread: 0.5 },
+    { kind: 'papers', at: [33.6, 4.2], n: 3, spread: 0.5 },
+    { kind: 'cable', pts: [[29.0, 3.4], [29.2, 2.6], [29.6, 2.22]] },
+    { kind: 'cable', pts: [[33.6, 3.4], [33.8, 2.6], [34.2, 2.22]] },
+    // --- courtyard: water marks around the fountain, a drain
+    { kind: 'stain', at: [23.0, 14.0], r: 1.9, color: '#6f7d84', alpha: 0.18 },
+    { kind: 'drain', at: [27.8, 18.2] },
+    // --- office: papers off the desk
+    { kind: 'papers', at: [33.0, 11.4], n: 4, spread: 0.6 },
+    { kind: 'cable', pts: [[33.0, 10.6], [34.2, 10.0], [34.9, 9.8]] },
+    // --- dining room: wine spilled by the table
+    { kind: 'stain', at: [22.4, 23.0], r: 0.25, color: '#5a1620', alpha: 0.4 },
+  ],
 });
