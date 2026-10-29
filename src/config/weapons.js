@@ -67,7 +67,7 @@ export const WEAPONS = Object.freeze({
     spread: 2.2 * DEG,
     movingSpread: 2.4 * DEG,
     cone: 3 * DEG,
-    falloff: [6, 15, 0.2],
+    falloff: [5, 14, 0.2],
     magazine: 7,
     reserve: 28,
     reloadTime: 3.2,
