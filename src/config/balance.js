@@ -88,7 +88,7 @@ export const COMBAT = Object.freeze({
   holdTime: 0.6, // s standing still without turning before the angle counts as held
   doorwayPenalty: 0.05, // s extra for a shooter who came through a doorway less than doorwayTime ago
   doorwayTime: 0.8, // s
-  closeRange: 4, // m: inside it a shooter's closeReaction applies (the Escopetero)
+  closeRange: 5, // m: inside it a shooter's closeReaction applies (the Escopetero)
   aimTolerance: 5 * DEG, // must be this well aligned to shoot
   targetTurnCost: 2.5, // m: picking a target, one radian of turning weighs like this much distance
   settledSpread: 0.75, // spread multiplier when standing with the aim set (MOVE.settleTime) or pre-aimed (focused)
@@ -467,8 +467,8 @@ export const PARAPET = Object.freeze({ reach: 0.7, arc: 75 * DEG, damage: 0.8, a
 export const TRAP = Object.freeze({
   perTrapper: 2,
   trigger: 0.9, // m
-  stun: 1.6, // s (2 left the Trampero at +21 points in the Hotel: scripts/balance-clases.mjs)
-  damage: 15,
+  stun: 1.2, // s (2 left the Trampero at +21 points in the Hotel: scripts/balance-clases.mjs)
+  damage: 10,
   spot: 3.5, // m
   droneSpot: 4, // m
   shootRange: 10, // m

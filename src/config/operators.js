@@ -64,7 +64,7 @@ export const ROLES = Object.freeze({
     blurb: 'El primero en cruzar la puerta. Corta el ángulo al entrar: justo después de pasar una puerta reacciona mucho más rápido.',
   },
   entry: {
-    label: 'Brecha', pick: true, unique: true, weapon: 'smg', ability: null, modifiers: { breachPrep: 0.5, bash: 0.6, breachStun: 2.5, breachConcussion: 2.6 }, cutsWire: true, gear: { flash: 1, breach: 2 },
+    label: 'Brecha', pick: true, unique: true, weapon: 'smg', ability: null, modifiers: { breachPrep: 0.5, bash: 0.6, breachStun: 2.5, breachConcussion: 2.2 }, cutsWire: true, gear: { flash: 1, breach: 2 },
     blurb: 'Abre lo cerrado y castiga al que espera detrás: su carga deja inmóvil a quien esté tras la puerta. Corta el alambre con alicate.',
   },
   scout: {
@@ -76,7 +76,7 @@ export const ROLES = Object.freeze({
     blurb: 'Escudo balístico y pistola. Las balas de frente no le pasan, y cubre al que va pegado detrás. Lento, y vulnerable por los lados.',
   },
   marksman: {
-    label: 'Tirador', pick: true, unique: true, weapon: 'dmr', ability: null, modifiers: { holdReaction: 0.55, turnRate: 0.75, speed: 0.94 }, gear: { smoke: 1 },
+    label: 'Tirador', pick: true, unique: true, weapon: 'dmr', ability: null, modifiers: { holdReaction: 0.55, turnRate: 0.75, speed: 0.97 }, gear: { smoke: 1 },
     blurb: 'Fusil de tirador. Quieto cubriendo una zona, dispara primero a quien aparezca. Lento girando y malo de cerca.',
   },
   grenadier: {
@@ -117,7 +117,7 @@ export const ROLES = Object.freeze({
   },
   // Defending marksman: a sniper rifle on one long lane.
   sniper: {
-    label: 'Tirador', defPick: true, max: 1, weapon: 'sniper', ability: null, modifiers: { holdReaction: 0.55, turnRate: 0.7 }, ownWeapon: true, gear: { flash: 1 },
+    label: 'Tirador', defPick: true, max: 1, weapon: 'sniper', ability: null, modifiers: { holdReaction: 0.55, turnRate: 0.8 }, ownWeapon: true, gear: { flash: 1 },
     blurb: 'Fusil de precisión en una línea larga: quien la cruza recibe un disparo casi letal. Fuera de ese ángulo, lento.',
   },
 });
@@ -146,11 +146,11 @@ export const COMPOSITIONS = Object.freeze({
     Object.freeze({ id: 'rush', roles: Object.freeze(['assault', 'grenadier', 'assault']), plan: Object.freeze({ split: true }) }),
   ]),
   defenders: Object.freeze([
-    Object.freeze({ id: 'fortress', roles: Object.freeze(['anchor', 'anchor', 'trapper']), plan: Object.freeze({ rotators: 1, threat: 8 }) }),
+    Object.freeze({ id: 'fortress', roles: Object.freeze(['anchor', 'shotgunner', 'trapper']), plan: Object.freeze({ rotators: 1, threat: 8 }) }),
     Object.freeze({ id: 'retake', roles: Object.freeze(['anchor', 'roamer', 'sniper']), plan: Object.freeze({ rotators: 2, threat: 12 }) }),
     Object.freeze({ id: 'infoNet', roles: Object.freeze(['lookout', 'trapper', 'anchor']), plan: Object.freeze({ rotators: 2, threat: 10 }) }),
-    Object.freeze({ id: 'ambush', roles: Object.freeze(['shotgunner', 'shotgunner', 'roamer']), plan: Object.freeze({ rotators: 1, threat: 6 }) }),
-    Object.freeze({ id: 'hunt', roles: Object.freeze(['lookout', 'roamer', 'shotgunner']), plan: Object.freeze({ rotators: 2, threat: 12 }) }),
+    Object.freeze({ id: 'ambush', roles: Object.freeze(['shotgunner', 'roamer', 'lookout']), plan: Object.freeze({ rotators: 2, threat: 6 }) }),
+    Object.freeze({ id: 'longLine', roles: Object.freeze(['sniper', 'lookout', 'anchor']), plan: Object.freeze({ rotators: 1, threat: 10 }) }),
   ]),
 });
 

@@ -31,7 +31,6 @@ import { applyCommand } from './orders.js';
 import { codeWaiting, codeInUse, isGoReady, gearLeft, defuseCandidate, entryModeFits } from './queries.js';
 import { PHASE } from './round.js';
 import { planFor } from '../config/operators.js';
-import { segmentCrossesDoorway } from './doors.js';
 
 const TEAM = 'attackers';
 
@@ -199,8 +198,9 @@ function siteDoors(sim, site, from) {
 /**
  * The Tirador of an overwatch plan: walks the way to the site only up to
  * AI_ATTACK.overwatchShort m (walking) before the bomb and holds there looking
- * down the rest of the way, still, so his holdReaction applies to whoever
- * comes out to meet the squad. False when the way is too short for that.
+ * down the rest of the way (through the door his teammates open first), still,
+ * so his holdReaction applies to whoever comes out to meet them. False when
+ * the way is too short for that.
  */
 function overwatch(sim, u, x, y) {
   const path = sim.world.nav.findPath(u.x, u.y, x, y, NAV.snapRadius);
@@ -214,7 +214,6 @@ function overwatch(sim, u, x, y) {
       const k = left / (len || 1);
       const px = b.x + (a.x - b.x) * k;
       const py = b.y + (a.y - b.y) * k;
-      if (crossesDoor(sim, px, py, b.x, b.y)) return false; // a door in between: he would see nothing
       order(sim, { type: 'addWaypoint', unitId: u.id, x: px, y: py, user: true });
       order(sim, { type: 'setLook', unitId: u.id, angle: Math.atan2(b.y - py, b.x - px) });
       return true;
@@ -223,8 +222,6 @@ function overwatch(sim, u, x, y) {
   }
   return false;
 }
-
-const crossesDoor = (sim, ax, ay, bx, by) => sim.world.doorways.some((d, k) => k < sim.doors.length && segmentCrossesDoorway(ax, ay, bx, by, d) >= 0);
 
 /** A quiet plan: the legs that end at a door within AI_ATTACK.sneakRange of the bomb are walked in silence. */
 function sneakApproach(sim, u, site) {
