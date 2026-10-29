@@ -1,10 +1,13 @@
-// The map's card before a game (lobby and class pick): a floor plan drawn
-// from the map's data (floors, tall furniture, walls with their doorways, windows, the two
-// sites and the attackers' entries) and its reading in words: the map's
-// `traits`, or a site's `siteTraits` while that site is tapped on the plan.
+// The map's card before a game (lobby and class pick): the map as it looks in
+// a game (render/MapSnapshot.js: the game's own renderer, from above, without
+// fog), with the attackers' entries drawn over it, and its reading in words:
+// the map's `traits`, or a site's `siteTraits` while that site is tapped on
+// the plan. Without WebGL2 the plan is drawn from the map's data instead
+// (floors, tall furniture, walls with their doorways, windows, the sites).
 // It names no class: reading the map is the player's job.
 // "Al azar" shows a card that says the map is drawn on the way to the classes.
 import { compileMap } from '../sim/mapCompiler.js';
+import { snapshotMap } from '../render/MapSnapshot.js';
 import { FLOORS } from '../config/materials.js';
 import { MAPS } from '../data/maps/index.js';
 import { el, setText, toggle } from './dom.js';
@@ -25,6 +28,9 @@ const C = Object.freeze({
 
 const compiled = new Map(); // map id -> compiled map (the plan is drawn from it)
 const compiledOf = (id) => compiled.get(id) || compiled.set(id, compileMap(MAPS[id])).get(id);
+const SNAPSHOT_WIDTH = 1000; // px: sharp at the card's size on a 2x screen
+const snapshots = new Map(); // map id -> {image, floor} | null (no WebGL2)
+const snapshotOf = (id) => (snapshots.has(id) ? snapshots.get(id) : snapshots.set(id, snapshotMap(compiledOf(id), SNAPSHOT_WIDTH)).get(id));
 
 export class MapPreview {
   constructor() {
@@ -112,6 +118,47 @@ export class MapPreview {
     this.view = { k, ox, oy, dpr };
     const R = (x, y, rw, rh) => [ox + x * k, oy + y * k, rw * k, rh * k];
 
+    const snap = snapshotOf(this.mapId);
+    if (snap) {
+      // The picture's floor rectangle onto the plan's.
+      const [x0, y0, x1, y1] = snap.floor;
+      const f = (m.width * k) / (x1 - x0);
+      g.imageSmoothingQuality = 'high';
+      g.drawImage(snap.image, ox - x0 * f, oy - y0 * f, snap.image.width * f, snap.image.height * f);
+      const s = this.site && m.sites.find((t) => t.id === this.site);
+      if (s) {
+        g.fillStyle = C.siteOn;
+        g.fillRect(...R(...s.rect));
+      }
+    } else this.drawPlan(g, m, R, k, ox, oy, dpr);
+    // Entries: an arrow from where the squad starts to its door.
+    g.strokeStyle = C.entry;
+    g.fillStyle = C.entry;
+    g.lineWidth = 1.6 * dpr;
+    for (const e of m.entries) {
+      const door = m.doors.find((d) => d.id === e.door);
+      const [sx, sy] = e.spawns[0].at;
+      const ax = ox + (sx - 1.6) * k;
+      const ay = oy + sy * k;
+      const bx = ox + (door.cx - 0.5) * k;
+      const by = oy + door.cy * k;
+      g.beginPath();
+      g.moveTo(ax, ay);
+      g.lineTo(bx, by);
+      g.stroke();
+      const a = Math.atan2(by - ay, bx - ax);
+      const s = 5 * dpr;
+      g.beginPath();
+      g.moveTo(bx, by);
+      g.lineTo(bx - s * Math.cos(a - 0.5), by - s * Math.sin(a - 0.5));
+      g.lineTo(bx - s * Math.cos(a + 0.5), by - s * Math.sin(a + 0.5));
+      g.closePath();
+      g.fill();
+    }
+  }
+
+  /** The plan from the map's data (no WebGL2 for the picture). */
+  drawPlan(g, m, R, k, ox, oy, dpr) {
     for (const f of m.floors) {
       g.fillStyle = shade(FLOORS[f.material]?.a || '#555', 0.42);
       g.fillRect(...R(...f.rect));
@@ -150,30 +197,6 @@ export class MapPreview {
       const b = d.closedBox;
       g.fillStyle = C.door;
       g.fillRect(...R(b.minX - 0.06, b.minY - 0.06, b.maxX - b.minX + 0.12, b.maxY - b.minY + 0.12));
-    }
-    // Entries: an arrow from where the squad starts to its door.
-    g.strokeStyle = C.entry;
-    g.fillStyle = C.entry;
-    g.lineWidth = 1.6 * dpr;
-    for (const e of m.entries) {
-      const door = m.doors.find((d) => d.id === e.door);
-      const [sx, sy] = e.spawns[0].at;
-      const ax = ox + (sx - 1.6) * k;
-      const ay = oy + sy * k;
-      const bx = ox + (door.cx - 0.5) * k;
-      const by = oy + door.cy * k;
-      g.beginPath();
-      g.moveTo(ax, ay);
-      g.lineTo(bx, by);
-      g.stroke();
-      const a = Math.atan2(by - ay, bx - ax);
-      const s = 5 * dpr;
-      g.beginPath();
-      g.moveTo(bx, by);
-      g.lineTo(bx - s * Math.cos(a - 0.5), by - s * Math.sin(a - 0.5));
-      g.lineTo(bx - s * Math.cos(a + 0.5), by - s * Math.sin(a + 0.5));
-      g.closePath();
-      g.fill();
     }
   }
 
