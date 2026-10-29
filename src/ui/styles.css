@@ -849,6 +849,13 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
 }
 .lobby .lb-opt.on { border-color: var(--cyan); background: var(--cyan-deep); color: #fff; }
 .lobby .lb-opt.off { opacity: 0.35; }
+/* The map list: one row per map, scrolls once it outgrows its box. */
+.lobby .lb-maps { display: grid; gap: 6px; max-height: 300px; overflow-y: auto; padding-right: 4px; max-width: 440px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.title-box .lobby .btn.lb-opt.lb-mapi { display: grid; justify-content: stretch; justify-items: start; gap: 2px; min-height: 52px; padding: 8px 14px; text-align: left; border-left: 3px solid var(--line-strong); }
+.title-box .lobby .btn.lb-opt.lb-mapi.on { border-left-color: var(--amber); }
+.lobby .lb-mapi .mi-n { font-size: 14px; }
+.lobby .lb-mapi .mi-d { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: none; color: var(--muted); }
+.lobby .lb-mapi.on .mi-d { color: #cfe9f2; }
 .lobby .lb-opt[disabled] { opacity: 0.45; cursor: default; }
 .lobby .lb-note { font-size: 12px; line-height: 1.35; color: #b9c3ca; max-width: 440px; }
 .lobby .lb-players { display: flex; gap: 8px; }
@@ -1029,6 +1036,10 @@ body.touch .drone-stick { left: calc(18px + var(--sal)); margin-left: 0; bottom:
   .map-card .mc-name { font-size: 14px; }
   .map-card .mc-sub, .map-card .mc-hint { font-size: 9.5px; }
   .map-card .mc-traits li { font-size: 11px; }
+  .lobby .lb-maps { max-height: 150px; gap: 4px; }
+  .title-box .lobby .btn.lb-opt.lb-mapi { min-height: 40px; padding: 4px 10px; }
+  .lobby .lb-mapi .mi-n { font-size: 12px; }
+  .lobby .lb-mapi .mi-d { font-size: 10px; }
   .title-box .pick .btn.pk-map { min-height: 30px; padding: 3px 9px; font-size: 11px; }
   .lobby .lb-actions { margin-top: 10px; position: sticky; bottom: 0; padding: 8px 0; background: rgba(0, 0, 0, 0.92); }
   .title-box .lobby .lb-ready { padding: 10px 34px; }
