@@ -157,7 +157,9 @@ function plan(sim, ai) {
   const squad = sim.teams.attackers.filter((u) => u.alive).sort((a, b) => (b.role === ai.plan.lead) - (a.role === ai.plan.lead) || a.id - b.id);
   if (defuseCandidate(sim) && sim.bomb.defuserId < 0) order(sim, { type: 'defuseNow' });
   const plan = ai.plan;
-  const ways = plan.split && (retarget || first) && squad.length ? siteDoors(sim, site, squad[0]) : [];
+  // A pinch is a call, not a habit: the seed decides each round whether this squad goes for it (AI_ATTACK.splitChance).
+  const pinch = plan.split && hash(sim.seed, 4) % 100 < AI_ATTACK.splitChance * 100;
+  const ways = pinch && (retarget || first) && squad.length ? siteDoors(sim, site, squad[0]) : [];
   squad.forEach((u, i) => {
     if (u.defusing) return;
     const fresh = retarget || first;

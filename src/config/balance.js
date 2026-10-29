@@ -133,13 +133,13 @@ export const COVER = Object.freeze({
  * The Explorador's call-out (sim/perception.js callOut): what his fiber-optic camera shows, the stack on
  * that door (within `stack` m) keeps as a known target `memory` s after the last sight: they enter aimed at it.
  */
-export const CALLOUT = Object.freeze({ stack: 3, memory: 1.6 });
+export const CALLOUT = Object.freeze({ stack: 3, memory: 1.0 });
 
 /**
  * Trained ears (sim/ears.js, the Explorador's sharpEars): an enemy walking close by makes him turn to
  * where that enemy will appear, for `seconds`; the spot is found again every `repathTicks` steps.
  */
-export const EARS = Object.freeze({ range: 7, seconds: 1.2, repathTicks: 15 });
+export const EARS = Object.freeze({ range: 5, seconds: 0.8, repathTicks: 15 });
 
 /** Defender AI (sim/ai.js). */
 export const AI = Object.freeze({
@@ -189,6 +189,7 @@ export const AI_ATTACK = Object.freeze({
   // ...and only if his walk through it (there, then to his spot) is at most splitSlack longer than going straight
   splitSlack: 0.15,
   splitExtra: 3, // m, plus this
+  splitChance: 0.5, // share of the rounds a split squad goes for the pinch (always: 76 % for the attackers in the Almacén)
   overwatchShort: 7, // m walking short of the bomb where an overwatch Tirador stops and holds
 });
 

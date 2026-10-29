@@ -232,10 +232,10 @@ test('la IA defensora pone al francotirador en el puesto de línea más larga y 
   assert.ok(lane(slots[0]) >= 0 && lane(slots[1]) >= 0);
 });
 
-test('composiciones: la IA atacante juega su plan (brecha dura vuela cada puerta; cobertura deja al Tirador atrás)', () => {
+test('composiciones: la IA atacante juega su plan (brecha dura: el Escudo en punta; cobertura: el Tirador atrás)', () => {
   const play = (roles, seed = 2) => {
-    const sim = new Simulation(MAP, { seed, site: 'A', controllers: { attackers: 'ai', defenders: 'ai' }, roles: { attackers: roles, defenders: ['anchor', 'anchor', 'trapper'] } });
-    let breaches = 0;
+    const sim = new Simulation(MAP, { seed, site: 'A', controllers: { attackers: 'ai', defenders: 'ai' }, roles: { attackers: roles, defenders: ['anchor', 'shotgunner', 'trapper'] } });
+    let shieldOnBomb = null;
     let marksmanStop = null;
     for (let guard = 0; sim.phase !== 'end' && guard < 40000; guard++) {
       if (sim.phase === 'buy' || sim.phase === 'prep' || sim.phase === 'plan') {
@@ -244,13 +244,17 @@ test('composiciones: la IA atacante juega su plan (brecha dura vuela cada puerta
           const m = sim.teams.attackers.find((u) => u.role === 'marksman');
           const last = m && [...m.route].reverse().find((p) => p.user);
           marksmanStop = last ? Math.hypot(last.x - sim.bomb.x, last.y - sim.bomb.y) : -1;
+          const s = sim.teams.attackers.find((u) => u.role === 'shield');
+          const end = s && [...s.route].reverse().find((p) => p.user);
+          shieldOnBomb = end ? Math.hypot(end.x - sim.bomb.x, end.y - sim.bomb.y) : -1;
         }
       } else sim.step();
-      for (const e of sim.drainEvents()) if (e.type === EV.CHARGE_BLAST) breaches++;
+      sim.drainEvents();
     }
-    return { breaches, marksmanStop };
+    return { shieldOnBomb, marksmanStop };
   };
-  assert.ok(play(['shield', 'entry', 'assault']).breaches >= 1, 'brecha dura: vuela puertas');
+  const hard = play(['assault', 'entry', 'shield']);
+  assert.ok(hard.shieldOnBomb >= 0 && hard.shieldOnBomb < 0.3, 'brecha dura: el Escudo va primero, a la bomba');
   const pick = play(['marksman', 'shield', 'assault']);
   assert.ok(pick.marksmanStop > 3, `el Tirador se queda a ${pick.marksmanStop.toFixed(1)} m de la bomba`);
 });
