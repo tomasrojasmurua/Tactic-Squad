@@ -874,7 +874,7 @@ function frame(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (calib.n < 45) { // cuadros vacíos para medir la cadencia de la pantalla
     if (calib.n++ > 5) calib.dts.push(dt * 1000);
-    if (calib.n === 45) { calib.dts.sort((a, b) => a - b); perf.cadence = Math.max(16.7, calib.dts[calib.dts.length >> 1]); // objetivo: 60 fps (o la cadencia, si la pantalla va más lenta) }
+    if (calib.n === 45) { calib.dts.sort((a, b) => a - b); perf.cadence = Math.max(16.7, calib.dts[calib.dts.length >> 1]); } // objetivo: 60 fps, o la cadencia si la pantalla va más lenta
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
     requestAnimationFrame(frame); return;
   }
