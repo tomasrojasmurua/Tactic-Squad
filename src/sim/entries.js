@@ -390,7 +390,30 @@ function detonateBreach(sim, u, e) {
   const y = d.cy + d.normalY * e.side * B.depth;
   sim.emit(EV.CHARGE_BLAST, { unitId: u.id, doorId: d.id, x: d.cx, y: d.cy, dirX: d.normalX * e.side, dirY: d.normalY * e.side });
   blastAt(sim, x, y, B.radius, B.damage, 1, B.blind, u, { d, side: e.side }, B.stun * u.mods.breachStun);
+  if (u.mods.breachConcussion > 1) concussion(sim, u, x, y, { d, side: e.side });
   alertNear(sim, u, d.cx, d.cy, B.hearing, true);
+}
+
+/**
+ * The Brecha's shaped charge (modifiers.breachConcussion > 1): its overpressure
+ * fills the room beyond the door. Whoever is on that side, with no wall between
+ * him and the blast, out to B.radius × breachConcussion, is left reeling for
+ * ENTRY.breach.concussion s (less the farther he is): he loses his aim and his
+ * target (blind: the flash's rule) and cannot move. Who waits behind a door for
+ * it to open is the one it catches: the Ancla on his barrier first of all.
+ */
+function concussion(sim, u, x, y, plane) {
+  const B = ENTRY.breach;
+  const reach = B.radius * u.mods.breachConcussion;
+  for (const o of sim.units) {
+    if (!o.alive || o.team === u.team) continue;
+    const dist = Math.hypot(o.x - x, o.y - y);
+    if (dist > reach || across(plane.d, o.x, o.y) * plane.side <= 0) continue;
+    if (!solidLineOfSight(sim.world, x, y, o.x, o.y)) continue;
+    const s = B.concussion * (1 - 0.5 * (dist / reach));
+    if (o.blind < s) blind(sim, o, s, 'blast', x, y);
+    o.stun = Math.max(o.stun, s);
+  }
 }
 
 /** A kicked door: loud, and enemies right behind it reel (blind + frozen) for an instant. */

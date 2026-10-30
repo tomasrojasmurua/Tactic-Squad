@@ -88,7 +88,7 @@ export const COMBAT = Object.freeze({
   holdTime: 0.6, // s standing still without turning before the angle counts as held
   doorwayPenalty: 0.05, // s extra for a shooter who came through a doorway less than doorwayTime ago
   doorwayTime: 0.8, // s
-  closeRange: 4, // m: inside it a shooter's closeReaction applies (the Escopetero)
+  closeRange: 5, // m: inside it a shooter's closeReaction applies (the Escopetero)
   aimTolerance: 5 * DEG, // must be this well aligned to shoot
   targetTurnCost: 2.5, // m: picking a target, one radian of turning weighs like this much distance
   settledSpread: 0.75, // spread multiplier when standing with the aim set (MOVE.settleTime) or pre-aimed (focused)
@@ -129,6 +129,18 @@ export const COVER = Object.freeze({
   headChance: 0.4, // head share of the hits on a covered body
 });
 
+/**
+ * The Explorador's call-out (sim/perception.js callOut): what his fiber-optic camera shows, the stack on
+ * that door (within `stack` m) keeps as a known target `memory` s after the last sight: they enter aimed at it.
+ */
+export const CALLOUT = Object.freeze({ stack: 3, memory: 1.0 });
+
+/**
+ * Trained ears (sim/ears.js, the Explorador's sharpEars): an enemy walking close by makes him turn to
+ * where that enemy will appear, for `seconds`; the spot is found again every `repathTicks` steps.
+ */
+export const EARS = Object.freeze({ range: 5, seconds: 0.8, repathTicks: 15 });
+
 /** Defender AI (sim/ai.js). */
 export const AI = Object.freeze({
   // When alerted by noise or pain a defender watches the spot where the threat
@@ -152,6 +164,12 @@ export const AI_DEFEND = Object.freeze({
 });
 
 /**
+ * Which post of the map's layout each class of an AI defending side takes (sim/prep.js aiPosts): the
+ * long-range classes the longest sight line, the close-range ones the shortest (rays across ±arc, m).
+ */
+export const AI_POSTS = Object.freeze({ longRoles: Object.freeze(['sniper']), closeRoles: Object.freeze(['shotgunner']), rays: 9, arc: 25 * DEG, range: 40 });
+
+/**
  * Attacking AI (sim/aiAttack.js): a commander that plays the attackers'
  * side through the same orders as a player (used when the player defends).
  */
@@ -165,6 +183,14 @@ export const AI_ATTACK = Object.freeze({
   gasDepth: 3.5, // m into the room an AI Granadero aims his gas
   goPause: 0.25, // s a group waits in position before its GO (it reads as a call, not a reflex)
   goTimeout: 4, // s waiting for a GO before it is given anyway (someone is stuck or fighting)
+  // Composition plans (config/operators.js COMPOSITIONS):
+  siteDoorReach: 9, // m walking from a doorway to the bomb: it is a way into the site (a split plan's second door)
+  viaOffset: 1.2, // m outside that doorway: where the flanker goes before stepping in
+  // ...and only if his walk through it (there, then to his spot) is at most splitSlack longer than going straight
+  splitSlack: 0.15,
+  splitExtra: 3, // m, plus this
+  splitChance: 0.5, // share of the rounds a split squad goes for the pinch (always: 76 % for the attackers in the Almacén)
+  overwatchShort: 7, // m walking short of the bomb where an overwatch Tirador stops and holds
 });
 
 /** Round debrief (sim/debrief.js). */
@@ -221,7 +247,9 @@ export const ENTRY = Object.freeze({
   frag: { fuse: 1.1, radius: 4.2, damage: 160, minDamage: 8, hearing: 22 },
   // Carga de brecha: planted on arrival (prepTime), fired by the release. The door is destroyed.
   // `stun`: s whoever is behind it stands frozen, scaled by the planter's modifiers.breachStun (the Brecha's are longer).
-  breach: { prepTime: 1.8, fuse: 0.35, radius: 3.0, damage: 75, blind: 1.8, stun: 0.5, hearing: 22, depth: 0.25 },
+  // `concussion`: s the Brecha's charge leaves reeling (blind and frozen) whoever is beyond the door within
+  // radius × his modifiers.breachConcussion (sim/entries.js concussion): half as long at the edge.
+  breach: { prepTime: 1.8, fuse: 0.35, radius: 3.0, damage: 75, blind: 1.8, stun: 0.5, hearing: 22, depth: 0.25, concussion: 1.1 },
   // Cámara de fibra óptica (the Explorador's, roles with ability 'fiberCam'): on arrival he threads it under
   // the closed door (prepTime) and, while he waits there, sees the room from the floor beyond it: an eye
   // `under` m past the door, `fov` wide, `range` m. Silent; it only reveals. On release he opens the door.
@@ -238,7 +266,7 @@ export const ENTRY = Object.freeze({
   // does not hide anyone but hurts whoever breathes it: he sees only `vision` m, aims `spread` times worse,
   // reacts `reaction` times slower and coughs (heard, NOISE.radius.cough) every `coughEvery` s. An AI
   // defender caught in it gets out (falls back if he has where to). It kills nobody.
-  gas: { fuse: 0.8, hearing: 9, radius: 2.8, grow: 1.0, seconds: 10, fade: 2, vision: 4, spread: 2.5, reaction: 1.7, coughEvery: 1.4 },
+  gas: { fuse: 0.8, hearing: 9, radius: 3.0, grow: 0.8, seconds: 10, fade: 2, vision: 3, spread: 3, reaction: 2.1, coughEvery: 1.4 },
 });
 
 export const ROUND = Object.freeze({
@@ -418,7 +446,10 @@ export const MONITOR = Object.freeze({ detect: 0, fov: 0.35, reaction: 1.8 });
  * is right behind him is covered too, because the bullet stops first. Grenades, fire and flashes are not
  * stopped.
  */
-export const SHIELD = Object.freeze({ arc: 70 * DEG, radius: 0.42, leak: 0.1 });
+// Each bullet stopped on it jolts him (sim/combat.js joltShield): `jolt` of aim error, recovered like recoil
+// (COMBAT.recoilRecovery), up to COMBAT.maxRecoil + `joltMax`, and `joltDelay` s more to a first shot he had
+// not fired yet. Sustained fire pins him behind it; one slow shot (the bolt-action sniper) does not.
+export const SHIELD = Object.freeze({ arc: 60 * DEG, radius: 0.42, leak: 0.15, jolt: 2.2 * DEG, joltMax: 3.5 * DEG, joltDelay: 0.1 });
 
 /**
  * Ancla (role ability 'prepared', sim/combat.js): at the start of the assault he puts up a portable
@@ -439,9 +470,9 @@ export const PARAPET = Object.freeze({ reach: 0.7, arc: 75 * DEG, damage: 0.8, a
 export const TRAP = Object.freeze({
   perTrapper: 2,
   trigger: 0.9, // m
-  stun: 2, // s
-  damage: 15,
-  spot: 3.5, // m
+  stun: 0.6, // s (2 left the Trampero at +21 points in the Hotel: scripts/balance-clases.mjs)
+  damage: 5,
+  spot: 5.5, // m
   droneSpot: 4, // m
   shootRange: 10, // m
   shootDelay: 0.5, // s

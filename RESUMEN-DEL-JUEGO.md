@@ -171,18 +171,18 @@ marcador cuenta las rondas del jugador contra las de la IA, en los dos bandos.
 
 | Clase | Bando | Arma | Equipo de clase | Qué la hace distinta |
 | --- | --- | --- | --- | --- |
-| **Asaltante** | atacante | rifle | flash, granada | El que gana los duelos al cruzar una puerta: reacciona un 40 % más rápido en el umbral |
-| **Brecha** | atacante (una) | subfusil | flash, 2 cargas | Planta en la mitad de tiempo, rompe barricadas antes, su carga aturde 2,5 veces más y **corta el alambre en silencio con la tenaza** |
-| **Explorador** | atacante (uno) | rifle | flash, humo | **Cámara de fibra**: pasa la lente bajo una puerta cerrada y ve el cuarto sin abrirla (nueva entrada "Cámara"). Oído fino: los ruidos le llegan en el punto exacto. Ve las trampas desde más lejos |
+| **Asaltante** | atacante | rifle | flash, granada | El que gana los duelos al cruzar una puerta: reacciona el doble de rápido en el umbral |
+| **Brecha** | atacante (una) | subfusil | flash, 2 cargas | Planta en la mitad de tiempo, rompe barricadas antes, su carga aturde 2,5 veces más y su conmoción deja aturdido al que espera en la sala de detrás, y **corta el alambre en silencio con la tenaza** |
+| **Explorador** | atacante (uno) | rifle | flash, humo | **Cámara de fibra**: pasa la lente bajo una puerta cerrada y ve el cuarto sin abrirla (nueva entrada "Cámara"). Oído fino: los ruidos le llegan en el punto exacto y, si alguien camina a menos de 5 m (aunque pise suave), se gira hacia donde va a aparecer. Ve las trampas desde más lejos |
 | **Escudo** | atacante (uno) | pistola | flash | Escudo balístico al frente: para las balas que vienen de adelante (algo se filtra a brazos y piernas). Más lento, gira y apunta peor; golpea más fuerte. Si lo ciegan o aturden, lo baja |
 | **Tirador** | atacante | fusil de tirador | humo | Mira larga: reacciona un 45 % más rápido mientras está quieto sosteniendo un ángulo, pero gira despacio y anda más lento |
-| **Granadero** | atacante | subfusil | 2 de gas, humo | Lanzador: tira el doble de lejos. **Gas lacrimógeno**: los enemigos adentro ven a 4 m, reaccionan más lento, apuntan peor y tosen (se los oye) |
-| **Escopetero** | defensor (hasta 2) | escopeta | flash, granada | Espera pegado a la puerta al que entra: a menos de 5 m tumba de un tiro y a menos de 4 m reacciona un 30 % más rápido. Lejos la rosa de perdigones se abre y pierde fuerza |
-| **Ancla** | defensor (hasta 2) | según el puesto | granada | 120 de vida y reacción un 15 % más rápida. **Parapeto**: en la preparación arma una cobertura de metal a la altura del pecho frente a su puesto |
+| **Granadero** | atacante | subfusil | 2 de gas, flash | Lanzador: tira el doble de lejos. **Gas lacrimógeno**: los enemigos adentro ven a 3 m, reaccionan más lento, apuntan peor y tosen (se los oye) |
+| **Escopetero** | defensor (hasta 2) | escopeta | flash, granada | Espera pegado a la puerta al que entra: a menos de 5 m tumba de un tiro y reacciona un 28 % más rápido. Lejos la rosa de perdigones se abre y pierde fuerza |
+| **Ancla** | defensor (hasta 2) | según el puesto | granada | 120 de vida y reacción un 10 % más rápida. **Parapeto**: en la preparación arma una cobertura de metal a la altura del pecho frente a su puesto |
 | **Merodeador** | defensor (uno) | su propia arma | flash | Fuera del sitio, a la caza del flanco: 12 % más rápido, sus pasos se oyen a un tercio de distancia y **sus tiros llevan silenciador** |
-| **Trampero** | defensor (uno) | según el puesto | 2 trampas, humo | Trampas en la preparación (2 s atrapado, 15 de daño, ruido y delación) y **un alambre más** para el equipo. Las trampas se ven con sigilo, dron o la cámara del Explorador |
+| **Trampero** | defensor (uno) | según el puesto | 2 trampas, humo | Cepos en la preparación (0,6 s atrapado, 5 de daño, ruido y delación) y **un alambre más** para el equipo. Las trampas se ven con sigilo, dron o la cámara del Explorador |
 | **Vigía** | defensor (uno) | según el puesto | flash | **Una cámara más** y la orden "Monitor": se queda en el monitor y las cámaras detectan al instante y revelan a todos los que ven. Mientras mira, ve poco a su alrededor |
-| **Tirador** (defensor) | defensor (uno) | rifle de francotirador | flash | Sostiene un ángulo largo con reacción mucho más rápida, pero gira lento |
+| **Tirador** (defensor) | defensor (uno) | rifle de francotirador | flash | Sostiene un ángulo largo con reacción mucho más rápida; un impacto al torso tumba a cualquiera de 100 de vida. Gira lento |
 
 Las clases se eligen antes de la partida, a ciegas (no ve las del
 atacante, y el atacante no ve las suyas). La IA elige su escuadra a ciegas entre combinaciones con sentido, según la semilla de la ronda.
@@ -270,13 +270,13 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 | Partida al mejor de 7 | **Hecho**, también al mejor de 3 y 5, con cambio de bando a la mitad |
 | Economía entre rondas | **Cambiado** (28 oct 2026): sin dinero. Equipo de clase gratis cada ronda y 2 puntos de utilidad por operador en los dos bandos, +1 al que perdió. Con mitades de 3 rondas el dinero casi no pesaba y solo compraba el atacante |
 | Clases de operador con habilidad | **Hecho** (28 oct 2026): 6 atacantes y 6 defensores, cada uno con algo que lo hace jugar distinto (el Defensor genérico queda solo para el tutorial); elección a ciegas en los dos bandos, también la IA |
-| Contras entre clases | **Parcial.** Brecha contra barricadas y alambre, cámara de fibra contra Anclas y trampas, gas contra parapetos, flash contra escudo, Merodeador y trampas, humo contra cámaras y anclas |
+| Contras entre clases | **Hecho** (29 oct 2026): Brecha > Ancla (conmoción), Explorador > Merodeador (oído), Escudo > Tirador (el tiro lento no lo sacude), Granadero > Vigía (gas); además cámara de fibra contra trampas, flash contra escudo, humo contra cámaras. Composiciones arquetípicas en `docs/diseno/composiciones.md` |
 | Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (soportes del mapa a elegir, gratis). Sensor y elección de refuerzos por el defensor: faltan |
 | Paredes blandas destructibles | **Descartado** por decisión de diseño (27 oct 2026): no se implementan |
 | Plazos de las fases | **Parcial.** El reloj existe (`PhaseClock`), pero contra la IA no hay límite |
 | Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Parcial.** Tres mapas (Almacén, Hotel y Puerto; IA contra IA con escuadras al azar: 51 %, 52 % y 53 % para el atacante); Embajada en camino. 5v5 y dificultades: faltan |
 | Online | **Falta.** El código está preparado (determinismo, órdenes serializables, grabador de planes, `teamView`). Bloquea que el render lea la sim entera |
-| Equilibrio 45-55 % | **Sin medir** con las clases y las cámaras nuevas |
+| Equilibrio 45-55 % | **Medido** (29 oct 2026, 600 rondas por mapa, escuadras a ciegas): atacantes 54 % Almacén, 46 % Hotel, 50 % Puerto. Por clase, tabla en `docs/traspaso/CLASES-Y-MAPAS.md` |
 
 ---
 
@@ -289,7 +289,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 3. **El corte del turno al contacto.** ¿Ayuda a reaccionar o rompe el ritmo de 5 s?
 4. **Cámaras y dron.** ¿El dron ahora tiene un trabajo claro (encontrar la cámara antes
    de entrar)?
-5. **Clases.** ¿El Tirador defensor es demasiado débil (en IA contra IA el atacante le gana un 59 %)? ¿La Brecha justifica su lugar?
+5. **Clases.** El Tirador defensor sigue flojo en el Almacén (36 %, sitios de líneas cortas) y el Trampero fuerte en el Hotel (65 %). ¿Se ajustan por mapa (puestos) o por clase?
 6. **Los puntos de utilidad.** ¿2 puntos alcanzan para adaptar el plan? ¿El punto extra del que pierde ayuda a volver? ¿La racha
    de derrotas alcanza para volver?
 7. **Celular.** Todo pensado para un celular horizontal. Vale probarlo ahí.

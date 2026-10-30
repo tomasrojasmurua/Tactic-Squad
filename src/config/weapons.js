@@ -48,9 +48,9 @@ export const WEAPONS = Object.freeze({
     fireInterval: 0.32,
     burst: [1, 2],
     burstPause: 0.15,
-    damage: [62, 74],
+    damage: [70, 82], // two torso hits always kill, one to the head too
     spread: 0.7 * DEG,
-    movingSpread: 4.5 * DEG,
+    movingSpread: 3.6 * DEG,
     magazine: 20,
     reserve: 60,
     reloadTime: 2.6,
@@ -74,10 +74,10 @@ export const WEAPONS = Object.freeze({
   },
   sniper: {
     name: 'Francotirador',
-    fireInterval: 1.25,
+    fireInterval: 1.0, // the bolt worked from the shoulder
     burst: [1, 1],
     burstPause: 0,
-    damage: [95, 115],
+    damage: [112, 130], // a torso hit always drops a man (100, an Ancla's 120 most of the time); a limb does not
     spread: 0.4 * DEG,
     movingSpread: 7 * DEG,
     magazine: 5,

@@ -24,7 +24,8 @@
 // pick hashes the seed), so a set-up cannot shift the rest of the round.
 import { placeCameras } from './cameras.js';
 import { layTraps, dropOrphanTraps, placeTrap as layTrap } from './traps.js';
-import { BUY, PREP, NAV, AI_UTILITY } from '../config/balance.js';
+import { BUY, PREP, NAV, AI_UTILITY, AI_POSTS } from '../config/balance.js';
+import { rayCast } from '../core/geom.js';
 import { EV } from '../core/events.js';
 import { pointInBox } from '../core/geom.js';
 import { WEAPONS } from '../config/weapons.js';
@@ -115,6 +116,7 @@ export function chooseSite(sim, id) {
   if (site === sim.site) return null;
   sim.site = site;
   sim.bomb = createBomb(site);
+  if (sim.autoSlots) sim.defenderSlots = aiPosts(sim, sim.compiled.defense[site.id], sim.roles.defenders);
   applyLayout(sim, sim.compiled.defense[site.id]);
   placeCameras(sim);
   layTraps(sim);
@@ -295,6 +297,56 @@ export function aiPrepare(sim) {
     const [id] = options.splice(h % options.length, 1);
     setWire(sim, id, true);
   }
+}
+
+/**
+ * An AI defending side's posts (sim.defenderSlots): which of the site's
+ * layout posts (map `defense[site]`, usually 4) each of its 3 classes takes.
+ * The map's posts carry the class they were written for (`role`): that class
+ * takes it first. Then the long-range classes (AI_POSTS.longRoles: a sniper)
+ * take the free post with the longest sight line down its watch (the average
+ * of AI_POSTS.rays rays across ±AI_POSTS.arc), the close-range ones
+ * (AI_POSTS.closeRoles: the Escopetero) the shortest, and the rest the first
+ * free post in the map's order. A sniper is no use on a 4 m doorway, nor a
+ * shotgun on a 15 m lane. Only for the classes the lobby picked (the map's
+ * own defenders stay where they are written). Deterministic.
+ */
+export function aiPosts(sim, layout, roles) {
+  if (sim.controllers.defenders !== 'ai' || !roles || !roles.length || !layout) return null;
+  const free = layout.map((_, i) => i);
+  const out = new Array(roles.length).fill(-1);
+  const take = (i, k) => {
+    out[i] = k;
+    free.splice(free.indexOf(k), 1);
+  };
+  roles.forEach((r, i) => {
+    const k = free.find((j) => layout[j].role === r);
+    if (k !== undefined) take(i, k);
+  });
+  const lane = (k) => sightLane(sim, layout[k]);
+  roles.forEach((r, i) => {
+    if (out[i] >= 0 || !free.length) return;
+    const long = AI_POSTS.longRoles.includes(r);
+    const close = AI_POSTS.closeRoles.includes(r);
+    if (!long && !close) return;
+    const best = free.slice().sort((a, b) => (long ? lane(b) - lane(a) : lane(a) - lane(b)) || a - b)[0];
+    take(i, best);
+  });
+  roles.forEach((r, i) => {
+    if (out[i] < 0 && free.length) take(i, free[0]);
+  });
+  return out;
+}
+
+/** The average distance (m) a post sees down its watch, short of walls and closed doors. */
+function sightLane(sim, post) {
+  const n = AI_POSTS.rays;
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    const a = post.facing + (n > 1 ? -AI_POSTS.arc + (2 * AI_POSTS.arc * i) / (n - 1) : 0);
+    sum += rayCast(sim.world.segments, sim.world.solidCount, post.at[0], post.at[1], Math.cos(a), Math.sin(a), AI_POSTS.range);
+  }
+  return sum / n;
 }
 
 // ------------------------------------------------------------ helpers

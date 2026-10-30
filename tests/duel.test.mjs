@@ -53,8 +53,10 @@ test('con un flash por la puerta, gana el que entra', () => {
   assert.ok(a.alive && !d0.alive, `defensor ${d0.hp} hp, atacante ${a.hp} hp`);
 });
 
+// Con las escuadras a ciegas, como en una partida (session/Lobby.js aiRoles): la del mapa sin clases
+// (con el Defensor genérico, solo del tutorial) no es una que se juegue.
 test('IA contra IA, ningún bando gana por naturaleza', () => {
-  const r = measure(60);
+  const r = measure(60, { squads: 'blind' });
   const part = r.attackers / r.rounds;
   assert.ok(part >= 0.35 && part <= 0.65, `los atacantes ganan ${(part * 100).toFixed(0)} %`);
 });
