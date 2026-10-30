@@ -92,7 +92,7 @@ export const ROLES = Object.freeze({
   },
   // Shotgunner: waits beside a door for whoever comes through it; deadly up close, little past 10 m.
   shotgunner: {
-    label: 'Escopetero', defPick: true, max: 2, weapon: 'shotgun', ability: null, modifiers: { closeReaction: 0.65 }, ownWeapon: true, gear: { flash: 1, frag: 1 },
+    label: 'Escopetero', defPick: true, max: 2, weapon: 'shotgun', ability: null, modifiers: { closeReaction: 0.72 }, ownWeapon: true, gear: { flash: 1, frag: 1 },
     blurb: 'Espera pegado a la puerta al que entra: escopeta que tumba de un tiro a quemarropa y reacción más rápida de cerca. Lejos, pierde.',
   },
   // Site anchor: holds his angle from a prepared position; tougher and quicker to shoot first.
@@ -102,7 +102,7 @@ export const ROLES = Object.freeze({
   },
   // Roamer: off the site, hunting the attackers' flank; quick and quiet. The Explorador hears him.
   roamer: {
-    label: 'Merodeador', defPick: true, max: 1, weapon: 'smg', ability: null, modifiers: { speed: 1.12, stepNoise: 0.35, shotNoise: 0.3 }, ownWeapon: true, gear: { flash: 1 },
+    label: 'Merodeador', defPick: true, max: 1, weapon: 'smg', ability: null, modifiers: { speed: 1.12, stepNoise: 0.35, shotNoise: 0.3, reaction: 0.93 }, ownWeapon: true, gear: { flash: 1 },
     blurb: 'Caza fuera del sitio: rápido, pasos que casi no se oyen y subfusil con supresor (oyen que hubo tiros, no de dónde).',
   },
   // Trapper: lays TRAP.perTrapper traps in the preparation (sim/traps.js) and one more barbed wire.
@@ -152,7 +152,7 @@ export const COMPOSITIONS = Object.freeze({
     Object.freeze({ id: 'retake', roles: Object.freeze(['anchor', 'roamer', 'sniper']), plan: Object.freeze({ rotators: 2, threat: 12 }) }),
     Object.freeze({ id: 'infoNet', roles: Object.freeze(['lookout', 'trapper', 'anchor']), plan: Object.freeze({ rotators: 2, threat: 10 }) }),
     Object.freeze({ id: 'ambush', roles: Object.freeze(['shotgunner', 'roamer', 'lookout']), plan: Object.freeze({ rotators: 2, threat: 6 }) }),
-    Object.freeze({ id: 'longLine', roles: Object.freeze(['sniper', 'lookout', 'anchor']), plan: Object.freeze({ rotators: 1, threat: 10 }) }),
+    Object.freeze({ id: 'longLine', roles: Object.freeze(['sniper', 'lookout', 'anchor']), plan: Object.freeze({ rotators: 2, threat: 10 }) }),
   ]),
 });
 

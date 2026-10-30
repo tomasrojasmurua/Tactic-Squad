@@ -135,6 +135,25 @@ test('una trampa atrapa al atacante: lo frena, lo hiere, suena y los defensores 
   assert.ok(Math.abs(a.x - x) < 1e-6 || !a.alive, 'atrapado: no se mueve');
 });
 
+test('el cepo es un tropiezo, no una celda: suelta al atacante pasado TRAP.stun y sigue su ruta', () => {
+  const sim = assault('A', true);
+  const [a] = sim.teams.attackers;
+  const t = sim.traps[0];
+  a.x = t.x;
+  a.y = t.y + 3;
+  a.facing = Math.PI / 2;
+  sim.enqueue({ team: 'attackers', type: 'addWaypoint', unitId: a.id, x: t.x, y: t.y - 2, user: true });
+  sim.flushCommands();
+  let sprung = false;
+  for (let i = 0; i < 60 * 3 && !sprung; i++) sprung = run(sim, 1).some((e) => e.type === EV.TRAP_SPRUNG);
+  assert.ok(sprung, 'saltó');
+  assert.ok(TRAP.stun <= 1, 'menos de un segundo atrapado');
+  const x = a.x;
+  const y = a.y;
+  run(sim, Math.ceil((TRAP.stun + 0.5) / sim.dt));
+  assert.ok(!a.alive || Math.hypot(a.x - x, a.y - y) > 0.2, 'ya se mueve otra vez');
+});
+
 test('caminando no ve la trampa; con sigilo la descubre y la rompe de un tiro', () => {
   const play = (pace) => {
     const sim = assault('A', true);

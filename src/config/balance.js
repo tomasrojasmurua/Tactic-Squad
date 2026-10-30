@@ -470,9 +470,9 @@ export const PARAPET = Object.freeze({ reach: 0.7, arc: 75 * DEG, damage: 0.8, a
 export const TRAP = Object.freeze({
   perTrapper: 2,
   trigger: 0.9, // m
-  stun: 0.9, // s (2 left the Trampero at +21 points in the Hotel: scripts/balance-clases.mjs)
-  damage: 10,
-  spot: 4.5, // m
+  stun: 0.6, // s (2 left the Trampero at +21 points in the Hotel: scripts/balance-clases.mjs)
+  damage: 5,
+  spot: 5.5, // m
   droneSpot: 4, // m
   shootRange: 10, // m
   shootDelay: 0.5, // s
