@@ -1,6 +1,6 @@
 # Clases y mapas
 
-Estado al 29 oct 2026 (rama `claude/equilibrio-clases`). Los números viven en
+Estado al 30 oct 2026 (`main`, con los PR #43 de clases y #44 de mapas). Los números viven en
 `src/config/operators.js` (clases, composiciones) y `src/config/balance.js`; esto es el resumen
 para quien retome el trabajo. Las composiciones arquetípicas y sus planes, en
 `docs/diseno/composiciones.md`.
@@ -45,8 +45,14 @@ pruebas exigen ambas cosas.
 Hotel: las columnas, recepción, ascensores, la 106, room service, la barra, las ventanas, el
 vaivén. Puerto: la grúa, el reach, el abierto, el golpeado, reefers, consolidación, máquinas.
 
-**Equilibrio** (IA contra IA con las escuadras que sortea el lobby, semillas 1-1600 por mapa;
-victorias del atacante):
+> **Equilibrio vigente en `main` (30 oct, tras fusionar clases y mapas):** con la IA de
+> composiciones nueva los mapas quedaron fuera de la meta. `node scripts/balance.mjs 800 ciegas
+> <mapa>`, victorias del atacante: **Almacén 52 % (A 45, B 58)**, **Hotel 40 % (A 33, B 46)**,
+> **Puerto 39 % (A 32, B 47)**. Pendiente re-equilibrar con los datos de cada mapa. La tabla
+> de abajo es la de la rama de mapas, medida antes de fusionar con las clases nuevas.
+
+**Equilibrio antes de fusionar con las clases nuevas** (IA contra IA con las escuadras que
+sortea el lobby, semillas 1-1600 por mapa; victorias del atacante):
 
 | Mapa | Sitio A | Sitio B | Total |
 | --- | --- | --- | --- |
