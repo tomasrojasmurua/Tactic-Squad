@@ -44,6 +44,30 @@ los mapas). El plan de gráficos está en la rama `claude/graficos-realismo`
    del token en Cloudflare (dash.cloudflare.com/profile/api-tokens → ··· → Roll), hazlo y
    actualiza el secreto en GitHub.
 
+## Créditos de trabajo en la nube (antes de empezar)
+
+- **Vencen el 4 de noviembre de 2026 a las 23:59 hora del Pacífico** (madrugada del 5 en Chile).
+  Lo que no se use se pierde.
+- **Solo cubren sesiones en la nube** de Claude Code (claude.ai/code, o "nube" en la app de
+  escritorio o del celular) con un repositorio de GitHub. **No cubren** el chat, los Proyectos de
+  claude.ai ni Cowork: el trabajo hay que hacerlo en una sesión de Claude Code en la nube.
+- Mientras quede saldo, esas sesiones no descuentan del límite del plan. El saldo se ve en el
+  menú de uso de claude.ai. En Pro, elegir el modelo Fable exige créditos de uso pagados: usar el
+  modelo por defecto.
+- **Entorno recomendado** (selector de entorno bajo la caja de mensaje en claude.ai/code →
+  editar o agregar):
+  - **Network access → Custom**, con "Also include default list of common package managers"
+    marcado, y en **Allowed domains**: `api.cloudflare.com` y `*.workers.dev`.
+  - **Network secrets → Add secret**: el token de Cloudflare como `Authorization: Bearer …`
+    para el host `api.cloudflare.com`. La sesión lo usa sin verlo.
+  - **Environment variables**: `CLOUDFLARE_ACCOUNT_ID=<tu Account ID>` (no es secreto).
+  - Así la sesión puede desplegar y probar el servidor ella misma, sin esperar a GitHub Actions
+    ni pedirte que mires la pestaña Actions. Los secretos de GitHub siguen sirviendo para el
+    despliegue automático.
+
+Fuentes: support.claude.com/en/articles/17152539 (promoción) y
+code.claude.com/docs/en/cloud-environments (entornos).
+
 ## Para que rindan los créditos
 
 - **Una sesión a la vez y sin subagentes en paralelo**, salvo que haga falta de verdad. En la
