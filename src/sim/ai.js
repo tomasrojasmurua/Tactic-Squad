@@ -15,6 +15,7 @@ import { lineOfSight } from './vision.js';
 import { enemyTeam } from './queries.js';
 import { barricadeBoxes } from './barricades.js';
 import { inFire } from './fire.js';
+import { dcos, dhypot, sq } from '../core/dmath.js';
 
 /** One AI-controlled unit (any side whose controller is 'ai'). */
 export function updateAiUnit(sim, u, dt) {
@@ -34,7 +35,7 @@ export function updateAiUnit(sim, u, dt) {
     // Centred on the look he was given where he stands (moved or turned while
     // planning: sim/orders.js), else on the order's own arc.
     const phase = (sim.time / b.period) * TAU + u.id;
-    const k = 0.5 - 0.5 * Math.cos(phase);
+    const k = 0.5 - 0.5 * dcos(phase);
     const half = (b.to - b.from) / 2;
     const c = u.idleLook !== null && !u.route.length ? u.idleLook : b.from + half;
     u.ai.baseFacing = c - half + 2 * half * k;
@@ -65,7 +66,7 @@ function listenForFootsteps(sim, u) {
   const quiet2 = MOVE.sneakHearing * MOVE.sneakHearing;
   for (const a of sim.teams[enemyTeam(u.team)]) {
     if (!a.alive || !a.moving) continue;
-    if ((a.x - u.x) ** 2 + (a.y - u.y) ** 2 < (a.sneaking ? quiet2 : r2)) {
+    if (sq(a.x - u.x) + sq(a.y - u.y) < (a.sneaking ? quiet2 : r2)) {
       alertAiUnit(u, a.x, a.y, COMBAT.alertDuration);
       return;
     }
@@ -93,10 +94,10 @@ export function watchPointToward(sim, u, nx, ny, out) {
   if (!path) return;
   for (let i = 0; i < path.length; i++) {
     const p = path[i];
-    const d = Math.hypot(p.x - u.x, p.y - u.y);
+    const d = dhypot(p.x - u.x, p.y - u.y);
     if (d < AI.watchMinDistance && i < path.length - 1) continue;
     const next = path[i + 1] || p;
-    const len = Math.hypot(next.x - p.x, next.y - p.y) || 1;
+    const len = dhypot(next.x - p.x, next.y - p.y) || 1;
     const k = Math.min(1, AI.watchMinDistance / len);
     out.alertX = p.x + (next.x - p.x) * k;
     out.alertY = p.y + (next.y - p.y) * k;
@@ -117,12 +118,12 @@ function throwAtWatchPoint(sim, u) {
   if (!item) return;
   const tx = u.alertX;
   const ty = u.alertY;
-  const d = Math.hypot(tx - u.x, ty - u.y);
+  const d = dhypot(tx - u.x, ty - u.y);
   if (d < AI_UTILITY.minRange || d > ENTRY.tossRange) return;
   if (!lineOfSight(sim.world, u.x, u.y, tx, ty)) return;
   if (item === 'frag') {
-    const r2 = (ENTRY.frag.radius + AI_UTILITY.friendlyMargin) ** 2;
-    for (const o of sim.teams.defenders) if (o.alive && (o.x - tx) ** 2 + (o.y - ty) ** 2 < r2) return;
+    const r2 = sq(ENTRY.frag.radius + AI_UTILITY.friendlyMargin);
+    for (const o of sim.teams.defenders) if (o.alive && sq(o.x - tx) + sq(o.y - ty) < r2) return;
   }
   u.entry = { mode: 'toss', item, tx, ty, doorway: -1, side: 1, look: angleTo(u.x, u.y, tx, ty), phase: 'armed', t: 0, spent: false, step: null, grenade: null };
   u.ai.throwAt = sim.time + AI_UTILITY.cooldown;
@@ -137,10 +138,10 @@ function burnDefuse(sim, u) {
   if (u.team !== 'defenders' || sim.controllers.defenders !== 'ai' || u.entry || !(u.gear.molotov > 0)) return;
   const bomb = sim.bomb;
   if (bomb.defuserId < 0 || inFire(sim, bomb.x, bomb.y)) return;
-  if (Math.hypot(bomb.x - u.x, bomb.y - u.y) > ENTRY.tossRange) return;
+  if (dhypot(bomb.x - u.x, bomb.y - u.y) > ENTRY.tossRange) return;
   if (!lineOfSight(sim.world, u.x, u.y, bomb.x, bomb.y)) return;
-  const r2 = (ENTRY.molotov.radius + AI_UTILITY.friendlyMargin) ** 2;
-  for (const o of sim.teams.defenders) if (o.alive && (o.x - bomb.x) ** 2 + (o.y - bomb.y) ** 2 < r2) return;
+  const r2 = sq(ENTRY.molotov.radius + AI_UTILITY.friendlyMargin);
+  for (const o of sim.teams.defenders) if (o.alive && sq(o.x - bomb.x) + sq(o.y - bomb.y) < r2) return;
   u.entry = { mode: 'toss', item: 'molotov', tx: bomb.x, ty: bomb.y, doorway: -1, side: 1, look: angleTo(u.x, u.y, bomb.x, bomb.y), phase: 'armed', t: 0, spent: false, step: null, grenade: null };
 }
 
@@ -194,7 +195,7 @@ export function alertAiUnit(u, x, y, duration, gunfire = false) {
   if (gunfire && !u.ai.commanded && u.behavior && u.behavior.rotate && u.ai.rotating === null && !u.ai.rotated) startRotation(u, u.behavior.rotate);
   if (u.target >= 0) return;
   if (u.behavior && u.behavior.reactsToNoise === false) return;
-  const fresh = u.alertTimer <= 0 || (u.ai.noiseX - x) ** 2 + (u.ai.noiseY - y) ** 2 > 1;
+  const fresh = u.alertTimer <= 0 || sq(u.ai.noiseX - x) + sq(u.ai.noiseY - y) > 1;
   u.alertTimer = duration;
   u.ai.noiseX = x;
   u.ai.noiseY = y;

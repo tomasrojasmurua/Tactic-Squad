@@ -7,6 +7,7 @@
 import { DOORS } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { startBash } from './barricades.js';
+import { dcos, dsin } from '../core/dmath.js';
 
 /**
  * open: bodies pass (the slab is pushed flat against the wall); cracked: ajar
@@ -95,7 +96,7 @@ export function segmentCrossesDoorway(ax, ay, bx, by, def) {
 /** Sign of the swing that takes the free end away from the opener's side of the wall. */
 function swingAway(def, unit) {
   const side = Math.sign((unit.x - def.cx) * def.normalX + (unit.y - def.cy) * def.normalY) || 1;
-  const tangentDotN = -Math.sin(def.closedAngle) * def.normalX + Math.cos(def.closedAngle) * def.normalY;
+  const tangentDotN = -dsin(def.closedAngle) * def.normalX + dcos(def.closedAngle) * def.normalY;
   return -side * Math.sign(tangentDotN);
 }
 

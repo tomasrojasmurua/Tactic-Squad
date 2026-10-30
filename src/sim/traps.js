@@ -17,6 +17,7 @@ import { canSee } from './vision.js';
 import { isAiControlled } from './queries.js';
 import { alertAiUnit } from './ai.js';
 import { applyBlast } from './combat.js';
+import { datan2, sq } from '../core/dmath.js';
 
 /** The live traps a defender laid. */
 export const trapsOf = (sim, u) => sim.traps.filter((t) => t.alive && t.ownerId === u.id);
@@ -36,7 +37,7 @@ export function placeTrap(sim, u, px, py, inHalf) {
   const p = nav.walkable(px, py) ? { x: px, y: py } : nav.nearestWalkable(px, py, 0.8);
   if (!p) return 'unreachable';
   const min2 = TRAP.minSpacing * TRAP.minSpacing;
-  const own = sim.traps.find((t) => t.alive && t.ownerId === u.id && (t.x - p.x) ** 2 + (t.y - p.y) ** 2 < min2);
+  const own = sim.traps.find((t) => t.alive && t.ownerId === u.id && sq(t.x - p.x) + sq(t.y - p.y) < min2);
   if (own) {
     own.alive = false; // picked up
     sim.traps = sim.traps.filter((t) => t !== own);
@@ -44,7 +45,7 @@ export function placeTrap(sim, u, px, py, inHalf) {
   } else {
     if (!inHalf(p.x, p.y)) return 'outsideHalf';
     if (trapsOf(sim, u).length >= TRAP.perTrapper) return 'tooManyTraps';
-    if (sim.traps.some((t) => t.alive && (t.x - p.x) ** 2 + (t.y - p.y) ** 2 < min2)) return 'tooClose';
+    if (sim.traps.some((t) => t.alive && sq(t.x - p.x) + sq(t.y - p.y) < min2)) return 'tooClose';
     addTrap(sim, u, p.x, p.y);
   }
   sim.emit(EV.SETUP_CHANGED, { unitId: u.id, kind: 'trap' });
@@ -79,7 +80,7 @@ export function updateTraps(sim, dt) {
 
 function spring(sim, t) {
   const r2 = TRAP.trigger * TRAP.trigger;
-  const caught = sim.teams.attackers.find((a) => a.alive && (a.x - t.x) ** 2 + (a.y - t.y) ** 2 <= r2);
+  const caught = sim.teams.attackers.find((a) => a.alive && sq(a.x - t.x) + sq(a.y - t.y) <= r2);
   if (!caught) return false;
   t.alive = false;
   t.known = true;
@@ -100,7 +101,7 @@ function attackersSee(sim, t, dt) {
   let shooter = null;
   for (const u of sim.teams.attackers) {
     if (!u.alive || u.blind > 0) continue;
-    const d2 = (u.x - t.x) ** 2 + (u.y - t.y) ** 2;
+    const d2 = sq(u.x - t.x) + sq(u.y - t.y);
     const spot = TRAP.spot * u.mods.trapSpot;
     if (d2 > (t.known ? shoot2 : spot * spot) || !canSee(sim.world, u, t.x, t.y, u.vision)) continue;
     if (!t.known) {
@@ -136,16 +137,16 @@ export function camSeesTraps(sim, eye) {
 /** The drone's eye (sim/drone.js): traps it sees close by become known. */
 export function droneSeesTraps(sim, d, cfg) {
   const r2 = TRAP.droneSpot * TRAP.droneSpot;
-  for (const t of sim.traps) if (t.alive && !t.known && (d.x - t.x) ** 2 + (d.y - t.y) ** 2 <= r2 && canSee(sim.world, d, t.x, t.y, cfg)) found(sim, t, 'drone');
+  for (const t of sim.traps) if (t.alive && !t.known && sq(d.x - t.x) + sq(d.y - t.y) <= r2 && canSee(sim.world, d, t.x, t.y, cfg)) found(sim, t, 'drone');
 }
 
 function destroy(sim, t, u) {
   t.alive = false;
   t.known = true;
   sim.emit(EV.TRAP_DESTROYED, { trapId: t.id, unitId: u.id, x: t.x, y: t.y });
-  sim.emit(EV.SHOT, { unitId: u.id, team: u.team, weaponId: u.weaponId, x: u.x, y: u.y, angle: Math.atan2(t.y - u.y, t.x - u.x), toX: t.x, toY: t.y, hit: 'wall', victimId: -1, cover: false, material: 'metal', impactZ: -1, mag: u.mag });
+  sim.emit(EV.SHOT, { unitId: u.id, team: u.team, weaponId: u.weaponId, x: u.x, y: u.y, angle: datan2(t.y - u.y, t.x - u.x), toX: t.x, toY: t.y, hit: 'wall', victimId: -1, cover: false, material: 'metal', impactZ: -1, mag: u.mag });
   const r2 = COMBAT.hearingRadius * COMBAT.hearingRadius;
   for (const o of sim.teams.defenders) {
-    if (o.alive && isAiControlled(sim, o) && (o.x - u.x) ** 2 + (o.y - u.y) ** 2 < r2) alertAiUnit(o, u.x, u.y, COMBAT.alertDuration, true);
+    if (o.alive && isAiControlled(sim, o) && sq(o.x - u.x) + sq(o.y - u.y) < r2) alertAiUnit(o, u.x, u.y, COMBAT.alertDuration, true);
   }
 }

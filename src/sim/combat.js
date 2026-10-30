@@ -16,6 +16,7 @@ import { rayCast, rayCircle, segmentBlocked } from '../core/geom.js';
 import { alertAiUnit } from './ai.js';
 import { recordDeath } from './debrief.js';
 import { propNear, struckSurface, isAiControlled } from './queries.js';
+import { datan2, dcos, dhypot, dsin, dtan, sq } from '../core/dmath.js';
 
 export function updateCombat(sim, u, dt) {
   u.fireCooldown = Math.max(0, u.fireCooldown - dt);
@@ -60,7 +61,7 @@ const fireLine = { ox: 0, oy: 0, tx: 0, ty: 0 };
 function lineOfFire(world, u, t) {
   const dx = t.x - u.x;
   const dy = t.y - u.y;
-  const len = Math.hypot(dx, dy) || 1;
+  const len = dhypot(dx, dy) || 1;
   const px = (-dy / len) * VISION.probeOffset;
   const py = (dx / len) * VISION.probeOffset;
   const segs = world.segments;
@@ -112,9 +113,9 @@ function fire(sim, u) {
   spread = spread * COMBAT.accuracy * u.mods.spread * (u.gassed > 0 ? ENTRY.gas.spread : 1) + u.recoil; // tear gas (sim/gas.js)
   const { ox, oy } = fireLine;
   // Aim error is measured from the line of fire; the facing only gates WHEN he can shoot.
-  const angle = Math.atan2(fireLine.ty - oy, fireLine.tx - ox) + rng.gauss() * spread;
-  const dx = Math.cos(angle);
-  const dy = Math.sin(angle);
+  const angle = datan2(fireLine.ty - oy, fireLine.tx - ox) + rng.gauss() * spread;
+  const dx = dcos(angle);
+  const dy = dsin(angle);
 
   const wallT = rayCast(sim.world.segments, sim.world.solidCount, ox, oy, dx, dy, COMBAT.bulletRange);
   let victim = null;
@@ -122,7 +123,7 @@ function fire(sim, u) {
   for (const o of sim.units) {
     if (!o.alive || o.team === u.team) continue;
     // A raised shield facing the shot is wider than the body behind it; buckshot spreads with distance.
-    const pattern = w.cone ? Math.hypot(o.x - ox, o.y - oy) * Math.tan(w.cone) : 0;
+    const pattern = w.cone ? dhypot(o.x - ox, o.y - oy) * dtan(w.cone) : 0;
     const t = rayCircle(ox, oy, dx, dy, o.x, o.y, (shieldFacing(o, dx, dy) ? SHIELD.radius : UNIT.hitRadius) + pattern);
     if (t < hitT) {
       hitT = t;
@@ -201,7 +202,7 @@ function fire(sim, u) {
   const r2 = hearing * hearing;
   for (const o of sim.units) {
     if (o === u || !isAiControlled(sim, o)) continue;
-    if ((o.x - u.x) ** 2 + (o.y - u.y) ** 2 < r2) alertAiUnit(o, u.x, u.y, COMBAT.alertDuration, true);
+    if (sq(o.x - u.x) + sq(o.y - u.y) < r2) alertAiUnit(o, u.x, u.y, COMBAT.alertDuration, true);
   }
 
   if (victim) applyHit(sim, u, victim, toX, toY, dx, dy, covered, limb, guard);
@@ -266,7 +267,7 @@ function joltShield(u) {
  */
 function shieldFacing(u, dx, dy) {
   if (u.ability !== 'shield' || u.blind > 0 || u.stun > 0) return false;
-  return Math.abs(angleDiff(u.facing, Math.atan2(-dy, -dx))) <= SHIELD.arc;
+  return Math.abs(angleDiff(u.facing, datan2(-dy, -dx))) <= SHIELD.arc;
 }
 
 /** Which body part a bullet lands on: 'head' | 'torso' | 'limb'. */
@@ -293,7 +294,7 @@ function applyHit(sim, shooter, victim, x, y, dx, dy, covered, limb = false, gua
   const rng = sim.rng;
   const w = shooter.weapon;
   const part = limb ? 'limb' : rollBodyPart(rng, shooter, covered);
-  let damage = rng.range(w.damage[0], w.damage[1]) * falloff(w, Math.hypot(x - shooter.x, y - shooter.y));
+  let damage = rng.range(w.damage[0], w.damage[1]) * falloff(w, dhypot(x - shooter.x, y - shooter.y));
   if (part === 'head') damage *= COMBAT.headshotMultiplier;
   else if (part === 'limb') damage *= COMBAT.limbMultiplier;
   damage = Math.round(damage * guard);
@@ -321,7 +322,7 @@ function applyHit(sim, shooter, victim, x, y, dx, dy, covered, limb = false, gua
     }
     return;
   }
-  kill(sim, victim, shooter, Math.atan2(dy, dx));
+  kill(sim, victim, shooter, datan2(dy, dx));
 }
 
 /**
@@ -332,14 +333,14 @@ export function applyBlast(sim, attacker, victim, amount, x, y) {
   const damage = Math.round(amount);
   const dx = victim.x - x;
   const dy = victim.y - y;
-  const len = Math.hypot(dx, dy) || 1;
+  const len = dhypot(dx, dy) || 1;
   victim.hp -= damage;
   const lethal = victim.hp <= 0;
   sim.emit(EV.HIT, {
     unitId: victim.id, team: victim.team, role: victim.role, attackerId: attacker ? attacker.id : -1, x: victim.x, y: victim.y,
     dirX: dx / len, dirY: dy / len, damage, headshot: false, part: 'torso', covered: false, lethal, blast: true,
   });
-  if (lethal) return kill(sim, victim, attacker, Math.atan2(dy, dx), 'explosive');
+  if (lethal) return kill(sim, victim, attacker, datan2(dy, dx), 'explosive');
   victim.recoil = Math.min(COMBAT.maxRecoil + COMBAT.flinchRecoil, victim.recoil + COMBAT.flinchRecoil);
   if (victim.reaction > 0) victim.reaction += COMBAT.flinchDelay;
   if (victim.target < 0) {

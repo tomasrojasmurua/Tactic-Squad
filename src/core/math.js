@@ -1,4 +1,5 @@
 // Scalar / angle helpers shared by every layer. Pure functions, no state.
+import { datan2 } from './dmath.js';
 
 export const TAU = Math.PI * 2;
 export const DEG = Math.PI / 180;
@@ -39,7 +40,7 @@ export function dist2(ax, ay, bx, by) {
 
 export const dist = (ax, ay, bx, by) => Math.sqrt(dist2(ax, ay, bx, by));
 
-export const angleTo = (ax, ay, bx, by) => Math.atan2(by - ay, bx - ax);
+export const angleTo = (ax, ay, bx, by) => datan2(by - ay, bx - ax);
 
 /** '#rrggbb' -> [r, g, b] in 0..1 */
 export function hexToRgb(hex) {

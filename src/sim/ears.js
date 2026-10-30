@@ -12,6 +12,7 @@ import { MOVE, EARS } from '../config/balance.js';
 import { roleFlag } from '../config/operators.js';
 import { enemyTeam } from './queries.js';
 import { watchPointToward } from './ai.js';
+import { sq } from '../core/dmath.js';
 
 export function updateEars(sim) {
   const far2 = EARS.range * EARS.range;
@@ -22,7 +23,7 @@ export function updateEars(sim) {
     let bestD = Infinity;
     for (const e of sim.teams[enemyTeam(u.team)]) {
       if (!e.alive || !e.moving) continue;
-      const d2 = (e.x - u.x) ** 2 + (e.y - u.y) ** 2;
+      const d2 = sq(e.x - u.x) + sq(e.y - u.y);
       if (d2 < (e.sneaking ? quiet2 : far2) && d2 < bestD) {
         best = e;
         bestD = d2;

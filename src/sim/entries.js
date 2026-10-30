@@ -37,6 +37,7 @@ import { isAiControlled, ENTRY_GEAR, tossLanding, tossDoorway, tossRangeOf } fro
 const LAND = { x: 0, y: 0, reach: 0, viaX: 0, viaY: 0, leg1: 0, leg2: 0 };
 import { startBash, breakBarricade } from './barricades.js';
 import { cutWiresNear } from './wires.js';
+import { dcos, dhypot, dsin, sq } from '../core/dmath.js';
 
 /** Seconds each mode works on arrival before it is armed (0 = armed at once). */
 const PREP = Object.freeze({ slow: ENTRY.slow.prepTime, breach: ENTRY.breach.prepTime, cam: ENTRY.cam.prepTime });
@@ -70,8 +71,8 @@ export function armEntry(sim, u, p) {
   let ax = d.cx;
   let ay = d.cy;
   if (p.entry === 'slow' && door && !door.open) {
-    ax = door.def.hingeX + Math.cos(door.def.closedAngle) * door.def.length * 0.85;
-    ay = door.def.hingeY + Math.sin(door.def.closedAngle) * door.def.length * 0.85;
+    ax = door.def.hingeX + dcos(door.def.closedAngle) * door.def.length * 0.85;
+    ay = door.def.hingeY + dsin(door.def.closedAngle) * door.def.length * 0.85;
   }
   const look = p.look !== null ? p.look : angleTo(u.x, u.y, ax + d.normalX * side * ENTRY.lookPast, ay + d.normalY * side * ENTRY.lookPast);
   const prep = (PREP[p.entry] || 0) * (p.entry === 'breach' ? u.mods.breachPrep : 1);
@@ -253,8 +254,8 @@ function throwPath(sim, u, e) {
   path.viaY = d.cy;
   path.x = ox + nx * reach;
   path.y = oy + ny * reach;
-  path.leg1 = Math.hypot(d.cx - u.x, d.cy - u.y);
-  path.leg2 = Math.hypot(path.x - d.cx, path.y - d.cy);
+  path.leg1 = dhypot(d.cx - u.x, d.cy - u.y);
+  path.leg2 = dhypot(path.x - d.cx, path.y - d.cy);
   path.flight = (path.leg1 + path.leg2) / ENTRY.throwSpeed;
   return path;
 }
@@ -348,9 +349,9 @@ function flashAt(sim, g) {
   for (const o of sim.units) {
     if (!o.alive) continue;
     if (o.id === g.ownerId || (o.team === g.team && o.goDelay > 0)) continue;
-    const dist = Math.hypot(o.x - x, o.y - y);
+    const dist = dhypot(o.x - x, o.y - y);
     if (dist > F.radius || !solidLineOfSight(sim.world, x, y, o.x, o.y)) continue;
-    const toward = Math.cos(angleTo(o.x, o.y, x, y) - o.facing); // 1 = staring at it
+    const toward = dcos(angleTo(o.x, o.y, x, y) - o.facing); // 1 = staring at it
     const look = F.awayFactor + (1 - F.awayFactor) * Math.max(0, toward);
     const seconds = F.blind * look * (0.4 + 0.6 * (1 - dist / F.radius));
     if (seconds < F.minBlind) continue;
@@ -367,7 +368,7 @@ function flashAt(sim, g) {
 function blastAt(sim, x, y, radius, damage, minDamage, blindSeconds, owner, plane, stunSeconds = 0) {
   for (const o of sim.units) {
     if (!o.alive) continue;
-    const dist = Math.hypot(o.x - x, o.y - y);
+    const dist = dhypot(o.x - x, o.y - y);
     if (dist > radius) continue;
     if (plane && across(plane.d, o.x, o.y) * plane.side <= 0) continue;
     if (!solidLineOfSight(sim.world, x, y, o.x, o.y)) continue;
@@ -407,7 +408,7 @@ function concussion(sim, u, x, y, plane) {
   const reach = B.radius * u.mods.breachConcussion;
   for (const o of sim.units) {
     if (!o.alive || o.team === u.team) continue;
-    const dist = Math.hypot(o.x - x, o.y - y);
+    const dist = dhypot(o.x - x, o.y - y);
     if (dist > reach || across(plane.d, o.x, o.y) * plane.side <= 0) continue;
     if (!solidLineOfSight(sim.world, x, y, o.x, o.y)) continue;
     const s = B.concussion * (1 - 0.5 * (dist / reach));
@@ -421,7 +422,7 @@ function kickEffects(sim, u, d, side) {
   const K = ENTRY.kick;
   for (const o of sim.units) {
     if (!o.alive || o.team === u.team) continue;
-    if (across(d, o.x, o.y) * side <= 0 || Math.hypot(o.x - d.cx, o.y - d.cy) > K.dazeRadius) continue;
+    if (across(d, o.x, o.y) * side <= 0 || dhypot(o.x - d.cx, o.y - d.cy) > K.dazeRadius) continue;
     blind(sim, o, K.daze, 'kick', d.cx, d.cy);
     o.stun = Math.max(o.stun, K.daze);
   }
@@ -440,6 +441,6 @@ function alertNear(sim, u, x, y, radius, loud) {
   const r2 = radius * radius;
   for (const o of sim.units) {
     if (!o.alive || (u && o.team === u.team) || !isAiControlled(sim, o)) continue;
-    if ((o.x - x) ** 2 + (o.y - y) ** 2 <= r2) alertAiUnit(o, x, y, COMBAT.alertDuration, loud);
+    if (sq(o.x - x) + sq(o.y - y) <= r2) alertAiUnit(o, x, y, COMBAT.alertDuration, loud);
   }
 }

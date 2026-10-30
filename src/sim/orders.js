@@ -99,6 +99,7 @@ import { buyItem, chooseSite, placeDefender, setWatch, setBarricade, placeTrap, 
 import { steerDrone, endDrone } from './drone.js';
 import { routePoint } from './routePoint.js';
 import { startFollow, rebuildFollowers } from './follow.js';
+import { datan2, dhypot } from '../core/dmath.js';
 
 export const REJECT = Object.freeze({
   routeTooLong: 'routeTooLong',
@@ -353,7 +354,7 @@ function withinTolerance(r, i, k, anchor) {
   const ay = anchor.y;
   const bx = r[k].x - ax;
   const by = r[k].y - ay;
-  const len = Math.hypot(bx, by);
+  const len = dhypot(bx, by);
   if (len < 1e-6) return true;
   for (let m = i; m < k; m++) {
     const dist = Math.abs((r[m].x - ax) * by - (r[m].y - ay) * bx) / len;
@@ -480,7 +481,7 @@ const FULL = -2;
 function pointIndex(sim, unit, index) {
   if (index !== HERE) return index;
   const r = unit.route;
-  if (r.length && r[0].user && Math.hypot(r[0].x - unit.x, r[0].y - unit.y) < 0.05) return 0;
+  if (r.length && r[0].user && dhypot(r[0].x - unit.x, r[0].y - unit.y) < 0.05) return 0;
   if (r.length >= NAV.maxRoutePoints) return FULL;
   r.unshift(routePoint(unit.x, unit.y, { user: true }));
   return 0;
@@ -569,7 +570,7 @@ function besideSpot(sim, unit, k, near, from) {
       ok = nav.walkable(x, y);
     }
     if (!ok || !nav.lineWalkable(x, y, near.x, near.y)) continue;
-    const cost = Math.hypot(x - from.x, y - from.y) + (stackTaken(sim, unit, x, y) ? 100 : 0);
+    const cost = dhypot(x - from.x, y - from.y) + (stackTaken(sim, unit, x, y) ? 100 : 0);
     if (!best || cost < best.cost) best = { x, y, cost };
   }
   return best;
@@ -590,8 +591,8 @@ function stackInFront(sim, unit, i) {
 function stackTaken(sim, u, x, y) {
   for (const a of sim.teams[u.team]) {
     if (a === u || !a.alive) continue;
-    if (Math.hypot(a.x - x, a.y - y) < 0.3) return true;
-    for (const q of a.route) if (q.user && Math.hypot(q.x - x, q.y - y) < 0.3) return true;
+    if (dhypot(a.x - x, a.y - y) < 0.3) return true;
+    for (const q of a.route) if (q.user && dhypot(q.x - x, q.y - y) < 0.3) return true;
   }
   return false;
 }
@@ -750,7 +751,7 @@ function setPeek(sim, unit, on, index) {
   const p = r[i];
   if (p.look === null) {
     const prev = i > 0 ? r[i - 1] : unit;
-    p.look = Math.atan2(p.y - prev.y, p.x - prev.x);
+    p.look = datan2(p.y - prev.y, p.x - prev.x);
   }
   p.pause = MOVE.peekTime;
   const n = r.length;
@@ -780,7 +781,7 @@ function setCover(sim, unit, on, index) {
   p.cover = on;
   if (on && p.look === null) {
     const prev = i > 0 ? unit.route[i - 1] : unit;
-    p.look = Math.atan2(p.y - prev.y, p.x - prev.x);
+    p.look = datan2(p.y - prev.y, p.x - prev.x);
   }
   changed(sim, unit, 'cover');
 }

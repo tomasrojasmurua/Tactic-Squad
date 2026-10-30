@@ -15,6 +15,7 @@ import { canSee } from './vision.js';
 import { alertAiUnit } from './ai.js';
 import { isAiControlled } from './queries.js';
 import { destroyDoor } from './doors.js';
+import { sq } from '../core/dmath.js';
 
 export function createIntel() {
   return { barricades: new Set(), wires: new Set() }; // door indices the attackers know are barricaded / wired (sim/wires.js)
@@ -90,6 +91,6 @@ function alertNear(sim, u, x, y) {
   const r2 = BARRICADE.hearing * BARRICADE.hearing;
   for (const o of sim.units) {
     if (!o.alive || o.team === u.team || !isAiControlled(sim, o)) continue;
-    if ((o.x - x) ** 2 + (o.y - y) ** 2 <= r2) alertAiUnit(o, x, y, COMBAT.alertDuration, true);
+    if (sq(o.x - x) + sq(o.y - y) <= r2) alertAiUnit(o, x, y, COMBAT.alertDuration, true);
   }
 }

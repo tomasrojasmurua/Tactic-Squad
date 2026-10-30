@@ -10,6 +10,7 @@
 import { ENTRY } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { applyBlast } from './combat.js';
+import { sq } from '../core/dmath.js';
 
 /** A new pool of fire at (x, y) (already smothered if smoke stands there). */
 export function spawnFire(sim, x, y, owner) {
@@ -19,7 +20,7 @@ export function spawnFire(sim, x, y, owner) {
   if (smothered(sim, f)) out(sim, f, 'smoke');
 }
 
-const smothered = (sim, f) => sim.smokes.some((s) => s.r > 0 && (s.x - f.x) ** 2 + (s.y - f.y) ** 2 < (s.r + ENTRY.molotov.radius * 0.5) ** 2);
+const smothered = (sim, f) => sim.smokes.some((s) => s.r > 0 && sq(s.x - f.x) + sq(s.y - f.y) < sq(s.r + ENTRY.molotov.radius * 0.5));
 
 function out(sim, f, why) {
   f.age = Infinity;
@@ -28,8 +29,8 @@ function out(sim, f, why) {
 
 /** Is (x, y) in a burning pool? */
 export function inFire(sim, x, y) {
-  const r2 = ENTRY.molotov.radius ** 2;
-  for (const f of sim.fires) if (f.age < ENTRY.molotov.seconds && (x - f.x) ** 2 + (y - f.y) ** 2 < r2) return true;
+  const r2 = sq(ENTRY.molotov.radius);
+  for (const f of sim.fires) if (f.age < ENTRY.molotov.seconds && sq(x - f.x) + sq(y - f.y) < r2) return true;
   return false;
 }
 
@@ -51,7 +52,7 @@ export function updateFires(sim, dt) {
       const owner = f.ownerId >= 0 ? sim.units[f.ownerId] : null;
       const r2 = M.radius * M.radius;
       for (const u of sim.units) {
-        if (u.alive && (u.x - f.x) ** 2 + (u.y - f.y) ** 2 < r2) applyBlast(sim, owner, u, M.dps * M.tick, f.x, f.y);
+        if (u.alive && sq(u.x - f.x) + sq(u.y - f.y) < r2) applyBlast(sim, owner, u, M.dps * M.tick, f.x, f.y);
       }
     }
     if (f.age >= M.seconds) out(sim, f, 'burnt');

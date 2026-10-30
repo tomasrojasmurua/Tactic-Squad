@@ -32,6 +32,7 @@ import { applyCommand } from './orders.js';
 import { codeWaiting, codeInUse, isGoReady, gearLeft, defuseCandidate, entryModeFits } from './queries.js';
 import { PHASE } from './round.js';
 import { planFor } from '../config/operators.js';
+import { datan2, dhypot, sq } from '../core/dmath.js';
 
 const TEAM = 'attackers';
 
@@ -116,9 +117,9 @@ function driveDrone(sim, ai) {
     leg.rerouted = true;
   }
   let p = leg.path[st.point];
-  while (p && (p.x - d.x) ** 2 + (p.y - d.y) ** 2 < AI_ATTACK.droneReach * AI_ATTACK.droneReach) p = leg.path[++st.point];
+  while (p && sq(p.x - d.x) + sq(p.y - d.y) < AI_ATTACK.droneReach * AI_ATTACK.droneReach) p = leg.path[++st.point];
   // Stuck (a barricade, furniture): skip to the next point, then to the next leg.
-  st.still = Math.hypot(d.x - st.lastX, d.y - st.lastY) < DRONE.speed * sim.dt * 0.2 && d.dir >= 0 ? st.still + sim.dt : 0;
+  st.still = dhypot(d.x - st.lastX, d.y - st.lastY) < DRONE.speed * sim.dt * 0.2 && d.dir >= 0 ? st.still + sim.dt : 0;
   st.lastX = d.x;
   st.lastY = d.y;
   if (st.still > AI_ATTACK.droneStuck) {
@@ -130,7 +131,7 @@ function driveDrone(sim, ai) {
     st.point = 0;
     return order(sim, { type: 'drone', dir: -1 });
   }
-  const heading = Math.atan2(p.y - d.y, p.x - d.x);
+  const heading = datan2(p.y - d.y, p.x - d.x);
   const dir = ((Math.round((heading / TAU) * DRONE.directions) % DRONE.directions) + DRONE.directions) % DRONE.directions;
   if (dir !== d.dir) order(sim, { type: 'drone', dir });
 }
@@ -167,7 +168,7 @@ function plan(sim, ai) {
     if (fresh) order(sim, { type: 'clearRoute', unitId: u.id });
     else if (u.route.length || u.entry || u.bash) return; // still on his way
     const [x, y] = spot(sim, site, i);
-    if ((u.x - x) ** 2 + (u.y - y) ** 2 < 0.25) return; // already there
+    if (sq(u.x - x) + sq(u.y - y) < 0.25) return; // already there
     // Overwatch: the Tirador stops short of the site the first time and holds the way in (a turn later he joins).
     if (fresh && plan.overwatch === u.role && overwatch(sim, u, x, y)) return;
     // A pinch: the second operator comes in through another door of the site.
@@ -228,7 +229,7 @@ function overwatch(sim, u, x, y) {
   for (let i = path.length - 1; i > 0; i--) {
     const a = path[i - 1];
     const b = path[i];
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const len = dhypot(b.x - a.x, b.y - a.y);
     if (len >= left) {
       const k = left / (len || 1);
       const px = b.x + (a.x - b.x) * k;
@@ -238,7 +239,7 @@ function overwatch(sim, u, x, y) {
       const w = sim.world;
       if (segmentBlocked(w.segments, w.staticSegmentCount, px, py, x, y)) return false;
       order(sim, { type: 'addWaypoint', unitId: u.id, x: px, y: py, user: true });
-      order(sim, { type: 'setLook', unitId: u.id, angle: Math.atan2(b.y - py, b.x - px) });
+      order(sim, { type: 'setLook', unitId: u.id, angle: datan2(b.y - py, b.x - px) });
       return true;
     }
     left -= len;
@@ -375,7 +376,7 @@ function pathLength(from, path) {
   let len = 0;
   let a = from;
   for (const p of path) {
-    len += Math.hypot(p.x - a.x, p.y - a.y);
+    len += dhypot(p.x - a.x, p.y - a.y);
     a = p;
   }
   return len;

@@ -34,6 +34,7 @@ import { applyRole, roleGear } from './units.js';
 import { createBomb } from './objectives.js';
 import { setWire, wiredDoors } from './wires.js';
 import { wireLimit, cameraLimit } from './queries.js';
+import { dcos, dsin, sq } from '../core/dmath.js';
 
 // ------------------------------------------------------------ buy
 
@@ -169,7 +170,7 @@ export function placeDefender(sim, u, px, py, facing = u.facing) {
   const { x, y } = p;
   if (!inDefenderHalf(sim, x, y)) return 'outsideHalf';
   const min2 = PREP.minSpacing * PREP.minSpacing;
-  for (const o of sim.teams.defenders) if (o !== u && (o.x - x) ** 2 + (o.y - y) ** 2 < min2) return 'tooClose';
+  for (const o of sim.teams.defenders) if (o !== u && sq(o.x - x) + sq(o.y - y) < min2) return 'tooClose';
   moveTo(u, x, y, facing);
   sim.emit(EV.SETUP_CHANGED, { unitId: u.id, kind: 'place' });
   return null;
@@ -270,7 +271,7 @@ export function aiBuy(sim) {
   if (sim.controllers.defenders !== 'ai') return;
   // Those who turn to noise first (an angle held deaf never throws), then the closest to the bomb.
   const deaf = (u) => (u.behavior && u.behavior.reactsToNoise === false ? 1 : 0);
-  const d2 = (u) => (u.x - sim.bomb.x) ** 2 + (u.y - sim.bomb.y) ** 2;
+  const d2 = (u) => sq(u.x - sim.bomb.x) + sq(u.y - sim.bomb.y);
   const byBomb = sim.teams.defenders.slice().sort((a, b) => deaf(a) - deaf(b) || d2(a) - d2(b) || a.id - b.id);
   for (const u of byBomb.slice(0, AI_UTILITY.molotovs)) buyItem(sim, u, 'molotov', 1);
   for (const u of sim.teams.defenders) for (const item of AI_UTILITY.buy) buyItem(sim, u, item, 1); // what the points reach
@@ -344,7 +345,7 @@ function sightLane(sim, post) {
   let sum = 0;
   for (let i = 0; i < n; i++) {
     const a = post.facing + (n > 1 ? -AI_POSTS.arc + (2 * AI_POSTS.arc * i) / (n - 1) : 0);
-    sum += rayCast(sim.world.segments, sim.world.solidCount, post.at[0], post.at[1], Math.cos(a), Math.sin(a), AI_POSTS.range);
+    sum += rayCast(sim.world.segments, sim.world.solidCount, post.at[0], post.at[1], dcos(a), dsin(a), AI_POSTS.range);
   }
   return sum / n;
 }

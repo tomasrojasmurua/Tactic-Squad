@@ -3,6 +3,7 @@
 // straight segments. Closed doors are NOT obstacles (units open them).
 import { pointAabbDistance } from '../core/geom.js';
 import { NAV } from '../config/balance.js';
+import { dhypot, sq } from '../core/dmath.js';
 
 const SQRT2 = Math.SQRT2;
 
@@ -78,7 +79,7 @@ export class NavGrid {
           if (this.blocked[iy * cols + ix]) continue;
           const px = (ix + 0.5) * cell;
           const py = (iy + 0.5) * cell;
-          const d = (px - x) ** 2 + (py - y) ** 2;
+          const d = sq(px - x) + sq(py - y);
           if (d < bestD) {
             bestD = d;
             best = { x: px, y: py };
@@ -91,7 +92,7 @@ export class NavGrid {
 
   /** True if a straight walk a->b stays on walkable cells. */
   lineWalkable(ax, ay, bx, by) {
-    const len = Math.hypot(bx - ax, by - ay);
+    const len = dhypot(bx - ax, by - ay);
     const steps = Math.max(1, Math.ceil(len / (this.cell * NAV.lineSampleFactor)));
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;

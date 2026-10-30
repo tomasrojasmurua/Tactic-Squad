@@ -15,6 +15,7 @@
 import { MOVE, NAV } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { routePoint } from './routePoint.js';
+import { dhypot } from '../core/dmath.js';
 
 /** The followers of a unit, by rank. */
 export function followersOf(sim, leader) {
@@ -103,7 +104,7 @@ function pointBack(pts, j, back) {
   for (let k = j; k >= 1; k--) {
     const a = pts[k - 1];
     const b = pts[k];
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const len = dhypot(b.x - a.x, b.y - a.y);
     if (len >= left && len > 1e-6) {
       const t = (len - left) / len;
       return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, seg: k, dist: left };
