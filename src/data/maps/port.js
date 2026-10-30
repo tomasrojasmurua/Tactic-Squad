@@ -28,8 +28,8 @@ export default {
   traits: ['Contenedores a una, dos y tres alturas', 'Dos carriles largos: el muelle y el carril', 'Un sitio abierto y otro tras puertas pesadas'],
   siteNames: { A: 'los reefers', B: 'la cámara de frío' },
   siteTraits: {
-    A: ['Sin puertas: se llega por el muelle, el pasillo del reach o el carril', 'Reefers de una altura y pilas de dos: cobertura que corta la vista', 'Se ve de lejos desde el muelle'],
-    B: ['Dos puertas pesadas desde la bodega y una desde la sala de máquinas', 'A la bodega se entra por el andén, consolidación o máquinas', 'Estanterías altas: rincones a dos metros'],
+    A: ['Sin puertas: el muelle, el reach o el carril', 'Reefers y pilas de dos: cortan la vista', 'Se ve de lejos desde el muelle'],
+    B: ['Dos puertas pesadas y una desde máquinas', 'A la bodega: andén, consolidación o máquinas', 'Estanterías altas: rincones a dos metros'],
   },
 
   walls: [
@@ -169,7 +169,7 @@ export default {
     { kind: 'site', rect: [48.2, 30.2, 10.0, 6.2], text: 'B', color: '#f2c230' },
     { kind: 'arrow', at: [27.0, 5.0], size: 1.2, rot: 0, text: 'A', color: '#f2c230' },
     { kind: 'arrow', at: [36.0, 22.4], size: 1.2, rot: 0, text: 'B', color: '#f2c230' },
-    { kind: 'text', at: [6.0, 28.6], size: 0.62, text: 'DESPLIEGUE', color: '#e8e2d0' },
+    { kind: 'text', at: [6.8, 34.8], size: 0.62, text: 'DESPLIEGUE', color: '#e8e2d0' },
     { kind: 'stripes', rect: [10.6, 20.4, 0.5, 4.6], color: '#e3b51e' },
   ],
 
@@ -226,7 +226,7 @@ export default {
     // --- site A: the reefers plugged in, a generator, a two-high row behind them
     { type: 'reefer', at: [52.2, 10.4], rot: 0 },
     { type: 'reefer', at: [53.0, 16.6], rot: 0, color: '#d8dad4' },
-    { type: 'containerStack', at: [55.6, 7.4], rot: 0, color: '#3f7f52' },
+    { type: 'container', at: [55.6, 7.4], rot: 0, color: '#3f7f52' }, // one high: a stack this close to the fence leans out of the frame
     { type: 'generator', at: [48.6, 18.0], rot: 0 },
     { type: 'crate', at: [56.6, 13.2], rot: 0 },
     { type: 'barrel', at: [58.3, 19.4], rot: 0 },
@@ -292,8 +292,8 @@ export default {
       { at: [55.0, 19.4], facing: -120 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
       // Between the reefers, by the bomb: the aisle from the yard and the gap to the lane.
       { at: [53.6, 13.4], facing: 180 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'scan', from: 140 * DEG, to: 220 * DEG, period: 6, reactsToNoise: true } },
-      // Behind the back row, where the quay meets the yard; falls back to the reefers.
-      { at: [50.6, 7.6], facing: -170 * DEG, weapon: 'smg', role: 'roamer', behavior: { type: 'hold', reactsToNoise: true, rotate: { to: [56.4, 9.4], look: -150 * DEG } } },
+      // Behind the back row, where the quay meets the yard: holds the quay and the aisle, does not chase.
+      { at: [50.6, 7.6], facing: -170 * DEG, weapon: 'rifle', role: 'roamer', behavior: { type: 'hold', reactsToNoise: false } },
       // The lane, by the forklift.
       { at: [51.4, 22.4], facing: 180 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 160 * DEG, to: 220 * DEG, period: 6, reactsToNoise: true } },
     ],
@@ -336,7 +336,7 @@ export default {
 
   aiEntries: {
     A: { muelle: 3, porton: 1, aduana: 1 },
-    B: { aduana: 2, porton: 1 },
+    B: { aduana: 1, porton: 1, muelle: 1 },
   },
 
   camera: { start: [8, 22], height: 22, frame: [1, 15, 26, 13], defendFrame: [30, 3, 30, 34] },

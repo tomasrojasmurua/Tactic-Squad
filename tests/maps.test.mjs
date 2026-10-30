@@ -7,13 +7,16 @@ import { Simulation } from '../src/sim/Simulation.js';
 import { EV } from '../src/core/events.js';
 import { NAV } from '../src/config/balance.js';
 import { MAPS, ALL_MAPS, TRAINING_MAP, DEFAULT_MAP } from '../src/data/maps/index.js';
-import { MAP_CHOICES } from '../src/session/Lobby.js';
+import { MAP_CHOICES, aiRoles } from '../src/session/Lobby.js';
 import { T } from '../src/ui/texts.js';
 
 const AI_VS_AI = { attackers: 'ai', defenders: 'ai' };
 
+// Each side takes the squad the lobby draws for the AI (Lobby.aiRoles), as in a real match:
+// the classes' default squad is not one anybody plays against.
 function playRound(map, seed) {
-  const sim = new Simulation(map, { seed, controllers: AI_VS_AI });
+  const roles = { attackers: aiRoles(seed, 'attackers'), defenders: aiRoles(seed, 'defenders') };
+  const sim = new Simulation(map, { seed, controllers: AI_VS_AI, roles });
   const events = [];
   for (let guard = 0; sim.phase !== 'end' && guard < 40000; guard++) {
     if (sim.phase === 'buy' || sim.phase === 'prep' || sim.phase === 'plan') sim.advancePhase();
@@ -73,7 +76,12 @@ for (const [id, map] of Object.entries(ALL_MAPS)) {
       assert.ok(map.siteTraits[s.id]?.length >= 2, `sitio ${s.id}`);
       assert.ok(map.siteNames[s.id], `nombre del sitio ${s.id}`);
     }
-    for (const t of [...map.traits, ...Object.values(map.siteTraits).flat()]) assert.doesNotMatch(t, classes, t);
+    for (const t of [...map.traits, ...Object.values(map.siteTraits).flat()]) {
+      assert.doesNotMatch(t, classes, t);
+      // In the phone's landscape lobby the card fits three lines of ~45 characters each
+      // (the training map is not in the lobby).
+      if (MAPS[id]) assert.ok(t.length <= 45, `rasgo de ${t.length} caracteres: ${t}`);
+    }
   });
 
   test(`${map.name}: IA contra IA, las rondas terminan sin órdenes imposibles y nadie gana siempre`, () => {

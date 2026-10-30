@@ -180,4 +180,29 @@ puertas y entradas nuevas en `src/ui/texts.js`; adornos del suelo en `src/render
 
 ## 6. Resultado medido
 
-(se completa después de construir y medir)
+IA contra IA con las escuadras que sortea el lobby (`Lobby.aiRoles`), semillas 1-1600 por mapa
+(`scripts/balance.mjs` y `bal.mjs`), victorias del atacante:
+
+| Mapa | Sitio A | Sitio B | Total |
+| --- | --- | --- | --- |
+| Almacén | 51,1 % (410/802) | 53,8 % (429/798) | 52,4 % |
+| Hotel | 47,5 % (381/802) | 52,5 % (419/798) | 50,0 % |
+| Puerto | 48,8 % (391/802) | 48,1 % (384/798) | 48,4 % |
+
+Ajustes del cierre (sin tocar clases ni geometría que cambie rutas):
+
+- **Puerto A** (estaba en 56 %): el merodeador del fondo de los reefers lleva rifle y se queda en
+  la fila de atrás (no persigue ruidos ni rota), así cubre el muelle y el pasillo del reach.
+- **Puerto B** (41-48 % según la muestra): la IA atacante reparte por igual sus entradas a B
+  (aduana, portón y muelle); antes elegía la aduana el doble, la ruta que peor le va (16 %).
+- **Hotel B** (estaba en 56 %): el ancla de la barra mira el arco del vestíbulo de frente (165°),
+  el merodeador de la cocina lleva rifle y la IA atacante entra por el vestíbulo 4 de cada 5 veces.
+- **Visual**: la pila del noreste del Puerto bajó a un contenedor de una altura (a 1 m de la
+  valla, la de dos alturas se dibujaba fuera del mapa en perspectiva); el rótulo DESPLIEGUE del
+  Puerto y del Hotel se movió para no quedar bajo un vehículo.
+- **Ficha**: todos los rasgos tienen 45 caracteres o menos (una prueba lo exige), para que los tres
+  quepan en el celular horizontal también al tocar un sitio.
+
+La prueba de mapas (`tests/maps.test.mjs`) usa ahora las escuadras sorteadas de la IA, como una
+partida real: con la escuadra por defecto el atacante del Puerto ganaba ~20 %, que no es la
+escuadra contra la que se juega.

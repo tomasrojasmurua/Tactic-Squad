@@ -83,8 +83,8 @@ export default {
   traits: ['Un pasillo de 28 m con puertas a los lados', 'Vestíbulo con columnas y terraza a la vista', 'La cocina une los dos sitios por dentro'],
   siteNames: { A: 'la suite', B: 'el bar' },
   siteTraits: {
-    A: ['Tres puertas: la del pasillo, la de la 106 y la del servicio de habitaciones', 'Un tabique separa el dormitorio del salón: rincones a corta distancia', 'Ninguna ventana a la calle'],
-    B: ['Cuatro accesos: el arco del vestíbulo, la oficina, la cocina y la terraza', 'Barra, mesas y una columna: cobertura baja y una alta', 'Ventanas a la terraza: se ve y se dispara desde afuera'],
+    A: ['Puertas del pasillo, la 106 y room service', 'Tabique entre dormitorio y salón: rincones', 'Ninguna ventana a la calle'],
+    B: ['Cuatro accesos: arco, office, cocina, terraza', 'Barra y mesas bajas, una columna alta', 'Ventanas a la terraza: se dispara desde fuera'],
   },
 
   walls: [
@@ -244,7 +244,7 @@ export default {
     { kind: 'site', rect: [30.4, 15.0, 9.8, 6.4], text: 'B', color: '#f2c230' },
     { kind: 'arrow', at: [31.0, 9.8], size: 1.1, rot: 0, text: 'A', color: '#f2c230' },
     { kind: 'arrow', at: [20.4, 20.4], size: 1.1, rot: 0, text: 'B', color: '#f2c230' },
-    { kind: 'text', at: [4.0, 27.6], size: 0.6, text: 'DESPLIEGUE', color: '#e8e2d0' },
+    { kind: 'text', at: [3.8, 31.8], size: 0.6, text: 'DESPLIEGUE', color: '#e8e2d0' },
     { kind: 'stripes', rect: [5.6, 16.6, 0.5, 4.8], color: '#e3b51e' },
     { kind: 'text', at: [15.0, 12.0], size: 0.4, text: 'ASCENSORES', color: '#e8e2d0' },
     ...ROOMS.map(([n, a, b, m]) => ({ kind: 'text', at: [roomDoorX(a, b, m) + (m ? -1.2 : 1.2), 9.25], size: 0.36, text: `${n}`, color: '#d8c27a' })),
@@ -392,12 +392,12 @@ export default {
       { at: [38.0, 13.4], facing: -120 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: -150 * DEG, to: -90 * DEG, period: 6, reactsToNoise: true } },
     ],
     B: [
-      // Anchor behind the counter's end: the arch from the lobby and the terrace door, both at an angle.
-      { at: [38.8, 16.2], facing: 150 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
+      // Anchor behind the counter's end: the arch from the lobby square on, the terrace door at an angle.
+      { at: [38.8, 16.2], facing: 165 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
       // By the column: the terrace door and the windows.
       { at: [31.4, 19.6], facing: 110 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'scan', from: 70 * DEG, to: 170 * DEG, period: 6, reactsToNoise: true } },
       // In the kitchen by the swing door; falls back into the bar.
-      { at: [45.0, 23.8], facing: -150 * DEG, weapon: 'smg', role: 'roamer', behavior: { type: 'hold', reactsToNoise: true, rotate: { to: [39.6, 20.0], look: 180 * DEG } } },
+      { at: [45.0, 23.8], facing: -150 * DEG, weapon: 'rifle', role: 'roamer', behavior: { type: 'hold', reactsToNoise: true, rotate: { to: [39.6, 20.0], look: 180 * DEG } } },
       // The linen room, on the lobby's service door.
       { at: [28.6, 12.8], facing: 180 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 150 * DEG, to: 210 * DEG, period: 6, reactsToNoise: true } },
     ],
@@ -430,7 +430,7 @@ export default {
 
   aiEntries: {
     A: { servicio: 2, vestibulo: 1 },
-    B: { vestibulo: 3, terraza: 1 },
+    B: { vestibulo: 4, terraza: 1 },
   },
 
   camera: { start: [12, 19], height: 21, frame: [1, 12, 25, 14], defendFrame: [24, 1, 31, 26] },

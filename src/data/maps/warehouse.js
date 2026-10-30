@@ -26,8 +26,8 @@ export default {
   traits: ['Tres carriles: andén, nave y callejón', 'Estanterías: pasillos largos y cruces cortos', 'Expedición une los dos sitios por dentro'],
   siteNames: { A: 'el muelle de carga', B: 'el taller' },
   siteTraits: {
-    A: ['Tres accesos: el portón del andén, el paso de carga de la nave y expedición', 'Pallets envueltos y una carretilla: cobertura baja', 'El paso de carga se ve desde toda la nave'],
-    B: ['Tres accesos: la nave, expedición y el portón del callejón', 'Bancos de trabajo y cargadores: rincones cerca de las puertas', 'Una ventana al callejón'],
+    A: ['Portón del andén, paso de carga y expedición', 'Pallets y una carretilla: cobertura baja', 'El paso de carga se ve desde toda la nave'],
+    B: ['La nave, expedición y el portón del callejón', 'Bancos y cargadores: rincones junto a puertas', 'Una ventana al callejón'],
   },
 
   walls: [

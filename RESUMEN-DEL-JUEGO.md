@@ -41,19 +41,21 @@ puedas reaccionar en vez de mirar cómo te matan.
 
 ## 2. Cómo se juega una ronda
 
-Tres mapas, de 40 × 28 m. **Operación Almacén**, el equilibrado (patio de salida, oficina y
-cocina al norte, pasillo al centro, baño y sala con el sitio B al sur, nave con el sitio A
-al este). **Operación Hotel**, el de puertas: un pasillo recto de 23 m con habitaciones
-comunicadas a los lados (cada una con su baño junto a la entrada), la lavandería con el
-sitio B y la suite al fondo con el sitio A, a la que solo se entra por dos puertas (la del
-pasillo, tras un recibidor, y la que la comunica con la 705). Premia abrir y mirar antes
-de entrar (Brecha, Explorador) y castiga cruzar el pasillo a la vista (Ancla, Trampero).
-**Operación Puerto**, el abierto: una terminal de contenedores con medio mapa al aire libre.
-El sitio A es el patio de contenedores, sin puertas y con tres carriles largos (el muelle,
-de 31 m; el carril del medio y la explanada de camiones): premia a los Tiradores y al Escudo
-para cruzar, y al Merodeador entre las pilas. El sitio B es la cámara de frío de la bodega,
-con dos puertas pesadas que dan a la bodega, y a la bodega se entra por el andén, la puerta
-del frente o la aduana: premia al Ancla y al Trampero, y la abren la Brecha y el Granadero.
+Tres mapas, apaisados para el celular horizontal y cada uno con su historia (detalle en
+`docs/diseno/mapas-v2.md`). Cada uno tiene tres carriles, tres entradas del atacante separadas
+(no salen de la misma pared) y sitios con tres o más accesos de tipos distintos.
+**Operación Almacén** (56 × 34 m), un centro de distribución de noche: andén de camiones al norte,
+nave de estanterías al centro (pasillos largos en un eje y cruces cortos en el otro) y callejón de
+servicio al sur. Sitio A en el muelle de carga, sitio B en el taller de carretillas; expedición los
+une por dentro. **Operación Hotel** (56 × 34 m), la planta baja del Hotel Miramar: un pasillo de
+habitaciones de 28 m al norte, el vestíbulo con columnas al centro y la terraza al sur. Sitio A en
+la suite (tres puertas, un tabique que deja rincones) y sitio B en el bar (cuatro accesos y
+ventanas a la terraza); la cocina une los dos. **Operación Puerto** (60 × 38 m), la Terminal 3 en
+turno de noche: un patio de contenedores a una, dos y tres alturas, girados y con huecos (un
+reach stacker a medio apilar, un contenedor abierto con su carga en el suelo, uno golpeado
+aparte), el muelle con la grúa y el carril de camiones. Sitio A en los reefers, al aire libre;
+sitio B en la cámara de frío, tras puertas pesadas. El tutorial sigue en el almacén original
+(40 × 28 m, fuera del lobby). La ficha de cada mapa nunca sugiere clases.
 La ronda es **3 contra 3**: el mapa trae 4 puestos de defensa por sitio y se usan los 3
 primeros (`config/squad.js` `DEFENDERS`).
 
@@ -202,11 +204,11 @@ todos**: operadores, IA, niebla de guerra, dron y cámaras. **No para balas ni
 explosiones.**
 
 **Cámaras de los defensores.** El defensor monta **2** en los **7 soportes** de la pared
-del mapa (pasillo este y oeste, cocina, sala norte y sur, nave norte y sur). En la
+del mapa (cada mapa tiene los suyos: en el Almacén, por ejemplo, el andén, la nave, el muelle y el taller). En la
 preparación y mientras vuela el dron enemigo, cada soporte es un botón redondo sobre el
 mapa: **+** la pone, **×** la quita, y el cono de lo que vería se dibuja punteado. Cada
-soporte apunta a un lado fijo. La IA usa las de su sitio (A: pasillo este y nave sur;
-B: sala sur y sala norte), que también son las iniciales del jugador. Se ven como una
+soporte apunta a un lado fijo. La IA usa las dos que el mapa marca para su sitio
+(`aiCameras`), que también son las iniciales del jugador. Se ven como una
 cámara de seguridad blanca con su lente y su cono de visión en el suelo, cortado por
 paredes, puertas y humo. Un soporte que el atacante ya descubrió sigue descubierto
 aunque la cámara se quite y se vuelva a poner. Si tiene a un atacante a la vista 0,5 s, **todos los defensores saben dónde está** y
@@ -274,7 +276,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 | Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (soportes del mapa a elegir, gratis). Sensor y elección de refuerzos por el defensor: faltan |
 | Paredes blandas destructibles | **Descartado** por decisión de diseño (27 oct 2026): no se implementan |
 | Plazos de las fases | **Parcial.** El reloj existe (`PhaseClock`), pero contra la IA no hay límite |
-| Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Parcial.** Tres mapas (Almacén, Hotel y Puerto; IA contra IA con escuadras al azar: 51 %, 52 % y 53 % para el atacante); Embajada en camino. 5v5 y dificultades: faltan |
+| Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Parcial.** Tres mapas (Almacén, Hotel y Puerto; IA contra IA con escuadras al azar, 1.600 rondas por mapa: 52 %, 50 % y 48 % para el atacante, cada sitio entre 47 y 54 %); Embajada en camino. 5v5 y dificultades: faltan |
 | Online | **Falta.** El código está preparado (determinismo, órdenes serializables, grabador de planes, `teamView`). Bloquea que el render lea la sim entera |
 | Equilibrio 45-55 % | **Medido** (29 oct 2026, 600 rondas por mapa, escuadras a ciegas): atacantes 54 % Almacén, 46 % Hotel, 50 % Puerto. Por clase, tabla en `docs/traspaso/CLASES-Y-MAPAS.md` |
 
