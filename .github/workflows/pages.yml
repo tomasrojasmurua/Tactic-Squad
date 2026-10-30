@@ -44,9 +44,13 @@ jobs:
         working-directory: server
         run: |
           set -o pipefail
-          npx --yes wrangler@4 deploy 2>&1 | tee deploy.log
+          # The outcome also goes out as an annotation (readable through the API, without the log).
+          if ! npx --yes wrangler@4 deploy 2>&1 | tee deploy.log; then
+            grep -iE 'error|subdomain|authenticat|permission|code: ?[0-9]+|account' deploy.log | head -10 | sed 's/\x1b\[[0-9;]*m//g' | while read -r line; do echo "::error title=Servidor::$line"; done
+            exit 1
+          fi
           url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)
-          echo "Servidor: $url"
+          echo "::notice title=Servidor::$url"
           echo "url=$url" >> "$GITHUB_OUTPUT"
       - name: Probar el servidor
         if: steps.deploy.outputs.url != ''
