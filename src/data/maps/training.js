@@ -119,6 +119,7 @@ export default {
         { at: [7.0, 9.1], facing: 0 },
         { at: [7.0, 10.5], facing: 0 },
         { at: [5.6, 10.3], facing: 0 },
+        { at: [5.6, 11.7], facing: 0 }, // 4.º (2v2)
       ],
     },
     {
@@ -128,6 +129,7 @@ export default {
         { at: [4.6, 11.9], facing: 0 },
         { at: [4.6, 13.4], facing: 0 },
         { at: [4.6, 14.9], facing: 0 },
+        { at: [4.6, 16.4], facing: 0 }, // 4.º (2v2)
       ],
     },
     {
@@ -137,6 +139,7 @@ export default {
         { at: [6.2, 21.0], facing: 0 },
         { at: [6.2, 22.4], facing: 0 },
         { at: [4.9, 21.7], facing: 0 },
+        { at: [4.9, 20.3], facing: 0 }, // 4.º (2v2)
       ],
     },
   ],

@@ -4,7 +4,7 @@
 import { Rng } from '../core/rng.js';
 import { EV } from '../core/events.js';
 import { SIM, ROUND } from '../config/balance.js';
-import { SQUAD, DEFENDERS, DEFENDER_NAME, DEFENDER_COLOR, TEAMS, CONTROLLERS } from '../config/squad.js';
+import { DEFENDERS, DEFENDER_NAME, DEFENDER_COLOR, TEAMS, CONTROLLERS, squadSlot } from '../config/squad.js';
 import { DEFAULT_DEFENDER_ROLE, ROLES } from '../config/operators.js';
 import { initAbilities, updateAbilities } from './abilities/index.js';
 import { compileMap } from './mapCompiler.js';
@@ -55,9 +55,12 @@ export class Simulation {
    * @param opts.loadout per attacker slot {role} carried over from the last round of a match (session/Match.js).
    * @param opts.lossBonus the side that lost the last round of a match ('attackers' | 'defenders' | null):
    *                    BUY.lossBonus more utility points each (sim/prep.js pointsFor).
+   * @param opts.squad   operators per side: 3 (DEFENDERS; against the AI) or 4 (online 2v2, SQUAD_2V2):
+   *                    the entry's first spawns and the site's first posts of the map.
    */
-  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, defenders = null, phases = true, stopOnContact = false, loadout = null, roles = null, lossBonus = null } = {}) {
+  constructor(mapDef, { seed = SIM.seed, controllers = CONTROLLERS, site = null, entry = null, defenders = null, phases = true, stopOnContact = false, loadout = null, roles = null, lossBonus = null, squad = DEFENDERS } = {}) {
     this.seed = seed;
+    this.squad = squad;
     this.lossBonus = lossBonus;
     this.stopOnContact = stopOnContact;
     this.loadout = loadout;
@@ -74,7 +77,7 @@ export class Simulation {
     this.entry = this.compiled.entries.find((e) => e.id === (entry || this.compiled.defaultEntry));
     if (!this.entry) throw new Error(`Entrada desconocida: ${entry}`);
     this.defenderSlots = defenders;
-    this.roles = validRoles(roles); // also kept for a new site's layout (sim/prep.js applyLayout)
+    this.roles = validRoles(roles, squad); // also kept for a new site's layout (sim/prep.js applyLayout)
     this.world = new World(this.compiled);
     this.doors = this.compiled.doors.map(createDoorState);
     this.world.updateDoorSegments(this.doors);
@@ -135,11 +138,11 @@ export class Simulation {
   }
 
   spawnUnits() {
-    const attackers = this.entry.spawns;
+    const attackers = this.entry.spawns.slice(0, this.squad);
     const layout = this.compiled.defense[this.site.id];
-    const defenders = this.defenderSlots ? this.defenderSlots.map((i) => layout[i]).filter(Boolean) : layout.slice(0, DEFENDERS);
+    const defenders = this.defenderSlots ? this.defenderSlots.map((i) => layout[i]).filter(Boolean) : layout.slice(0, this.squad);
     attackers.forEach((s, i) => {
-      const op = SQUAD[i % SQUAD.length];
+      const op = squadSlot(i);
       this.units.push(
         createUnit({
           id: this.units.length,
@@ -328,11 +331,11 @@ export class Simulation {
  * most ROLES[id].max of each). A side with a missing or impossible pick keeps
  * its defaults whole (mixing them could repeat a one-per-side class).
  */
-function validRoles(roles) {
+function validRoles(roles, size = DEFENDERS) {
   const out = { attackers: [], defenders: [] };
   const sides = [
-    ['attackers', SQUAD.length, (r, n) => r.pick && (!r.unique || n === 0)],
-    ['defenders', DEFENDERS, (r, n) => r.defPick && n < r.max],
+    ['attackers', size, (r, n) => r.pick && (!r.unique || n === 0)],
+    ['defenders', size, (r, n) => r.defPick && n < r.max],
   ];
   for (const [team, size, ok] of sides) {
     const ids = (roles && roles[team]) || [];

@@ -134,6 +134,7 @@ export default {
         { at: [12.4, 4.4], facing: 90 * DEG },
         { at: [13.8, 4.4], facing: 90 * DEG },
         { at: [13.1, 3.0], facing: 90 * DEG },
+        { at: [14.5, 3.0], facing: 90 * DEG }, // 4.º (2v2)
       ],
     },
     {
@@ -144,6 +145,7 @@ export default {
         { at: [6.6, 17.3], facing: 0 },
         { at: [6.6, 18.7], facing: 0 },
         { at: [5.2, 18.0], facing: 0 },
+        { at: [5.2, 16.6], facing: 0 }, // 4.º (2v2)
       ],
     },
     {
@@ -154,6 +156,7 @@ export default {
         { at: [12.4, 31.1], facing: -90 * DEG },
         { at: [13.8, 31.1], facing: -90 * DEG },
         { at: [13.1, 32.3], facing: -90 * DEG },
+        { at: [13.1, 30.1], facing: -90 * DEG }, // 4.º (2v2)
       ],
     },
   ],
