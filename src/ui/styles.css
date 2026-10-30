@@ -590,8 +590,9 @@ body.touch .weapon-plate { left: var(--sal); }
   .gfx-box p { font-size: 13px; }
 
   /* Banner between the squad chips and the utility row (centred in that gap, wraps instead of overlapping them). */
-  .topbar { left: calc(168px + var(--sal)); right: calc(268px + var(--sar)); width: fit-content; margin: 0 auto; transform: none; }
-  .banner { max-width: none; }
+  .topbar { left: calc(168px + var(--sal)); right: calc(268px + var(--sar)); width: fit-content; max-width: calc(100vw - 436px - var(--sal) - var(--sar)); margin: 0 auto; transform: none; }
+  .topbar .banner { max-width: none; min-width: 0; flex: 0 1 auto; }
+  .topbar .bombclock { flex: none; }
   .help-box .help-options { margin-top: 8px; }
   .help-box .help-options .btn { font-size: 11px; letter-spacing: 0.03em; flex-basis: 160px; }
 }
@@ -1201,7 +1202,8 @@ body.killcam-on .banner, body.killcam-on .squad, body.killcam-on .feed, body.kil
   .title-box .lobby .lb-actions { padding-bottom: 4px; }
 
   /* Phase banner: between the squad row (3 chips + ESCUADRA) and the utility row, wrapping instead of overlapping. */
-  .banner { left: calc(220px + var(--sal)); right: calc(318px + var(--sar)); padding: 3px 10px 4px; }
+  .topbar { left: calc(220px + var(--sal)); right: calc(318px + var(--sar)); max-width: calc(100vw - 538px - var(--sal) - var(--sar)); }
+  .banner { padding: 3px 10px 4px; }
   .banner .phase { font-size: 13px; letter-spacing: 0.12em; }
   .banner .sub { font-size: 11px; line-height: 1.2; }
   body.touch .banner .clock { font-size: 12px; }
@@ -1262,7 +1264,7 @@ body.killcam-on .banner, body.killcam-on .squad, body.killcam-on .feed, body.kil
   .tbar-row { gap: 4px; }
   .tbar-row .tbtn { min-width: 40px; width: 40px; min-height: 40px; height: 40px; }
   .tbar-row .tbtn.restart { margin-right: 6px; }
-  .banner { right: calc(280px + var(--sar)); }
+  .topbar { right: calc(280px + var(--sar)); max-width: calc(100vw - 500px - var(--sal) - var(--sar)); }
 }
 @keyframes tutPopPhone { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
