@@ -92,6 +92,7 @@ export class OnlineSession {
     this.client = new LockstepClient({
       send: (m) => this.conn && this.conn.send(m),
       createSim: (info) => this.game.startRound(info),
+      buildSim: (info) => this.game.buildRound(info),
       on: (type, data) => this.onEvent(type, data),
     });
     this.conn = new Connection({
@@ -109,8 +110,32 @@ export class OnlineSession {
     } catch { /* no history (file://) */ }
   }
 
+  /**
+   * The screen stays on during a match (a phone that dims and locks would drop the socket):
+   * the Screen Wake Lock where there is one, asked again when the page comes back.
+   */
+  keepAwake(on) {
+    this.awake = on;
+    if (!on) {
+      if (this.wakeLock) this.wakeLock.release().catch(() => {});
+      this.wakeLock = null;
+      return;
+    }
+    if (this.wakeLock || typeof navigator === 'undefined' || !navigator.wakeLock || document.visibilityState !== 'visible') return;
+    navigator.wakeLock.request('screen').then((lock) => {
+      if (!this.awake) return lock.release();
+      this.wakeLock = lock;
+      lock.addEventListener('release', () => { if (this.wakeLock === lock) this.wakeLock = null; });
+    }).catch(() => {});
+    if (!this.wakeWatch) {
+      this.wakeWatch = () => { if (this.awake && document.visibilityState === 'visible') this.keepAwake(true); };
+      document.addEventListener('visibilitychange', this.wakeWatch);
+    }
+  }
+
   /** Out of the room (VOLVER in the lobby, MENÚ in a match). */
   leave(toMenu = true) {
+    this.keepAwake(false);
     if (this.conn) this.conn.close();
     this.conn = null;
     this.client = null;
@@ -216,6 +241,7 @@ export class OnlineSession {
         return;
       }
       case 'round':
+        this.keepAwake(true);
         o.playing = true;
         o.finished = false;
         o.waiting = false;
@@ -228,15 +254,21 @@ export class OnlineSession {
         o.waiting = this.client.isReady;
         this.game.clock(data);
         return;
-      case 'desync':
+      case 'resync':
+        // The phones had drifted apart: this one now has the host's state (the screen follows).
         o.desync = true;
-        this.bus.emit(EV.NOTICE, { code: 'onlineDesync', count: 0 });
+        this.game.resynced();
+        if (data.de !== o.me) this.bus.emit(EV.NOTICE, { code: 'onlineResync', count: 0 });
+        return;
+      case 'abandono':
+        o.error = data.quien === o.me ? 'abandonaste' : 'abandono';
         return;
       case 'fin':
         o.finished = true;
         o.waiting = false;
         return;
       case 'lobby':
+        this.keepAwake(false);
         o.playing = false;
         o.finished = false;
         this.game.toRoom();

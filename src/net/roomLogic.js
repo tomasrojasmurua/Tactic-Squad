@@ -13,7 +13,8 @@
 //     have not reached yet (`atTick` > hasta), so all apply it at the same step.
 //   - after each `cierre`, and when a live phase ends, every client reports `estado {n, fase, h}`
 //     (the phase its sim is in and a hash of its state). All equal: the match goes on; any
-//     difference: `desync`.
+//     difference: the host (or whoever is there) is asked for a snapshot of his sim (`foto`),
+//     everybody takes it (`resync`) and the match goes on from his state.
 //   - the round's end ('end') is a decision phase with no orders: the result stays on screen
 //     until everybody is LISTO (or its deadline); then `ronda` starts the next one (the clients
 //     said whether the match goes on: `sigue`, from session/Match.js) or `fin` ends it.
@@ -29,6 +30,8 @@ export const ROOM = Object.freeze({
   grantTicks: 6, // steps per grant (60 Hz)
   durations: Object.freeze([1, 3, 5, 7]),
   nameLength: 16,
+  abandonMs: 90000, // a player gone this long in a match: it ends and the room goes back to its lobby
+  maxSnapshot: 900 * 1024, // characters of a snapshot the room relays (a Durable Object message is 1 MiB)
 });
 
 const TEAMS = ['attackers', 'defenders'];
@@ -51,7 +54,7 @@ export class Room {
     this.round = 0;
     this.log = []; // what was broadcast since the start, for a reconnecting client
     this.n = 0;
-    this.phase = null; // {kind: 'decision'|'live'|'sync'|'desync', fase, ...}
+    this.phase = null; // {kind: 'decision'|'live'|'sync'|'resync', fase, ...}
   }
 
   get host() {
@@ -86,6 +89,7 @@ export class Room {
       ajustes: this.settings,
       estado: this.status,
       jugadores: this.players.map(({ id, name, team, ready, connected }) => ({ id, nombre: name, equipo: team, listo: ready, conectado: connected })),
+      abandono: ROOM.abandonMs,
     };
   }
 
@@ -94,6 +98,7 @@ export class Room {
     const p = this.players[id];
     if (!p || !p.connected) return [];
     p.connected = false;
+    p.leftAt = now;
     if (this.status === 'lobby') p.ready = false;
     const ph = this.phase;
     if (ph && ph.kind === 'decision' && ph.deadline !== null && ph.pausedAt === null) ph.pausedAt = now; // the clock waits for him
@@ -125,6 +130,7 @@ export class Room {
       case 'ordenes': return this.onOrders(p, msg);
       case 'listo': return this.onReady(p, msg, now);
       case 'estado': return this.onState(p, msg, now);
+      case 'foto': return this.onSnapshot(p, msg, now);
       case 'ping': return [send(id, { t: 'pong', ts: msg.ts })];
       case 'reloj': return []; // only moves the clock (the caller ticks before every message)
       default: return [send(id, { t: 'error', motivo: 'mensaje' })];
@@ -199,9 +205,9 @@ export class Room {
     return { semilla: this.deps.seed() >>> 0, ronda: this.round, equipos: Object.fromEntries(this.players.map((q) => [q.id, q.team])) };
   }
 
-  /** After a match: back to the lobby (rematch), same players, nobody ready. */
+  /** After a match: back to the lobby (rematch), same players, nobody ready. Either player may. */
   onBack(p) {
-    if (p.id !== this.host || this.status !== 'finished') return [];
+    if (this.status !== 'finished') return [];
     this.status = 'lobby';
     this.phase = null;
     for (const q of this.players) q.ready = false;
@@ -289,10 +295,27 @@ export class Room {
     if (reports.size < this.players.length) return [];
     const all = [...reports.values()];
     if (all.some((r) => r.h !== all[0].h || r.fase !== all[0].fase)) {
-      this.phase = { kind: 'desync' };
-      return this.broadcast({ t: 'desync', n: this.n, hashes: Object.fromEntries([...reports].map(([id, r]) => [id, r.h])) });
+      // The phones drifted apart: everybody takes the state of the host (or of whoever is connected).
+      const ref = this.players.find((q) => q.connected && reports.has(q.id)) || p;
+      this.phase = { kind: 'resync', from: ref.id, report: reports.get(ref.id), hashes: Object.fromEntries([...reports].map(([id, r]) => [id, r.h])) };
+      return [send(ref.id, { t: 'foto', n: this.n })];
     }
-    const fase = all[0].fase;
+    return this.agree(all[0], all, now);
+  }
+
+  /** The reference player's snapshot: relayed to everybody (and kept for a reconnection), then on. */
+  onSnapshot(p, m, now) {
+    const ph = this.phase;
+    if (!ph || ph.kind !== 'resync' || p.id !== ph.from || m.n !== this.n || !m.data) return [];
+    if (JSON.stringify(m.data).length > ROOM.maxSnapshot) return [];
+    const out = this.broadcast({ t: 'resync', n: this.n, de: p.id, data: m.data, hashes: ph.hashes });
+    const report = ph.report;
+    return [...out, ...this.agree(report, [report], now)];
+  }
+
+  /** Every phone is in the same phase with the same state: the next phase opens. */
+  agree(report, all, now) {
+    const fase = report.fase;
     this.n++;
     if (LIVE.has(fase)) {
       this.phase = { kind: 'live', fase, hasta: 0, grantedAt: now };
@@ -304,8 +327,25 @@ export class Room {
     return out;
   }
 
+  /**
+   * A player gone for ROOM.abandonMs in a match: it is over (abandonment) and the room goes back to
+   * its lobby; his seat stays, he may come back for a rematch.
+   */
+  checkAbandon(now) {
+    if (this.status !== 'playing') return [];
+    const gone = this.players.find((q) => !q.connected && now - (q.leftAt ?? now) >= ROOM.abandonMs);
+    if (!gone) return [];
+    this.status = 'lobby';
+    this.phase = null;
+    this.log = [];
+    for (const q of this.players) q.ready = false;
+    return [send('*', { t: 'abandono', quien: gone.id }), send('*', { t: 'lobby' }), send('*', this.roomMsg())];
+  }
+
   /** Called often (every ~50 ms): live phases advance, decision deadlines expire. */
   tick(now) {
+    const abandon = this.checkAbandon(now);
+    if (abandon.length) return abandon;
     const ph = this.phase;
     if (!ph) return [];
     if (ph.kind === 'live') {

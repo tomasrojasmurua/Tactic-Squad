@@ -109,9 +109,12 @@ export function encodeSim(sim, fresh) {
   return enc(state);
 }
 
-/** Pours a snapshot (encodeSim) into `sim`, a fresh Simulation built with the same round's options. */
-export function restoreSim(sim, data) {
-  const fresh = stateOf(sim);
+/**
+ * Pours a snapshot (encodeSim) into `sim`, a Simulation of the same round (fresh, or the one that
+ * drifted). `reference`: a fresh one built with the round's options (where the frozen objects are).
+ */
+export function restoreSim(sim, data, reference = sim) {
+  const fresh = stateOf(reference);
   const byId = new Map();
   const dec = (v) => {
     if (v === null || typeof v !== 'object') return v;

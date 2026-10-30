@@ -85,6 +85,13 @@ export class Game {
       bus: this.bus,
       game: {
         startRound: (info) => this.newOnlineRound(info),
+        buildRound: ({ map, options }) => new Simulation(ALL_MAPS[map] ?? ALL_MAPS[DEFAULT_MAP], options),
+        resynced: () => {
+          // The units and doors are new objects: the screen's caches are rebuilt from them.
+          this.bus.emit(EV.ROUND_RESET, { sim: this.sim });
+          this.flow.onRoundStart();
+          this.planning.refresh();
+        },
         advanced: (data) => this.flow.onlineAdvanced(data),
         clock: (fase) => this.flow.onlineClock(fase),
         toRoom: () => this.flow.toMenu('room'),

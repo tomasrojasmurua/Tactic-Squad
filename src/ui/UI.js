@@ -14,6 +14,7 @@ import { DroneStick } from './DroneStick.js';
 import { HudOcclusion } from './HudOcclusion.js';
 import { GfxNotice } from './GfxNotice.js';
 import { TutorialCard } from './TutorialCard.js';
+import { NetBadge } from './NetBadge.js';
 import { el, toggle, setStyle } from './dom.js';
 import { ICON } from './icons.js';
 import { T } from './texts.js';
@@ -33,6 +34,7 @@ export class UI {
     this.phasePanel = new PhasePanel(root, bus);
     this.droneStick = new DroneStick(root, bus);
     this.tutorialCard = new TutorialCard(root, bus);
+    this.netBadge = new NetBadge(root);
     this.rotate = el('div', 'rotate', `<div class="rotate-box"><div class="rotate-phone">${ICON.phone}</div><h2>${T.rotate.title}</h2><p>${T.rotate.text}</p></div>`);
     root.appendChild(this.rotate);
     // Plates that fade when a unit is under them (the touch column only dims: it stays usable).
@@ -61,6 +63,7 @@ export class UI {
     this.phasePanel.update(sim, session);
     this.droneStick.update(session);
     this.tutorialCard.update(session);
+    this.netBadge.update(session);
     this.screens.setTouch(session.touch);
   }
 }
