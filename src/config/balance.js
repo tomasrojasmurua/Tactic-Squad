@@ -243,8 +243,13 @@ export const ENTRY = Object.freeze({
   throwDistance: 3.2, // m past the doorway, along its normal (short of a wall)
   wallMargin: 0.45, // m kept from the wall the throw would hit
   throwSpeed: 9, // m/s of the arc (flight time = path length / speed)
-  flash: { fuse: 0.9, radius: 9, blind: 3.2, minBlind: 0.4, awayFactor: 0.3, hearing: 18 },
-  frag: { fuse: 1.1, radius: 4.2, damage: 160, minDamage: 8, hearing: 22 },
+  // Flash: whoever has it in sight within `radius` is blinded `blind` s × how much he looked at it
+  // (awayFactor with his back to it) × the distance (`edge` of it at the edge, all of it at the bang).
+  // 31 oct: radius 9 -> 12, edge 0.4 -> 0.6, awayFactor 0.3 -> 0.4 (a flash in a room barely blinded).
+  flash: { fuse: 0.9, radius: 12, blind: 3.2, minBlind: 0.4, awayFactor: 0.4, edge: 0.6, hearing: 18 },
+  // Frag: damage falling off linearly to 0 at `radius` (31 oct: 4.2 m / 160 -> 3 m / 190: about as
+  // deadly up close, lethal to 100 hp within ~1.4 m, but it no longer reaches across a whole room).
+  frag: { fuse: 1.1, radius: 3.0, damage: 190, minDamage: 8, hearing: 22 },
   // Carga de brecha: planted on arrival (prepTime), fired by the release. The door is destroyed.
   // `stun`: s whoever is behind it stands frozen, scaled by the planter's modifiers.breachStun (the Brecha's are longer).
   // `concussion`: s the Brecha's charge leaves reeling (blind and frozen) whoever is beyond the door within
@@ -273,8 +278,8 @@ export const ROUND = Object.freeze({
   // The assault is played in We-Go turns (sim/round.js): both sides plan blind, then
   // every order runs at once for turnSeconds. The bomb's timer only runs while a turn
   // executes (deciding is free): at 0 it explodes, even mid-defuse — the defenders win.
-  turnSeconds: 5, // s of execution per turn (design: 5 s)
-  timeLimit: 90, // s on the bomb's timer (of execution: 18 turns; a sim without phases runs this long)
+  turnSeconds: 10, // s of execution per turn (design: 5 s; 10 s since 31 oct: the turns felt cut short)
+  timeLimit: 90, // s on the bomb's timer (of execution: 9 turns; a sim without phases runs this long)
   // Seconds each side gets to decide in every decision phase (wall clock: the session's
   // PhaseClock, later the server). Never read by the sim: they cannot change the result.
   // null: no limit, the phase ends with LISTO (against the AI). Online, e.g. {buy: 20, prep: 90, plan: 60}.

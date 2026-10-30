@@ -1,7 +1,7 @@
 // Tactical overlay: planned routes, waypoints, facing arrows, GO holds,
 // door entries, grenades in flight, flashed units, FOV edges, selection
 // rings, contact markers, defuse progress, where each operator gets to in
-// the next 5 s turn (while planning) and the noise heard of the enemy.
+// the next turn (while planning) and the noise heard of the enemy.
 // `drawGround` runs before walls/units (depth-tested rings & shadows),
 // `drawTop` runs last, over everything (routes must always be readable).
 // Rebuilt every frame (animated dashes/pulses), so it is written to avoid
@@ -21,11 +21,11 @@ import { FLAT_VS, FLAT_FS } from '../shaders/flat.js';
 import { OverlayPings } from './OverlayPings.js';
 import { ContactMarkers } from './ContactMarkers.js';
 import { rgba, BLACK, WHITE, withAlpha } from './overlayColors.js';
+import { grenadeGlyph, barricadeBoards } from './utilityGlyphs.js';
 
 const LOOK_PREVIEW_RGB = [1, 1, 1];
 const DRONE_RGB = hexToRgb('#8fe36b');
 const TOSS_DANGER_RGB = [1, 0.33, 0.3]; // a grenade that would reach its own thrower
-const BARRICADE_RGBA = [1, 0.69, 0.18, 0.95];
 const WIRE_RGB = [0.8, 0.84, 0.88]; // barbed wire: steel grey (the far half of each loop darker)
 const WIRE_BARB_RGBA = [0.93, 0.95, 0.97, 1];
 const WIRE_LOOP = Object.freeze({ radius: 0.24, pitch: 0.17, steps: 24, barb: 0.04 }); // m (steps per loop: a multiple of 8)
@@ -214,23 +214,11 @@ export class OverlayLayer {
     t.line(x, y, x + Math.cos(f) * r * 1.6, y + Math.sin(f) * r * 1.6, 2.4 * mpp, withAlpha(DRONE_RGB, 1));
   }
 
-  /** Barricades the viewer's side knows of: a hatched bar across the doorway. */
+  /** Barricades the viewer's side knows of: wooden planks nailed across the doorway. */
   barricades(t, sim, own, mpp) {
     for (const door of sim.doors) {
       if (!door.barricaded || (own === 'attackers' && !sim.intel.barricades.has(door.def.index))) continue;
-      const d = door.def;
-      const tx = d.normalY; // along the wall
-      const ty = -d.normalX;
-      const h = d.length / 2 + 0.08;
-      const nx = d.normalX * 0.2;
-      const ny = d.normalY * 0.2;
-      t.line(d.cx - tx * h, d.cy - ty * h, d.cx + tx * h, d.cy + ty * h, 7 * mpp, BLACK(0.6));
-      t.line(d.cx - tx * h, d.cy - ty * h, d.cx + tx * h, d.cy + ty * h, 4 * mpp, BARRICADE_RGBA);
-      for (let k = -1; k <= 1; k++) {
-        const cx = d.cx + tx * h * 0.6 * k;
-        const cy = d.cy + ty * h * 0.6 * k;
-        t.line(cx - nx - tx * 0.12, cy - ny - ty * 0.12, cx + nx + tx * 0.12, cy + ny + ty * 0.12, 3 * mpp, BARRICADE_RGBA);
-      }
+      barricadeBoards(t, door.def, Math.max(0.12, 5 * mpp));
     }
   }
 
@@ -444,6 +432,10 @@ export class OverlayLayer {
     pts[2] = d.cx;
     pts[3] = d.cy;
     t.dashed(pts, 2 * mpp, 0.14, 0.1, 0, rgba(c[0], c[1], c[2], a * 0.8));
+    if (mode === 'flash' || mode === 'frag') {
+      grenadeGlyph(t, d.cx, d.cy, mode, OVERLAY.glyphPx * mpp, a); // what goes through that door
+      return;
+    }
     const r = OVERLAY.entryMarker;
     const o = r + 2 * mpp;
     t.quad(d.cx, d.cy - o, d.cx + o, d.cy, d.cx, d.cy + o, d.cx - o, d.cy, BLACK(0.7 * a));
@@ -469,10 +461,11 @@ export class OverlayLayer {
     pts.push(ex, ey);
     t.dashed(pts, 3.6 * mpp, 0.12, 0.12, 0, BLACK(0.55 * alpha));
     t.dashed(pts, 2 * mpp, 0.12, 0.12, 0, rgba(c[0], c[1], c[2], 0.95 * alpha));
-    const r = item === 'smoke' ? ENTRY.smoke.radius : item === 'frag' ? ENTRY.frag.radius : item === 'molotov' ? ENTRY.molotov.radius : item === 'gas' ? ENTRY.gas.radius : 0.45;
-    t.ring(ex, ey, r, 3.4 * mpp, BLACK(0.35 * alpha), 32);
-    t.ring(ex, ey, r, 2 * mpp, rgba(c[0], c[1], c[2], 0.8 * alpha), 32);
-    t.circle(ex, ey, 0.12, rgba(c[0], c[1], c[2], alpha), 12);
+    // The area it covers (a flash: where it blinds hard even with the back to it), and what lands there.
+    const r = item === 'smoke' ? ENTRY.smoke.radius : item === 'frag' ? ENTRY.frag.radius : item === 'molotov' ? ENTRY.molotov.radius : item === 'gas' ? ENTRY.gas.radius : item === 'flash' ? ENTRY.flash.radius / 2 : 0.45;
+    t.ring(ex, ey, r, 3.4 * mpp, BLACK(0.35 * alpha), 40);
+    t.ring(ex, ey, r, 2 * mpp, rgba(c[0], c[1], c[2], 0.8 * alpha), 40);
+    grenadeGlyph(t, ex, ey, item, OVERLAY.glyphPx * mpp, alpha);
   }
 
   /**
@@ -712,14 +705,12 @@ export class OverlayLayer {
     for (const g of sim.grenades) {
       const age = g.age + frame.alpha * sim.dt;
       const p = grenadeAt(g, age, this.gpos);
-      const lift = p.k < 1 ? Math.sin(p.k * Math.PI) * 0.25 : 0; // reads as a lob: a bigger dot mid-flight
-      const r = OVERLAY.grenadeRadius * (1 + lift) + 1.5 * mpp;
+      const lift = p.k < 1 ? Math.sin(p.k * Math.PI) * 0.35 : 0; // reads as a lob: bigger mid-flight
       const c = OVERLAY.entryColors[g.kind];
-      t.circle(p.x, p.y, r + 1.5 * mpp, BLACK(0.8), 12);
-      t.circle(p.x, p.y, r, rgba(c[0], c[1], c[2], 1), 12);
-      // Fuse: a ring shrinking to the bang.
+      // Fuse: a ring shrinking to the bang, then the grenade itself (its pictogram, so you know what is coming).
       const left = Math.max(0, 1 - age / g.fuse);
-      t.ring(p.x, p.y, 0.25 + left * 0.35, 1.6 * mpp, rgba(c[0], c[1], c[2], 0.35 + 0.5 * (1 - left)), 20);
+      t.ring(p.x, p.y, 0.3 + left * 0.45, 2.2 * mpp, rgba(c[0], c[1], c[2], 0.45 + 0.5 * (1 - left)), 24);
+      grenadeGlyph(t, p.x, p.y, g.kind, OVERLAY.glyphFlightPx * (1 + lift) * mpp);
     }
   }
 

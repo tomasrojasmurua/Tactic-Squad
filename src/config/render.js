@@ -218,6 +218,8 @@ export const OVERLAY = Object.freeze({
   trap: Object.freeze({ size: 0.28, color: [1, 0.62, 0.18], steel: [0.78, 0.8, 0.83] }), // Trampero's traps (sim/traps.js)
   entryMarker: 0.2, // m, half-size of the doorway marker
   grenadeRadius: 0.09, // m, a grenade in flight / on the floor
+  glyphPx: 13, // px: half-size of a grenade's pictogram where it will land / at the door it goes through
+  glyphFlightPx: 11, // px: ...and of one in flight
 });
 
 /** Feedback pings (render/layers/OverlayPings.js): life (s), radii (m), ring width (px). */

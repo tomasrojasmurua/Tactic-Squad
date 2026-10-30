@@ -28,7 +28,14 @@ export class Hud {
     this.subText = this.banner.querySelector('.sub');
     this.clockBar = this.banner.querySelector('.cbar i');
     this.pauseGlyph = el('div', 'pause-glyph', ICON.pause);
-    root.append(this.banner, this.pauseGlyph);
+    // The bomb's clock, beside the banner (where the eyes go): time left, turns left, red at the end.
+    this.bombClock = el('div', 'bombclock', `<span class="bc-ico">${ICON.bomb}</span><span class="bc-main"><b class="bc-time"></b><span class="bc-sub"></span></span>`);
+    this.bombClock.title = T.objective.timer;
+    this.bombTime = this.bombClock.querySelector('.bc-time');
+    this.bombSub = this.bombClock.querySelector('.bc-sub');
+    this.topbar = el('div', 'topbar');
+    this.topbar.append(this.banner, this.bombClock);
+    root.append(this.topbar, this.pauseGlyph);
 
     this.weapon = el(
       'div',
@@ -285,6 +292,14 @@ export class Hud {
     setText(this.bombText, b.defused ? T.objective.bombDefused : bombKnownTo(sim, session.team) ? T.objective.bombAt(b.site) : T.objective.bombUnknown);
     setText(this.timer, formatTime(sim.timeLeft));
     toggle(this.timer, 'low', sim.timeLeft < HUD.lowTimeSeconds);
+    // The top clock: hidden on the menu; defused, a green tick; the last seconds red and beating.
+    const B = T.bombClock;
+    setStyle(this.bombClock, 'display', phase === 'title' ? 'none' : '');
+    setText(this.bombTime, b.defused ? B.defused : formatTime(sim.timeLeft));
+    setText(this.bombSub, b.defused ? '' : B.turns(Math.ceil(sim.timeLeft / ROUND.turnSeconds - 1e-9)));
+    const level = b.defused ? 'safe' : sim.timeLeft < HUD.bombUrgentSeconds ? 'urgent' : sim.timeLeft < HUD.lowTimeSeconds ? 'low' : '';
+    if (this.bombClock.dataset.level !== level) this.bombClock.dataset.level = level;
+    toggle(this.bombClock, 'ticking', phase === 'running' && !b.defused);
 
     // Actions: LISTO ends a decision phase; a running turn has no button (it cannot be paused).
     const running = phase === 'running';
