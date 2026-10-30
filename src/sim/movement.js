@@ -15,6 +15,7 @@ import { isAiControlled, holdCode, ASK_CODE, doorClaimed } from './queries.js';
 import { routePoint } from './routePoint.js';
 import { wireFactor } from './wires.js';
 import { inFire } from './fire.js';
+import { datan2, dcos, dhypot, dsin, sq } from '../core/dmath.js';
 
 const carrot = { x: 0, y: 0 };
 
@@ -31,13 +32,13 @@ function desiredFacing(sim, u) {
     if (u.lookOverride !== null) return u.lookOverride;
     if (!isAiControlled(sim, u) && lookAheadPoint(sim, u, carrot)) return angleTo(u.x, u.y, carrot.x, carrot.y);
     const p = u.route[0];
-    if ((p.x - u.x) ** 2 + (p.y - u.y) ** 2 > 1e-6) return angleTo(u.x, u.y, p.x, p.y);
+    if (sq(p.x - u.x) + sq(p.y - u.y) > 1e-6) return angleTo(u.x, u.y, p.x, p.y);
   }
   if (u.waitingGo && u.lookOverride !== null) return u.lookOverride;
   if (isAiControlled(sim, u) && u.behavior && u.behavior.type === 'scan') return u.ai.baseFacing; // sweeps around his idle look (sim/ai.js)
   if (u.cover && u.idleLook !== null && !u.route.length && !u.waitingGo) {
     // Cubrir zona (sim/orders.js setCover): the same sweep as a defender's "barrer".
-    const k = 0.5 - 0.5 * Math.cos((sim.time / PREP.sweepPeriod) * TAU + u.id);
+    const k = 0.5 - 0.5 * dcos((sim.time / PREP.sweepPeriod) * TAU + u.id);
     return u.idleLook + (k - 0.5) * PREP.sweepArc;
   }
   if (u.idleLook !== null) return u.idleLook;
@@ -59,7 +60,7 @@ function lookAheadPoint(sim, u, out) {
   const doorways = sim.world.doorways;
   for (let i = 0; i < route.length; i++) {
     const p = route[i];
-    const len = Math.hypot(p.x - ax, p.y - ay);
+    const len = dhypot(p.x - ax, p.y - ay);
     // A doorway crossed by this leg, close enough: look through it.
     if (travelled < MOVE.doorPeekRange) {
       for (let k = 0; k < doorways.length; k++) {
@@ -118,7 +119,7 @@ export function updateMovement(sim, u, dt) {
   if (Math.abs(angleDiff(u.facing, moveDir)) > MOVE.strafeAngle) speed *= MOVE.strafeFactor;
   const sneaking = p0.pace === 'sneak';
   if (sneaking) speed *= MOVE.sneakFactor; // the leg he walks is a quiet one
-  speed *= followFactor(sim, u, Math.cos(moveDir), Math.sin(moveDir));
+  speed *= followFactor(sim, u, dcos(moveDir), dsin(moveDir));
   speed *= wireFactor(sim, u); // barbed wire in the doorway (sim/wires.js)
   if (speed > 0 && doorwayBusy(sim, u)) speed = 0; // queue: an ally is still in the doorway ahead
   if (speed > 0 && fireAhead(sim, u, moveDir)) speed = 0; // an AI attacker waits for the fire to burn down
@@ -130,8 +131,8 @@ export function updateMovement(sim, u, dt) {
     const p = u.route[0];
     const dx = p.x - u.x;
     const dy = p.y - u.y;
-    const d = Math.hypot(dx, dy);
-    if (d > 1e-6) u.heading = Math.atan2(dy, dx);
+    const d = dhypot(dx, dy);
+    if (d > 1e-6) u.heading = datan2(dy, dx);
     // An ally already stands on the point (two routes to the same spot): close enough counts,
     // or the two would push each other around it forever (collisions.js).
     const crowded = d > budget && d <= MOVE.friendlySpacing && allyOn(sim, u, p);
@@ -188,8 +189,8 @@ function followFactor(sim, u, dirX, dirY) {
     const along = rx * dirX + ry * dirY;
     if (along <= 0 || along > reach) continue;
     if (Math.abs(rx * dirY - ry * dirX) > u.radius * 2) continue;
-    if (Math.cos(a.heading) * dirX + Math.sin(a.heading) * dirY < 0.2) continue;
-    const f = (Math.hypot(rx, ry) - MOVE.followGap) / MOVE.followSlowRange;
+    if (dcos(a.heading) * dirX + dsin(a.heading) * dirY < 0.2) continue;
+    const f = (dhypot(rx, ry) - MOVE.followGap) / MOVE.followSlowRange;
     factor = Math.min(factor, f < 0 ? 0 : f > 1 ? 1 : f);
   }
   return factor;
@@ -214,7 +215,7 @@ function doorwayBusy(sim, u) {
   let travelled = 0;
   for (let i = 0; i < u.route.length && travelled < MOVE.doorQueueRange; i++) {
     const p = u.route[i];
-    const len = Math.hypot(p.x - ax, p.y - ay);
+    const len = dhypot(p.x - ax, p.y - ay);
     for (let k = 0; k < doorways.length; k++) {
       const d = doorways[k];
       if (d.length > MOVE.queueDoorMaxWidth) continue;
@@ -246,7 +247,7 @@ function unstick(sim, u, dt, moved) {
   s.t += dt;
   s.want += moved;
   if (s.t < MOVE.stuckTime) return;
-  const went = Math.hypot(u.x - s.x, u.y - s.y);
+  const went = dhypot(u.x - s.x, u.y - s.y);
   const want = s.want;
   resetStuck(u);
   if (want <= 0 || went >= want * MOVE.stuckFraction) return;
@@ -270,7 +271,7 @@ function resetStuck(u) {
 function allyOn(sim, u, p) {
   const r2 = MOVE.friendlySpacing * MOVE.friendlySpacing;
   for (const a of sim.teams[u.team]) {
-    if (a !== u && a.alive && (a.x - p.x) ** 2 + (a.y - p.y) ** 2 < r2) return true;
+    if (a !== u && a.alive && sq(a.x - p.x) + sq(a.y - p.y) < r2) return true;
   }
   return false;
 }
@@ -311,7 +312,7 @@ function arriveAt(sim, u, p) {
 function fireAhead(sim, u, dir) {
   if (u.team !== 'attackers' || sim.controllers.attackers !== 'ai' || !sim.fires.length) return false;
   if (inFire(sim, u.x, u.y)) return false;
-  return inFire(sim, u.x + Math.cos(dir) * FIRE_LOOK, u.y + Math.sin(dir) * FIRE_LOOK);
+  return inFire(sim, u.x + dcos(dir) * FIRE_LOOK, u.y + dsin(dir) * FIRE_LOOK);
 }
 
 const FIRE_LOOK = 0.6; // m ahead

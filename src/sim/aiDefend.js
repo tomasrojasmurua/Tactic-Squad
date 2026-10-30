@@ -20,6 +20,7 @@
 import { AI_DEFEND, NAV } from '../config/balance.js';
 import { startRotation, pathAroundBarricades } from './ai.js';
 import { planFor } from '../config/operators.js';
+import { datan2, dcos, dhypot, dsin, sq } from '../core/dmath.js';
 
 const TEAM = 'defenders';
 
@@ -45,7 +46,7 @@ export function defendAiTick(sim) {
     const e = seen ? { x: seen.x, y: seen.y } : u.ai.report;
     u.ai.report = null;
     if (!e) continue;
-    const d2 = (e.x - bomb.x) ** 2 + (e.y - bomb.y) ** 2;
+    const d2 = sq(e.x - bomb.x) + sq(e.y - bomb.y);
     if (d2 <= r2 && d2 < best) {
       best = d2;
       threat = e;
@@ -60,8 +61,8 @@ export function defendAiTick(sim) {
 function rotate(sim, ai, threat) {
   const near2 = AI_DEFEND.nearThreat * AI_DEFEND.nearThreat;
   const free = sim.teams[TEAM].filter((u) =>
-    u.alive && u.role !== 'anchor' && u.target < 0 && !u.ai.rotated && !u.ai.rotating && (u.x - threat.x) ** 2 + (u.y - threat.y) ** 2 > near2);
-  free.sort((a, b) => (b.x - threat.x) ** 2 + (b.y - threat.y) ** 2 - ((a.x - threat.x) ** 2 + (a.y - threat.y) ** 2) || a.id - b.id);
+    u.alive && u.role !== 'anchor' && u.target < 0 && !u.ai.rotated && !u.ai.rotating && sq(u.x - threat.x) + sq(u.y - threat.y) > near2);
+  free.sort((a, b) => sq(b.x - threat.x) + sq(b.y - threat.y) - (sq(a.x - threat.x) + sq(a.y - threat.y)) || a.id - b.id);
   for (const u of free) {
     if (ai.sent >= ai.rotators) return;
     const spot = (u.behavior && u.behavior.rotate) || coverSpot(sim, threat, ai.sent);
@@ -84,15 +85,15 @@ function coverSpot(sim, threat, n) {
   if (!path || !path.length) return null;
   const at = pointAlong(bomb, path, AI_DEFEND.coverDistance);
   const ahead = pointAlong(bomb, path, AI_DEFEND.coverDistance + AI_DEFEND.lookAhead);
-  let look = Math.atan2(ahead.y - at.y, ahead.x - at.x);
-  if (ahead.x === at.x && ahead.y === at.y) look = Math.atan2(threat.y - bomb.y, threat.x - bomb.x);
+  let look = datan2(ahead.y - at.y, ahead.x - at.x);
+  if (ahead.x === at.x && ahead.y === at.y) look = datan2(threat.y - bomb.y, threat.x - bomb.x);
   let x = at.x;
   let y = at.y;
   if (n > 0) {
     // Step sideways off the first rotator's line.
     const side = AI_DEFEND.spacing * (n % 2 ? 1 : -1);
-    const sx = x - Math.sin(look) * side;
-    const sy = y + Math.cos(look) * side;
+    const sx = x - dsin(look) * side;
+    const sy = y + dcos(look) * side;
     if (nav.walkable(sx, sy)) {
       x = sx;
       y = sy;
@@ -112,7 +113,7 @@ function pointAlong(from, path, dist) {
   let px = from.x;
   let py = from.y;
   for (const p of path) {
-    const len = Math.hypot(p.x - px, p.y - py);
+    const len = dhypot(p.x - px, p.y - py);
     if (len >= dist) return { x: px + ((p.x - px) * dist) / (len || 1), y: py + ((p.y - py) * dist) / (len || 1) };
     dist -= len;
     px = p.x;

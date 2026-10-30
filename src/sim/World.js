@@ -4,6 +4,7 @@
 import { pushBoxEdges } from '../core/geom.js';
 import { NAV, COVER, ENTRY } from '../config/balance.js';
 import { NavGrid } from './NavGrid.js';
+import { dcos, dsin } from '../core/dmath.js';
 
 export class World {
   constructor(compiled) {
@@ -50,8 +51,8 @@ export class World {
       const len = d.destroyed ? 0 : d.def.length; // a blown door leaves a zero-length slab (never blocks)
       this.segments[o++] = d.def.hingeX;
       this.segments[o++] = d.def.hingeY;
-      this.segments[o++] = d.def.hingeX + Math.cos(a) * len;
-      this.segments[o++] = d.def.hingeY + Math.sin(a) * len;
+      this.segments[o++] = d.def.hingeX + dcos(a) * len;
+      this.segments[o++] = d.def.hingeY + dsin(a) * len;
     }
     this.segmentsVersion++;
   }
@@ -65,10 +66,10 @@ export class World {
       for (let i = 0; i < n; i++) {
         const a0 = (i / n) * Math.PI * 2;
         const a1 = ((i + 1) / n) * Math.PI * 2;
-        this.segments[o++] = c.x + Math.cos(a0) * c.r;
-        this.segments[o++] = c.y + Math.sin(a0) * c.r;
-        this.segments[o++] = c.x + Math.cos(a1) * c.r;
-        this.segments[o++] = c.y + Math.sin(a1) * c.r;
+        this.segments[o++] = c.x + dcos(a0) * c.r;
+        this.segments[o++] = c.y + dsin(a0) * c.r;
+        this.segments[o++] = c.x + dcos(a1) * c.r;
+        this.segments[o++] = c.y + dsin(a1) * c.r;
       }
     }
     this.segmentCount = o;

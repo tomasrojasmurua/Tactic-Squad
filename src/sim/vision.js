@@ -4,6 +4,7 @@
 import { TAU, angleDiff } from '../core/math.js';
 import { segmentBlocked } from '../core/geom.js';
 import { VISION } from '../config/balance.js';
+import { datan2, dcos, dsin } from '../core/dmath.js';
 
 const scratchSegs = new Float64Array(8192); // segments rays are cast against
 const scratchAngles = new Float64Array(8192); // candidate ray angles (offsets from `start`)
@@ -33,10 +34,10 @@ export function visibilityPolygon(world, ox, oy, facing, fov, range, out = null)
 
   // Wedge half-planes, widened by 2·eps so every candidate angle stays inside.
   const wedge = !full && span < Math.PI - 4 * eps;
-  const lx = Math.cos(start - 2 * eps);
-  const ly = Math.sin(start - 2 * eps);
-  const rx = Math.cos(start + span + 2 * eps);
-  const ry = Math.sin(start + span + 2 * eps);
+  const lx = dcos(start - 2 * eps);
+  const ly = dsin(start - 2 * eps);
+  const rx = dcos(start + span + 2 * eps);
+  const ry = dsin(start + span + 2 * eps);
 
   // Arc samples first, then segment endpoints.
   let count = 0;
@@ -73,7 +74,7 @@ export function visibilityPolygon(world, ox, oy, facing, fov, range, out = null)
       const px = e === 0 ? ax : bx;
       const py = e === 0 ? ay : by;
       if (px * px + py * py > r2) continue;
-      let off = Math.atan2(py, px) - start;
+      let off = datan2(py, px) - start;
       off = ((off % TAU) + TAU) % TAU;
       for (let k = -1; k <= 1; k++) {
         const o = off + k * eps;
@@ -110,8 +111,8 @@ function castRays(angles, unique, start, ox, oy, range, n, result) {
   const extend = VISION.rayExtend;
   for (let i = 0; i < unique; i++) {
     const a = start + angles[i];
-    const dx = Math.cos(a);
-    const dy = Math.sin(a);
+    const dx = dcos(a);
+    const dy = dsin(a);
     let t = range * 1.0; // see the note above: keeps the loop value a raw double
     for (let k = 0; k < n; k += 4) {
       const x1 = scratchSegs[k];
@@ -194,7 +195,7 @@ export function canSee(world, viewer, tx, ty, cfg) {
   if (d2 > cfg.range * cfg.range) return false;
   const aware = VISION.awarenessRadius;
   if (d2 > aware * aware) {
-    const off = Math.abs(angleDiff(viewer.facing, Math.atan2(dy, dx)));
+    const off = Math.abs(angleDiff(viewer.facing, datan2(dy, dx)));
     if (off > cfg.fov / 2) return false;
   }
   const len = Math.sqrt(d2) || 1;

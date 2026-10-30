@@ -6,6 +6,43 @@ casos raros.
 
 ---
 
+## 0. Estado (30 oct 2026, etapa 1 hecha)
+
+**1v1 jugable de punta a punta**, en `main`:
+
+| Pieza | Dónde |
+| --- | --- |
+| Lógica de la sala (lobby, fases, plazos, LISTO, reparto de órdenes, hashes, partida al mejor de N con cambio de bando, registro para reconectar, guardar/recuperar) | `src/net/roomLogic.js`, sin red ni Cloudflare |
+| Servidor: Worker + Durable Object (uno por sala, hibernación de WebSockets, almacenamiento SQLite) | `server/worker.js`, `server/wrangler.toml` |
+| Cliente de lockstep (sin pantalla): aplica `cierre`, corre hasta `pasos`, reporta `estado`, lleva el marcador | `src/net/LockstepClient.js` |
+| Socket con reconexión, latido y luz de conexión | `src/net/Connection.js` |
+| Une la red con el juego | `src/net/OnlineSession.js`, `Game.js` (`newOnlineRound`, pasos según el servidor), `SessionController.js` (`onlineRequest`, `advance` online) |
+| Pantallas: crear/unirse, sala con INVITAR (compartir del celular o WhatsApp), bandos, formato, mapa, LISTO/EMPEZAR | `src/ui/RoomView.js` |
+| Hash del estado | `src/net/stateHash.js`, `src/net/snapshot.js` |
+| Despliegue | `.github/workflows/pages.yml`: job `server` (wrangler) escribe la URL en `src/config/server.js` del sitio |
+
+**Decisiones de la implementación**
+- El reloj del servidor avanza con su temporizador **y con cada mensaje**; los clientes mandan `reloj` si los
+  `pasos` se atrasan. Así el ritmo no depende de que el temporizador del Durable Object sobreviva (en
+  `wrangler dev` se detenía a mitad de turno).
+- Un cliente solo decide cuando el servidor ya anunció la fase (`fase {n}`); antes, un LISTO u orden llegaría
+  con un `n` viejo.
+- Las órdenes del bando las firma el servidor (`team` = el del jugador).
+- Online no hay repetición de la última baja (la grabación de un teléfono no tiene las órdenes del rival) ni
+  pausa por las tarjetas de introducción.
+- "Al azar" se sortea al elegirlo en la sala (los dos ven el mapa antes de las clases).
+
+**Cómo se probó**: `tests/lockstep.test.mjs` (ronda completa, mejor de 3 con cambio de bando, plazos,
+reconexión en turno y en decisión, persistencia); `scripts/net-e2e.mjs` contra `wrangler dev` (mejor de 3 con
+reconexión a mitad de turno: sin desync, mismo hash); dos Chromium táctiles de 844 × 390 (menú → sala →
+invitación → LISTO → turnos con hashes iguales → recarga a mitad de partida).
+
+**Probar en local**: `cd server && npx wrangler dev --port 8787`, `npm start` y abrir
+`http://localhost:8080/?servidor=http://localhost:8787` en dos ventanas.
+
+**Pendiente**: resincronización por snapshot (hoy un `desync` solo avisa), abandono declarado, 2v2,
+UI que lea solo `teamView`, indicador de conexión en el HUD, `wakeLock`.
+
 ## 1. Lo que pidió Tomás
 
 - Se puede jugar **1v1 o 2v2**.

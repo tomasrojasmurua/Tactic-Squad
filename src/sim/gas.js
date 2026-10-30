@@ -17,6 +17,7 @@ import { EV } from '../core/events.js';
 import { solidLineOfSight } from './vision.js';
 import { isAiControlled } from './queries.js';
 import { alertAiUnit } from './ai.js';
+import { sq } from '../core/dmath.js';
 
 /** s a unit stays impaired after he leaves the cloud. */
 const LINGER = 1.2;
@@ -51,7 +52,7 @@ export function updateGas(sim, dt) {
     sim.gases[n++] = g;
     for (const u of sim.units) {
       if (!u.alive || u.team === g.team) continue;
-      if ((u.x - g.x) ** 2 + (u.y - g.y) ** 2 > g.r * g.r || !solidLineOfSight(sim.world, g.x, g.y, u.x, u.y)) continue;
+      if (sq(u.x - g.x) + sq(u.y - g.y) > g.r * g.r || !solidLineOfSight(sim.world, g.x, g.y, u.x, u.y)) continue;
       if (u.gassed <= 0) {
         u.coughIn = 0.3; // the first cough comes quickly
         if (isAiControlled(sim, u)) alertAiUnit(u, g.x, g.y, COMBAT.alertDuration, true);

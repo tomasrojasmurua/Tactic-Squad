@@ -23,6 +23,7 @@ import { alertAiUnit } from './ai.js';
 import { isAiControlled } from './queries.js';
 import { barricadeBoxes, spotBarricades } from './barricades.js';
 import { spotWires } from './wires.js';
+import { datan2, dcos, dsin, sq } from '../core/dmath.js';
 
 /** Launches the drone in front of the attackers' entry door, facing it (a player or the attacking AI drives it). */
 export function launchDrone(sim) {
@@ -31,7 +32,7 @@ export function launchDrone(sim) {
   const side = Math.sign((s.at[0] - door.cx) * door.normalX + (s.at[1] - door.cy) * door.normalY) || -1;
   const x = door.cx + door.normalX * side * DRONE.launchDistance;
   const y = door.cy + door.normalY * side * DRONE.launchDistance;
-  const facing = Math.atan2(-door.normalY * side, -door.normalX * side);
+  const facing = datan2(-door.normalY * side, -door.normalX * side);
   sim.drone = {
     x,
     y,
@@ -101,8 +102,8 @@ function move(sim, d, dt) {
   if (!d.moving) return;
   const heading = (d.dir / DRONE.directions) * TAU;
   d.facing = approachAngle(d.facing, heading, DRONE.turnRate * dt);
-  d.x += Math.cos(heading) * DRONE.speed * dt;
-  d.y += Math.sin(heading) * DRONE.speed * dt;
+  d.x += dcos(heading) * DRONE.speed * dt;
+  d.y += dsin(heading) * DRONE.speed * dt;
   barricadeBoxes(sim, blockers);
   const walls = sim.world.moveBlockers;
   for (let pass = 0; pass < 2; pass++) {
@@ -154,7 +155,7 @@ function defend(sim, d, dt) {
   for (const u of sim.teams.defenders) {
     if (!u.alive) continue;
     if (u.alertTimer > 0) u.alertTimer -= dt;
-    if (isAiControlled(sim, u) && d.moving && (u.x - d.x) ** 2 + (u.y - d.y) ** 2 <= h2) alertAiUnit(u, d.x, d.y, COMBAT.alertDuration);
+    if (isAiControlled(sim, u) && d.moving && sq(u.x - d.x) + sq(u.y - d.y) <= h2) alertAiUnit(u, d.x, d.y, COMBAT.alertDuration);
     shotCfg.fov = u.vision.fov;
     if (u.blind > 0 || !canSee(sim.world, u, d.x, d.y, shotCfg)) {
       d.watched.delete(u.id);

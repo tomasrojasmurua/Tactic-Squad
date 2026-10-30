@@ -14,6 +14,8 @@ import { EV } from '../core/events.js';
 import { MAPS } from '../data/maps/index.js';
 import { BEST_OF, MAP_CHOICES } from '../session/Lobby.js';
 import { Roster } from './Roster.js';
+import { RoomView } from './RoomView.js';
+import { serverUrl } from '../net/Connection.js';
 import { MapPreview } from './MapPreview.js';
 import { LESSONS, nextLesson } from '../config/lessons.js';
 import { el, setText, toggle } from './dom.js';
@@ -57,8 +59,10 @@ export class Menu {
     this.play = el('div', 'menu-view play', `<h2 class="mv-title">${M.play}</h2><div class="menu"></div>`);
     const playMenu = this.play.querySelector('.menu');
     playMenu.append(button('primary vs-ai', M.vsAi, M.vsAiNote, 'vsAi'));
-    const multi = button('soon', M.multi, M.soon, null);
-    multi.disabled = true;
+    // Online: there must be a server (the deploy writes its address: config/server.js).
+    const online = !!serverUrl();
+    const multi = button(online ? 'multi' : 'soon', M.multi, online ? M.multiNote : T.flow.online.unavailable, online ? 'online' : null);
+    multi.disabled = !online;
     playMenu.append(multi, button('back', M.back, null, 'back'));
 
     // Lobby: the game's conditions
@@ -111,7 +115,10 @@ export class Menu {
     this.roster = new Roster(bus, button('back', M.back, null, 'back'));
     this.pick = this.roster.root;
 
-    box.append(this.main, this.lessons, this.play, this.lobby, this.pick);
+    // Online: create / join a room, and its lobby (ui/RoomView.js)
+    this.rooms = new RoomView(bus, button);
+
+    box.append(this.main, this.lessons, this.play, this.lobby, this.pick, ...this.rooms.roots);
   }
 
   request(action) {
@@ -157,6 +164,7 @@ export class Menu {
       }
       this.mapCard.show(lobby.map);
     }
-    if (view === 'pick') this.roster.update(lobby);
+    if (view === 'pick') this.roster.update(lobby, session.online);
+    this.rooms.update(session);
   }
 }

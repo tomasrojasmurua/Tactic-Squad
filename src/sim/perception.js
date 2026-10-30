@@ -6,6 +6,7 @@ import { EV } from '../core/events.js';
 import { peekEye, isMonitoring } from './queries.js';
 import { rememberSeen } from './view.js';
 import { camSeesTraps } from './traps.js';
+import { dhypot, sq } from '../core/dmath.js';
 
 export function updatePerception(sim) {
   const { units, world } = sim;
@@ -70,7 +71,7 @@ function callOut(sim, viewer) {
   let bestD = Infinity;
   for (const o of sim.teams[viewer.team === 'attackers' ? 'defenders' : 'attackers']) {
     if (!o.alive || !canSee(sim.world, eye, o.x, o.y, eye)) continue;
-    const d2 = (o.x - d.cx) ** 2 + (o.y - d.cy) ** 2;
+    const d2 = sq(o.x - d.cx) + sq(o.y - d.cy);
     if (d2 < bestD) {
       bestD = d2;
       best = o;
@@ -81,7 +82,7 @@ function callOut(sim, viewer) {
   const r2 = CALLOUT.stack * CALLOUT.stack;
   const until = sim.time + CALLOUT.memory;
   for (const t of sim.teams[viewer.team]) {
-    if (!t.alive || t.target >= 0 || (t.x - d.cx) ** 2 + (t.y - d.cy) ** 2 > r2) continue;
+    if (!t.alive || t.target >= 0 || sq(t.x - d.cx) + sq(t.y - d.cy) > r2) continue;
     if (Math.sign((t.x - d.cx) * d.normalX + (t.y - d.cy) * d.normalY) !== side) continue;
     if (!t.lastKnown) t.lastKnown = { x: best.x, y: best.y, until };
     else {
@@ -123,7 +124,7 @@ function selectTarget(sim, u) {
   for (const id of u.visibleEnemies) {
     const e = sim.units[id];
     const off = Math.abs(angleDiff(u.facing, angleTo(u.x, u.y, e.x, e.y)));
-    const score = Math.hypot(e.x - u.x, e.y - u.y) + off * COMBAT.targetTurnCost;
+    const score = dhypot(e.x - u.x, e.y - u.y) + off * COMBAT.targetTurnCost;
     if (score < bestScore) {
       bestScore = score;
       best = id;
@@ -158,7 +159,7 @@ function reactionTime(sim, u, e) {
     if (u.moving) r += COMBAT.movingReaction;
   }
   if (focused && !u.moving && u.stillTime >= COMBAT.holdTime) r *= u.mods.holdReaction; // a marksman on his angle
-  if ((e.x - u.x) ** 2 + (e.y - u.y) ** 2 < COMBAT.closeRange ** 2) r *= u.mods.closeReaction; // the Escopetero, point blank
+  if (sq(e.x - u.x) + sq(e.y - u.y) < sq(COMBAT.closeRange)) r *= u.mods.closeReaction; // the Escopetero, point blank
   // Through a doorway: a moment lost, unless he cuts the angle as he goes in (the Asaltante).
   if (sim.time - u.doorwayAt < COMBAT.doorwayTime) r = u.mods.doorwayReaction < 1 ? r * u.mods.doorwayReaction : r + COMBAT.doorwayPenalty;
   if (u.alertTimer > 0 || (u.lastKnown && u.lastKnown.until > sim.time)) r *= COMBAT.alertFactor;

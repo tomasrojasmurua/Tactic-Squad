@@ -13,6 +13,7 @@ import { canSee } from './vision.js';
 import { alertAiUnit } from './ai.js';
 import { isAiControlled, wireLimit } from './queries.js';
 import { roleFlag } from '../config/operators.js';
+import { sq } from '../core/dmath.js';
 
 /** Doors wired now (indices into sim.doors). */
 export function wiredDoors(sim) {
@@ -37,7 +38,7 @@ export function setWire(sim, doorId, on) {
 function wireAt(sim, u) {
   const r2 = WIRE.radius * WIRE.radius;
   for (const door of sim.doors) {
-    if (door.wired && (u.x - door.def.cx) ** 2 + (u.y - door.def.cy) ** 2 < r2) return door.def.index;
+    if (door.wired && sq(u.x - door.def.cx) + sq(u.y - door.def.cy) < r2) return door.def.index;
   }
   return -1;
 }
@@ -72,7 +73,7 @@ export function updateWires(sim) {
       sim.emit(EV.WIRE_CROSSED, { unitId: u.id, doorId: d.id, x: u.x, y: u.y });
       const r2 = WIRE.hearing * WIRE.hearing;
       for (const o of sim.teams.defenders) {
-        if (o.alive && isAiControlled(sim, o) && (o.x - u.x) ** 2 + (o.y - u.y) ** 2 <= r2) alertAiUnit(o, u.x, u.y, COMBAT.alertDuration);
+        if (o.alive && isAiControlled(sim, o) && sq(o.x - u.x) + sq(o.y - u.y) <= r2) alertAiUnit(o, u.x, u.y, COMBAT.alertDuration);
       }
     }
     u.wireDoor = k;
@@ -83,7 +84,7 @@ export function updateWires(sim) {
 export function cutWiresNear(sim, x, y, radius, u) {
   const r2 = radius * radius;
   for (const door of sim.doors) {
-    if (!door.wired || (door.def.cx - x) ** 2 + (door.def.cy - y) ** 2 > r2) continue;
+    if (!door.wired || sq(door.def.cx - x) + sq(door.def.cy - y) > r2) continue;
     door.wired = false;
     sim.intel.wires.delete(door.def.index);
     sim.emit(EV.WIRE_CUT, { unitId: u ? u.id : -1, doorId: door.def.id, x: door.def.cx, y: door.def.cy });

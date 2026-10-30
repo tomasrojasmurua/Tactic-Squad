@@ -17,6 +17,7 @@ import { EV } from '../core/events.js';
 import { TEAMS } from '../config/squad.js';
 import { roleFlag } from '../config/operators.js';
 import { enemyTeam } from './queries.js';
+import { dcos, dsin, sq } from '../core/dmath.js';
 
 export function createNoise() {
   const pulses = {};
@@ -70,7 +71,7 @@ export function collectNoise(sim, from) {
     let heard = false;
     let exact = false;
     for (const u of sim.teams[listener]) {
-      if (u.alive && (u.x - ev.x) ** 2 + (u.y - ev.y) ** 2 <= r2) {
+      if (u.alive && sq(u.x - ev.x) + sq(u.y - ev.y) <= r2) {
         heard = true;
         if (roleFlag(u.role, 'sharpEars')) {
           exact = true;
@@ -112,8 +113,8 @@ export function summarizeNoise(sim) {
     }
     const a = hash01(sim.seed, turn, p.cx, p.cy, 1);
     const d = hash01(sim.seed, turn, p.cx, p.cy, 2);
-    const x = (p.cx + 0.5) * NOISE.cell + Math.cos(a * Math.PI * 2) * d * NOISE.jitter;
-    const y = (p.cy + 0.5) * NOISE.cell + Math.sin(a * Math.PI * 2) * d * NOISE.jitter;
+    const x = (p.cx + 0.5) * NOISE.cell + dcos(a * Math.PI * 2) * d * NOISE.jitter;
+    const y = (p.cy + 0.5) * NOISE.cell + dsin(a * Math.PI * 2) * d * NOISE.jitter;
     n.pulses[p.team].push({ turn, kind: p.kind, x, y, exact: false });
   }
 }

@@ -119,10 +119,17 @@ export class Screens {
     const showResult = session.phase === 'ended' && sim.outcome && !kc;
     toggle(this.result, 'hidden', !showResult);
     if (showResult && !this.resultShown) {
+      this.rival = session.online ? session.online.rival || T.flow.online.rival : undefined;
       this.fillResult(sim, session.team, session.mode === 'match' ? session.match : null);
       // Retries are a lesson's only; a single round or a match goes forward (and can see its last kill again).
       toggle(this.result, 'lesson', session.mode === 'tutorial');
       this.replayKill.hidden = !session.lastKill || session.mode === 'tutorial';
+    }
+    if (showResult && session.online) {
+      // Online the next round starts when both are ready; after the match, back to the room.
+      const o = session.online;
+      const O = T.flow.online;
+      setText(this.result.querySelector('.next-round'), o.finished ? O.toRoom : o.waiting ? O.waiting(o.rival) : session.match && session.match.over ? O.toRoom : T.match.next);
     }
     if (!!showResult !== this.resultShown) this.resultActions.style.display = showResult ? '' : 'none';
     this.resultShown = !!showResult;
@@ -137,11 +144,11 @@ export class Screens {
     setText(this.result.querySelector('h2'), match && match.over ? (match.over === 'player' ? T.match.won : T.match.lost) : win ? T.result.win : T.result.lose);
     // A match: the score, the loser's bonus, and the way forward (no retries).
     const last = match && match.history[match.history.length - 1];
-    setText(this.result.querySelector('.match-line'), match ? `${T.match.round(last.round)} · ${T.match.score(match.score.player, match.score.ai)}` : '');
+    setText(this.result.querySelector('.match-line'), match ? `${T.match.round(last.round)} · ${T.match.score(match.score.player, match.score.ai, this.rival)}` : '');
     const pay = this.result.querySelector('.match-pay');
     // Who gets the extra utility point next round, or the half-time switch.
     pay.hidden = !match || !!match.over;
-    if (match && !match.over) setText(pay, last.switched ? T.match.switchSides(match.team) : T.match.bonus(!last.playerWon));
+    if (match && !match.over) setText(pay, last.switched ? T.match.switchSides(match.team) : T.match.bonus(!last.playerWon, this.rival));
     setText(this.result.querySelector('.next-round'), match ? (match.over ? T.match.again : T.match.next) : T.result.another);
     setText(this.result.querySelector('.reason'), (team === 'defenders' ? T.result.reasonDefend : T.result.reason)[o.reason]);
     const squad = teamUnits(sim, team);

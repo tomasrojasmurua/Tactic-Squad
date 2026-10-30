@@ -8,6 +8,7 @@ import { MOVE, ROUND, ENTRY, DOORS, CAMERA, PREP } from '../config/balance.js';
 import { ROLES } from '../config/operators.js';
 import { PROP_SURFACE, SURFACE_PROBE, DOOR_SURFACE, FENCE_SURFACE } from '../config/materials.js';
 import { TEAMS } from '../config/squad.js';
+import { datan2, dcos, dhypot, dsin, sq } from '../core/dmath.js';
 
 /** The opposing side of a team. */
 export const enemyTeam = (team) => (team === TEAMS[0] ? TEAMS[1] : TEAMS[0]);
@@ -59,8 +60,8 @@ export function struckSurface(sim, x, y) {
     if (d.destroyed) continue;
     const def = d.def;
     const a = def.closedAngle + d.angle;
-    const ex = def.hingeX + Math.cos(a) * def.length;
-    const ey = def.hingeY + Math.sin(a) * def.length;
+    const ex = def.hingeX + dcos(a) * def.length;
+    const ey = def.hingeY + dsin(a) * def.length;
     if (pointSegDist2(x, y, def.hingeX, def.hingeY, ex, ey) < r2) return DOOR_SURFACE;
   }
   const prop = propNear(sim, x, y);
@@ -122,7 +123,7 @@ export const bombKnownTo = (sim, team) => team === 'defenders' || sim.bomb.spott
 /** Within defuse reach of the bomb (ROUND.defuseRadius). */
 export function nearBomb(sim, u) {
   const b = sim.bomb;
-  return (u.x - b.x) ** 2 + (u.y - b.y) ** 2 <= ROUND.defuseRadius * ROUND.defuseRadius;
+  return sq(u.x - b.x) + sq(u.y - b.y) <= ROUND.defuseRadius * ROUND.defuseRadius;
 }
 
 /**
@@ -139,7 +140,7 @@ export function defuseCandidate(sim, unitId = -1) {
   let bestD = Infinity;
   for (const u of sim.teams.attackers) {
     if (!u.alive || !nearBomb(sim, u)) continue;
-    const d = (u.x - b.x) ** 2 + (u.y - b.y) ** 2;
+    const d = sq(u.x - b.x) + sq(u.y - b.y);
     if (d < bestD) {
       bestD = d;
       best = u;
@@ -165,7 +166,7 @@ export function doorwayNear(world, x, y, maxDist) {
   let best = null;
   let bestD = maxDist * maxDist;
   for (const d of world.doorways) {
-    const d2 = (d.cx - x) ** 2 + (d.cy - y) ** 2;
+    const d2 = sq(d.cx - x) + sq(d.cy - y);
     if (d2 < bestD) {
       bestD = d2;
       best = d;
@@ -299,7 +300,7 @@ export function entryDoorwayAt(world, x, y) {
   let bestD = ENTRY.doorRange * ENTRY.doorRange;
   const ds = world.doorways;
   for (let i = 0; i < ds.length; i++) {
-    const d2 = (ds[i].cx - x) ** 2 + (ds[i].cy - y) ** 2;
+    const d2 = sq(ds[i].cx - x) + sq(ds[i].cy - y);
     if (d2 < bestD) {
       bestD = d2;
       best = i;
@@ -359,14 +360,14 @@ export function peekEye(sim, u, out) {
   const { hingeX, hingeY, closedAngle, length } = door.def;
   // The gap: between the latch jamb (where the closed door ends) and the slab's free end.
   const a = closedAngle + door.angle;
-  const gx = hingeX + (Math.cos(closedAngle) + Math.cos(a)) * length * 0.5;
-  const gy = hingeY + (Math.sin(closedAngle) + Math.sin(a)) * length * 0.5;
+  const gx = hingeX + (dcos(closedAngle) + dcos(a)) * length * 0.5;
+  const gy = hingeY + (dsin(closedAngle) + dsin(a)) * length * 0.5;
   // Its point on the wall plane, then back out on his side.
   const across = (gx - d.cx) * d.normalX + (gy - d.cy) * d.normalY;
   const back = across + ENTRY.slow.peekBack * e.side;
   out.x = gx - d.normalX * back;
   out.y = gy - d.normalY * back;
-  out.facing = Math.atan2(gy - out.y, gx - out.x);
+  out.facing = datan2(gy - out.y, gx - out.x);
   out.fov = ENTRY.slow.peekFov;
   out.range = u.vision.range;
   return true;
@@ -379,7 +380,7 @@ function camEye(sim, u, e, out) {
   const C = ENTRY.cam;
   out.x = d.cx + d.normalX * e.side * C.under;
   out.y = d.cy + d.normalY * e.side * C.under;
-  out.facing = Math.atan2(d.normalY * e.side, d.normalX * e.side);
+  out.facing = datan2(d.normalY * e.side, d.normalX * e.side);
   out.fov = C.fov;
   out.range = C.range;
   return true;
@@ -432,10 +433,10 @@ export function tossLanding(world, x, y, tx, ty, out = {}, k = -1, range = ENTRY
   const d = k >= 0 ? world.doorways[k] : null;
   const ox = d ? d.cx : x;
   const oy = d ? d.cy : y;
-  const leg1 = d ? Math.hypot(d.cx - x, d.cy - y) : 0;
+  const leg1 = d ? dhypot(d.cx - x, d.cy - y) : 0;
   const dx = tx - ox;
   const dy = ty - oy;
-  const len = Math.hypot(dx, dy) || 1;
+  const len = dhypot(dx, dy) || 1;
   const want = Math.max(0, Math.min(len, range - leg1));
   const nx = dx / len;
   const ny = dy / len;

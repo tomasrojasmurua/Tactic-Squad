@@ -33,6 +33,7 @@ import { canSee } from './vision.js';
 import { isAiControlled, cameraLimit } from './queries.js';
 import { alertAiUnit } from './ai.js';
 import { rememberSeen } from './view.js';
+import { datan2, sq } from '../core/dmath.js';
 
 /** The map's mount with that id, or null. */
 export const mountById = (sim, id) => sim.compiled.cameraMounts.find((m) => m.id === id) || null;
@@ -68,7 +69,7 @@ export function placeCameras(sim) {
   const limit = cameraLimit(sim);
   const ids = ((sim.compiled.cameras && sim.compiled.cameras[sim.site.id]) || []).slice(0, limit);
   if (ids.length < limit) {
-    const d2 = (m) => (m.at[0] - sim.site.bombX) ** 2 + (m.at[1] - sim.site.bombY) ** 2;
+    const d2 = (m) => sq(m.at[0] - sim.site.bombX) + sq(m.at[1] - sim.site.bombY);
     const rest = sim.compiled.cameraMounts.filter((m) => !ids.includes(m.id)).sort((a, b) => d2(a) - d2(b) || (a.id < b.id ? -1 : 1));
     for (const m of rest.slice(0, limit - ids.length)) ids.push(m.id);
   }
@@ -154,7 +155,7 @@ function attackersSee(sim, c, dt) {
   const spot2 = CAMERA.spot * CAMERA.spot;
   for (const u of sim.teams.attackers) {
     if (!u.alive || u.blind > 0) continue;
-    const d2 = (u.x - c.x) ** 2 + (u.y - c.y) ** 2;
+    const d2 = sq(u.x - c.x) + sq(u.y - c.y);
     if ((!c.known && d2 > spot2) || !canSee(sim.world, u, c.x, c.y, u.vision)) continue;
     if (!c.known) found(sim, c, false);
     const free = u.target < 0 && u.reloadTimer <= 0 && !(u.entry && u.entry.phase === 'act') && !u.defusing;
@@ -185,9 +186,9 @@ function destroy(sim, c, u) {
   c.known = true;
   sim.emit(EV.CAMERA_DESTROYED, { cameraId: c.id, unitId: u.id, x: c.x, y: c.y });
   // One shot: the gun is heard like any other.
-  sim.emit(EV.SHOT, { unitId: u.id, team: u.team, weaponId: u.weaponId, x: u.x, y: u.y, angle: Math.atan2(c.y - u.y, c.x - u.x), toX: c.x, toY: c.y, hit: 'wall', victimId: -1, cover: false, material: 'metal', impactZ: -1, mag: u.mag });
+  sim.emit(EV.SHOT, { unitId: u.id, team: u.team, weaponId: u.weaponId, x: u.x, y: u.y, angle: datan2(c.y - u.y, c.x - u.x), toX: c.x, toY: c.y, hit: 'wall', victimId: -1, cover: false, material: 'metal', impactZ: -1, mag: u.mag });
   const r2 = COMBAT.hearingRadius * COMBAT.hearingRadius;
   for (const o of sim.teams.defenders) {
-    if (o.alive && isAiControlled(sim, o) && (o.x - u.x) ** 2 + (o.y - u.y) ** 2 < r2) alertAiUnit(o, u.x, u.y, COMBAT.alertDuration, true);
+    if (o.alive && isAiControlled(sim, o) && sq(o.x - u.x) + sq(o.y - u.y) < r2) alertAiUnit(o, u.x, u.y, COMBAT.alertDuration, true);
   }
 }

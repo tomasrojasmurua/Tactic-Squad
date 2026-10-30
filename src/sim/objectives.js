@@ -12,6 +12,7 @@ import { canSee } from './vision.js';
 import { nearBomb, isAiControlled, peekEye } from './queries.js';
 import { alertAiUnit } from './ai.js';
 import { buildNotes } from './debrief.js';
+import { sq } from '../core/dmath.js';
 
 export function createBomb(site) {
   return {
@@ -99,7 +100,7 @@ export function startDefuse(sim, u) {
   sim.emit(EV.DEFUSE_START, { unitId: u.id, x: bomb.x, y: bomb.y });
   const r2 = COMBAT.hearingRadius * COMBAT.hearingRadius;
   for (const d of sim.teams.defenders) {
-    if (isAiControlled(sim, d) && (d.x - bomb.x) ** 2 + (d.y - bomb.y) ** 2 <= r2) alertAiUnit(d, bomb.x, bomb.y, COMBAT.alertDuration, true);
+    if (isAiControlled(sim, d) && sq(d.x - bomb.x) + sq(d.y - bomb.y) <= r2) alertAiUnit(d, bomb.x, bomb.y, COMBAT.alertDuration, true);
   }
 }
 

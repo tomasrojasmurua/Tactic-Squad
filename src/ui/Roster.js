@@ -163,6 +163,8 @@ export class Roster {
     this.players = q('.lb-players');
     this.players.innerHTML = `<div class="lb-player you"><b>${L.you}</b><span class="st"></span></div><div class="lb-player ai"><b>${L.ai}</b><span class="st ok">${P.aiPicks}</span></div>`;
     this.youState = this.players.querySelector('.you .st');
+    this.otherName = this.players.querySelector('.ai b');
+    this.otherState = this.players.querySelector('.ai .st');
     this.ready = el('button', 'btn primary lb-ready', `<span class="rs-ready"></span><span class="key desk-only">${L.readyKey}</span>`);
     this.readyLabel = this.ready.firstChild;
     this.ready.addEventListener('click', () => this.request('lobbyReady'));
@@ -216,13 +218,16 @@ export class Roster {
     setText(this.delBtn, P.removeOne);
   }
 
-  update(lobby) {
+  /** `online`: session.online in a room (the other chip is the rival, who also picks blind). */
+  update(lobby, online = null) {
     const P = T.flow.pick;
     const L = T.flow.lobby;
     this.lobby = lobby;
     const side = lobby.pickSide;
     const sides = pickSides(lobby);
-    setText(this.note, P.note(sides.length > 1));
+    setText(this.note, online ? P.noteOnline(sides.length > 1) : P.note(sides.length > 1));
+    setText(this.otherName, online ? online.rival || T.flow.online.rival : L.ai);
+    setText(this.otherState, P.aiPicks);
     setText(this.mapTag.firstChild, MAPS[lobby.drawn] ? P.map(MAPS[lobby.drawn].name, lobby.map === 'random') : '');
     if (!this.mapCard.root.hidden) this.mapCard.show(lobby.drawn);
     for (const { b, n, t } of this.tabs) {
