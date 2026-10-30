@@ -137,6 +137,17 @@ export const T = Object.freeze({
     bombDefused: 'Bomba: desactivada',
     match: (round, player, ai, rival = 'IA') => `Ronda ${round} · Tú ${player}–${ai} ${rival}`,
   },
+  /** The selected operator's sheet (ui/UnitSheet.js). */
+  unitSheet: {
+    weapon: 'Arma',
+    gear: 'Equipo que lleva',
+    traits: 'Características',
+    ammo: (mag, reserve) => `Cargador ${mag} · reserva ${reserve}`,
+    hp: (hp, max) => `Vida ${hp}/${max}`,
+    noGear: 'Sin utilidad',
+    close: 'Cerrar ficha',
+  },
+
   /** The bomb's clock beside the banner (ui/Hud.js). */
   bombClock: {
     turns: (n) => (n === 1 ? 'último turno' : `${n} turnos`),
@@ -525,6 +536,7 @@ export const T = Object.freeze({
       ['Rueda · + / −', 'Zoom'],
       ['V', 'Ver todo el mapa (otra vez: volver)'],
       ['F', 'Centrar en el operador'],
+      ['J · clic en su tarjeta seleccionada', 'Ficha del operador: clase, arma, equipo que lleva'],
       ['R · N', 'Solo en el tutorial: repetir la lección con el mismo plan · con un plan nuevo. Las rondas no se repiten'],
       ['Espacio (al terminar la ronda)', 'Saltar la repetición de la última baja'],
       ['Esc', 'Cancelar el trazo en curso'],
@@ -553,6 +565,7 @@ export const T = Object.freeze({
     music: 'Música',
     rows: [
       ['Tocar operador / tarjeta', 'Seleccionar'],
+      ['Tocar otra vez su tarjeta (o su nombre)', 'Ficha del operador: clase, arma, equipo que lleva'],
       ['ESCUADRA (junto a las tarjetas)', 'Los demás siguen al seleccionado en fila: una ruta para todos'],
       ['Mando DRON', 'Mover el dron de reconocimiento; RETIRAR lo termina'],
       ['Tocar el suelo', 'Añadir punto de ruta'],

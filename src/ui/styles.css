@@ -1345,3 +1345,39 @@ body.killcam-on .banner, body.killcam-on .squad, body.killcam-on .feed, body.kil
   .bombclock .bc-time { font-size: 22px; }
   .bombclock .bc-sub { font-size: 10px; letter-spacing: 0.08em; }
 }
+
+/* The selected operator's sheet (ui/UnitSheet.js): under the squad, over the map. */
+.unit-sheet {
+  position: absolute; left: calc(264px + var(--sal)); top: calc(16px + var(--sat)); width: 320px; max-height: calc(100vh - 140px - var(--sat)); overflow-y: auto;
+  padding: 10px 14px 12px; background: rgba(6, 7, 9, 0.94); border-left: 3px solid var(--rc); z-index: 7; color: #e3e8ec;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6); animation: viewIn 0.16s ease-out;
+}
+.unit-sheet.hidden { display: none; }
+.unit-sheet .us-head { display: flex; align-items: center; gap: 10px; }
+.unit-sheet .us-em { width: 34px; height: 34px; flex: none; color: var(--rc); }
+.unit-sheet .us-em svg { width: 100%; height: 100%; display: block; }
+.unit-sheet .us-title { display: grid; flex: 1; line-height: 1.1; }
+.unit-sheet .us-class { font-family: var(--font-display); font-size: 20px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--rc); }
+.unit-sheet .us-name { font-size: 12px; font-weight: 800; letter-spacing: 0.14em; color: var(--op); }
+.unit-sheet .us-close { min-width: 44px; min-height: 44px; margin: -8px -10px 0 0; background: none; border: 0; color: #cfd6db; font-size: 26px; cursor: pointer; }
+.unit-sheet .us-blurb { margin: 6px 0 2px; font-size: 12.5px; line-height: 1.35; color: #c3cbd1; }
+.unit-sheet .us-sec { margin-top: 8px; }
+.unit-sheet h4 { margin: 0 0 4px; font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+.unit-sheet .us-gun { display: flex; align-items: center; gap: 10px; }
+.unit-sheet .us-gun svg { width: 96px; height: 28px; flex: none; color: #dfe4e8; }
+.unit-sheet .us-gun span { display: grid; line-height: 1.2; }
+.unit-sheet .us-gun b { font-size: 14px; }
+.unit-sheet .us-gun small { font-size: 12px; color: #b9c3ca; font-variant-numeric: tabular-nums; }
+.unit-sheet .us-gear { display: flex; flex-wrap: wrap; gap: 6px; }
+.unit-sheet .us-item { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 5px; background: rgba(255, 255, 255, 0.06); font-size: 12.5px; font-weight: 700; }
+.unit-sheet .us-item svg { width: 18px; height: 18px; flex: none; }
+.unit-sheet .us-item.spent { opacity: 0.4; }
+.unit-sheet .us-none { font-size: 12px; color: var(--muted); }
+.unit-sheet .us-traits { margin: 0; padding-left: 16px; font-size: 12.5px; line-height: 1.35; }
+.card-name .info-hint { margin-left: 4px; font-size: 12px; opacity: 0.7; }
+@media (max-height: 520px) {
+  .unit-sheet { top: calc(78px + var(--sat)); left: calc(8px + var(--sal)); width: 300px; max-height: calc(100dvh - 90px - var(--sat)); padding: 8px 12px 10px; }
+  .unit-sheet .us-blurb { display: none; }
+  /* The name under the selected chip opens the sheet too. */
+  .card.selected:not(.dead) .card-body { pointer-events: auto; }
+}

@@ -67,6 +67,7 @@ export function createSession({ touch }) {
       wheelAt: null, // {unitId, x, y}: a tap on a door stacked him there; the door wheel opens once the point is added
       camera: -1, // defending: the last of your cameras the view jumped to (CÁMARAS / O)
       trapMode: false, // defender set-up: taps lay (or pick up) the selected Trampero's traps
+      unitInfo: false, // the selected operator's sheet is open (ui/UnitSheet.js)
     },
   };
 }

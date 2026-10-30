@@ -1,5 +1,6 @@
 // Left squad panel: one card per operator (portrait, weapon, ammo, HP,
-// live status). Clicking a card selects the operator.
+// live status). Clicking a card selects the operator; clicking the selected one again
+// (or the name under his chip) opens his sheet (ui/UnitSheet.js).
 import { ROLES } from '../config/operators.js';
 import { EV } from '../core/events.js';
 import { teamUnits } from '../sim/queries.js';
@@ -32,7 +33,7 @@ export class SquadPanel {
       root.innerHTML = `
         <div class="avatar">${ICON.helmet}<div class="num">${i + 1}</div></div>
         <div class="card-body">
-          <div class="card-name"><span class="nm"></span><span class="bomb">${ICON.bomb}</span></div>
+          <div class="card-name"><span class="nm"></span><span class="bomb">${ICON.bomb}</span><span class="info-hint">ⓘ</span></div>
           <div class="card-weapon"><span class="wn"></span><span class="am"></span></div>
           <div class="hp"><div class="hp-fill"></div></div>
           <div class="card-status"></div>
@@ -40,7 +41,8 @@ export class SquadPanel {
         <div class="chip-am"></div><div class="chip-hp"><div class="hp-fill"></div></div>`;
       root.addEventListener('pointerdown', (ev) => {
         ev.stopPropagation();
-        this.bus.emit(EV.SELECT, { unitId: u.id });
+        if (root.classList.contains('selected')) this.bus.emit(EV.REQUEST, { action: 'unitInfo' }); // his sheet
+        else this.bus.emit(EV.SELECT, { unitId: u.id });
       });
       this.node.appendChild(root);
       this.cards.set(u.id, {

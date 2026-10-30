@@ -15,6 +15,7 @@ export const KEYS = Object.freeze({
   restart: ['KeyR'], // retry: same plan, fresh round
   newPlan: ['KeyN'], // fresh round with no routes
   focus: ['KeyF'],
+  unitInfo: ['KeyJ'], // the selected operator's sheet (class, weapon, utility)
   help: ['F1', 'Slash', 'KeyI'],
   mute: ['KeyM'],
   music: ['KeyB'], // N is newPlan

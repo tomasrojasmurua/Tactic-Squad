@@ -559,6 +559,12 @@ export class SessionController {
       case 'fullscreen':
         toggleFullscreen();
         return;
+      case 'unitInfo':
+        // The selected operator's sheet: class, weapon, utility (ui/UnitSheet.js). It follows the selection.
+        if (phase === 'title') return;
+        session.ui.unitInfo = !session.ui.unitInfo;
+        this.sound(session.ui.unitInfo ? 'select' : 'undo');
+        return;
       case 'overview':
         if (phase !== 'title') this.framing.toggleOverview();
         return;
