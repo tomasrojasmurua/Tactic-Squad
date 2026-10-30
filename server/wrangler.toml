@@ -1,0 +1,14 @@
+# The multiplayer server (server/worker.js) on Cloudflare Workers + Durable Objects, free plan:
+# one Durable Object per room, SQLite-backed storage, WebSocket hibernation.
+# GitHub Actions deploys it on every push to main (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID).
+name = "tactic-squad"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Sala"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Sala"]

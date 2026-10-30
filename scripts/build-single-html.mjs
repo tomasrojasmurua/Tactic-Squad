@@ -9,7 +9,9 @@ import path from 'path';
 const root = process.argv[2] || '.';
 const out = process.argv[3] || 'dist/tactic-squad.html';
 fs.mkdirSync(path.dirname(out), { recursive: true });
+// The multiplayer server's address: SERVER_URL=https://... npm run build (else the one in src/config/server.js).
 const patch = { name: 'patch', setup(b) {
+  if (process.env.SERVER_URL) b.onLoad({ filter: /config[\\/]server\.js$/ }, () => ({ contents: `export const SERVER_URL = ${JSON.stringify(process.env.SERVER_URL)};`, loader: 'js' }));
   b.onLoad({ filter: /SoundBank\.js$/ }, async (a) => {
     let s = fs.readFileSync(a.path, 'utf8');
     const from = "new Worker(new URL('./bakeWorker.js', import.meta.url), { type: 'module' })";

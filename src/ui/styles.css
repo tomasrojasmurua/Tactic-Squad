@@ -1261,3 +1261,41 @@ body.killcam-on .banner, body.killcam-on .squad, body.killcam-on .feed, body.kil
   .banner { right: calc(280px + var(--sar)); }
 }
 @keyframes tutPopPhone { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Online (ui/RoomView.js): create / join a room, and its lobby. */
+.lobby.online .on-note { margin-top: 8px; }
+.lobby.online .on-grid { display: grid; grid-template-columns: minmax(180px, 280px) auto; gap: 12px 18px; align-items: end; margin-top: 14px; max-width: 640px; }
+.lobby .on-input {
+  font: 700 18px var(--font-display, inherit); letter-spacing: 0.08em; color: #fff; background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--line-strong); border-left: 3px solid var(--cyan); padding: 10px 12px; min-height: 44px; width: 100%; box-sizing: border-box; outline: none;
+}
+.lobby .on-input:focus { border-color: var(--cyan); }
+.lobby .on-code { text-transform: uppercase; letter-spacing: 0.3em; }
+.title-box .lobby.online .menu-btn { margin: 0; width: 220px; min-height: 52px; }
+.lobby .on-error, .lobby .rm-error { color: var(--amber); min-height: 1.2em; }
+.lobby.room .rm-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.lobby.room .rm-code { margin: 0; letter-spacing: 0.12em; }
+.lobby .rm-net { width: 12px; height: 12px; border-radius: 50%; background: var(--red); box-shadow: 0 0 8px currentColor; }
+.lobby .rm-net[data-q='good'] { background: var(--ok); }
+.lobby .rm-net[data-q='fair'] { background: var(--amber); }
+.lobby .rm-status { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--amber); }
+.title-box .lobby .btn.lb-opt.rm-invite { border-color: #25d366; color: #d9ffe6; min-height: 44px; padding: 8px 18px; }
+.lobby .rm-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lobby .rm-side { display: grid; gap: 6px; align-content: start; }
+.lobby .rm-side .lb-player { min-height: 44px; justify-content: space-between; }
+.lobby .rm-side .lb-player.you { border-left-color: var(--cyan); }
+.lobby .rm-side .lb-player.empty { opacity: 0.55; font-style: italic; }
+.lobby .rm-side.attackers .lb-side { color: var(--amber); }
+.lobby .rm-side.defenders .lb-side { color: var(--cyan); }
+.title-box .lobby .btn.lb-opt.rm-move { min-height: 40px; }
+.lobby .rm-maps { max-width: 440px; }
+.lobby .lb-ready.short { opacity: 0.55; }
+
+@media (max-height: 500px) {
+  .lobby.online .on-grid { margin-top: 8px; gap: 8px 14px; }
+  .title-box .lobby.online .menu-btn { min-height: 44px; }
+  .lobby .on-input { min-height: 44px; padding: 6px 10px; font-size: 16px; }
+  .lobby.room .lb-cols { margin-top: 8px; gap: 8px 22px; }
+  .lobby.room .lb-col { gap: 8px; }
+  .title .title-box:has(.lobby.room.on), .title .title-box:has(.lobby.online.on) { max-height: calc(100dvh - 24px); overflow: auto; padding-right: 10px; }
+}

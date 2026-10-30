@@ -126,6 +126,7 @@ export class Room {
       case 'listo': return this.onReady(p, msg, now);
       case 'estado': return this.onState(p, msg, now);
       case 'ping': return [send(id, { t: 'pong', ts: msg.ts })];
+      case 'reloj': return []; // only moves the clock (the caller ticks before every message)
       default: return [send(id, { t: 'error', motivo: 'mensaje' })];
     }
   }

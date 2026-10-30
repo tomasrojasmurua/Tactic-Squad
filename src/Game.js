@@ -28,6 +28,10 @@ import { TouchController } from './input/TouchController.js';
 import { DroneController } from './input/DroneController.js';
 import { UI } from './ui/UI.js';
 import { createKillCam, stepKillCam } from './session/KillCam.js';
+import { OnlineSession } from './net/OnlineSession.js';
+
+const ONLINE_SLACK = 3; // steps an online phone may lag behind the server's grant before it hurries
+const ONLINE_CATCHUP = 24; // at most this many extra steps per frame
 
 export class Game {
   constructor(canvas, uiRoot) {
@@ -74,7 +78,23 @@ export class Game {
       restart: (seed) => this.newRound(seed),
       killcam: { start: (kill) => this.startKillcam(kill), stop: () => this.stopKillcam() },
     });
-    this.bus.on(EV.COMMAND, (cmd) => this.sim.enqueue(cmd));
+    // Online, orders go through the lockstep (net/LockstepClient.js): decisions apply at once and
+    // travel; a live phase's wait for the server's echo, stamped with the step they apply at.
+    this.online = new OnlineSession({
+      session: this.session,
+      bus: this.bus,
+      game: {
+        startRound: (info) => this.newOnlineRound(info),
+        advanced: (data) => this.flow.onlineAdvanced(data),
+        clock: (fase) => this.flow.onlineClock(fase),
+        toRoom: () => this.flow.toMenu('room'),
+        leftRoom: () => this.flow.toMenu('play'),
+      },
+    });
+    this.flow.online = this.online;
+    const linked = this.online.fromLink(); // ?sala=CODE: the invitation (or a reload mid-game)
+    if (linked) this.session.lobby.view = linked;
+    this.bus.on(EV.COMMAND, (cmd) => (this.online.active ? this.online.command(cmd) : this.sim.enqueue(cmd)));
     this.drone = new DroneController({ input: this.input, bus: this.bus, session: this.session, steer: (dir) => this.flow.steerDrone(dir) });
 
     this.ui = new UI(uiRoot, this.bus, this.input, this.session);
@@ -114,13 +134,47 @@ export class Game {
     this.planning.refresh();
   }
 
+  /**
+   * A round of an online match (net/LockstepClient.js): the Simulation every phone builds the same
+   * (the server's seed, both sides human, the classes each player picked, the match's carry-over).
+   * During a reconnection's catch-up the screen waits until the replay is over.
+   */
+  newOnlineRound({ map, options }) {
+    this.stopKillcam();
+    const s = this.session;
+    const client = this.online.client;
+    s.mode = 'match';
+    s.match = client.match;
+    s.team = client.team;
+    s.map = map;
+    this.mapDef = ALL_MAPS[map] ?? ALL_MAPS[DEFAULT_MAP];
+    this.framing.mapDef = this.mapDef;
+    this.roundArgs = options;
+    this.sim = new Simulation(this.mapDef, options);
+    this.attempt++;
+    this.flow.recorder.beginAttempt([]);
+    this.flow.onRoundStart();
+    resetSessionPreviews(s);
+    this.bus.emit(EV.ROUND_RESET, { sim: this.sim });
+    if (!client.replaying) {
+      this.flow.syncPhase(true);
+      this.framing.frameStart();
+    }
+    this.planning.refresh();
+    return this.sim;
+  }
+
   // ------------------------------------------------------------ loop
 
   step(dt) {
     if (this.killcam) return this.stepKillcam();
+    // Online, a live phase runs only up to the step the server granted (the round's tail is local).
+    const online = this.online.active;
+    if (online && this.sim.phase !== 'end' && !this.online.canStep()) return;
     this.drone.update(); // the drone's stick, stamped with the step about to run
     this.sim.step(dt);
     this.flushEvents();
+    if (online) this.online.afterStep();
     this.flow.afterStep(this.sim, dt);
   }
 
@@ -187,6 +241,12 @@ export class Game {
   }
 
   frame(dt, alpha) {
+    this.online.update();
+    // Online and behind the server (a slow frame, the page was hidden): a few extra steps per frame.
+    if (this.online.active && this.loop.simulating && !this.killcam) {
+      const extra = Math.min(this.online.behind - ONLINE_SLACK, ONLINE_CATCHUP);
+      for (let i = 0; i < extra && this.online.canStep(); i++) this.step(this.sim.dt);
+    }
     this.flow.update(dt);
     if (!this.loop.simulating) {
       // Deciding (buy, preparation, planning): orders apply immediately so routes update live.

@@ -88,7 +88,8 @@ export class TouchBar {
     const phase = session.phase;
     const deciding = isDecisionPhase(session);
     // LISTO ends a decision phase; a running turn cannot be paused (no button), a system pause resumes here.
-    setText(this.execLabel, phase === 'drone' ? T.touch.recall : !deciding ? T.touch.resume : inRecon(sim, session) ? T.actions.endRecon : session.confirm.action === 'ready' ? T.flow.confirmReady : T.touch.ready);
+    const waiting = deciding && session.online && session.online.waiting; // online: LISTO sent, the rival still deciding
+    setText(this.execLabel, phase === 'drone' ? T.touch.recall : !deciding ? T.touch.resume : waiting ? T.flow.online.waitingShort : inRecon(sim, session) ? T.actions.endRecon : session.confirm.action === 'ready' ? T.flow.confirmReady : T.touch.ready);
     setHidden(this.exec, !deciding && phase !== 'paused' && !(phase === 'drone' && pilotsDrone(session)));
 
     const sel = sim.units[session.selectedId];

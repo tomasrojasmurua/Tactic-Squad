@@ -135,18 +135,18 @@ export const T = Object.freeze({
     killsDefend: (n, total) => `Atacantes abatidos: ${n}/${total}`,
     bombAt: (site) => `Bomba: sitio ${site}`,
     bombDefused: 'Bomba: desactivada',
-    match: (round, player, ai) => `Ronda ${round} · Tú ${player}–${ai} IA`,
+    match: (round, player, ai, rival = 'IA') => `Ronda ${round} · Tú ${player}–${ai} ${rival}`,
   },
   match: {
     next: 'SIGUIENTE RONDA',
     again: 'NUEVA PARTIDA',
-    score: (player, ai) => `Tú ${player} – ${ai} IA`,
+    score: (player, ai, rival = 'IA') => `Tú ${player} – ${ai} ${rival}`,
     switchSides: (team) => `Cambio de bando: desde la próxima ronda ${team === 'defenders' ? 'defiendes' : 'atacas'}`,
     round: (n) => `Ronda ${n}`,
     won: '¡PARTIDA GANADA!',
     lost: 'PARTIDA PERDIDA',
     toWin: (n) => `Gana el primero en llegar a ${n}`,
-    bonus: (playerLost) => (playerLost ? 'Perdiste la ronda: en la próxima cada uno de los tuyos tiene +1 punto de utilidad' : 'La IA perdió la ronda: en la próxima cada uno de los suyos tiene +1 punto de utilidad'),
+    bonus: (playerLost, rival = 'La IA') => (playerLost ? 'Perdiste la ronda: en la próxima cada uno de los tuyos tiene +1 punto de utilidad' : `${rival} perdió la ronda: en la próxima cada uno de los suyos tiene +1 punto de utilidad`),
   },
 
   /** Squad route (sim/follow.js): the squad panel's button. */

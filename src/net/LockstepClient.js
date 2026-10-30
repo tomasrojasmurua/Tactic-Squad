@@ -62,9 +62,12 @@ export class LockstepClient {
     return this.sim ? this.sim.phase : null;
   }
 
-  /** May the player decide now (a decision phase of the round is open and he has not said LISTO)? */
+  /**
+   * May the player decide now: a decision phase of the round is open (the server announced it: an
+   * order or a LISTO sent before would be stale there) and he has not said LISTO?
+   */
   get deciding() {
-    return !!this.sim && !this.replaying && DECIDING.has(this.sim.phase) && !this.isReady;
+    return !!this.sim && !this.replaying && DECIDING.has(this.sim.phase) && !!this.fase && this.fase.n === this.n && !this.isReady;
   }
 
   /** He said LISTO in the open phase (the server's list, or his own message on its way). */
@@ -90,6 +93,7 @@ export class LockstepClient {
       case 'pasos':
         if (msg.n !== this.n) return;
         this.hasta = msg.hasta;
+        this.lastSteps = Date.now();
         return;
       case 'orden':
         if (msg.n === this.n && this.sim) this.sim.enqueue(msg.cmd);
@@ -182,6 +186,20 @@ export class LockstepClient {
     this.hasta = 0;
     this.report();
     this.on('advance', {});
+  }
+
+  /**
+   * A nudge for the server's clock, if it is due (null otherwise): in a live phase when no `pasos`
+   * came for a while, in a timed decision phase now and then. The server ticks with every message,
+   * so its pace does not depend on a timer surviving the Durable Object's hibernation.
+   */
+  clockMsg(now = Date.now()) {
+    if (!this.sim || this.replaying || this.finished) return null;
+    const live = LIVE.has(this.sim.phase) && this.liveN === this.n;
+    const quiet = live ? now - (this.lastSteps || 0) > 150 : this.fase && this.fase.restan !== null;
+    if (!quiet || now - (this.lastClock || 0) < (live ? 100 : 1000)) return null;
+    this.lastClock = now;
+    return { t: 'reloj' };
   }
 
   /** Is the sim allowed one more step (a live phase, below the granted step)? */

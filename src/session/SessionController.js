@@ -32,7 +32,8 @@ import { AutoPause } from './AutoPause.js';
 import { Tutorial } from './Tutorial.js';
 
 import { createMatch, matchLoadout, endMatchRound } from './Match.js';
-import { createLobby, savedLobby, lobbySet, lobbyStart, openPick, pickMissing, aiRoles } from './Lobby.js';
+import { createLobby, savedLobby, lobbySet, lobbyStart, openPick, pickMissing, aiRoles, MAP_CHOICES } from './Lobby.js';
+import { ROOM } from '../net/roomLogic.js';
 
 export class SessionController {
   /**
@@ -64,7 +65,8 @@ export class SessionController {
     session.progress.stopOnContact = !!loadPref(FLOW.storageKeys.stopOnContact, true);
 
     bus.on(EV.COMMAND, (cmd) => this.record(cmd));
-    bus.on(EV.REQUEST, ({ action }) => this.handleRequest(action));
+    bus.on(EV.REQUEST, (req) => this.handleRequest(req.action, req));
+    this.online = null; // net/OnlineSession.js (Game sets it): an online game's lockstep
     bus.on(EV.SELECT, ({ unitId }) => this.select(unitId));
     bus.on(EV.ROUTE_CHANGED, ({ unitId, kind, moved }) => {
       // A new / undone / cleared leg: the picker goes back to the last waypoint (indices may have moved).
@@ -133,11 +135,13 @@ export class SessionController {
     }
     if (sim.phase === 'end') {
       if (this.session.phase !== 'ended') {
-        if (this.session.mode === 'match' && this.session.match) endMatchRound(this.session.match, sim); // score and the loser's bonus, once
+        // Score and the loser's bonus, once (online the lockstep keeps the match: net/LockstepClient.js).
+        if (this.session.mode === 'match' && this.session.match && !this.onlineActive) endMatchRound(this.session.match, sim);
       }
       this.postRoundTimer = SIM.postRoundSeconds;
       // The result waits for the last kill, shown again once the round's tail has run (not in a lesson).
-      if (this.session.phase !== 'ended') this.session.killcam = this.session.lastKill && this.session.mode !== 'tutorial' ? { ...this.session.lastKill, playing: false } : null;
+      // (Not online yet: the kill cam replays this phone's recording, which lacks the rival's orders.)
+      if (this.session.phase !== 'ended') this.session.killcam = this.session.lastKill && this.session.mode !== 'tutorial' && !this.onlineActive ? { ...this.session.lastKill, playing: false } : null;
       this.setPhase('ended');
       return;
     }
@@ -157,6 +161,7 @@ export class SessionController {
     const auto = this.recorder.enterPhase((cmd) => this.bus.emit(EV.COMMAND, cmd));
     this.session.replay.pending = this.recorder.pending;
     this.clock.start(sim.phase, auto);
+    if (this.onlineActive) this.onlineClock(this.online.client.fase);
     if (phase === 'planning' && this.selectedDead() && this.tutorial.current() !== 'select') this.selectNextAlive();
   }
 
@@ -193,9 +198,48 @@ export class SessionController {
     return this.lesson ? [...this.lesson.scenario.skip] : [];
   }
 
+  /** In an online match (net/OnlineSession.js)? */
+  get onlineActive() {
+    return !!(this.online && this.online.active);
+  }
+
+  /**
+   * Online, the server closed a decision phase (everyone LISTO or its deadline) and the sim
+   * advanced (net/LockstepClient.js), or a reconnection caught up: the screen follows.
+   */
+  onlineAdvanced({ replayed = false } = {}) {
+    if (replayed) {
+      this.sim.drainEvents(); // the catch-up's shots and sounds are history
+      this.syncPhase(true);
+      this.framing.frameStart();
+      return;
+    }
+    this.planning.cancel();
+    this.sound(this.sim.phase === 'exec' ? 'execute' : 'select');
+    this.syncPhase();
+  }
+
+  /** The server's deadline of the open decision phase (`fase`): the banner's clock shows it. */
+  onlineClock(fase) {
+    const c = this.session.clock;
+    if (!fase || !this.onlineActive || fase.n !== this.online.client.n) return;
+    c.auto = false;
+    c.limited = fase.restan !== null;
+    c.left = fase.restan === null ? 0 : fase.restan / 1000;
+    c.total = Math.max(c.left, ROOM.phaseSeconds[fase.fase] || c.left);
+  }
+
   /** Ends the current decision phase (LISTO, deadline, replay): the next phase or the turn's execution. */
   advance() {
     if (!isDecisionPhase(this.session)) return;
+    if (this.onlineActive) {
+      // Online the phase ends for everyone at once: LISTO goes to the server (net/OnlineSession.js).
+      if (this.session.online.waiting) return;
+      this.planning.cancel();
+      this.online.ready();
+      this.sound('select');
+      return;
+    }
     this.planning.cancel();
     this.recorder.advance();
     this.sim.advancePhase();
@@ -269,7 +313,8 @@ export class SessionController {
     else if (t === 'step') this.sound('select');
     else if (t === 'card') {
       this.sound('hold');
-      if (isLivePhase(this.session.phase)) this.pause('tutorial');
+      // Online the round does not wait for one phone: the card goes up over the live phase.
+      if (isLivePhase(this.session.phase) && !this.onlineActive) this.pause('tutorial');
     }
   }
 
@@ -360,9 +405,10 @@ export class SessionController {
     this.command({ type: 'go', code, atTick: this.sim.round.execTick });
   }
 
-  handleRequest(action) {
+  handleRequest(action, req = {}) {
     const phase = this.session.phase;
     const session = this.session;
+    if (phase === 'title' && this.onlineRequest(action, req)) return;
     const key = action === 'toggle' || action === 'execute' ? 'ready' : action; // LISTO's other names
     if (session.confirm.action && session.confirm.action !== key) session.confirm.action = null;
     // A round is played forward and its result counts: no retries, no starting over (only a lesson repeats).
@@ -390,6 +436,11 @@ export class SessionController {
         return;
       case 'back':
         if (phase !== 'title' || session.lobby.view === 'main') return;
+        if (session.online && session.lobby.view === 'pick') {
+          session.lobby.view = 'room';
+          this.sound('undo');
+          return;
+        }
         session.lobby.view = { pick: 'lobby', lobby: 'play' }[session.lobby.view] || 'main'; // play and lessons go back to main
         this.sound('undo');
         return;
@@ -409,6 +460,15 @@ export class SessionController {
           this.sound('undo');
           return;
         }
+        if (session.online) {
+          // Online: the classes go to the room and the player is ready (the host starts the game).
+          savePref(FLOW.storageKeys.lobby, savedLobby(session.lobby));
+          this.online.sendRoles(session.lobby.roles);
+          if (session.online.room && session.online.room.anfitrion !== session.online.me) this.online.lobby({ listo: true });
+          session.lobby.view = 'room';
+          this.sound('select');
+          return;
+        }
         if (session.touch) requestFullscreenLandscape();
         session.lobby.ready = true;
         const { mode, team, bestOf, map } = lobbyStart(session.lobby);
@@ -425,6 +485,13 @@ export class SessionController {
       case 'nextRound':
         // Result screen: the match's next round (or, when it is over, a new match); a single round: another one.
         if (phase !== 'ended' || session.killcam) return;
+        if (session.online) {
+          // Online: the next round starts when both are ready; after the match, back to the room.
+          if (session.online.finished) this.online.backToRoom();
+          else this.online.ready();
+          this.sound('select');
+          return;
+        }
         if (session.mode === 'match') this.nextMatchRound();
         else if (session.mode === 'play') this.anotherRound();
         return;
@@ -437,7 +504,8 @@ export class SessionController {
       case 'menu':
         // Back to the main menu (during the round, only after a confirming second press).
         if (phase === 'title' || !this.confirmed(action)) return;
-        this.toMenu();
+        if (session.online) this.online.leave(); // out of the room: OnlineSession calls toMenu
+        else this.toMenu();
         return;
       case 'tutorialOk':
         this.ackTutorial();
@@ -749,10 +817,58 @@ export class SessionController {
     this.sound('select');
   }
 
-  /** Back to the main menu: the round is dropped (a new one waits behind the menu). */
-  toMenu() {
+  /**
+   * Online requests on the menu (ui/Menu.js, ui/RoomView.js): into a room, its lobby. True when handled.
+   *   online · onlineCreate {name} · onlineJoin {name, code} · room_team_<side> · room_ready ·
+   *   room_map_<id> · room_bestOf_<n> · room_pick · room_start
+   */
+  onlineRequest(action, req) {
+    const session = this.session;
+    const lobby = session.lobby;
+    const o = session.online;
+    const me = o && o.room ? o.room.jugadores.find((j) => j.id === o.me) : null;
+    if (action === 'online') {
+      if (!this.online.available) this.notice('onlineUnavailable');
+      else lobby.view = o ? 'room' : 'online';
+    } else if (action === 'onlineCreate' || action === 'onlineJoin') {
+      this.audio.unlock();
+      if (action === 'onlineCreate') this.online.create(req.name);
+      else this.online.join(req.code, req.name);
+      lobby.view = 'room';
+    } else if (action === 'back' && (lobby.view === 'online' || lobby.view === 'room')) {
+      if (lobby.view === 'room') this.online.leave(false);
+      lobby.view = 'play';
+      this.sound('undo');
+      return true;
+    } else if (!action.startsWith('room_') || !o) return false;
+    else {
+      const [, key, arg] = action.split('_');
+      if (key === 'team') this.online.lobby({ equipo: arg });
+      else if (key === 'ready') this.online.lobby({ listo: !(me && me.listo) });
+      else if (key === 'map') {
+        // "Al azar" is drawn now, so both see the map before picking their classes.
+        const ids = MAP_CHOICES.filter((id) => id !== 'random');
+        this.online.lobby({ mapa: arg === 'random' ? ids[Math.floor(Math.random() * ids.length)] : action.slice('room_map_'.length) });
+      } else if (key === 'bestOf') this.online.lobby({ duracion: +arg });
+      else if (key === 'start') {
+        if (session.touch) requestFullscreenLandscape();
+        this.online.start();
+      } else if (key === 'pick') {
+        // The roster, for the sides this player will play (both in a match: it switches at half-time).
+        lobby.bestOf = (o.room && o.room.ajustes.duracion) || lobby.bestOf;
+        lobby.side = (me && me.equipo) || lobby.side;
+        openPick(lobby);
+        lobby.drawn = (o.room && o.room.ajustes.mapa) || DEFAULT_MAP;
+      } else return false;
+    }
+    this.sound('select');
+    return true;
+  }
+
+  /** Back to the main menu (or `view` of it: the online room's lobby): the round is dropped (a new one waits behind the menu). */
+  toMenu(view = null) {
     this.tutorial.stop();
-    this.session.lobby.view = this.session.mode === 'tutorial' ? 'lessons' : 'main'; // out of a lesson: the list of lessons
+    this.session.lobby.view = view || (this.session.mode === 'tutorial' ? 'lessons' : 'main'); // out of a lesson: the list of lessons
     this.session.mode = 'play';
     this.session.team = PLAYER_TEAM;
     this.session.match = null;

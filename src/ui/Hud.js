@@ -279,7 +279,8 @@ export class Hud {
     const killsText = (defending ? T.objective.killsDefend : T.objective.kills)(dead, enemies.length);
     const m = session.mode === 'match' && session.match;
     const shownRound = m && session.phase === 'ended' && !m.over ? m.round - 1 : m && m.round; // the result still talks about the round played
-    setText(this.kills, m ? `${T.objective.match(shownRound, m.score.player, m.score.ai)} · ${killsText}` : killsText);
+    const rival = session.online ? session.online.rival || T.flow.online.rival : undefined;
+    setText(this.kills, m ? `${T.objective.match(shownRound, m.score.player, m.score.ai, rival)} · ${killsText}` : killsText);
     const b = sim.bomb;
     setText(this.bombText, b.defused ? T.objective.bombDefused : bombKnownTo(sim, session.team) ? T.objective.bombAt(b.site) : T.objective.bombUnknown);
     setText(this.timer, formatTime(sim.timeLeft));
@@ -288,7 +289,8 @@ export class Hud {
     // Actions: LISTO ends a decision phase; a running turn has no button (it cannot be paused).
     const running = phase === 'running';
     const deciding = isDecisionPhase(session);
-    const label = phase === 'drone' ? T.actions.recall : !deciding ? T.actions.resume : recon ? T.actions.endRecon : session.confirm.action === 'ready' ? T.flow.confirmReady : T.actions.ready;
+    const waiting = deciding && session.online && session.online.waiting; // online: LISTO sent, the rival still deciding
+    const label = phase === 'drone' ? T.actions.recall : !deciding ? T.actions.resume : waiting ? T.flow.online.waitingShort : recon ? T.actions.endRecon : session.confirm.action === 'ready' ? T.flow.confirmReady : T.actions.ready;
     setText(this.executeLabel, label);
     setHidden(this.btnExecute, !deciding && phase !== 'paused' && !(phase === 'drone' && pilotsDrone(session)));
     // GO buttons: the groups in use; they can be pressed only while the turn runs (or is paused).
