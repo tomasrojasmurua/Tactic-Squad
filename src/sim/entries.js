@@ -353,7 +353,7 @@ function flashAt(sim, g) {
     if (dist > F.radius || !solidLineOfSight(sim.world, x, y, o.x, o.y)) continue;
     const toward = dcos(angleTo(o.x, o.y, x, y) - o.facing); // 1 = staring at it
     const look = F.awayFactor + (1 - F.awayFactor) * Math.max(0, toward);
-    const seconds = F.blind * look * (0.4 + 0.6 * (1 - dist / F.radius));
+    const seconds = F.blind * look * (F.edge + (1 - F.edge) * (1 - dist / F.radius));
     if (seconds < F.minBlind) continue;
     blind(sim, o, seconds, 'flash', x, y);
   }

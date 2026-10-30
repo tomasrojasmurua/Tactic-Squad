@@ -137,6 +137,12 @@ export const T = Object.freeze({
     bombDefused: 'Bomba: desactivada',
     match: (round, player, ai, rival = 'IA') => `Ronda ${round} · Tú ${player}–${ai} ${rival}`,
   },
+  /** The bomb's clock beside the banner (ui/Hud.js). */
+  bombClock: {
+    turns: (n) => (n === 1 ? 'último turno' : `${n} turnos`),
+    defused: 'DESACTIVADA',
+  },
+
   match: {
     next: 'SIGUIENTE RONDA',
     again: 'NUEVA PARTIDA',
