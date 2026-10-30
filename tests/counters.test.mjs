@@ -10,11 +10,12 @@ import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
 import { applyRole } from '../src/sim/units.js';
 import { EV } from '../src/core/events.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { MAPS, ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 import { COMPOSITIONS, AI_SQUADS, planFor, ROLES } from '../src/config/operators.js';
 import { aiPosts } from '../src/sim/prep.js';
 
-const MAP = MAPS[DEFAULT_MAP];
+// Fixed coordinates: the 40 × 28 training warehouse, which keeps the old layout.
+const MAP = ALL_MAPS[TRAINING_MAP];
 const STILL = { attackers: 'human', defenders: 'human' };
 const T = 'attackers';
 
