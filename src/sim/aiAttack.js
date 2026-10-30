@@ -26,7 +26,7 @@
 // hash the seed), so an AI round replays exactly like any other.
 import { AI_ATTACK, BUY, DRONE, ENTRY, NAV } from '../config/balance.js';
 import { TAU } from '../core/math.js';
-import { canSee } from './vision.js';
+import { canSee, lineOfSight } from './vision.js';
 import { applyCommand } from './orders.js';
 import { codeWaiting, codeInUse, isGoReady, gearLeft, defuseCandidate, entryModeFits } from './queries.js';
 import { PHASE } from './round.js';
@@ -232,6 +232,8 @@ function overwatch(sim, u, x, y) {
       const k = left / (len || 1);
       const px = b.x + (a.x - b.x) * k;
       const py = b.y + (a.y - b.y) * k;
+      // Only where he has a long view: from there he must see the bomb (no closed door or wall between).
+      if (!lineOfSight(sim.world, px, py, x, y)) return false;
       order(sim, { type: 'addWaypoint', unitId: u.id, x: px, y: py, user: true });
       order(sim, { type: 'setLook', unitId: u.id, angle: Math.atan2(b.y - py, b.x - px) });
       return true;
