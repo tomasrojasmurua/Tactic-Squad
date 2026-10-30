@@ -1,326 +1,362 @@
-// "Operación Almacén" — vertical slice map, pure data (meters, x right, y down).
+// "Operación Almacén" — Distribuidora Ferrol, pure data (meters, x right, y down).
+// Design notes: docs/diseno/mapas-v2.md (4.1).
 //
-//  Layout:  yard (attacker spawn) | building: office + kitchen (north),
-//           corridor (center), bathroom + lounge with site B (south) | site A hall (east)
+//  A parcel company's regional distribution centre at night, the shift gone
+//  half-way through a load. Layout (56 × 34 m):
+//    west   staff car park (attacker side), fenced, gates to the two yards
+//    north  the truck yard (andén): trucks parked at odd angles, the dock door
+//    middle the building: offices, reception and the break room on the west;
+//           the racking hall (nave) in the middle, aisles running east-west;
+//           the loading dock (site A), dispatch and the forklift workshop (site B) on the east
+//    south  the service alley (callejón): bins, a parked car, the workshop's roller door
 //
-// Round data (Rainbow-style objective): the defenders place the bomb in one
-// of the `sites` (A or B) and set up with that site's `defense`; the
-// attackers come in through one of the `entries` and must defuse it.
-// `deployment` is each side's half (defenders set up east of the line) and
-// doors with `barricade: true` are the gaps defenders may block (only those
-// touching their half count: sim/mapCompiler.js barricadeSlots).
+// Three lanes (yard, hall, alley) joined by the building's doors; each entry
+// starts on a different one. Dispatch (expedición) joins the two sites: the
+// defenders' rotation, and the attackers' way to cut it.
 //
-// Walls are axis-aligned center lines; doors/openings/windows cut gaps automatically.
-// Door `at` is the center of the opening; `axis` is the wall direction
-// ('v' = wall runs along y). `hinge` picks which end the door pivots on.
+// Same format as training.js (the original map; see its header for the conventions).
 
 const DEG = Math.PI / 180;
 
 export default {
   id: 'warehouse',
   name: 'Operación Almacén',
-  size: { w: 40, h: 28 },
+  size: { w: 56, h: 34 },
 
-  // The map's reading on its card before the game (ui/MapPreview.js; hotel.js has the format).
-  traits: ['Tres entradas cercanas entre sí', 'Pasillo central de 18 m', 'Ventanas de la oficina y el baño al patio'],
-  siteNames: { A: 'la nave', B: 'la sala' },
+  traits: ['Tres carriles: andén, nave y callejón', 'Estanterías: pasillos largos y cruces cortos', 'Expedición une los dos sitios por dentro'],
+  siteNames: { A: 'el muelle de carga', B: 'el taller' },
   siteTraits: {
-    A: ['Nave amplia con cajas y estanterías', 'Tres accesos: el pasillo, la sala y el arco de la cocina'],
-    B: ['Sala con sofás: cobertura baja', 'Tres puertas: el pasillo, el baño y la nave'],
+    A: ['Tres accesos: el portón del andén, el paso de carga de la nave y expedición', 'Pallets envueltos y una carretilla: cobertura baja', 'El paso de carga se ve desde toda la nave'],
+    B: ['Tres accesos: la nave, expedición y el portón del callejón', 'Bancos de trabajo y cargadores: rincones cerca de las puertas', 'Una ventana al callejón'],
   },
 
   walls: [
-    // building exterior
-    { a: [10, 2], b: [39, 2], t: 0.4 },
-    { a: [10, 26], b: [39, 26], t: 0.4 },
-    { a: [10, 2], b: [10, 26], t: 0.4 },
-    { a: [39, 2], b: [39, 26], t: 0.4 },
-    // corridor
-    { a: [10, 11.4], b: [28, 11.4] },
-    { a: [10, 14], b: [28, 14] },
-    // room dividers
-    { a: [19, 2], b: [19, 11.4] },
-    { a: [16, 14], b: [16, 26] },
-    { a: [28, 2], b: [28, 26] },
-    // spawn yard fence (low)
-    { a: [1, 5], b: [10, 5], t: 0.3, kind: 'fence' },
-    { a: [1, 24], b: [10, 24], t: 0.3, kind: 'fence' },
-    { a: [1, 5], b: [1, 24], t: 0.3, kind: 'fence' },
+    // building shell
+    { a: [10, 8], b: [55, 8], t: 0.4 },
+    { a: [10, 29], b: [55, 29], t: 0.4 },
+    { a: [10, 8], b: [10, 29], t: 0.4 },
+    { a: [55, 8], b: [55, 29], t: 0.4 },
+    // west block: offices | reception | break room, and its wall on the hall
+    { a: [10, 15], b: [22, 15] },
+    { a: [10, 21], b: [22, 21] },
+    { a: [22, 8], b: [22, 29] },
+    // east block: the dock (A) | dispatch | the workshop (B), and its wall on the hall
+    { a: [42, 8], b: [42, 29] },
+    { a: [42, 17], b: [55, 17] },
+    { a: [42, 21.5], b: [55, 21.5] },
+    // site fence: the car park, the gates to the yard and the alley, the far ends
+    { a: [1, 1], b: [55, 1], t: 0.3, kind: 'fence' },
+    { a: [1, 33], b: [55, 33], t: 0.3, kind: 'fence' },
+    { a: [1, 1], b: [1, 33], t: 0.3, kind: 'fence' },
+    { a: [55, 1], b: [55, 8], t: 0.3, kind: 'fence' },
+    { a: [55, 29], b: [55, 33], t: 0.3, kind: 'fence' },
+    { a: [10, 1], b: [10, 8], t: 0.3, kind: 'fence' },
+    { a: [10, 29], b: [10, 33], t: 0.3, kind: 'fence' },
   ],
 
   doors: [
-    { id: 'entrada', at: [10, 12.7], axis: 'v', width: 1.15, hinge: 'min', barricade: true },
-    { id: 'oficina-ext', at: [10, 9.3], axis: 'v', width: 1.1, hinge: 'max', barricade: true },
-    { id: 'oficina', at: [14.55, 11.4], axis: 'h', width: 1.1, hinge: 'min', barricade: true },
-    { id: 'cocina', at: [23.55, 11.4], axis: 'h', width: 1.1, hinge: 'max', barricade: true },
-    { id: 'ofi-cocina', at: [19, 5.55], axis: 'v', width: 1.1, hinge: 'min', barricade: true },
-    { id: 'banio', at: [13.05, 14], axis: 'h', width: 1.1, hinge: 'min', barricade: true },
-    { id: 'banio-ext', at: [10, 21.55], axis: 'v', width: 1.1, hinge: 'max', barricade: true },
-    { id: 'banio-sala', at: [16, 19.5], axis: 'v', width: 1.1, hinge: 'min', barricade: true },
-    { id: 'sala', at: [20.55, 14], axis: 'h', width: 1.1, hinge: 'max', barricade: true },
-    { id: 'sitio-pasillo', at: [28, 12.7], axis: 'v', width: 1.15, hinge: 'min', barricade: true },
-    { id: 'sitio-sala', at: [28, 21.55], axis: 'v', width: 1.1, hinge: 'max', barricade: true },
+    // The three ways in from outside
+    { id: 'oficina-anden', at: [13.6, 8], axis: 'h', width: 1.1, hinge: 'min' },
+    { id: 'recepcion', at: [10, 18], axis: 'v', width: 1.3, hinge: 'min' },
+    { id: 'comedor-callejon', at: [13.6, 29], axis: 'h', width: 1.1, hinge: 'max' },
+    // West block
+    { id: 'oficina-recepcion', at: [19.6, 15], axis: 'h', width: 1.0, hinge: 'min' },
+    { id: 'recepcion-comedor', at: [17.2, 21], axis: 'h', width: 1.0, hinge: 'max' },
+    { id: 'oficina-nave', at: [22, 12.4], axis: 'v', width: 1.1, hinge: 'min', barricade: true },
+    { id: 'recepcion-nave', at: [22, 18.0], axis: 'v', width: 1.3, hinge: 'max', barricade: true },
+    { id: 'comedor-nave', at: [22, 25.8], axis: 'v', width: 1.1, hinge: 'max', barricade: true },
+    // East block
+    { id: 'porton-anden', at: [47.4, 8], axis: 'h', width: 1.6, hinge: 'min', barricade: true },
+    { id: 'expedicion-nave', at: [42, 20.4], axis: 'v', width: 1.0, hinge: 'max', barricade: true },
+    { id: 'expedicion-muelle', at: [44.4, 17], axis: 'h', width: 1.0, hinge: 'min', barricade: true },
+    { id: 'expedicion-taller', at: [52.6, 21.5], axis: 'h', width: 1.0, hinge: 'max', barricade: true },
+    { id: 'taller-nave', at: [42, 25.4], axis: 'v', width: 1.1, hinge: 'min', barricade: true },
+    { id: 'porton-callejon', at: [47.8, 29], axis: 'h', width: 1.6, hinge: 'max', barricade: true },
   ],
 
-  // Doorless gaps.
-  openings: [{ id: 'arco-cocina', at: [28, 5.0], axis: 'v', width: 2.0 }],
+  // The dock's wide loading gap on the hall, and the fence gates of the car park.
+  openings: [
+    { id: 'paso-carga', at: [42, 12.3], axis: 'v', width: 2.4 },
+    { id: 'reja-anden', at: [10, 4.6], axis: 'v', width: 2.6 },
+    { id: 'reja-callejon', at: [10, 31.0], axis: 'v', width: 2.2 },
+  ],
 
-  // Windows (sim/mapCompiler.js compileWindow): you see, shoot and throw through
-  // them, nobody walks through. The office and the bathroom look out on the yard.
   windows: [
-    { id: 'ventana-oficina', at: [10, 7.2], axis: 'v', width: 1.6 },
-    { id: 'ventana-banio', at: [10, 17.6], axis: 'v', width: 1.6 },
+    { id: 'ventana-oficina', at: [10, 11.4], axis: 'v', width: 1.6 },
+    { id: 'ventana-oficina-anden', at: [18.6, 8], axis: 'h', width: 1.8 },
+    { id: 'ventana-comedor', at: [10, 25.0], axis: 'v', width: 1.6 },
+    { id: 'ventana-comedor-callejon', at: [18.8, 29], axis: 'h', width: 1.6 },
+    { id: 'ventana-expedicion', at: [42, 18.4], axis: 'v', width: 1.2 },
+    { id: 'ventana-taller', at: [44.4, 29], axis: 'h', width: 1.4 },
   ],
 
-  // Named areas for the round debrief ("fell in the kitchen"); first match
-  // wins, so the site comes before the hall that contains it. Display names
-  // live in ui/texts.js T.places (same ids as rooms and doors).
   rooms: [
-    { id: 'patio', rect: [0, 0, 10, 28] },
-    { id: 'oficina', rect: [10, 2, 9, 9.4] },
-    { id: 'cocina', rect: [19, 2, 9, 9.4] },
-    { id: 'pasillo', rect: [10, 11.4, 18, 2.6] },
-    { id: 'banio', rect: [10, 14, 6, 12] },
-    { id: 'sitioB', rect: [18.4, 15.0, 8.2, 7.8] },
-    { id: 'sala', rect: [16, 14, 12, 12] },
-    { id: 'sitioA', rect: [31, 8.8, 6.2, 8.4] },
-    { id: 'nave', rect: [28, 2, 11, 24] },
+    { id: 'sitioA', rect: [43.6, 9.4, 10.2, 6.8] },
+    { id: 'sitioB', rect: [45.2, 22.6, 8.8, 5.6] },
+    { id: 'aparcamiento', rect: [0, 0, 10, 34] },
+    { id: 'anden', rect: [10, 0, 46, 8] },
+    { id: 'callejon', rect: [10, 29, 46, 5] },
+    { id: 'oficinas', rect: [10, 8, 12, 7] },
+    { id: 'recepcion', rect: [10, 15, 12, 6] },
+    { id: 'comedor', rect: [10, 21, 12, 8] },
+    { id: 'nave', rect: [22, 8, 20, 21] },
+    { id: 'muelle', rect: [42, 8, 13, 9] },
+    { id: 'expedicion', rect: [42, 17, 13, 4.5] },
+    { id: 'taller', rect: [42, 21.5, 13, 7.5] },
   ],
 
   floors: [
-    { rect: [1, 5, 9, 19], material: 'yardAsphalt' },
-    { rect: [10, 2, 9, 9.4], material: 'officeCarpet' },
-    { rect: [19, 2, 9, 9.4], material: 'kitchenChecker' },
-    { rect: [10, 11.4, 18, 2.6], material: 'hallLino' },
-    { rect: [10, 14, 6, 12], material: 'bathTiles' },
-    { rect: [16, 14, 12, 12], material: 'loungeWood' },
-    { rect: [28, 2, 11, 24], material: 'siteConcrete' },
-    { rect: [19.2, 16.4, 5.6, 3.4], material: 'redRug' },
+    { rect: [1, 1, 9, 32], material: 'yardAsphalt' },
+    { rect: [10, 1, 45, 7], material: 'yardAsphalt' },
+    { rect: [10, 29, 45, 4], material: 'yardAsphalt' },
+    { rect: [10, 8, 12, 7], material: 'officeCarpet' },
+    { rect: [10, 15, 12, 6], material: 'hallLino' },
+    { rect: [10, 21, 12, 8], material: 'kitchenChecker' },
+    { rect: [22, 8, 20, 21], material: 'siteConcrete' },
+    { rect: [42, 8, 13, 9], material: 'siteConcrete' },
+    { rect: [42, 17, 13, 4.5], material: 'hallLino' },
+    { rect: [42, 21.5, 13, 7.5], material: 'siteConcrete' },
   ],
 
-  zones: {
-    spawn: { rect: [2.5, 10.5, 5, 6] },
-  },
+  zones: { spawn: { rect: [3, 15, 5, 6] } },
 
-  // Bomb sites: `bomb` is where the defenders leave it (it never moves).
   sites: [
-    { id: 'A', rect: [31, 8.8, 6.2, 8.4], bomb: [34.3, 13.0] },
-    { id: 'B', rect: [18.4, 15.0, 8.2, 7.8], bomb: [22.0, 21.3] },
+    { id: 'A', rect: [43.6, 9.4, 10.2, 6.8], bomb: [50.2, 13.2] },
+    { id: 'B', rect: [45.2, 22.6, 8.8, 5.6], bomb: [51.4, 26.4] },
   ],
 
-  // Attacker entries: the door each one breaches and where the squad starts for it.
   entries: [
     {
-      id: 'norte',
-      door: 'oficina-ext',
+      id: 'anden',
+      door: 'oficina-anden',
+      frame: [8, 1, 22, 14],
       spawns: [
-        { at: [7.0, 9.1], facing: 0 },
-        { at: [7.0, 10.5], facing: 0 },
-        { at: [5.6, 10.3], facing: 0 },
+        { at: [12.4, 4.4], facing: 90 * DEG },
+        { at: [13.8, 4.4], facing: 90 * DEG },
+        { at: [13.1, 3.0], facing: 90 * DEG },
       ],
     },
     {
-      id: 'principal',
-      door: 'entrada',
+      id: 'recepcion',
+      door: 'recepcion',
+      frame: [2, 11, 24, 13],
       spawns: [
-        { at: [4.6, 11.9], facing: 0 },
-        { at: [4.6, 13.4], facing: 0 },
-        { at: [4.6, 14.9], facing: 0 },
+        { at: [6.6, 17.3], facing: 0 },
+        { at: [6.6, 18.7], facing: 0 },
+        { at: [5.2, 18.0], facing: 0 },
       ],
     },
     {
-      id: 'sur',
-      door: 'banio-ext',
+      id: 'callejon',
+      door: 'comedor-callejon',
+      frame: [8, 20, 22, 14],
       spawns: [
-        { at: [6.2, 21.0], facing: 0 },
-        { at: [6.2, 22.4], facing: 0 },
-        { at: [4.9, 21.7], facing: 0 },
+        { at: [12.4, 31.1], facing: -90 * DEG },
+        { at: [13.8, 31.1], facing: -90 * DEG },
+        { at: [13.1, 32.3], facing: -90 * DEG },
       ],
     },
   ],
-  defaultEntry: 'principal',
+  defaultEntry: 'recepcion',
 
-  // Each side's half. Defenders set up east of the line (kitchen, hall, lounge,
-  // east corridor); attackers start in the yard.
+  // Defenders: the hall and the east block, and the east ends of the yard and the alley.
   deployment: {
-    line: [[19, 2], [19, 11.4], [16, 11.4], [16, 26]],
-    attackers: [[1, 5, 9, 19]],
-    defenders: [[19, 2, 20, 9.4], [16, 11.4, 23, 14.6]],
+    line: [[30, 1], [30, 8], [22, 8], [22, 29], [30, 29], [30, 33]],
+    attackers: [[1, 1, 9, 32], [10, 1, 6, 7], [10, 29, 6, 4]],
+    defenders: [[22, 8, 33, 21], [34, 1, 21, 7], [34, 29, 21, 4]],
   },
 
-  // Floor paint (spray-painted decals generated at runtime).
   paint: [
-    { kind: 'site', rect: [31, 8.8, 6.2, 8.4], text: 'A', color: '#f2c230' },
-    { kind: 'site', rect: [18.4, 15.0, 8.2, 7.8], text: 'B', color: '#f2c230' },
-    { kind: 'arrow', at: [25.6, 12.7], size: 1.4, rot: 0, text: 'A', color: '#f2c230' },
-    { kind: 'arrow', at: [18.2, 12.7], size: 1.1, rot: Math.PI / 2, text: 'B', color: '#f2c230' },
-    { kind: 'text', at: [5.0, 18.4], size: 0.62, text: 'DESPLIEGUE', color: '#e8e2d0' },
-    { kind: 'stripes', rect: [7.6, 10.4, 0.5, 6.0], color: '#e3b51e' },
+    { kind: 'site', rect: [43.6, 9.4, 10.2, 6.8], text: 'A', color: '#f2c230' },
+    { kind: 'site', rect: [45.2, 22.6, 8.8, 5.6], text: 'B', color: '#f2c230' },
+    { kind: 'arrow', at: [38.6, 12.6], size: 1.2, rot: 0, text: 'A', color: '#f2c230' },
+    { kind: 'arrow', at: [38.6, 24.6], size: 1.2, rot: 0, text: 'B', color: '#f2c230' },
+    { kind: 'text', at: [4.6, 22.6], size: 0.62, text: 'DESPLIEGUE', color: '#e8e2d0' },
+    { kind: 'stripes', rect: [8.4, 15.6, 0.5, 4.8], color: '#e3b51e' },
+    { kind: 'text', at: [24.6, 13.0], size: 0.5, text: 'PASILLO 1', color: '#e8e2d0' },
+    { kind: 'text', at: [24.6, 16.5], size: 0.5, text: 'PASILLO 2', color: '#e8e2d0' },
+    { kind: 'text', at: [36.4, 21.0], size: 0.5, text: 'PASILLO 3', color: '#e8e2d0' },
+    { kind: 'text', at: [24.6, 25.0], size: 0.5, text: 'PASILLO 4', color: '#e8e2d0' },
   ],
 
   props: [
-    // --- yard
-    { type: 'van', at: [4.4, 7.4], rot: 0 },
-    { type: 'barrier', at: [8.1, 18.6], rot: 90 },
-    { type: 'crateStack', at: [2.2, 22.3], rot: 0 },
-    { type: 'crate', at: [3.7, 22.5], rot: 0 },
-    { type: 'barrel', at: [2.0, 20.6], rot: 0 },
-    { type: 'cone', at: [8.7, 9.7], rot: 0 },
-    { type: 'cone', at: [8.7, 15.8], rot: 0 },
-    { type: 'cone', at: [6.8, 20.8], rot: 0 },
+    // --- staff car park: cars nose-in at odd spots, the company van, a barrier
+    { type: 'van', at: [4.2, 6.2], rot: 90 },
+    { type: 'car', at: [3.9, 12.4], rot: 0, color: '#2f6db0' },
+    { type: 'car', at: [3.4, 25.2], rot: 0, color: '#d6d2c8' },
+    { type: 'car', at: [7.4, 28.8], rot: 90, color: '#8e2f3d' },
+    { type: 'barrier', at: [8.0, 13.6], rot: 90 },
+    { type: 'cone', at: [8.6, 16.0], rot: 0 },
+    { type: 'cone', at: [8.6, 20.2], rot: 0 },
+    { type: 'bin', at: [1.7, 32.2], rot: 0 },
 
-    // --- office
-    { type: 'desk', at: [12.3, 3.9], rot: 0 },
-    { type: 'officeChair', at: [12.3, 4.85], rot: 180 },
-    { type: 'desk', at: [16.4, 3.9], rot: 0 },
-    { type: 'officeChair', at: [16.2, 4.85], rot: 160 },
-    { type: 'desk', at: [17.6, 9.1], rot: 90 },
-    { type: 'officeChair', at: [16.7, 9.2], rot: 90 },
-    { type: 'cabinet', at: [10.55, 3.6], rot: 90 },
-    { type: 'cabinet', at: [10.55, 4.25], rot: 90 },
-    { type: 'bookshelf', at: [14.4, 2.45], rot: 0 },
-    { type: 'plant', at: [18.4, 10.8], rot: 0 },
-    { type: 'plant', at: [10.65, 10.75], rot: 0 },
+    // --- the truck yard (andén): two rigs left where they stopped, the dock's waiting trailer
+    { type: 'trailer', at: [22.6, 3.4], rot: 0, color: '#d6d2c8' },
+    { type: 'trailer', at: [37.2, 5.4], rot: 180, color: '#2f6db0' },
+    { type: 'pallet', at: [29.6, 2.2], rot: 90 },
+    { type: 'palletStack', at: [30.4, 6.6], rot: 0, color: '#c9b48a' },
+    { type: 'palletStack', at: [31.6, 6.7], rot: 10, color: '#8fa3b5' },
+    { type: 'dumpster', at: [16.4, 1.9], rot: 0 },
+    { type: 'barrier', at: [44.2, 4.2], rot: 0 },
+    { type: 'barrier', at: [51.8, 2.4], rot: 0 },
+    { type: 'cone', at: [46.0, 6.6], rot: 0 },
+    { type: 'cone', at: [48.8, 6.6], rot: 0 },
+    { type: 'barrel', at: [54.2, 6.9], rot: 0 },
+    { type: 'barrel', at: [53.5, 7.2], rot: 0 },
 
-    // --- kitchen
-    { type: 'counter', at: [21.2, 2.55], rot: 0, size: [2.4, 0.65] },
-    { type: 'stove', at: [22.8, 2.55], rot: 0 },
-    { type: 'sink', at: [23.75, 2.55], rot: 0 },
-    { type: 'counter', at: [25.45, 2.55], rot: 0, size: [2.4, 0.65] },
-    { type: 'fridge', at: [27.2, 2.6], rot: 0 },
-    { type: 'table', at: [23.4, 7.0], rot: 0 },
-    { type: 'chair', at: [22.9, 6.2], rot: 90 },
-    { type: 'chair', at: [24.0, 6.2], rot: 90 },
-    { type: 'chair', at: [22.9, 7.8], rot: 270 },
-    { type: 'chair', at: [24.1, 7.85], rot: 250 },
-    { type: 'bin', at: [19.5, 10.85], rot: 0 },
+    // --- offices: open plan, a manager's corner, the printer
+    { type: 'desk', at: [12.6, 10.3], rot: 0 },
+    { type: 'officeChair', at: [12.6, 11.2], rot: 180 },
+    { type: 'desk', at: [14.4, 10.3], rot: 0 },
+    { type: 'officeChair', at: [14.5, 11.2], rot: 200 },
+    { type: 'desk', at: [12.6, 13.6], rot: 180 },
+    { type: 'officeChair', at: [12.7, 12.75], rot: -10 },
+    { type: 'desk', at: [17.4, 12.2], rot: 90 },
+    { type: 'officeChair', at: [16.5, 12.3], rot: 90 },
+    { type: 'bookshelf', at: [20.0, 8.45], rot: 0 },
+    { type: 'cabinet', at: [21.5, 9.6], rot: 270 },
+    { type: 'cabinet', at: [21.5, 10.25], rot: 270 },
+    { type: 'plant', at: [10.6, 14.35], rot: 0 },
+    { type: 'bin', at: [16.0, 14.4], rot: 0 },
 
-    // --- corridor
-    { type: 'bench', at: [18.0, 13.55], rot: 0 },
-    { type: 'plant', at: [26.2, 13.55], rot: 0 },
+    // --- reception: the desk facing the door, benches, the packages counter
+    { type: 'receptionDesk', at: [15.6, 18.6], rot: 270, size: [3.0, 0.8] },
+    { type: 'officeChair', at: [16.5, 18.6], rot: 270 },
+    { type: 'bench', at: [11.2, 15.6], rot: 0 },
+    { type: 'plant', at: [10.6, 20.4], rot: 0 },
+    { type: 'counter', at: [20.6, 16.0], rot: 90, size: [1.6, 0.65] },
 
-    // --- bathroom
-    { type: 'toilet', at: [11.2, 25.4], rot: 0 },
-    { type: 'toilet', at: [12.7, 25.4], rot: 0 },
-    { type: 'toilet', at: [14.2, 25.4], rot: 0 },
-    { type: 'stallWall', at: [11.95, 25.05], rot: 0 },
-    { type: 'stallWall', at: [13.45, 25.05], rot: 0 },
-    { type: 'stallWall', at: [14.95, 25.05], rot: 0 },
-    { type: 'washbasin', at: [14.4, 14.42], rot: 0 },
-    { type: 'washbasin', at: [15.2, 14.42], rot: 0 },
-    { type: 'bin', at: [10.5, 15.0], rot: 0 },
+    // --- break room: tables, the vending corner, the kitchenette
+    { type: 'table', at: [13.4, 24.0], rot: 0 },
+    { type: 'chair', at: [12.9, 23.2], rot: 90 },
+    { type: 'chair', at: [13.9, 24.8], rot: 260 },
+    { type: 'table', at: [16.6, 26.2], rot: 90 },
+    { type: 'chair', at: [15.8, 25.8], rot: 0 },
+    { type: 'chair', at: [17.4, 26.6], rot: 180 },
+    { type: 'vending', at: [21.35, 22.2], rot: 270 },
+    { type: 'vending', at: [21.35, 23.3], rot: 270 },
+    { type: 'counter', at: [11.4, 28.4], rot: 0, size: [2.4, 0.65] },
+    { type: 'fridge', at: [16.0, 28.38], rot: 0 },
+    { type: 'sink', at: [17.0, 28.45], rot: 0 },
 
-    // --- lounge
-    { type: 'tvStand', at: [24.6, 14.45], rot: 0 },
-    { type: 'sofa', at: [22.0, 19.6], rot: 180 },
-    { type: 'coffeeTable', at: [22.0, 18.1], rot: 0 },
-    { type: 'armchair', at: [19.9, 17.6], rot: 90 },
-    { type: 'armchair', at: [24.2, 17.6], rot: 270 },
-    { type: 'vending', at: [17.0, 25.45], rot: 0 },
-    { type: 'vending', at: [18.2, 25.45], rot: 0 },
-    { type: 'plant', at: [27.4, 25.4], rot: 0 },
-    { type: 'bin', at: [16.5, 14.5], rot: 0 },
+    // --- the racking hall: four rows east-west, broken by a cross-aisle, the emptied rack and a forklift mid-pick
+    { type: 'longRack', at: [28.6, 10.4], rot: 0 },
+    { type: 'longRack', at: [37.6, 10.4], rot: 0, size: [6.0, 1.1] },
+    { type: 'longRack', at: [27.0, 15.0], rot: 0, size: [6.0, 1.1] },
+    { type: 'longRack', at: [36.8, 15.0], rot: 0 },
+    { type: 'longRack', at: [37.4, 19.0], rot: 0, size: [7.0, 1.1] },
+    { type: 'longRack', at: [26.4, 23.0], rot: 0, size: [6.0, 1.1] },
+    { type: 'longRack', at: [35.4, 23.0], rot: 0 },
+    // the emptied rack (pasillo 3, west): its stock on the floor, waiting for the count
+    { type: 'pallet', at: [25.0, 19.0], rot: 0 },
+    { type: 'palletStack', at: [26.4, 19.0], rot: 0, color: '#b9524a' },
+    { type: 'palletStack', at: [27.7, 18.8], rot: 8, color: '#c9b48a' },
+    { type: 'palletStack', at: [29.6, 19.3], rot: 0, color: '#8fa3b5' },
+    { type: 'forklift', at: [32.3, 20.9], rot: 270 },
+    { type: 'palletStack', at: [33.8, 12.6], rot: 0, color: '#e3e1d8' },
+    { type: 'crateStack', at: [38.4, 13.6], rot: 0 }, // stock waiting by aisle 1: breaks the long look from the dock
+    { type: 'palletStack', at: [30.6, 26.8], rot: 0, color: '#c9b48a' },
+    { type: 'palletStack', at: [31.8, 27.0], rot: 12, color: '#b9524a' },
+    { type: 'pallet', at: [38.8, 27.6], rot: 90 },
+    { type: 'crateStack', at: [24.4, 27.6], rot: 0 },
+    { type: 'barrel', at: [40.9, 17.4], rot: 0 },
+    { type: 'barrel', at: [41.2, 16.8], rot: 0 },
 
-    // --- bomb site A hall
-    { type: 'crateStack', at: [33.2, 10.6], rot: 0 },
-    { type: 'crate', at: [34.65, 10.55], rot: 0 },
-    { type: 'crateStack', at: [35.8, 15.7], rot: 0 },
-    { type: 'crate', at: [31.7, 15.6], rot: 0 },
-    { type: 'crateStack', at: [30.3, 8.0], rot: 0 },
-    { type: 'crate', at: [30.5, 18.9], rot: 0 },
-    { type: 'barrel', at: [29.9, 2.75], rot: 0 },
-    { type: 'barrel', at: [30.6, 2.75], rot: 0 },
-    { type: 'barrel', at: [38.3, 9.2], rot: 0 },
-    { type: 'barrel', at: [38.3, 9.9], rot: 0 },
-    { type: 'rack', at: [38.3, 4.1], rot: 90 },
-    { type: 'rack', at: [38.3, 19.6], rot: 90 },
-    { type: 'rack', at: [38.3, 22.9], rot: 90 },
-    { type: 'pallet', at: [31.0, 24.6], rot: 0 },
-    { type: 'pallet', at: [32.5, 24.6], rot: 0 },
-    { type: 'crate', at: [32.5, 24.6], rot: 0 },
-    { type: 'pallet', at: [35.2, 3.4], rot: 90 },
+    // --- the loading dock (site A): wrapped pallets staged for the trailer, a forklift parked by the bay
+    { type: 'palletStack', at: [46.6, 10.8], rot: 0, color: '#c9b48a' },
+    { type: 'palletStack', at: [47.9, 10.9], rot: 0, color: '#c9b48a' },
+    { type: 'palletStack', at: [46.7, 12.0], rot: 0, color: '#8fa3b5' },
+    { type: 'palletStack', at: [51.9, 14.9], rot: 0, color: '#b9524a' },
+    { type: 'pallet', at: [53.3, 14.9], rot: 0 },
+    { type: 'forklift', at: [53.4, 10.6], rot: 180 },
+    { type: 'crateStack', at: [47.4, 15.9], rot: 0 },
+    { type: 'crate', at: [48.8, 16.0], rot: 0 },
+    { type: 'rack', at: [54.3, 13.4], rot: 90 },
+    { type: 'barrel', at: [43.0, 9.0], rot: 0 },
+
+    // --- dispatch: the dispatcher's desks, the label printer, the waybill files
+    { type: 'desk', at: [47.0, 19.1], rot: 0 },
+    { type: 'officeChair', at: [47.0, 20.0], rot: 180 },
+    { type: 'desk', at: [49.0, 19.1], rot: 0 },
+    { type: 'officeChair', at: [49.1, 20.0], rot: 190 },
+    { type: 'cabinet', at: [54.45, 18.2], rot: 270 },
+    { type: 'cabinet', at: [54.45, 18.85], rot: 270 },
+    { type: 'bookshelf', at: [51.6, 17.4], rot: 180, size: [1.6, 0.4] },
+    { type: 'plant', at: [50.6, 21.0], rot: 0 },
+
+    // --- the forklift workshop (site B): benches, the chargers, a forklift with its mast off
+    { type: 'workbench', at: [46.2, 22.15], rot: 0 },
+    { type: 'toolChest', at: [48.0, 22.05], rot: 0 },
+    { type: 'forklift', at: [48.6, 25.4], rot: 90 },
+    { type: 'charger', at: [54.5, 23.4], rot: 270 },
+    { type: 'charger', at: [54.5, 24.6], rot: 270 },
+    { type: 'workbench', at: [43.0, 27.4], rot: 90 },
+    { type: 'crateStack', at: [53.6, 28.1], rot: 0 },
+    { type: 'barrel', at: [52.2, 28.5], rot: 0 },
+    { type: 'pallet', at: [51.6, 23.4], rot: 0 },
+
+    // --- the service alley: bins, a parked car, the workshop's scrap
+    { type: 'dumpster', at: [20.4, 31.9], rot: 0 },
+    { type: 'dumpster', at: [27.6, 30.2], rot: 0 },
+    { type: 'car', at: [35.4, 31.7], rot: 0, color: '#3f7f52' },
+    { type: 'palletStack', at: [41.6, 30.3], rot: 0, color: '#8fa3b5' },
+    { type: 'barrel', at: [44.6, 32.2], rot: 0 },
+    { type: 'barrel', at: [45.3, 32.3], rot: 0 },
+    { type: 'crate', at: [53.6, 31.5], rot: 0 },
   ],
 
-  // Defender set-up for each bomb site: where the AI defenders stand and the
-  // starting layout a human defender edits in the preparation (sim/prep.js). role: 'anchor' = Ancla
-  // (more health, shoots first), 'roamer' = Merodeador (quick and quiet), 'trapper' = Trampero
-  // (lays the site's `aiTraps`); config/operators.js. Default 'defender'. Behaviors: hold (fixed angle), scan {from, to,
-  // period}, patrol {points, wait}; reactsToNoise: turns to gunfire /
-  // footsteps / pain; rotate {to, look}: where he falls back to and holds —
-  // played by the AI, when the bomb is threatened (sim/aiDefend.js); set by a
-  // player, on the first firefight he hears.
   defense: {
     A: [
-      // Site anchor: off the corridor line, pre-aiming the corridor door at an
-      // angle (whoever walks in looking straight ahead must turn to find him).
-      // Blind to the south door: the lounge flank is the way to beat him.
-      { at: [34.0, 17.6], facing: -139 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
-      { at: [35.2, 4.7], facing: 165 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 132 * DEG, to: 178 * DEG, period: 5.5, reactsToNoise: true } },
-      // Kitchen guard: on the first firefight he rotates to the arch and covers the site.
-      { at: [26.1, 8.7], facing: 130 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'scan', from: 112 * DEG, to: 195 * DEG, period: 6.5, reactsToNoise: true, rotate: { to: [27.3, 4.7], look: 45 * DEG } } },
-      // Roamer: walks the lounge, far from the site, to catch a flank.
-      { at: [18.4, 22.6], facing: 0, weapon: 'smg', role: 'roamer', behavior: { type: 'patrol', points: [[18.4, 22.6], [26.2, 22.6]], wait: 2.2, reactsToNoise: true } },
+      // Anchor deep in the dock, past the staged pallets: the loading gap at an angle.
+      { at: [51.8, 11.2], facing: 172 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
+      // Behind the crates by dispatch's door: the dock door from the yard, and the gap.
+      { at: [50.4, 9.6], facing: 170 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'scan', from: 140 * DEG, to: 195 * DEG, period: 6, reactsToNoise: true } },
+      // In the hall on aisle 1, looking west: the first contact; falls back into the dock.
+      { at: [44.0, 9.8], facing: 120 * DEG, weapon: 'smg', role: 'roamer', behavior: { type: 'hold', reactsToNoise: true, rotate: { to: [47.6, 13.8], look: 180 * DEG } } },
+      // Dispatch, at its window on the hall.
+      { at: [43.2, 19.4], facing: 180 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 150 * DEG, to: 210 * DEG, period: 6, reactsToNoise: true } },
     ],
     B: [
-      // Site anchor in the lounge corner: covers both the corridor door and the
-      // bathroom door. Blind to the hall door behind him: that is the flank.
-      { at: [25.9, 21.6], facing: -147 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
-      // Second anchor in the far corner, pre-aiming the corridor door from below.
-      { at: [17.0, 23.2], facing: -75 * DEG, weapon: 'smg', behavior: { type: 'hold', reactsToNoise: false } },
-      // Hall guard watching the corridor door; on the first firefight he rotates
-      // through the hall door into the lounge, behind the anchor.
-      { at: [30.4, 16.8], facing: 175 * DEG, weapon: 'rifle', role: 'roamer', behavior: { type: 'scan', from: 125 * DEG, to: 228 * DEG, period: 6, reactsToNoise: true, rotate: { to: [27.0, 23.6], look: -160 * DEG } } },
-      // Kitchen guard: on the first firefight he rotates into the lounge and
-      // covers the bathroom door from the north side of the site.
-      { at: [26.1, 8.7], facing: 130 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'scan', from: 112 * DEG, to: 195 * DEG, period: 6.5, reactsToNoise: true, rotate: { to: [24.2, 16.0], look: 160 * DEG } } },
+      // Anchor behind the chargers' corner: the hall door across the workshop.
+      { at: [53.4, 25.6], facing: 178 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
+      // By the bench at the hall door's side: the roller door from the alley.
+      { at: [44.6, 23.4], facing: 60 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'hold', reactsToNoise: true } },
+      // In the hall on aisle 4, looking west; falls back into the workshop.
+      { at: [44.0, 19.6], facing: 180 * DEG, weapon: 'smg', role: 'roamer', behavior: { type: 'hold', reactsToNoise: true, rotate: { to: [50.0, 23.8], look: 180 * DEG } } },
+      // Dispatch, at its window on the hall.
+      { at: [43.2, 19.4], facing: 180 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 150 * DEG, to: 210 * DEG, period: 6, reactsToNoise: true } },
     ],
   },
 
-  // Barricades the AI defenders choose from for each site (they put up
-  // PREP.barricades of them). None is on a door their own rotations walk through.
   aiBarricades: {
-    A: ['sitio-sala', 'ofi-cocina', 'banio-sala'],
-    B: ['banio-sala', 'ofi-cocina', 'sitio-pasillo'],
+    A: ['porton-anden', 'oficina-nave'],
+    B: ['expedicion-nave', 'recepcion-nave', 'porton-callejon'],
   },
 
-  // The Trampero's traps for each site (sim/traps.js): just past the doors into it.
-  // A: the corridor door and the lounge door of the hall. B: the corridor door and the bathroom door.
   aiTraps: {
-    A: [[29.3, 12.7], [29.3, 21.55]],
-    B: [[20.55, 15.3], [17.3, 19.5]],
+    A: [[43.2, 12.3], [47.4, 9.0]],
+    B: [[43.0, 25.4], [47.8, 28.0]],
   },
 
-  // Where the defenders can mount their cameras (sim/cameras.js): a fixed eye
-  // high on a wall that tells them where it saw an attacker. In the
-  // preparation (and while the enemy drone flies) a human defender picks
-  // CAMERA.max of these; the drone can find them, an attacker shoots them,
-  // smoke blinds them. `facing` is where the lens points (fixed by the mount).
   cameraMounts: [
-    { id: 'pasillo-este', at: [27.55, 11.7], facing: 177 * DEG }, // the corridor from its east end (the main door)
-    { id: 'pasillo-oeste', at: [18.7, 11.7], facing: 172 * DEG }, // the west corridor: main, office and bathroom doors (close to them: found early)
-    { id: 'cocina', at: [27.55, 8.0], facing: 160 * DEG }, // the kitchen: the office door and the corridor door
-    { id: 'sala-norte', at: [27.55, 14.45], facing: 145 * DEG }, // the lounge from the hall door: corridor door, bathroom door, site B
-    { id: 'sala-sur', at: [27.6, 25.6], facing: -142 * DEG }, // the lounge from its far corner (corridor door, bathroom door, site B)
-    { id: 'nave-norte', at: [38.55, 2.45], facing: 140 * DEG }, // the hall from the north: the kitchen arch and site A
-    { id: 'nave-sur', at: [38.55, 25.55], facing: -135 * DEG }, // the hall from the south: the lounge door and site A
+    { id: 'anden', at: [33.4, 7.6], facing: 180 * DEG }, // the truck yard from the building's wall
+    { id: 'nave-norte', at: [41.6, 8.4], facing: 165 * DEG }, // the hall from its north-east corner: aisles 1-2
+    { id: 'nave-sur', at: [41.6, 28.6], facing: -165 * DEG }, // the hall from its south-east corner: aisles 3-4
+    { id: 'muelle', at: [54.6, 8.4], facing: 150 * DEG }, // the dock: the loading gap and the dock door
+    { id: 'expedicion', at: [54.6, 20.2], facing: -175 * DEG }, // dispatch, end to end
+    { id: 'taller', at: [54.6, 28.6], facing: -150 * DEG }, // the workshop: the hall door and the roller door
+    { id: 'callejon', at: [33.4, 29.4], facing: 180 * DEG }, // the alley from the building's wall
   ],
 
-  // The mounts the AI defenders use for each site (and a human's starting pick).
   aiCameras: {
-    A: ['pasillo-este', 'nave-sur'],
-    B: ['sala-sur', 'sala-norte'],
+    A: ['nave-norte', 'muelle'],
+    B: ['taller', 'nave-sur'],
   },
 
-  // Entries the attacking AI (sim/aiAttack.js) goes for each site through, with
-  // weights (the round's seed picks one). Played against this map's defense:
-  // the office approaches B from the north (the corridor door, away from the
-  // bathroom the anchors watch) and the main door gives the corridor to A.
   aiEntries: {
-    A: { principal: 2, norte: 1 },
-    B: { norte: 2, principal: 1 },
+    A: { recepcion: 2, anden: 1 },
+    B: { recepcion: 3, callejon: 1 },
   },
 
-  // frame: [x, y, w, h] the first shot fits inside the HUD-free area (squad, yard door, corridor);
-  // defendFrame: the defender's first shot (their half of the building, both sites).
-  camera: { start: [13.5, 13.4], height: 21, frame: [2.5, 8.5, 24, 9.5], defendFrame: [15.5, 2.5, 23.5, 23] },
+  camera: { start: [12, 18], height: 21, frame: [2, 11, 24, 13], defendFrame: [24, 4, 31, 28] },
 };

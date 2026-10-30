@@ -4,13 +4,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 import { phaseTick } from '../src/sim/round.js';
 import { replayTo, createKillCam, stepKillCam } from '../src/session/KillCam.js';
 import { KILLCAM } from '../src/config/ui.js';
 import { SIM } from '../src/config/balance.js';
 
-const MAP = MAPS[DEFAULT_MAP];
+const MAP = ALL_MAPS[TRAINING_MAP];
 const snap = (sim) => sim.units.map((u) => [u.alive, u.hp, +u.x.toFixed(6), +u.y.toFixed(6), +u.facing.toFixed(6)]);
 
 /** A round played like the session does: orders recorded per phase (PlanRecorder segments). */

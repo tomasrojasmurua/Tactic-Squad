@@ -7,9 +7,9 @@ import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
 import { alertAiUnit } from '../src/sim/ai.js';
 import { AI_DEFEND, COMBAT } from '../src/config/balance.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 
-const MAP = MAPS[DEFAULT_MAP];
+const MAP = ALL_MAPS[TRAINING_MAP];
 
 /** Defenders played by the AI, attackers by nobody (they stay at their entry). */
 function assault(seed, site) {

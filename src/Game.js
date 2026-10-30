@@ -10,7 +10,7 @@ import { EV } from './core/events.js';
 import { FixedLoop } from './core/FixedLoop.js';
 import { SIM } from './config/balance.js';
 import { controllersFor } from './config/squad.js';
-import { MAPS, DEFAULT_MAP } from './data/maps/index.js';
+import { ALL_MAPS, DEFAULT_MAP } from './data/maps/index.js';
 import { Simulation } from './sim/Simulation.js';
 import { createSession, resetSessionPreviews, pilotsDrone } from './session/Session.js';
 import { SessionController } from './session/SessionController.js';
@@ -32,7 +32,7 @@ import { createKillCam, stepKillCam } from './session/KillCam.js';
 export class Game {
   constructor(canvas, uiRoot) {
     this.bus = new EventBus();
-    this.mapDef = MAPS[DEFAULT_MAP];
+    this.mapDef = ALL_MAPS[DEFAULT_MAP];
     this.session = createSession({ touch: matchMedia('(pointer: coarse)').matches });
     this.sim = null;
     this.roundArgs = null; // what the round's Simulation was built with (the kill cam plays it again)
@@ -56,7 +56,7 @@ export class Game {
     this.input = new InputManager(canvas);
     this.cameraCtl = new CameraController(this.camera, this.input);
     this.planning = new PlanningController({ bus: this.bus, camera: this.camera, session: this.session, getSim });
-    this.framing = new CameraFraming({ camera: this.camera, session: this.session, mapDef: this.mapDef });
+    this.framing = new CameraFraming({ camera: this.camera, session: this.session, mapDef: this.mapDef, getSim: () => this.sim });
     this.input.use(new ShortcutController(this.bus, this.session));
     this.input.use(this.cameraCtl);
     this.input.use(new MouseKeyController(this.planning, this.camera));
@@ -102,7 +102,7 @@ export class Game {
    */
   newRound(seed = SIM.seed) {
     this.stopKillcam();
-    this.mapDef = MAPS[this.session.map] ?? MAPS[DEFAULT_MAP]; // the lobby's map (session.map)
+    this.mapDef = ALL_MAPS[this.session.map] ?? ALL_MAPS[DEFAULT_MAP]; // the lobby's map (session.map)
     this.framing.mapDef = this.mapDef;
     this.roundArgs = { seed, controllers: controllersFor(this.session.team), ...this.flow.roundOptions(seed) };
     this.sim = new Simulation(this.mapDef, this.roundArgs);

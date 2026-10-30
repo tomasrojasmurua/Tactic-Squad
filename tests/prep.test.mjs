@@ -7,9 +7,9 @@ import { Simulation } from '../src/sim/Simulation.js';
 import { teamView } from '../src/sim/view.js';
 import { EV } from '../src/core/events.js';
 import { BUY, PREP, DRONE, BARRICADE, ROUND, SIM } from '../src/config/balance.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 
-const MAP = MAPS[DEFAULT_MAP];
+const MAP = ALL_MAPS[TRAINING_MAP];
 const BOTH = { attackers: 'human', defenders: 'human' };
 const ATK = 'attackers';
 const DEF = 'defenders';

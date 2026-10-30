@@ -3,6 +3,7 @@
 // (where you sit / what faces the room). The map's `rot` rotates it.
 import { PROP_COLORS as C } from '../../config/materials.js';
 import { ngon } from './MeshBuilder.js';
+import { EXTRA_BUILDERS } from '../decor/props.js'; // the v2 maps' pieces (render/decor)
 
 const BUILDERS = {
   desk(m, w, d, h) {
@@ -410,11 +411,11 @@ function shift(hex, f) {
 
 /** Appends one prop instance (compiled map prop) to the builder. */
 export function buildProp(m, prop) {
-  const fn = BUILDERS[prop.type];
+  const fn = BUILDERS[prop.type] || EXTRA_BUILDERS[prop.type];
   if (!fn) return;
   m.setTransform(prop.x, prop.y, prop.rot);
   fn(m, prop.w, prop.d, prop.h, prop);
   m.setTransform();
 }
 
-export const PROP_TYPES = Object.keys(BUILDERS);
+export const PROP_TYPES = [...Object.keys(BUILDERS), ...Object.keys(EXTRA_BUILDERS)];
