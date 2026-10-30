@@ -41,7 +41,7 @@ function autopilot(c) {
   if (!c.deciding) return;
   if (sim.phase === 'plan' && c.team === 'attackers' && sim.turn <= 1 && c.planned !== c.n) {
     c.planned = c.n;
-    for (const u of sim.teams.attackers) c.command({ type: 'addWaypoint', unitId: u.id, x: sim.site.x, y: sim.site.y, user: true });
+    for (const u of sim.teams.attackers) c.command({ type: 'addWaypoint', unitId: u.id, x: sim.site.bombX, y: sim.site.bombY, user: true });
   }
   c.ready();
 }
