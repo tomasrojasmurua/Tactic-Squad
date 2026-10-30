@@ -77,6 +77,9 @@ export class SquadPanel {
       setText(c.chipAmmo, u.alive ? u.mag : '—');
       toggle(c.root, 'selected', session.selectedId === id && u.alive);
       toggle(c.root, 'dead', !u.alive);
+      // A 2v2: the teammate's operators are shown, not commanded.
+      const slots = session.online && session.online.slots;
+      toggle(c.root, 'partner', !!slots && !slots.includes(u.slot));
       toggle(c.root, 'has-bomb', u.defusing);
       setStatus(c.status, u, sim);
     }

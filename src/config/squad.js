@@ -30,6 +30,15 @@ export const SQUAD = Object.freeze([
   { callsign: 'ZORRO', color: '#9be15d', role: 'scout' },
 ]);
 
+/** The 4th operator of a squad of four (online 2v2: two per player). */
+export const SQUAD_FOURTH = Object.freeze({ callsign: 'HALCÓN', color: '#ff6fd8', role: 'assault' });
+
+/** Slot i of a squad of any size (3 against the AI, 4 in a 2v2). */
+export const squadSlot = (i) => (i < SQUAD.length ? SQUAD[i] : SQUAD_FOURTH);
+
+/** Operators per side in a 2v2 (each player commands half). */
+export const SQUAD_2V2 = 4;
+
 /**
  * Defenders per round: as many as attackers (3 vs 3), so neither side starts
  * ahead. A map's `defense` layout may list more posts: the first DEFENDERS

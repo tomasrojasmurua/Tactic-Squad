@@ -32,7 +32,7 @@ import { AutoPause } from './AutoPause.js';
 import { Tutorial } from './Tutorial.js';
 
 import { createMatch, matchLoadout, endMatchRound } from './Match.js';
-import { createLobby, savedLobby, lobbySet, lobbyStart, openPick, pickMissing, aiRoles, MAP_CHOICES } from './Lobby.js';
+import { createLobby, savedLobby, lobbySet, lobbyStart, openPick, pickMissing, aiRoles, canPick, MAP_CHOICES } from './Lobby.js';
 import { ROOM } from '../net/roomLogic.js';
 
 export class SessionController {
@@ -437,6 +437,7 @@ export class SessionController {
       case 'back':
         if (phase !== 'title' || session.lobby.view === 'main') return;
         if (session.online && session.lobby.view === 'pick') {
+          this.restoreSquad();
           session.lobby.view = 'room';
           this.sound('undo');
           return;
@@ -462,8 +463,9 @@ export class SessionController {
         }
         if (session.online) {
           // Online: the classes go to the room and the player is ready (the host starts the game).
-          savePref(FLOW.storageKeys.lobby, savedLobby(session.lobby));
           this.online.sendRoles(session.lobby.roles);
+          this.restoreSquad();
+          savePref(FLOW.storageKeys.lobby, savedLobby(session.lobby));
           if (session.online.room && session.online.room.anfitrion !== session.online.me) this.online.lobby({ listo: true });
           session.lobby.view = 'room';
           this.sound('select');
@@ -813,7 +815,7 @@ export class SessionController {
   lobbySet(what) {
     const lobby = this.session.lobby;
     if (!lobbySet(lobby, what)) return;
-    savePref(FLOW.storageKeys.lobby, savedLobby(lobby));
+    if (!lobby.full) savePref(FLOW.storageKeys.lobby, savedLobby(lobby)); // a 2v2's pair of picks is not the device's squad
     this.sound('select');
   }
 
@@ -850,6 +852,7 @@ export class SessionController {
         const ids = MAP_CHOICES.filter((id) => id !== 'random');
         this.online.lobby({ mapa: arg === 'random' ? ids[Math.floor(Math.random() * ids.length)] : action.slice('room_map_'.length) });
       } else if (key === 'bestOf') this.online.lobby({ duracion: +arg });
+      else if (key === 'mode') this.online.lobby({ modo: arg });
       else if (key === 'start') {
         if (session.touch) requestFullscreenLandscape();
         this.online.start();
@@ -857,12 +860,32 @@ export class SessionController {
         // The roster, for the sides this player will play (both in a match: it switches at half-time).
         lobby.bestOf = (o.room && o.room.ajustes.duracion) || lobby.bestOf;
         lobby.side = (me && me.equipo) || lobby.side;
+        if (o.room && o.room.ajustes.modo === '2v2' && !lobby.full) {
+          // A 2v2: two operators of each side are this player's (the device's squad of 3 waits aside).
+          lobby.full = lobby.roles;
+          lobby.roles = { attackers: lobby.full.attackers.slice(0, 2), defenders: lobby.full.defenders.slice(0, 2) };
+        }
         openPick(lobby);
         lobby.drawn = (o.room && o.room.ajustes.mapa) || DEFAULT_MAP;
       } else return false;
     }
     this.sound('select');
     return true;
+  }
+
+  /** Out of a 2v2's pick: the device's squad of 3 again (its first two take the pair just picked). */
+  restoreSquad() {
+    const lobby = this.session.lobby;
+    if (!lobby.full) return;
+    for (const t of ['attackers', 'defenders']) {
+      const pair = lobby.roles[t];
+      const full = [...lobby.full[t]];
+      pair.forEach((id, i) => { if (id) full[i] = id; });
+      // Keep the squad of 3 valid: a class the pair now repeats beyond its limit goes back to its old one.
+      lobby.full[t] = full.every((id, i) => canPick({ roles: { [t]: full } }, t, i, id, full)) ? full : lobby.full[t];
+    }
+    lobby.roles = lobby.full;
+    lobby.full = null;
   }
 
   /** Back to the main menu (or `view` of it: the online room's lobby): the round is dropped (a new one waits behind the menu). */
@@ -923,9 +946,19 @@ export class SessionController {
 
   select(unitId) {
     if (!controllableUnit(this.sim, unitId, this.session.team)) return;
+    if (!this.owned(this.sim.units[unitId])) {
+      this.notice('partnerUnit'); // a 2v2: that one is the teammate's
+      return;
+    }
     this.session.selectedId = unitId;
     this.session.pointTarget = null;
     this.planning.refresh();
+  }
+
+  /** Is this operator the player's to command (a 2v2 online: two of the side's four are the teammate's)? */
+  owned(u) {
+    const o = this.session.online;
+    return !!u && (!o || !o.playing || !o.slots || o.slots.includes(u.slot));
   }
 
   selectedDead() {
@@ -933,7 +966,7 @@ export class SessionController {
   }
 
   selectNextAlive() {
-    const next = firstAlive(this.sim, this.session.team);
+    const next = teamUnits(this.sim, this.session.team).find((u) => u.alive && this.owned(u)) || null;
     this.session.selectedId = next ? next.id : -1;
   }
 }

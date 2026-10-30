@@ -51,8 +51,25 @@ invitación → LISTO → turnos con hashes iguales → recarga a mitad de parti
   lobby (su asiento queda por si vuelve). El rival ve la cuenta atrás en la partida.
 - **Pantalla encendida** durante la partida (`navigator.wakeLock`, se pide de nuevo al volver a la app).
 
-**Pendiente**: 2v2, UI que lea solo `teamView`, repetición de la última baja online (necesita las
-órdenes del rival en la grabación).
+**2v2 (31 oct)**
+- Modo 1v1/2v2 en la sala (lo elige el anfitrión); dos asientos por bando. 4 soldados por bando
+  (`Simulation` opción `squad`, 4.º punto de aparición por entrada en cada mapa, `SQUAD_FOURTH`); el
+  3 contra 3 contra la IA no cambia.
+- Cada jugador manda 2 soldados (`puestos`: el primero del bando los 1-2, el segundo los 3-4); el
+  servidor descarta órdenes a soldados ajenos y el cliente no deja seleccionarlos (se ven atenuados).
+- En 2v2 las órdenes de un bando en una fase de decisión vuelven del servidor a sus dos jugadores
+  (`previa`) y se aplican en ese orden: el compañero ve las rutas en vivo y el rival no. El cierre
+  reparte todo en orden de llegada.
+- Clases: cada jugador elige 2 por bando; si los dos eligen la misma clase única, la segunda pasa a la
+  primera que cabe (igual en todos los teléfonos).
+- Si alguien no vuelve en 90 s, su compañero toma sus soldados; la sala no espera reportes ni LISTO de
+  quien no está. En la partida se ve si el compañero ya marcó LISTO.
+- Arreglo general: al terminar el dron o un turno se descartan las órdenes selladas que ya no se
+  aplicarán (un segundo "recoger dron"); antes desfasaban a algún teléfono.
+
+**Pendiente**: UI que lea solo `teamView`, repetición de la última baja online (necesita las órdenes
+del rival en la grabación), medir el equilibrio de 4 contra 4 con la IA (las composiciones de la IA son
+de 3).
 
 ## 1. Lo que pidió Tomás
 

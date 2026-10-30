@@ -88,7 +88,7 @@ function autopilot(c) {
   if (sim.phase === 'plan' && c.team === 'attackers' && sim.turn <= 1 && c.planned !== c.n) {
     c.planned = c.n;
     const site = sim.site;
-    for (const u of sim.teams.attackers) c.command({ type: 'addWaypoint', unitId: u.id, x: site.x, y: site.y, user: true });
+    for (const u of sim.teams.attackers) if (c.owns(u.id)) c.command({ type: 'addWaypoint', unitId: u.id, x: site.bombX, y: site.bombY, user: true });
   }
   if (c.recalled !== undefined && sim.phase !== 'drone') c.recalled = undefined;
   c.ready();
@@ -133,11 +133,12 @@ test('las órdenes del rival no se ven hasta el cierre y el servidor firma el ba
   room.join({ nombre: 'B' }, 0);
   room.receive(1, { t: 'lobby', listo: true }, 0);
   room.receive(0, { t: 'iniciar' }, 0);
-  const out = room.receive(1, { t: 'ordenes', n: 0, lista: [{ type: 'buy', unitId: 0, item: 'flash', team: 'attackers' }] }, 0);
+  const out = room.receive(1, { t: 'ordenes', n: 0, lista: [{ type: 'buy', unitId: 3, item: 'flash', team: 'attackers' }, { type: 'buy', unitId: 0, item: 'flash' }] }, 0);
   assert.equal(out.length, 0, 'nada se reenvía antes del cierre');
   room.receive(0, { t: 'listo', n: 0 }, 0);
   const close = room.receive(1, { t: 'listo', n: 0 }, 0).find((o) => o.msg.t === 'cierre');
-  assert.equal(close.msg.ordenes[1].lista[0].team, 'defenders', 'el bando lo pone el servidor');
+  assert.equal(close.msg.ordenes.length, 1, 'la orden a un soldado del otro bando no pasa');
+  assert.equal(close.msg.ordenes[0][1].team, 'defenders', 'el bando lo pone el servidor');
 });
 
 test('una ronda 1v1 completa por lockstep: los dos clientes terminan con el mismo estado', () => {
@@ -262,4 +263,85 @@ test('abandono: el que no vuelve en 90 s pierde la partida y la sala vuelve al l
   assert.equal(h.room.status, 'lobby');
   assert.ok(events.includes('abandono') && events.includes('lobby'));
   assert.equal(a.sim, null);
+});
+
+test('2v2: cuatro jugadores, dos soldados cada uno, el compañero ve las rutas en vivo y todos terminan igual', () => {
+  const h = harness({ seeds: [6, 7, 8] });
+  h.connect(0, { nombre: 'Ana' });
+  h.say(0, { t: 'lobby', modo: '2v2', duracion: 3, mapa: DEFAULT_MAP });
+  const c = ['Ana', 'Beto', 'Caro', 'Dani'].map((nombre, i) => (i ? h.connect(i, { nombre }) : h.clients[0]));
+  assert.deepEqual(h.room.players.map((p) => p.team), ['attackers', 'defenders', 'attackers', 'defenders']);
+  assert.equal(h.connect(4, { nombre: 'Eli' }).me, -1, 'sala llena con 4');
+  for (const i of [1, 2, 3]) h.say(i, { t: 'lobby', listo: true });
+  // Ana and Caro pick for the attack; Caro wants the Brecha Ana already has (it is unique).
+  h.say(0, { t: 'clases', roles: { attackers: ['entry', 'scout'], defenders: ['anchor', 'trapper'] } });
+  h.say(2, { t: 'clases', roles: { attackers: ['entry', 'shield'], defenders: ['shotgunner', 'roamer'] } });
+  h.say(0, { t: 'iniciar' });
+  const [ana, , caro] = c;
+  assert.equal(ana.sim.teams.attackers.length, 4);
+  assert.deepEqual(ana.slots, [0, 1]);
+  assert.deepEqual(caro.slots, [2, 3]);
+  assert.deepEqual(ana.sim.teams.attackers.map((u) => u.role), ['entry', 'scout', 'assault', 'shield'], 'la Brecha repetida cambia por la primera que cabe');
+  assert.ok(ana.owns(0) && !ana.owns(2) && caro.owns(2) && !caro.owns(4));
+
+  // Into the first planning; Ana draws for her two, and Caro sees it before the phase closes.
+  h.run(4000, () => ana.phase === 'drone', () => h.clients.forEach((x) => { if (x.phase !== 'plan') autopilot(x); }));
+  ana.command({ type: 'droneRecall' });
+  h.run(4000, () => ana.phase === 'plan' && ana.deciding && caro.deciding);
+  const site = ana.sim.site;
+  ana.command({ type: 'addWaypoint', unitId: 0, x: site.bombX, y: site.bombY, user: true });
+  ana.command({ type: 'addWaypoint', unitId: 2, x: site.bombX, y: site.bombY, user: true }); // not hers: refused
+  h.cycle();
+  assert.ok(caro.sim.units[0].route.length > 0, 'Caro ve la ruta de Ana en vivo');
+  assert.equal(caro.sim.units[2].route.length, 0, 'la orden a un soldado de Caro no pasó');
+  assert.equal(c[1].sim.units[0].route.length, 0, 'los defensores no la ven antes del cierre');
+
+  const teams = [];
+  let last = null;
+  const done = h.run(80000, () => h.room.status === 'finished', () => {
+    if (ana.sim !== last) teams.push(ana.team);
+    last = ana.sim;
+    h.clients.forEach(autopilot);
+  });
+  assert.ok(done, 'la partida termina');
+  assert.equal(teams[1], 'defenders', 'cambio de bando');
+  const hashes = c.map((x) => hashSim(x.sim));
+  assert.equal(new Set(hashes).size, 1, `los cuatro terminan igual: ${hashes}`);
+  assert.ok(c.every((x) => !x.desync), 'sin resincronizar');
+});
+
+test('2v2: si un jugador no vuelve, su compañero toma sus soldados y la partida sigue', () => {
+  const h = harness({ seeds: [9] });
+  h.connect(0, { nombre: 'Ana' });
+  h.say(0, { t: 'lobby', modo: '2v2', duracion: 1, mapa: DEFAULT_MAP });
+  const c = ['Ana', 'Beto', 'Caro', 'Dani'].map((nombre, i) => (i ? h.connect(i, { nombre }) : h.clients[0]));
+  for (const i of [1, 2, 3]) h.say(i, { t: 'lobby', listo: true });
+  h.say(0, { t: 'iniciar' });
+  h.run(4000, () => c[0].phase === 'exec', () => h.clients.forEach(autopilot));
+  h.drop(2);
+  h.run(100000 / 50, () => c[0].slots.length === 4, () => [0, 1, 3].forEach((i) => autopilot(c[i])));
+  assert.deepEqual(c[0].slots, [0, 1, 2, 3], 'Ana manda a los cuatro');
+  assert.equal(h.room.status, 'playing');
+  const ok = h.run(40000, () => h.room.status === 'finished', () => [0, 1, 3].forEach((i) => autopilot(c[i])));
+  if (process.env.DBG) console.log('DBG', h.room.status, h.room.phase, c.map((x) => [x.phase, x.n, x.deciding, x.isReady]), h.room.n);
+  assert.ok(ok, 'la partida termina');
+  assert.equal(hashSim(c[0].sim), hashSim(c[1].sim));
+});
+
+test('una orden de tiempo real que llega tarde (un segundo "recoger dron") no desfasa a nadie', () => {
+  const h = harness({ seeds: [12] });
+  h.connect(0, { nombre: 'Ana' });
+  h.say(0, { t: 'lobby', modo: '2v2', duracion: 1, mapa: DEFAULT_MAP });
+  const c = ['Ana', 'Beto', 'Caro', 'Dani'].map((nombre, i) => (i ? h.connect(i, { nombre }) : h.clients[0]));
+  for (const i of [1, 2, 3]) h.say(i, { t: 'lobby', listo: true });
+  h.say(0, { t: 'iniciar' });
+  h.run(4000, () => c[0].phase === 'drone', () => h.clients.forEach((x) => { if (x.phase !== 'drone' && x.deciding) x.ready(); }));
+  h.run(10, () => false);
+  // Both attackers recall the drone; Caro's arrives when Ana's has already ended it on some phones.
+  c[0].command({ type: 'droneRecall' });
+  h.cycle();
+  c[2].command({ type: 'droneRecall' });
+  h.run(400, () => c.every((x) => x.phase === 'plan' && x.deciding));
+  assert.ok(c.every((x) => !x.desync), 'sin resincronizar');
+  assert.equal(new Set(c.map((x) => hashSim(x.sim))).size, 1);
 });

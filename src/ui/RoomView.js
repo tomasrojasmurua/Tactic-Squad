@@ -4,7 +4,7 @@
 //           sides with their players (ready, connection), the host's format and map, ELEGIR CLASES,
 //           LISTO (the guest) or EMPEZAR (the host, once the guest is ready)
 // Emits EV.REQUEST {action: 'onlineCreate' {name} | 'onlineJoin' {name, code} | 'room_team_<side>' |
-// 'room_ready' | 'room_map_<id>' | 'room_bestOf_<n>' | 'room_pick' | 'room_start' | 'back'}.
+// 'room_ready' | 'room_map_<id>' | 'room_bestOf_<n>' | 'room_mode_<1v1|2v2>' | 'room_pick' | 'room_start' | 'back'}.
 import { EV } from '../core/events.js';
 import { MAPS } from '../data/maps/index.js';
 import { BEST_OF, MAP_CHOICES } from '../session/Lobby.js';
@@ -88,9 +88,10 @@ export class RoomView {
       <div class="lb-cols">
         <div class="lb-col">
           <div class="lb-row rm-sides"></div>
-          <div class="lb-row"><span class="lb-l">${L.format}</span><div class="lb-opts bestof"></div></div>
         </div>
         <div class="lb-col">
+          <div class="lb-row"><span class="lb-l">${O.mode}</span><div class="lb-opts rm-mode"></div></div>
+          <div class="lb-row"><span class="lb-l">${L.format}</span><div class="lb-opts bestof"></div></div>
           <div class="lb-row"><span class="lb-l">${L.map}</span><div class="lb-opts rm-maps"></div><div class="lb-note rm-hostnote">${O.hostSets}</div></div>
           <div class="lb-note rm-error"></div>
         </div>
@@ -115,16 +116,22 @@ export class RoomView {
     setText(this.invite, O.invite);
     this.invite.addEventListener('click', () => this.share());
     r('.rm-head').append(this.invite);
-    // Each side: its player (or an empty seat) and "pasarme aquí".
+    // Each side: its players (two seats in a 2v2; an empty one says so) and "pasarme aquí".
     this.sides = TEAMS.map((team) => {
-      const box = el('div', `rm-side ${team}`, `<span class="lb-side">${TEAM_LABEL[team]}</span><div class="lb-player"><b class="rm-name"></b><span class="st"></span></div>`);
+      const box = el('div', `rm-side ${team}`, `<span class="lb-side">${TEAM_LABEL[team]}</span>`);
+      const seats = [0, 1].map(() => {
+        const row = el('div', 'lb-player', '<b class="rm-name"></b><span class="st"></span>');
+        box.append(row);
+        return { row, name: row.firstChild, st: row.lastChild };
+      });
       const move = el('button', 'btn lb-opt rm-move');
       setText(move, O.switchHere);
       move.addEventListener('click', () => this.request(`room_team_${team}`));
       box.append(move);
       r('.rm-sides').append(box);
-      return { team, box, name: box.querySelector('.rm-name'), st: box.querySelector('.st'), player: box.querySelector('.lb-player'), move };
+      return { team, box, seats, move };
     });
+    this.modes = ['1v1', '2v2'].map((m) => opt(r('.rm-mode'), O.modes[m], `room_mode_${m}`, m));
     this.bestOf = BEST_OF.map((n) => opt(r('.bestof'), L.bestOf(n), `room_bestOf_${n}`, n));
     this.maps = MAP_CHOICES.map((id) => opt(r('.rm-maps'), MAPS[id] ? MAPS[id].name : L.randomMap, `room_map_${id}`, id));
     this.pick = button('', O.pick, null, 'room_pick');
@@ -193,17 +200,26 @@ export class RoomView {
     setText(this.roomError, o.error ? O.errors[o.error] || o.error : '');
     const me = room && room.jugadores.find((j) => j.id === o.me);
     this.isHost = !!room && room.anfitrion === o.me;
+    const settings = room ? room.ajustes : { duracion: 3, mapa: null, modo: '1v1' };
+    const perSide = settings.modo === '2v2' ? 2 : 1;
     for (const s of this.sides) {
-      const p = room && room.jugadores.find((j) => j.equipo === s.team);
-      const mine = !!p && p.id === o.me;
-      setText(s.name, p ? `${p.nombre}${mine ? ` (${O.you})` : ''}${p.id === room.anfitrion ? ' ★' : ''}` : O.free);
-      setText(s.st, !p ? '' : !p.conectado ? O.offline : p.listo || p.id === room.anfitrion ? O.ready : O.notReady);
-      toggle(s.st, 'ok', !!p && p.conectado && (p.listo || p.id === room.anfitrion));
-      toggle(s.player, 'you', mine);
-      toggle(s.player, 'empty', !p);
+      const players = room ? room.jugadores.filter((j) => j.equipo === s.team) : [];
+      s.seats.forEach((seat, k) => {
+        const p = players[k];
+        seat.row.hidden = k >= perSide;
+        const mine = !!p && p.id === o.me;
+        setText(seat.name, p ? `${p.nombre}${mine ? ` (${O.you})` : ''}${p.id === room.anfitrion ? ' ★' : ''}` : O.free);
+        setText(seat.st, !p ? '' : !p.conectado ? O.offline : p.listo || p.id === room.anfitrion ? O.ready : O.notReady);
+        toggle(seat.st, 'ok', !!p && p.conectado && (p.listo || p.id === room.anfitrion));
+        toggle(seat.row, 'you', mine);
+        toggle(seat.row, 'empty', !p);
+      });
       s.move.hidden = !me || me.equipo === s.team;
     }
-    const settings = room ? room.ajustes : { duracion: 3, mapa: null };
+    for (const b of this.modes) {
+      toggle(b, 'on', b.dataset.key === settings.modo);
+      b.disabled = !this.isHost || (b.dataset.key === '1v1' && room && room.jugadores.length > 2);
+    }
     for (const b of this.bestOf) {
       toggle(b, 'on', +b.dataset.key === settings.duracion);
       b.disabled = !this.isHost;
@@ -214,7 +230,7 @@ export class RoomView {
       b.hidden = !this.isHost && b.dataset.key === 'random';
     }
     this.hostNote.hidden = this.isHost;
-    const full = room && room.jugadores.length === 2;
+    const full = room && room.jugadores.length === perSide * 2 && room.jugadores.every((j) => j.conectado);
     const guestReady = full && room.jugadores.every((j) => j.id === room.anfitrion || (j.listo && j.conectado));
     if (this.isHost) {
       setText(this.goLabel, !full ? O.startNeedsPlayer : !guestReady ? O.startNeeds : O.start);

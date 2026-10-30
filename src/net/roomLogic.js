@@ -5,9 +5,11 @@
 //
 // Lockstep. Every phase of the match has a number `n`, and every message of the match carries
 // the `n` it belongs to (a stale one is dropped):
-//   - decision phase (buy, prep, plan): orders are held back until the phase closes (everyone
-//     LISTO or the deadline): the opponent's planning stays blind. `cierre` hands the whole
-//     packet to everybody, in the same order, and every client advances its sim.
+//   - decision phase (buy, prep, plan): orders are held back from the other side until the phase
+//     closes (everyone LISTO or the deadline): the opponent's planning stays blind. `cierre` hands
+//     the whole packet to everybody, in the order they arrived, and every client advances its sim.
+//     In a 2v2 a side's orders also go at once to both of its players (`previa`, the sender too):
+//     teammates see each other's routes live and apply their side's orders in the same order.
 //   - live phase (drone, turn): the server grants steps (`pasos {hasta}`: the phase's tick every
 //     client may run up to) and relays each order right away, stamped with a step the clients
 //     have not reached yet (`atTick` > hasta), so all apply it at the same step.
@@ -24,7 +26,8 @@
 // Message names follow docs/traspaso/MULTIJUGADOR.md (t: the type).
 
 export const ROOM = Object.freeze({
-  maxPlayers: 2, // 1v1 (2v2: 4)
+  seats: Object.freeze({ '1v1': 2, '2v2': 4 }), // players per mode
+  squad: Object.freeze({ '1v1': 3, '2v2': 4 }), // operators per side (config/squad.js SQUAD_2V2)
   phaseSeconds: Object.freeze({ buy: 20, prep: 60, plan: 30, end: 30 }),
   grantMs: 100, // a live phase advances this much wall time per `pasos`
   grantTicks: 6, // steps per grant (60 Hz)
@@ -45,11 +48,11 @@ export const switchAfter = (bestOf) => Math.floor(bestOf / 2);
 
 export class Room {
   /** @param deps.seed () => integer seed of a round; deps.token () => unique player token */
-  constructor(code, { seed = () => 1, token = () => Math.random().toString(36).slice(2) } = {}) {
+  constructor(code, { seed = () => 1, token = () => Math.random().toString(36).slice(2), modo = '1v1' } = {}) {
     this.code = code;
     this.deps = { seed, token };
     this.players = []; // {id, token, name, team, ready, connected, roles}
-    this.settings = { mapa: null, duracion: 3 };
+    this.settings = { mapa: null, duracion: 3, modo: ROOM.seats[modo] ? modo : '1v1' };
     this.status = 'lobby'; // lobby | playing | finished
     this.round = 0;
     this.log = []; // what was broadcast since the start, for a reconnecting client
@@ -61,19 +64,47 @@ export class Room {
     return this.players[0] ? this.players[0].id : null;
   }
 
+  get seats() {
+    return ROOM.seats[this.settings.modo];
+  }
+
+  /** Operators per side this match (3 in a 1v1, 4 in a 2v2). */
+  get squad() {
+    return ROOM.squad[this.settings.modo];
+  }
+
+  /** The players on `team`, in seat order (the first commands the first operators). */
+  teamOf(team) {
+    return this.players.filter((q) => q.team === team);
+  }
+
+  /** The side with a free seat (the emptier one first), or null. */
+  freeTeam(except = null) {
+    const half = this.seats / 2;
+    const count = (t) => this.players.filter((q) => q !== except && q.team === t).length;
+    return TEAMS.filter((t) => count(t) < half).sort((a, b) => count(a) - count(b))[0] || null;
+  }
+
   /** Message `hola`: a new player, or an old one coming back with its token. Returns {id, out}. */
   join({ token, nombre }, now) {
     let p = token ? this.players.find((q) => q.token === token) : null;
     if (p) {
       p.connected = true;
+      p.gaveUp = false;
       if (nombre) p.name = cleanName(nombre);
       return { id: p.id, out: [send(p.id, this.helloMsg(p)), ...this.resume(p, now), send('*', this.roomMsg())] };
     }
     if (this.status !== 'lobby') return { id: -1, out: [send(-1, { t: 'error', motivo: 'en-juego' })] };
-    if (this.players.length >= ROOM.maxPlayers) return { id: -1, out: [send(-1, { t: 'error', motivo: 'llena' })] };
+    const fresh = { token: this.deps.token(), name: cleanName(nombre), ready: false, connected: true, roles: null };
+    if (this.players.length >= this.seats) {
+      // Full: the seat of someone who left the lobby goes to the newcomer (same side, same number).
+      const empty = this.players.find((q) => !q.connected);
+      if (!empty) return { id: -1, out: [send(-1, { t: 'error', motivo: 'llena' })] };
+      Object.assign(empty, fresh, { name: fresh.name || `Jugador ${empty.id + 1}` });
+      return { id: empty.id, out: [send(empty.id, this.helloMsg(empty)), send('*', this.roomMsg())] };
+    }
     const id = this.players.length;
-    const team = TEAMS.find((t) => !this.players.some((q) => q.team === t)) || TEAMS[id % 2];
-    p = { id, token: this.deps.token(), name: cleanName(nombre) || `Jugador ${id + 1}`, team, ready: false, connected: true, roles: null };
+    p = { id, ...fresh, name: fresh.name || `Jugador ${id + 1}`, team: this.freeTeam() || TEAMS[id % 2] };
     this.players.push(p);
     return { id, out: [send(id, this.helloMsg(p)), send('*', this.roomMsg())] };
   }
@@ -102,19 +133,23 @@ export class Room {
     if (this.status === 'lobby') p.ready = false;
     const ph = this.phase;
     if (ph && ph.kind === 'decision' && ph.deadline !== null && ph.pausedAt === null) ph.pausedAt = now; // the clock waits for him
-    return [send('*', this.roomMsg())];
+    // The others may all have reported the phase change already: no need to wait for his.
+    const go = ph && (ph.kind === 'sync' || ph.kind === 'live') ? this.compareReports(null, now) : [];
+    return [send('*', this.roomMsg()), ...go];
   }
 
   /** A player is back: everything since the start again, then the phase that is open. */
   resume(p, now) {
     if (this.status === 'lobby') return [];
     const ph = this.phase;
-    if (ph && ph.pausedAt != null && this.players.every((q) => q.connected)) {
-      ph.deadline += now - ph.pausedAt;
-      ph.pausedAt = null;
-    }
+    this.unpause(now);
     const out = [send(p.id, { t: 'registro', yo: p.id, mensajes: this.log })];
-    if (ph && ph.kind === 'decision') out.push(send('*', this.faseMsg(now)));
+    if (ph && ph.kind === 'decision') {
+      // What his side already ordered in the open phase (his own orders too: his page started over).
+      const mine = ph.orders.filter((o) => this.players[o.p].team === p.team).map((o) => [o.p, o.cmd]);
+      if (mine.length) out.push(send(p.id, { t: 'previa', n: this.n, ordenes: mine }));
+      out.push(send('*', this.faseMsg(now)));
+    }
     return out;
   }
 
@@ -144,9 +179,9 @@ export class Room {
     if (m.nombre) p.name = cleanName(m.nombre) || p.name;
     if (m.listo !== undefined) p.ready = !!m.listo;
     if (TEAMS.includes(m.equipo) && p.team !== m.equipo) {
-      // A tap on the other side: in 1v1 both players switch.
-      const other = this.players.find((q) => q !== p && q.team === m.equipo);
-      if (other) {
+      // A tap on the other side: to a free seat there; a full side swaps with its first player.
+      if (this.teamOf(m.equipo).length >= this.seats / 2) {
+        const other = this.teamOf(m.equipo)[0];
         other.team = p.team;
         other.ready = false;
       }
@@ -155,6 +190,12 @@ export class Room {
     }
     if (p.id === this.host) {
       let changed = false;
+      if (ROOM.seats[m.modo] && m.modo !== this.settings.modo && this.players.length <= ROOM.seats[m.modo]) {
+        this.settings.modo = m.modo;
+        // Fewer seats per side: whoever no longer fits moves to the other side.
+        for (const q of this.players) if (this.teamOf(q.team).length > this.seats / 2) q.team = OTHER[q.team];
+        changed = true;
+      }
       if (m.mapa !== undefined && m.mapa !== this.settings.mapa) {
         this.settings.mapa = m.mapa;
         changed = true;
@@ -176,10 +217,10 @@ export class Room {
     return [];
   }
 
-  /** Can the host start: a full room, both sides taken, everyone else ready and connected. */
+  /** Can the host start: a full room, the sides even, everyone else ready and connected. */
   canStart() {
-    return this.players.length === ROOM.maxPlayers
-      && new Set(this.players.map((q) => q.team)).size === TEAMS.length
+    return this.players.length === this.seats
+      && TEAMS.every((t) => this.teamOf(t).length === this.seats / 2)
       && this.players.every((q) => q.connected && (q.ready || q.id === this.host));
   }
 
@@ -188,21 +229,47 @@ export class Room {
     if (!this.canStart()) return [send(p.id, { t: 'error', motivo: 'no-listos' })];
     this.status = 'playing';
     this.round = 1;
+    for (const q of this.players) q.gaveUp = false;
     this.log = [];
     this.n = 0;
     const start = {
       t: 'start',
       mapa: this.settings.mapa,
       duracion: this.settings.duracion,
+      modo: this.settings.modo,
+      squad: this.squad,
       roles: Object.fromEntries(this.players.map((q) => [q.id, q.roles])),
       ...this.roundFields(),
     };
     return [...this.broadcast(start), ...this.openDecision('buy', now)];
   }
 
-  /** What a new round needs: its seed, its number and who plays each side. */
+  /** What a new round needs: its seed, its number, who plays each side and which operators. */
   roundFields() {
-    return { semilla: this.deps.seed() >>> 0, ronda: this.round, equipos: Object.fromEntries(this.players.map((q) => [q.id, q.team])) };
+    for (const q of this.players) q.slots = this.slotsOf(q);
+    return {
+      semilla: this.deps.seed() >>> 0,
+      ronda: this.round,
+      equipos: Object.fromEntries(this.players.map((q) => [q.id, q.team])),
+      puestos: Object.fromEntries(this.players.map((q) => [q.id, q.slots])),
+    };
+  }
+
+  /** The operators a player commands: his side's, split in seat order (2 each in a 2v2). */
+  slotsOf(p) {
+    if (p.gaveUp) return []; // gone too long in a 2v2: his teammate has his operators
+    const mates = this.teamOf(p.team).filter((q) => !q.gaveUp);
+    const per = this.squad / mates.length;
+    const k = mates.indexOf(p);
+    return Array.from({ length: per }, (_, i) => k * per + i);
+  }
+
+  /** May `p` give this order (its unit is one of his; side orders with no unit: anyone on the side)? */
+  owns(p, cmd) {
+    if (!Number.isInteger(cmd.unitId) || cmd.unitId < 0) return true;
+    const sq = this.squad;
+    const team = cmd.unitId < sq ? 'attackers' : 'defenders';
+    return team === p.team && (p.slots || []).includes(cmd.unitId % sq);
   }
 
   /** After a match: back to the lobby (rematch), same players, nobody ready. Either player may. */
@@ -232,7 +299,7 @@ export class Room {
 
   openDecision(fase, now) {
     const secs = ROOM.phaseSeconds[fase];
-    const missing = this.players.some((q) => !q.connected);
+    const missing = this.missing;
     this.phase = { kind: 'decision', fase, deadline: secs ? now + secs * 1000 : null, pausedAt: missing ? now : null, ready: new Set(), orders: [] };
     return [send('*', this.faseMsg(now))];
   }
@@ -241,14 +308,14 @@ export class Room {
     const ph = this.phase;
     if (!ph || ph.kind !== 'decision' || m.n !== this.n) return [];
     ph.ready.add(p.id);
-    if (this.players.every((q) => ph.ready.has(q.id))) return this.closeDecision(now);
+    if (this.players.every((q) => q.gaveUp || ph.ready.has(q.id))) return this.closeDecision(now);
     return [send('*', this.faseMsg(now))];
   }
 
   closeDecision(now) {
     const ph = this.phase;
     if (ph.fase === 'end') return this.nextRound(now);
-    const orders = this.players.map((q) => ({ p: q.id, lista: ph.orders.filter((o) => o.p === q.id).map((o) => o.cmd) }));
+    const orders = ph.orders.map((o) => [o.p, o.cmd]); // in the order they arrived
     this.phase = { kind: 'sync', fase: ph.fase, reports: new Map() };
     return this.broadcast({ t: 'cierre', n: this.n, fase: ph.fase, ordenes: orders });
   }
@@ -271,11 +338,14 @@ export class Room {
     const ph = this.phase;
     if (!ph || m.n !== this.n || !Array.isArray(m.lista)) return [];
     // The server signs every order with the sender's side: nobody orders the other side's units.
-    const cmds = m.lista.filter((c) => c && typeof c.type === 'string').map((c) => ({ ...c, team: p.team }));
+    const cmds = m.lista.filter((c) => c && typeof c.type === 'string').map((c) => ({ ...c, team: p.team })).filter((c) => this.owns(p, c));
     if (ph.kind === 'decision') {
-      if (ph.fase === 'end' || ph.ready.has(p.id)) return [];
+      if (ph.fase === 'end' || ph.ready.has(p.id) || !cmds.length) return [];
       for (const cmd of cmds) ph.orders.push({ p: p.id, cmd });
-      return [];
+      if (this.teamOf(p.team).length < 2) return [];
+      // 2v2: both players of the side apply its orders now, in this order (the sender too).
+      const previa = { t: 'previa', n: this.n, ordenes: cmds.map((c) => [p.id, c]) };
+      return this.teamOf(p.team).map((q) => send(q.id, previa));
     }
     if (ph.kind !== 'live') return [];
     const out = [];
@@ -292,11 +362,21 @@ export class Room {
     const reports = ph.reports || (ph.reports = new Map());
     if (reports.has(p.id)) return [];
     reports.set(p.id, { fase: m.fase, h: m.h, sigue: !!m.sigue });
-    if (reports.size < this.players.length) return [];
+    return this.compareReports(p, now);
+  }
+
+  /**
+   * Every connected player reported the phase change: compare. Someone away does not hold the
+   * match (he catches up from the log when he is back; a decision phase's clock waits for him).
+   */
+  compareReports(p, now) {
+    const ph = this.phase;
+    const reports = ph && ph.reports;
+    if (!reports || !reports.size || this.players.some((q) => q.connected && !reports.has(q.id))) return [];
     const all = [...reports.values()];
     if (all.some((r) => r.h !== all[0].h || r.fase !== all[0].fase)) {
       // The phones drifted apart: everybody takes the state of the host (or of whoever is connected).
-      const ref = this.players.find((q) => q.connected && reports.has(q.id)) || p;
+      const ref = this.players.find((q) => q.connected && reports.has(q.id)) || p || this.players.find((q) => reports.has(q.id));
       this.phase = { kind: 'resync', from: ref.id, report: reports.get(ref.id), hashes: Object.fromEntries([...reports].map(([id, r]) => [id, r.h])) };
       return [send(ref.id, { t: 'foto', n: this.n })];
     }
@@ -333,13 +413,44 @@ export class Room {
    */
   checkAbandon(now) {
     if (this.status !== 'playing') return [];
-    const gone = this.players.find((q) => !q.connected && now - (q.leftAt ?? now) >= ROOM.abandonMs);
+    const gone = this.players.find((q) => !q.connected && (q.slots || []).length && now - (q.leftAt ?? now) >= ROOM.abandonMs);
     if (!gone) return [];
+    const mate = this.teamOf(gone.team).find((q) => q !== gone && q.connected);
+    if (mate) {
+      // 2v2: his teammate takes his operators and the match goes on.
+      mate.slots = [...mate.slots, ...gone.slots].sort((a, b) => a - b);
+      gone.slots = [];
+      gone.gaveUp = true; // until he comes back: then his operators again from the next round
+      this.unpause(now);
+      const ph = this.phase;
+      if (ph && ph.kind === 'decision' && this.players.every((q) => q.gaveUp || ph.ready.has(q.id))) {
+        return [...this.broadcast(this.puestosMsg(gone, mate)), ...this.closeDecision(now)];
+      }
+      return this.broadcast(this.puestosMsg(gone, mate));
+    }
     this.status = 'lobby';
     this.phase = null;
     this.log = [];
     for (const q of this.players) q.ready = false;
     return [send('*', { t: 'abandono', quien: gone.id }), send('*', { t: 'lobby' }), send('*', this.roomMsg())];
+  }
+
+  puestosMsg(gone, mate) {
+    return { t: 'puestos', n: this.n, puestos: Object.fromEntries(this.players.map((q) => [q.id, q.slots])), quien: gone.id, para: mate.id };
+  }
+
+  /** Is someone the room waits for missing (disconnected, his operators not handed over)? */
+  get missing() {
+    return this.players.some((q) => !q.connected && !q.gaveUp);
+  }
+
+  /** Nobody missing any more: the decision clock runs again from where it stopped. */
+  unpause(now) {
+    const ph = this.phase;
+    if (ph && ph.pausedAt != null && !this.missing) {
+      ph.deadline += now - ph.pausedAt;
+      ph.pausedAt = null;
+    }
   }
 
   /** Called often (every ~50 ms): live phases advance, decision deadlines expire. */

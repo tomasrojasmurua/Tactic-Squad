@@ -5,6 +5,8 @@
 //
 //   decision phase: the player's own orders apply at once (the planning shows them) and go to the
 //     server; the opponent's arrive with `cierre`, when every client advances its sim together.
+//     In a 2v2 a side's orders apply when the server hands them back to both of its players
+//     (`previa`): the two phones of a side apply them in the same order (and see each other's).
 //   live phase: orders do NOT apply when given; the server stamps them with a step nobody ran yet
 //     and sends them back to everybody (`orden`). The sim runs only up to the step the server
 //     granted (`pasos`), so every phone applies the same orders at the same step.
@@ -15,23 +17,50 @@ import { phaseTick } from '../sim/round.js';
 import { createMatch, matchLoadout, endMatchRound } from '../session/Match.js';
 import { hashSim } from './stateHash.js';
 import { encodeSim, restoreSim } from './snapshot.js';
+import { ROLES, PICK_ROLES, DEF_PICK_ROLES } from '../config/operators.js';
 
 const LIVE = new Set(['drone', 'exec']);
 const DECIDING = new Set(['buy', 'prep', 'plan', 'end']);
 export const HUMANS = Object.freeze({ attackers: 'human', defenders: 'human' });
 
+/**
+ * Each side's classes: every player's picks on his operators (in a 2v2, 2 each). A pick his
+ * side cannot take any more (both teammates chose the same unique class) becomes the first class
+ * that still fits, the same on every phone.
+ */
+export function onlineRoles(start, round) {
+  const squad = start.squad || 3;
+  const roles = {};
+  for (const team of ['attackers', 'defenders']) {
+    const ids = new Array(squad).fill(null);
+    for (const [id, t] of Object.entries(round.equipos)) {
+      if (t !== team) continue;
+      const slots = round.puestos ? round.puestos[id] : [0, 1, 2];
+      const picks = (start.roles && start.roles[id] && start.roles[id][team]) || [];
+      slots.forEach((slot, k) => { if (slot < squad) ids[slot] = picks[k] ?? null; });
+    }
+    if (ids.every((r) => r === null)) continue; // nobody picked: the defaults
+    const pool = team === 'attackers' ? PICK_ROLES : DEF_PICK_ROLES;
+    const fits = (id, taken) => {
+      const r = ROLES[id];
+      if (!r || !pool.includes(id)) return false;
+      const n = taken.filter((x) => x === id).length;
+      return team === 'attackers' ? !r.unique || n === 0 : n < r.max;
+    };
+    const out = [];
+    for (const id of ids) out.push(fits(id, out) ? id : pool.find((alt) => fits(alt, out)));
+    roles[team] = out;
+  }
+  return roles;
+}
+
 /** What the round's Simulation is built with (the same on every phone). */
 export function onlineRound(start, round, match) {
-  const roles = {};
-  for (const [id, team] of Object.entries(round.equipos)) {
-    const picks = start.roles && start.roles[id];
-    if (picks && picks[team]) roles[team] = picks[team];
-  }
   return {
     map: start.mapa,
     seed: round.semilla,
     round: round.ronda,
-    options: { seed: round.semilla, controllers: HUMANS, roles, loadout: matchLoadout(match), lossBonus: match.lossBonus, stopOnContact: false },
+    options: { seed: round.semilla, controllers: HUMANS, roles: onlineRoles(start, round), loadout: matchLoadout(match), lossBonus: match.lossBonus, stopOnContact: false, squad: start.squad || 3 },
   };
 }
 
@@ -59,6 +88,7 @@ export class LockstepClient {
     this.finished = false;
     this.desync = null;
     this.replaying = false;
+    this.early = [];
   }
 
   get phase() {
@@ -91,6 +121,11 @@ export class LockstepClient {
       case 'fase':
         if (msg.n !== this.n) return;
         this.fase = msg;
+        if (this.early.length && !this.isReady) {
+          // Orders given in the instant between this phone entering the phase and the server opening it.
+          this.send({ t: 'ordenes', n: this.n, lista: this.early });
+        }
+        this.early = [];
         return this.on('fase', msg);
       case 'cierre': return this.onClose(msg);
       case 'pasos':
@@ -101,6 +136,16 @@ export class LockstepClient {
       case 'orden':
         if (msg.n === this.n && this.sim) this.sim.enqueue(msg.cmd);
         return;
+      case 'previa':
+        // This side's orders of the open phase (2v2; or this player's own, after a reconnection).
+        if (msg.n !== this.n || !this.sim) return;
+        for (const [, cmd] of msg.ordenes) this.sim.enqueue(cmd);
+        if (!LIVE.has(this.sim.phase)) this.sim.flushCommands(); // the routes show at once
+        return this.on('previa', msg);
+      case 'puestos':
+        // A teammate gone too long: his operators are now this player's (or the other way).
+        if (this.sim) this.slots = msg.puestos[this.me] || [];
+        return this.on('puestos', msg);
       case 'foto':
         // The phones drifted apart and this one is the reference: its state for everybody.
         if (this.sim && msg.n === this.n - 1 && !this.replaying) this.send({ t: 'foto', n: msg.n, data: encodeSim(this.sim, this.buildSim(this.roundInfo)) });
@@ -126,6 +171,8 @@ export class LockstepClient {
 
   onStart(msg) {
     this.start = msg;
+    this.squad = msg.squad || 3;
+    this.shared = msg.modo === '2v2'; // a side of two players: its orders apply on the server's echo
     this.n = 0;
     this.finished = false;
     this.desync = null;
@@ -141,8 +188,11 @@ export class LockstepClient {
 
   newRound(round) {
     this.team = round.equipos[this.me];
+    this.teams = round.equipos;
+    this.slots = round.puestos ? round.puestos[this.me] : null;
     this.hasta = 0;
     this.fase = null;
+    this.early = [];
     this.readyAt = -1;
     this.roundInfo = onlineRound(this.start, round, this.match);
     this.sim = this.createSim(this.roundInfo);
@@ -181,9 +231,18 @@ export class LockstepClient {
       this.send({ t: 'ordenes', n: this.n, lista: [mine] });
       return;
     }
-    if (!this.deciding) return;
-    this.sim.enqueue(mine);
-    this.send({ t: 'ordenes', n: this.n, lista: [mine] });
+    if (!DECIDING.has(this.sim.phase) || this.isReady) return;
+    if (!this.shared) this.sim.enqueue(mine); // 2v2: it applies when the server hands it back (previa)
+    // The server has not opened this phase yet (its `fase` is on the way): it goes when it does.
+    if (!this.fase || this.fase.n !== this.n) this.early.push(mine);
+    else this.send({ t: 'ordenes', n: this.n, lista: [mine] });
+  }
+
+  /** Does this player command that unit (its side's, and one of his operators in a 2v2)? */
+  owns(unitId) {
+    if (!this.sim || unitId < 0) return false;
+    const u = this.sim.units[unitId];
+    return !!u && u.team === this.team && (!this.slots || this.slots.includes(u.slot));
   }
 
   /** LISTO: this side is done with the phase (the round's result, too). */
@@ -195,9 +254,10 @@ export class LockstepClient {
 
   onClose(msg) {
     if (msg.n !== this.n || !this.sim) return;
-    for (const { p, lista } of msg.ordenes) {
-      if (p === this.me && !this.replaying) continue; // already applied when given
-      for (const cmd of lista) this.sim.enqueue(cmd);
+    for (const [p, cmd] of msg.ordenes) {
+      // This side's orders already applied (when given, or as `previa`); a replay applies them all.
+      if (!this.replaying && this.teams && this.teams[p] === this.team) continue;
+      this.sim.enqueue(cmd);
     }
     this.sim.advancePhase();
     this.hasta = 0;
@@ -234,6 +294,10 @@ export class LockstepClient {
   afterStep() {
     if (this.sim && !LIVE.has(this.sim.phase) && this.liveN === this.n) {
       this.hasta = 0;
+      // Orders stamped for a step this phase never reached (a second recall of the drone, a GO
+      // too late) never apply on any phone; whether one arrived before the end differs from phone
+      // to phone, so they go before the state is compared.
+      this.sim.dropStamped();
       this.report();
     }
   }

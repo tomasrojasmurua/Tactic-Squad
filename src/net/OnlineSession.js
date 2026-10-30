@@ -229,8 +229,11 @@ export class OnlineSession {
         return;
       case 'sala': {
         o.room = data;
-        const rival = data.jugadores.find((j) => j.id !== o.me);
-        o.rival = rival ? rival.nombre : '';
+        // The other side's names (the score says them) and, in a 2v2, the teammate's.
+        const me = data.jugadores.find((j) => j.id === o.me);
+        const others = data.jugadores.filter((j) => j.id !== o.me);
+        o.rival = others.filter((j) => !me || j.equipo !== me.equipo).map((j) => j.nombre).join(' y ');
+        o.mate = me ? others.find((j) => j.equipo === me.equipo) || null : null;
         // The host's room starts on his last map (a concrete one: "al azar" draws now).
         if (data.anfitrion === o.me && !data.ajustes.mapa && data.estado === 'lobby') {
           const pref = this.session.lobby.map;
@@ -241,6 +244,7 @@ export class OnlineSession {
         return;
       }
       case 'round':
+        o.slots = this.client.slots;
         this.keepAwake(true);
         o.playing = true;
         o.finished = false;
@@ -252,6 +256,7 @@ export class OnlineSession {
         return;
       case 'fase':
         o.waiting = this.client.isReady;
+        o.listos = data.listos;
         this.game.clock(data);
         return;
       case 'resync':
@@ -259,6 +264,14 @@ export class OnlineSession {
         o.desync = true;
         this.game.resynced();
         if (data.de !== o.me) this.bus.emit(EV.NOTICE, { code: 'onlineResync', count: 0 });
+        return;
+      case 'puestos':
+        // 2v2: a teammate gone too long; his operators are this player's now.
+        o.slots = this.client.slots;
+        if (data.para === o.me) {
+          this.bus.emit(EV.NOTICE, { code: 'onlineTakeOver', count: 0 });
+          this.game.ownersChanged();
+        }
         return;
       case 'abandono':
         o.error = data.quien === o.me ? 'abandonaste' : 'abandono';

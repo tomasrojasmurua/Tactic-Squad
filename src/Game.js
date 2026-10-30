@@ -86,6 +86,7 @@ export class Game {
       game: {
         startRound: (info) => this.newOnlineRound(info),
         buildRound: ({ map, options }) => new Simulation(ALL_MAPS[map] ?? ALL_MAPS[DEFAULT_MAP], options),
+        ownersChanged: () => this.flow.selectNextAlive(),
         resynced: () => {
           // The units and doors are new objects: the screen's caches are rebuilt from them.
           this.bus.emit(EV.ROUND_RESET, { sim: this.sim });
@@ -154,6 +155,10 @@ export class Game {
     s.match = client.match;
     s.team = client.team;
     s.map = map;
+    if (s.online) {
+      s.online.playing = true; // from here on orders and selection go through the lockstep (a 2v2: own operators only)
+      s.online.slots = client.slots;
+    }
     this.mapDef = ALL_MAPS[map] ?? ALL_MAPS[DEFAULT_MAP];
     this.framing.mapDef = this.mapDef;
     this.roundArgs = options;
