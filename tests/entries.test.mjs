@@ -7,9 +7,9 @@ import { applyRole } from '../src/sim/units.js';
 import { ENTRY, DOORS } from '../src/config/balance.js';
 import { isGoReady, codeWaiting, pendingDoors, peekEye } from '../src/sim/queries.js';
 import { canSee } from '../src/sim/vision.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 
-const MAP = MAPS[DEFAULT_MAP];
+const MAP = ALL_MAPS[TRAINING_MAP];
 // Ambos bandos por órdenes: los defensores se quedan quietos donde se los pone.
 // Las mecánicas se prueban sin fases (phases: false: GO en vivo); la ronda
 // completa del final se juega por turnos, con los GO dados durante cada turno.

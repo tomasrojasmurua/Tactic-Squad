@@ -16,7 +16,7 @@
 import { EV } from '../core/events.js';
 import { SIM, ENTRY } from '../config/balance.js';
 import { PLAYER_TEAM } from '../config/squad.js';
-import { DEFAULT_MAP } from '../data/maps/index.js';
+import { DEFAULT_MAP, TRAINING_MAP } from '../data/maps/index.js';
 import { FLOW } from '../config/ui.js';
 import { lessonById, nextLesson } from '../config/lessons.js';
 import { loadPref, savePref } from './storage.js';
@@ -689,7 +689,7 @@ export class SessionController {
    */
   beginMode(mode, team = PLAYER_TEAM, bestOf = undefined, lesson = null, map = this.session.map) {
     this.session.mode = mode;
-    this.session.map = mode === 'tutorial' ? DEFAULT_MAP : map;
+    this.session.map = mode === 'tutorial' ? TRAINING_MAP : map;
     if (mode === 'tutorial') this.session.tutorial.lesson = lesson;
     this.session.team = mode === 'tutorial' ? this.lesson.scenario.team : team;
     this.session.match = mode === 'match' ? createMatch(this.session.team, bestOf) : null;

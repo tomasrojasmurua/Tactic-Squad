@@ -8,9 +8,9 @@ import { EV } from '../src/core/events.js';
 import { controllersFor } from '../src/config/squad.js';
 import { PREP, MOVE } from '../src/config/balance.js';
 import { watchOf, watchOrder } from '../src/session/watch.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 
-const MAP = MAPS[DEFAULT_MAP];
+const MAP = ALL_MAPS[TRAINING_MAP];
 const DEF = 'defenders';
 const cmd = (sim, c) => {
   sim.enqueue({ team: DEF, ...c });

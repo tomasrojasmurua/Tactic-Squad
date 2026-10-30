@@ -24,12 +24,42 @@ para quien retome el trabajo. Las composiciones arquetípicas y sus planes, en
 
 ## Mapas
 
-- **Almacén** (equilibrado): líneas cortas en los dos sitios. Rinden el Explorador, el Escudo y
-  el Tirador atacante; sufre el Tirador defensor.
-- **Hotel** (puertas): pasillo de 23 m y suites de dos puertas. Rinden Trampero, Escopetero y
-  Ancla; en ataque, Brecha y Explorador. El Asalto rápido (sin Brecha ni Explorador) pierde.
-- **Puerto** (abierto): patio de contenedores sin puertas (A) y cámara de frío (B). El más
-  parejo: rinden el Granadero y la utilidad; la Emboscada sufre.
+Tres mapas en el lobby, más grandes que los de antes (40 × 28 m) y apaisados para el celular
+horizontal. Diseño completo, planos ASCII y decisiones en `docs/diseno/mapas-v2.md`. El tutorial
+sigue en el almacén original (`training`, 40 × 28 m, fuera del lobby).
+
+| Mapa | Tamaño | Concepto | Sitio A | Sitio B |
+| --- | --- | --- | --- | --- |
+| **Almacén**, "Distribuidora Ferrol" | 56 × 34 m | Centro de distribución de noche, el turno se fue a medias. Carriles: andén de camiones, nave de estanterías, callejón. | Muelle de carga: portón del andén, paso de carga de la nave, expedición. | Taller de carretillas: nave, expedición, portón del callejón. |
+| **Hotel**, "Hotel Miramar, planta baja" | 56 × 34 m | Hotel de costa: pasillo de habitaciones de 28 m, vestíbulo con columnas, bar con terraza, cocina. | La suite: puerta del pasillo, la 106 y room service; tabique que deja rincones. | El bar: arco, office, cocina y terraza; ventanas a la terraza. |
+| **Puerto**, "Terminal 3" | 60 × 38 m | Terminal de contenedores en turno de noche: grúa, reach stacker a medio apilar, contenedor abierto, pilas de 1-3 alturas giradas y con huecos. | Los reefers, al aire libre: muelle, pasillo del reach, carril. | Cámara de frío: dos puertas pesadas y la de máquinas. |
+
+**Reglas que cumplen los tres.** Tres entradas del atacante separadas más de 12 m (no salen de la
+misma pared); cada sitio con tres o más accesos de tipos distintos y cobertura alta y baja;
+ninguna pared destructible; 7 soportes de cámara; 4 puestos de defensa por sitio (se juegan los
+3 primeros). La ficha del lobby (tres rasgos por mapa y tres por sitio, de 45 caracteres o menos
+para que quepan en el celular) **nunca sugiere clases**: leer el mapa es parte del juego. Las
+pruebas exigen ambas cosas.
+
+**Callouts.** Almacén: el camión, pasillo 1-4, la estantería vacía, expedición, los cargadores.
+Hotel: las columnas, recepción, ascensores, la 106, room service, la barra, las ventanas, el
+vaivén. Puerto: la grúa, el reach, el abierto, el golpeado, reefers, consolidación, máquinas.
+
+**Equilibrio** (IA contra IA con las escuadras que sortea el lobby, semillas 1-1600 por mapa;
+victorias del atacante):
+
+| Mapa | Sitio A | Sitio B | Total |
+| --- | --- | --- | --- |
+| Almacén | 51,1 % (410/802) | 53,8 % (429/798) | 52,4 % |
+| Hotel | 47,5 % (381/802) | 52,5 % (419/798) | 50,0 % |
+| Puerto | 48,8 % (391/802) | 48,1 % (384/798) | 48,4 % |
+
+Se ajusta con geometría, puestos de la IA (`defense`), barricadas (`aiBarricades`), cámaras
+(`aiCameras`) y pesos de entrada de la IA atacante (`aiEntries`), nunca con las clases. Ojo: el
+Puerto es sensible; mover una pila 0,8 m llegó a cambiar el sitio A en 13 puntos. Medir siempre
+con 800 rondas o más y con dos tandas de semillas distintas.
+
+> La tabla de equilibrio por clase de abajo se midió con los mapas anteriores (40 × 28 m); hay que volver a medirla con los mapas v2.
 
 ## Tabla de equilibrio
 

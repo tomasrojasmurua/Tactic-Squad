@@ -4,10 +4,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 import { MOVE, NOISE, BUY } from '../src/config/balance.js';
 
-const MAP = MAPS[DEFAULT_MAP];
+const MAP = ALL_MAPS[TRAINING_MAP];
 const T = 'attackers';
 
 function round(opts = {}) {
@@ -186,9 +186,9 @@ test('clases: Brecha y Explorador una vez, cada una con su equipo; dentro de la 
 
 test('cubrir zona: el atacante barre alrededor de su mirada al final de la ruta o donde está', async () => {
   const { Simulation } = await import('../src/sim/Simulation.js');
-  const { MAPS, DEFAULT_MAP } = await import('../src/data/maps/index.js');
+  const { ALL_MAPS, TRAINING_MAP } = await import('../src/data/maps/index.js');
   const { PREP } = await import('../src/config/balance.js');
-  const sim = new Simulation(MAPS[DEFAULT_MAP], { seed: 3, phases: false });
+  const sim = new Simulation(ALL_MAPS[TRAINING_MAP], { seed: 3, phases: false });
   const a = sim.teams.attackers[0];
   const c = (x) => { sim.enqueue({ team: 'attackers', ...x }); sim.flushCommands(); };
   c({ type: 'setCover', unitId: a.id, on: true, index: 'here' });
@@ -216,7 +216,7 @@ test('cubrir zona: el atacante barre alrededor de su mirada al final de la ruta 
 });
 
 test('cubrir zona queda solo en el final de la ruta', () => {
-  const sim = new Simulation(MAPS[DEFAULT_MAP], { seed: 3, phases: false });
+  const sim = new Simulation(ALL_MAPS[TRAINING_MAP], { seed: 3, phases: false });
   const a = sim.teams.attackers[0];
   const c = (x) => { sim.enqueue({ team: 'attackers', ...x }); sim.flushCommands(); };
   c({ type: 'addWaypoint', unitId: a.id, x: a.x + 2, y: a.y, user: true });

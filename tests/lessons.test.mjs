@@ -11,9 +11,9 @@ import { controllersFor } from '../src/config/squad.js';
 import { watchOrder } from '../src/session/watch.js';
 import { HERE } from '../src/sim/queries.js';
 import { T as TEXTS } from '../src/ui/texts.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 
-const MAP = MAPS[DEFAULT_MAP];
+const MAP = ALL_MAPS[TRAINING_MAP];
 const PHASE = { buy: 'buy', prep: 'prep', drone: 'drone', plan: 'planning', exec: 'running', end: 'ended' };
 
 /** The lesson's round, its skipped phases gone by, the lesson begun. */

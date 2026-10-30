@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 import { ENTRY } from '../src/config/balance.js';
 import { EV } from '../src/core/events.js';
 import { EventBus } from '../src/core/EventBus.js';
@@ -15,7 +15,7 @@ const PX = 50;
 const camera = { screenToWorld: (x, y) => ({ x: x / PX, y: y / PX }), worldToScreen: (x, y) => ({ x: x * PX, y: y * PX }), metersPerPixel: () => 1 / PX };
 
 function setup() {
-  const sim = new Simulation(MAPS[DEFAULT_MAP], { seed: 3, site: 'B' });
+  const sim = new Simulation(ALL_MAPS[TRAINING_MAP], { seed: 3, site: 'B' });
   sim.skipToAssault();
   const bus = new EventBus();
   const session = createSession({ touch: false });

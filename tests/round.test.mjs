@@ -6,9 +6,9 @@ import { Simulation } from '../src/sim/Simulation.js';
 import { kill } from '../src/sim/combat.js';
 import { ROUND } from '../src/config/balance.js';
 import { pointInBox } from '../src/core/geom.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 
-const MAP = MAPS[DEFAULT_MAP];
+const MAP = ALL_MAPS[TRAINING_MAP];
 // Ambos bandos por órdenes: los defensores, sin orden de vigilancia, se quedan donde se los pone.
 // Sin fases (phases: false): la sim corre siempre y acepta órdenes en cualquier
 // momento; las fases y los turnos se prueban en turns.test.mjs.

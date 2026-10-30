@@ -7,9 +7,9 @@ import { teamView } from '../src/sim/view.js';
 import { wireFactor, updateWires, cutWiresNear } from '../src/sim/wires.js';
 import { EV } from '../src/core/events.js';
 import { WIRE, PREP } from '../src/config/balance.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 
-const MAP = MAPS[DEFAULT_MAP];
+const MAP = ALL_MAPS[TRAINING_MAP];
 const BOTH = { attackers: 'human', defenders: 'human' };
 const rejects = (sim) => sim.drainEvents().filter((e) => e.type === EV.ORDER_REJECTED).map((e) => e.reason);
 const order = (sim, team, c) => {

@@ -2,12 +2,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 import { BUY } from '../src/config/balance.js';
 import { createMatch, matchLoadout, endMatchRound } from '../src/session/Match.js';
 import { controllersFor } from '../src/config/squad.js';
 
-const MAP = MAPS[DEFAULT_MAP];
+const MAP = ALL_MAPS[TRAINING_MAP];
 
 function finished(match, winner, setup = () => {}) {
   const sim = new Simulation(MAP, { seed: 10 + match.round, loadout: matchLoadout(match), lossBonus: match.lossBonus });

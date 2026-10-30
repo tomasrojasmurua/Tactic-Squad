@@ -387,7 +387,7 @@ export const FLOW_TEXTS = Object.freeze({
       },
       introPrep: {
         title: 'Nuevo: elige la entrada',
-        text: 'Los dos bandos se preparan a la vez y a ciegas. El defensor elige el sitio de la bomba, coloca a los suyos y atranca 2 puertas. Tú eliges por qué puerta exterior entra tu escuadrón (Norte, Principal o Sur): él no lo sabe.',
+        text: 'Los dos bandos se preparan a la vez y a ciegas. El defensor elige el sitio de la bomba, coloca a los suyos y atranca 2 puertas. Tú eliges por cuál de las tres entradas del mapa llega tu escuadrón: él no lo sabe.',
       },
       introDrone: {
         title: 'Nuevo: dron de reconocimiento',

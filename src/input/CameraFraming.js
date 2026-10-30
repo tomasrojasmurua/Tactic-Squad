@@ -8,10 +8,11 @@ import { HUD_SAFE, FLOW, KILLCAM } from '../config/ui.js';
 import { clamp } from '../core/math.js';
 
 export class CameraFraming {
-  constructor({ camera, session, mapDef }) {
+  constructor({ camera, session, mapDef, getSim = () => null }) {
     this.camera = camera;
     this.session = session;
     this.mapDef = mapDef;
+    this.getSim = getSim; // the round (its chosen entry frames the attackers' first shot)
     this.saved = null; // view to return to when "see all" is toggled off
     camera.zoomOutLimit = () => this.maxHeight; // the wheel also zooms out to the whole map
   }
@@ -49,11 +50,16 @@ export class CameraFraming {
     this.placeAt(r[0] + r[2] / 2, r[1] + r[3] / 2, this.fitHeight(r[2] + 2 * pad, r[3] + 2 * pad));
   }
 
-  /** First shot of a round: the map's `camera.frame` rect (squad + first rooms; a defender: `defendFrame`, their half), never under the HUD. */
+  /**
+   * First shot of a round: the map's `camera.frame` rect (squad + first rooms; a defender: `defendFrame`, their half),
+   * never under the HUD. An attacker whose entry has its own `frame` (maps whose entries are far apart) gets that one.
+   */
   frameStart() {
     this.saved = null;
     const c = this.mapDef.camera;
-    const frame = this.session.team === 'defenders' && c.defendFrame ? c.defendFrame : c.frame;
+    const sim = this.getSim();
+    const entry = sim && sim.compiled.id === this.mapDef.id ? sim.entry : null;
+    const frame = this.session.team === 'defenders' ? c.defendFrame || c.frame : (entry && entry.frame) || c.frame;
     if (frame) this.frameRect(frame);
     else this.placeAt(c.start[0], c.start[1], c.height);
   }

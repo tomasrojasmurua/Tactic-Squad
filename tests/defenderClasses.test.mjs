@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 import { controllersFor } from '../src/config/squad.js';
 import { ROLES } from '../src/config/operators.js';
 import { TRAP, NOISE } from '../src/config/balance.js';
@@ -14,7 +14,7 @@ import { setDefenderRole } from '../src/sim/prep.js';
 
 // Las clases se prueban con los cuatro puestos del mapa (en una ronda normal se usan los 3 primeros).
 const ALL_POSTS = [0, 1, 2, 3];
-const MAP = MAPS[DEFAULT_MAP];
+const MAP = ALL_MAPS[TRAINING_MAP];
 
 /** A human defender in the preparation. */
 function setup(site = 'A') {

@@ -6,9 +6,9 @@ import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
 import { EV } from '../src/core/events.js';
 import { lessonById } from '../src/config/lessons.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 
-const MAP = MAPS[DEFAULT_MAP];
+const MAP = ALL_MAPS[TRAINING_MAP];
 const TUTORIAL = lessonById('basic').scenario;
 const T = 'attackers';
 const cmd = (sim, c) => {

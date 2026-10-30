@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
-import { MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
+import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 
 // Planes por sitio: los atacantes cruzan el pasillo hacia A, o entran por el baño hacia B.
 const PLANS = {
@@ -13,7 +13,7 @@ const PLANS = {
 
 function playRound(seed, site) {
   const plan = PLANS[site];
-  const sim = new Simulation(MAPS[DEFAULT_MAP], { seed, site, entry: plan.entry });
+  const sim = new Simulation(ALL_MAPS[TRAINING_MAP], { seed, site, entry: plan.entry });
   sim.skipToAssault();
   for (const u of sim.teams.attackers) {
     for (const [x, y] of plan.points) sim.enqueue({ type: 'addWaypoint', unitId: u.id, x, y: y + (u.slot - 1) * 0.6, user: true, team: 'attackers' });
@@ -42,7 +42,7 @@ for (const site of ['A', 'B']) {
 }
 
 test('el sitio que elige el defensor depende solo de la semilla', () => {
-  const map = MAPS[DEFAULT_MAP];
+  const map = ALL_MAPS[TRAINING_MAP];
   const picks = { A: 0, B: 0 };
   for (let seed = 0; seed < 100; seed++) {
     const site = new Simulation(map, { seed }).site.id;
