@@ -80,7 +80,7 @@ export class AudioDirector {
     on(EV.SELECT, (ev) => this.select(ev.unitId));
     on(EV.ROUTE_CHANGED, (ev) => this.route(ev.kind));
     on(EV.PHASE, (ev) => {
-      // The music follows the round, not every 5 s turn: from the first execution on,
+      // The music follows the round, not every turn: from the first execution on,
       // the plannings between turns keep the assault's music (no calm cue every turn).
       if (ev.phase === 'running') this.assault = true;
       else if (ev.phase === 'title' || ev.phase === 'buy') this.assault = false;

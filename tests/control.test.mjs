@@ -119,10 +119,12 @@ test('paso sigiloso: más lento y casi no se oye', () => {
     if (pace) cmd({ type: 'setPace', unitId: a.id, pace });
     const x0 = a.y;
     const steps = [];
+    let mid = null; // where he is 4 s into the turn (a long turn lets both reach the end)
     playTurn(sim, () => {
       for (const e of sim.drainEvents()) if (e.type === 'footstep' && e.unitId === a.id) steps.push(e.sneak);
+      if (mid === null && sim.round.execTick >= 240) mid = a.y;
     });
-    return { dist: Math.abs(a.y - x0), steps };
+    return { dist: Math.abs((mid ?? a.y) - x0), steps };
   };
   const normal = walk(null);
   const sneak = walk('sneak');

@@ -38,7 +38,7 @@ export const FLOW_TEXTS = Object.freeze({
     next: 'Siguiente',
     soon: 'Próximamente',
     items: {
-      basic: { title: '1. Básico', note: 'Elegir operador, ruta, mirada, puertas, GO y el turno de 5 s' },
+      basic: { title: '1. Básico', note: `Elegir operador, ruta, mirada, puertas, GO y el turno de ${TURN} s` },
       doors: { title: '2. Puertas y granadas', note: 'Granada desde el costado del marco, esperar el estallido y lanzar sin moverte' },
       squad: { title: '3. Coordinar con GO', note: 'Escuadra en fila, dos grupos con su GO, dos puertas a la vez y sigilo' },
       defend: { title: '4. Defender', note: 'Barricadas, cámaras, posiciones, vigilancia y el turno del defensor' },
@@ -235,7 +235,7 @@ export const FLOW_TEXTS = Object.freeze({
     noRetry: 'Las rondas no se repiten: mejor suerte en la próxima',
     contactCut: '¡Contacto! El turno se cortó para que puedas reaccionar',
     contactOn: 'El turno se cortará al ver un enemigo (desde el próximo plan)',
-    contactOff: 'Los turnos duran siempre 5 s (desde el próximo plan)',
+    contactOff: `Los turnos duran siempre ${TURN} s (desde el próximo plan)`,
   },
   /** Banner hint while a turn is paused, by session.pauseReason. */
   pause: {

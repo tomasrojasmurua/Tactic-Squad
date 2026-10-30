@@ -1,7 +1,7 @@
 // Tactical overlay: planned routes, waypoints, facing arrows, GO holds,
 // door entries, grenades in flight, flashed units, FOV edges, selection
 // rings, contact markers, defuse progress, where each operator gets to in
-// the next 5 s turn (while planning) and the noise heard of the enemy.
+// the next turn (while planning) and the noise heard of the enemy.
 // `drawGround` runs before walls/units (depth-tested rings & shadows),
 // `drawTop` runs last, over everything (routes must always be readable).
 // Rebuilt every frame (animated dashes/pulses), so it is written to avoid
