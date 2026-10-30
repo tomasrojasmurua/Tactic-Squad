@@ -88,6 +88,7 @@ export class LockstepClient {
     this.finished = false;
     this.desync = null;
     this.replaying = false;
+    this.early = [];
   }
 
   get phase() {
@@ -120,6 +121,11 @@ export class LockstepClient {
       case 'fase':
         if (msg.n !== this.n) return;
         this.fase = msg;
+        if (this.early.length && !this.isReady) {
+          // Orders given in the instant between this phone entering the phase and the server opening it.
+          this.send({ t: 'ordenes', n: this.n, lista: this.early });
+        }
+        this.early = [];
         return this.on('fase', msg);
       case 'cierre': return this.onClose(msg);
       case 'pasos':
@@ -186,6 +192,7 @@ export class LockstepClient {
     this.slots = round.puestos ? round.puestos[this.me] : null;
     this.hasta = 0;
     this.fase = null;
+    this.early = [];
     this.readyAt = -1;
     this.roundInfo = onlineRound(this.start, round, this.match);
     this.sim = this.createSim(this.roundInfo);
@@ -224,9 +231,11 @@ export class LockstepClient {
       this.send({ t: 'ordenes', n: this.n, lista: [mine] });
       return;
     }
-    if (!this.deciding) return;
+    if (!DECIDING.has(this.sim.phase) || this.isReady) return;
     if (!this.shared) this.sim.enqueue(mine); // 2v2: it applies when the server hands it back (previa)
-    this.send({ t: 'ordenes', n: this.n, lista: [mine] });
+    // The server has not opened this phase yet (its `fase` is on the way): it goes when it does.
+    if (!this.fase || this.fase.n !== this.n) this.early.push(mine);
+    else this.send({ t: 'ordenes', n: this.n, lista: [mine] });
   }
 
   /** Does this player command that unit (its side's, and one of his operators in a 2v2)? */
@@ -285,6 +294,10 @@ export class LockstepClient {
   afterStep() {
     if (this.sim && !LIVE.has(this.sim.phase) && this.liveN === this.n) {
       this.hasta = 0;
+      // Orders stamped for a step this phase never reached (a second recall of the drone, a GO
+      // too late) never apply on any phone; whether one arrived before the end differs from phone
+      // to phone, so they go before the state is compared.
+      this.sim.dropStamped();
       this.report();
     }
   }

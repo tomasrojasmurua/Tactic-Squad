@@ -19,7 +19,7 @@ export const FLOW_TEXTS = Object.freeze({
     vsAi: 'Contra la IA',
     vsAiNote: 'Tú y tu escuadra contra la IA, en el bando que elijas',
     multi: 'Multijugador',
-    multiNote: '1 contra 1 con un amigo, cada uno en su celular',
+    multiNote: '1 contra 1 o 2 contra 2 con amigos, cada uno en su celular',
     soon: 'Próximamente',
     back: 'Volver',
     tutorial: 'Tutorial',
@@ -73,7 +73,7 @@ export const FLOW_TEXTS = Object.freeze({
   /** Online: the room (ui/RoomView.js, net/OnlineSession.js). */
   online: {
     title: 'Multijugador',
-    note: '1 contra 1 desde dos celulares. Crea una sala y comparte la invitación, o entra con el código que te pasaron.',
+    note: '1 contra 1 o 2 contra 2, cada uno en su celular. Crea una sala y comparte la invitación, o entra con el código que te pasaron.',
     name: 'Tu nombre',
     namePlaceholder: 'Cómo te verá el rival',
     create: 'Crear sala',
@@ -83,6 +83,8 @@ export const FLOW_TEXTS = Object.freeze({
     join: 'Unirse',
     unavailable: 'Multijugador no disponible: falta el servidor',
     room: (code) => `Sala ${code}`,
+    mode: 'Modo',
+    modes: { '1v1': '1 contra 1', '2v2': '2 contra 2' },
     invite: 'Invitar',
     inviteText: (code, url) => `¡Juguemos Tactic Squad! Entra a la sala ${code}: ${url}`,
     copied: 'Enlace copiado',
@@ -96,8 +98,8 @@ export const FLOW_TEXTS = Object.freeze({
     imReady: 'Estoy listo',
     notReadyAgain: 'Aún no',
     start: 'Empezar',
-    startNeeds: 'Falta que el rival esté listo',
-    startNeedsPlayer: 'Falta un jugador: invítalo',
+    startNeedsPlayer: 'Faltan jugadores: invítalos',
+    startNeeds: 'Falta que todos estén listos',
     pick: 'Elegir clases',
     hostSets: 'El anfitrión elige formato y mapa',
     leave: 'Salir',
@@ -118,6 +120,8 @@ export const FLOW_TEXTS = Object.freeze({
     waiting: (name) => `Esperando a ${name || 'tu rival'}…`,
     waitingShort: 'Esperando…',
     rival: 'Rival',
+    mateReady: (name) => `${name}: listo ✓`,
+    mateDeciding: (name) => `${name} está planificando…`,
     toRoom: 'VOLVER A LA SALA',
     rivalGone: (name, s) => `${name || 'Tu rival'} se desconectó · ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`,
     desync: 'Las partidas se desincronizaron',
@@ -138,11 +142,11 @@ export const FLOW_TEXTS = Object.freeze({
       both
         ? 'Elige 3 del grupo para cada bando: los juegas toda la partida. Toca uno para ver su equipo. La IA elige los suyos a ciegas'
         : 'Elige 3 del grupo: los juegas toda la ronda. Toca uno para ver su equipo. La IA elige los suyos a ciegas',
-    noteOnline: (both) =>
+    noteOnline: (both, n = 3) =>
       both
-        ? 'Elige 3 del grupo para cada bando: los juegas toda la partida. Tu rival elige los suyos a ciegas'
-        : 'Elige 3 del grupo: los juegas toda la ronda. Tu rival elige los suyos a ciegas',
-    count: (n) => `${n}/3`,
+        ? `Elige ${n} del grupo para cada bando: los juegas toda la partida. El rival elige a ciegas${n < 3 ? '; tu compañero elige los otros' : ''}`
+        : `Elige ${n} del grupo: los juegas toda la ronda. El rival elige a ciegas${n < 3 ? '; tu compañero elige los otros' : ''}`,
+    count: (n, of = 3) => `${n}/${of}`,
     map: (name, drawn) => (drawn ? `Mapa al azar: ${name}` : `Mapa: ${name}`),
     aiPicks: 'Elige a ciegas',
     ready: 'Confirmar',
@@ -211,6 +215,8 @@ export const FLOW_TEXTS = Object.freeze({
     confirm_menu: { touch: 'Toca MENÚ otra vez para salir (se pierde esta ronda)', desk: 'Pulsa MENÚ otra vez para salir (se pierde esta ronda)' },
     confirm_newPlan: { touch: 'Repite para empezar un plan nuevo (se borra el actual)', desk: 'Pulsa N otra vez para empezar un plan nuevo' },
     onlineUnavailable: 'Multijugador no disponible: falta el servidor',
+    onlineTakeOver: 'Tu compañero no volvió: ahora mandas también a sus soldados',
+    partnerUnit: 'Ese soldado es de tu compañero: tú mandas a los tuyos',
     onlineResync: 'Tu partida se había desfasado: se puso al día con la del anfitrión',
     replayDiverged: (n) => `Plan cambiado: ${n === 1 ? 'esta fase ya no se repite' : `estas ${n} fases ya no se repiten`}; sigues tú`,
     noPause: `Un turno no se pausa: dura ${TURN} s y luego vuelves a planificar`,

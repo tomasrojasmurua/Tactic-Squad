@@ -24,8 +24,8 @@ export class NetBadge {
     const O = T.flow.online;
     const q = o.status === 'open' ? o.quality : 'bad';
     if (this.dot.dataset.q !== q) this.dot.dataset.q = q;
-    const rival = o.room && o.room.jugadores.find((j) => j.id !== o.me);
-    const gone = rival && !rival.conectado;
+    const rival = o.room && o.room.jugadores.find((j) => j.id !== o.me && !j.conectado);
+    const gone = !!rival;
     if (gone && this.goneSince === null) this.goneSince = performance.now();
     if (!gone) this.goneSince = null;
     let line = '';
@@ -33,6 +33,9 @@ export class NetBadge {
     else if (gone) {
       const left = Math.max(0, ((o.room.abandono || 0) - (performance.now() - this.goneSince)) / 1000);
       line = O.rivalGone(rival.nombre, Math.ceil(left));
+    } else if (o.mate && ['buy', 'prep', 'planning'].includes(session.phase)) {
+      // 2v2: is the teammate done with this phase?
+      line = (o.listos || []).includes(o.mate.id) ? O.mateReady(o.mate.nombre) : O.mateDeciding(o.mate.nombre);
     }
     setText(this.text, line);
     setHidden(this.text, !line);

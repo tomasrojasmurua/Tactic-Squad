@@ -1301,11 +1301,13 @@ body.killcam-on .banner, body.killcam-on .squad, body.killcam-on .feed, body.kil
 }
 
 /* Online, in a match (ui/NetBadge.js): the connection light, and the rival's absence. */
-.net-badge { position: absolute; top: calc(var(--sat, 0px) + 8px); left: 50%; transform: translate(-50%, 0); margin-top: 92px; display: flex; align-items: center; gap: 8px; pointer-events: none; z-index: 6; }
+.net-badge { position: absolute; bottom: calc(var(--sab, 0px) + 12px); left: calc(var(--sal, 0px) + 262px); max-width: 300px; display: flex; align-items: center; gap: 8px; pointer-events: none; z-index: 6; }
 .net-badge.hidden { display: none; }
 .net-badge .nb-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); box-shadow: 0 0 8px rgba(0, 0, 0, 0.6); }
 .net-badge .nb-dot[data-q='good'] { background: var(--ok); }
 .net-badge .nb-dot[data-q='fair'] { background: var(--amber); }
 .net-badge.alert { background: rgba(0, 0, 0, 0.72); padding: 6px 12px; border-left: 3px solid var(--amber); }
-.net-badge .nb-text { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: #ffe2a3; white-space: nowrap; }
-@media (max-height: 500px) { .net-badge { margin-top: 64px; } }
+.net-badge .nb-text { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #ffe2a3; }
+/* A 2v2: the teammate's operators (ui/SquadPanel.js) are there to see, not to command. */
+.card.partner { opacity: 0.5; filter: saturate(0.6); }
+.card.partner::after { content: '\2194'; position: absolute; right: 4px; top: 2px; font-size: 11px; color: #cfe7ef; }

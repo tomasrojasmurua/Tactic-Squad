@@ -327,3 +327,21 @@ test('2v2: si un jugador no vuelve, su compañero toma sus soldados y la partida
   assert.ok(ok, 'la partida termina');
   assert.equal(hashSim(c[0].sim), hashSim(c[1].sim));
 });
+
+test('una orden de tiempo real que llega tarde (un segundo "recoger dron") no desfasa a nadie', () => {
+  const h = harness({ seeds: [12] });
+  h.connect(0, { nombre: 'Ana' });
+  h.say(0, { t: 'lobby', modo: '2v2', duracion: 1, mapa: DEFAULT_MAP });
+  const c = ['Ana', 'Beto', 'Caro', 'Dani'].map((nombre, i) => (i ? h.connect(i, { nombre }) : h.clients[0]));
+  for (const i of [1, 2, 3]) h.say(i, { t: 'lobby', listo: true });
+  h.say(0, { t: 'iniciar' });
+  h.run(4000, () => c[0].phase === 'drone', () => h.clients.forEach((x) => { if (x.phase !== 'drone' && x.deciding) x.ready(); }));
+  h.run(10, () => false);
+  // Both attackers recall the drone; Caro's arrives when Ana's has already ended it on some phones.
+  c[0].command({ type: 'droneRecall' });
+  h.cycle();
+  c[2].command({ type: 'droneRecall' });
+  h.run(400, () => c.every((x) => x.phase === 'plan' && x.deciding));
+  assert.ok(c.every((x) => !x.desync), 'sin resincronizar');
+  assert.equal(new Set(c.map((x) => hashSim(x.sim))).size, 1);
+});

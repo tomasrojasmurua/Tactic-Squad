@@ -225,7 +225,7 @@ export class Roster {
     this.lobby = lobby;
     const side = lobby.pickSide;
     const sides = pickSides(lobby);
-    setText(this.note, online ? P.noteOnline(sides.length > 1) : P.note(sides.length > 1));
+    setText(this.note, online ? P.noteOnline(sides.length > 1, lobby.roles[side].length) : P.note(sides.length > 1));
     setText(this.otherName, online ? online.rival || T.flow.online.rival : L.ai);
     setText(this.otherState, P.aiPicks);
     setText(this.mapTag.firstChild, MAPS[lobby.drawn] ? P.map(MAPS[lobby.drawn].name, lobby.map === 'random') : '');
@@ -234,8 +234,8 @@ export class Roster {
       toggle(b, 'on', t === side);
       b.hidden = sides.length < 2;
       const have = lobby.roles[t].filter(Boolean).length;
-      setText(n, P.count(have));
-      toggle(n, 'ok', have === 3);
+      setText(n, P.count(have, lobby.roles[t].length));
+      toggle(n, 'ok', have === lobby.roles[t].length);
     }
     for (const t of TEAMS) {
       this.pools[t].hidden = t !== side;
@@ -253,6 +253,7 @@ export class Roster {
     }
     for (const sl of this.slots) {
       if (sl.team !== side) continue;
+      sl.s.hidden = sl.i >= lobby.roles[side].length; // a 2v2: two each
       const id = lobby.roles[side][sl.i];
       if (sl.id === id) continue;
       sl.id = id;
