@@ -1,31 +1,58 @@
-// A client's side of the lockstep (the part of OnlineSession with no screen and no socket): turns
-// the server's messages into calls on its Simulation, and its own orders into messages. The
-// socket (Connection.js) or a test hands it `receive(msg)`; it hands back `send(msg)`.
+// A client's side of the lockstep (no screen, no socket): turns the server's messages
+// (net/roomLogic.js) into calls on the round's Simulation, and the player's orders into messages.
+// The socket (net/Connection.js) or a test hands it `receive(msg)`; it hands back `send(msg)`.
+// The game (net/OnlineSession.js) listens to `on(type, data)`.
 //
 //   decision phase: the player's own orders apply at once (the planning shows them) and go to the
 //     server; the opponent's arrive with `cierre`, when every client advances its sim together.
 //   live phase: orders do NOT apply when given; the server stamps them with a step nobody ran yet
 //     and sends them back to everybody (`orden`). The sim runs only up to the step the server
-//     granted (`pasos`), so every phone sees the same orders at the same step.
+//     granted (`pasos`), so every phone applies the same orders at the same step.
+//
+// It also keeps the match (session/Match.js, from this player's side: `player` is him): both
+// phones score each round from the same sim, so they agree on it without the server.
 import { phaseTick } from '../sim/round.js';
+import { createMatch, matchLoadout, endMatchRound } from '../session/Match.js';
 import { hashSim } from './stateHash.js';
 
 const LIVE = new Set(['drone', 'exec']);
+const DECIDING = new Set(['buy', 'prep', 'plan', 'end']);
+export const HUMANS = Object.freeze({ attackers: 'human', defenders: 'human' });
+
+/** What the round's Simulation is built with (the same on every phone). */
+export function onlineRound(start, round, match) {
+  const roles = {};
+  for (const [id, team] of Object.entries(round.equipos)) {
+    const picks = start.roles && start.roles[id];
+    if (picks && picks[team]) roles[team] = picks[team];
+  }
+  return {
+    map: start.mapa,
+    seed: round.semilla,
+    round: round.ronda,
+    options: { seed: round.semilla, controllers: HUMANS, roles, loadout: matchLoadout(match), lossBonus: match.lossBonus, stopOnContact: false },
+  };
+}
 
 export class LockstepClient {
   /**
    * @param deps.send       (msg) => void, to the server
-   * @param deps.createSim  (start) => Simulation, from the server's `start` message
+   * @param deps.createSim  ({map, seed, round, options}) => Simulation (a new round)
+   * @param deps.on         (type, data) => void: 'hola' 'sala' 'round' 'advance' 'fase' 'live' 'desync' 'fin' 'lobby' 'error'
    */
-  constructor({ send, createSim }) {
+  constructor({ send, createSim, on = () => {} }) {
     this.send = send;
     this.createSim = createSim;
+    this.on = on;
     this.sim = null;
     this.me = -1;
+    this.token = null;
     this.team = null;
+    this.start = null;
+    this.match = null;
     this.n = 0;
     this.hasta = 0;
-    this.deadline = null; // ms left in the decision phase when `fase` arrived (null: no limit)
+    this.fase = null; // the last `fase` message (deadline, who is ready)
     this.finished = false;
     this.desync = null;
     this.replaying = false;
@@ -35,31 +62,78 @@ export class LockstepClient {
     return this.sim ? this.sim.phase : null;
   }
 
-  /** May the player plan now (a decision phase of this round is open)? */
+  /** May the player decide now (a decision phase of the round is open and he has not said LISTO)? */
   get deciding() {
-    return !!this.sim && !this.replaying && ['buy', 'prep', 'plan'].includes(this.sim.phase);
+    return !!this.sim && !this.replaying && DECIDING.has(this.sim.phase) && !this.isReady;
+  }
+
+  /** He said LISTO in the open phase (the server's list, or his own message on its way). */
+  get isReady() {
+    return this.readyAt === this.n || (!!this.fase && this.fase.n === this.n && this.fase.listos.includes(this.me));
   }
 
   receive(msg) {
     switch (msg.t) {
-      case 'hola': this.me = msg.id; return;
+      case 'hola':
+        this.me = msg.id;
+        this.token = msg.token;
+        return this.on('hola', msg);
+      case 'sala': return this.on('sala', msg);
       case 'registro': return this.replay(msg);
       case 'start': return this.onStart(msg);
-      case 'fase': this.deadline = msg.restan; return;
+      case 'ronda': return this.onRound(msg);
+      case 'fase':
+        if (msg.n !== this.n) return;
+        this.fase = msg;
+        return this.on('fase', msg);
       case 'cierre': return this.onClose(msg);
-      case 'pasos': if (msg.n === this.n) this.hasta = msg.hasta; return;
-      case 'orden': if (msg.n === this.n && this.sim) this.sim.enqueue(msg.cmd); return;
-      case 'desync': this.desync = msg; return;
-      case 'fin': this.finished = true; return;
+      case 'pasos':
+        if (msg.n !== this.n) return;
+        this.hasta = msg.hasta;
+        return;
+      case 'orden':
+        if (msg.n === this.n && this.sim) this.sim.enqueue(msg.cmd);
+        return;
+      case 'desync':
+        this.desync = msg;
+        return this.on('desync', msg);
+      case 'fin':
+        if (msg.n !== this.n + 1) return; // closes the round's result (its phase `n`)
+        this.n = msg.n;
+        this.finished = true;
+        return this.on('fin', msg);
+      case 'lobby':
+        this.sim = null;
+        this.start = null;
+        this.finished = false;
+        return this.on('lobby', msg);
+      case 'error': return this.on('error', msg);
       default:
     }
   }
 
   onStart(msg) {
-    this.sim = this.createSim(msg);
-    this.team = msg.equipos[this.me] ?? this.team;
+    this.start = msg;
     this.n = 0;
+    this.finished = false;
+    this.desync = null;
+    this.match = createMatch(msg.equipos[this.me], msg.duracion);
+    this.newRound(msg);
+  }
+
+  onRound(msg) {
+    if (msg.n !== this.n + 1 || !this.start) return; // closes the round's result (its phase `n`)
+    this.n = msg.n;
+    this.newRound(msg);
+  }
+
+  newRound(round) {
+    this.team = round.equipos[this.me];
     this.hasta = 0;
+    this.fase = null;
+    this.readyAt = -1;
+    this.sim = this.createSim(onlineRound(this.start, round, this.match));
+    this.on('round', { round: round.ronda, team: this.team, replaying: this.replaying });
   }
 
   /** A reconnection: the same messages again from the start; nothing is sent until it is over. */
@@ -69,24 +143,33 @@ export class LockstepClient {
     this.sim = null;
     for (const m of mensajes) {
       this.receive(m);
-      if (m.t === 'pasos' || m.t === 'cierre') this.pump(Infinity);
+      if (m.t === 'pasos') this.pump(Infinity);
     }
     this.replaying = false;
     this.pump(Infinity);
     // The last report may never have reached the server: sent again (a stale or repeated one is ignored).
-    if (this.sim && this.n > 0) this.send({ t: 'estado', n: this.n - 1, fase: this.sim.phase, h: hashSim(this.sim) });
+    if (this.sim && this.n > 0) this.send(this.stateMsg(this.n - 1));
+    this.on('advance', { replayed: true });
   }
 
   /** The player's order. In a decision phase it applies now; in a live one it waits for the echo. */
   command(cmd) {
-    if (!this.sim || this.replaying) return;
+    if (!this.sim || this.replaying || this.finished) return;
     const mine = { ...cmd, team: this.team };
-    if (this.deciding) this.sim.enqueue(mine);
+    if (LIVE.has(this.sim.phase)) {
+      this.send({ t: 'ordenes', n: this.n, lista: [mine] });
+      return;
+    }
+    if (!this.deciding) return;
+    this.sim.enqueue(mine);
     this.send({ t: 'ordenes', n: this.n, lista: [mine] });
   }
 
+  /** LISTO: this side is done with the phase (the round's result, too). */
   ready() {
-    if (this.deciding) this.send({ t: 'listo', n: this.n });
+    if (!this.deciding) return;
+    this.readyAt = this.n;
+    this.send({ t: 'listo', n: this.n });
   }
 
   onClose(msg) {
@@ -98,27 +181,50 @@ export class LockstepClient {
     this.sim.advancePhase();
     this.hasta = 0;
     this.report();
+    this.on('advance', {});
   }
 
-  /** Runs the live phase up to the granted step. Returns the steps run. */
-  pump(max = 8) {
+  /** Is the sim allowed one more step (a live phase, below the granted step)? */
+  canStep() {
     const sim = this.sim;
-    let steps = 0;
-    while (sim && LIVE.has(sim.phase) && phaseTick(sim) < this.hasta && steps < max) {
-      sim.step();
-      steps++;
-    }
-    if (steps && !LIVE.has(sim.phase)) {
-      this.report();
+    return !!sim && LIVE.has(sim.phase) && phaseTick(sim) < this.hasta;
+  }
+
+  /** Steps the server granted that this phone has not run yet (it runs faster to catch up). */
+  get behind() {
+    return this.sim && LIVE.has(this.sim.phase) ? this.hasta - phaseTick(this.sim) : 0;
+  }
+
+  /** After each step the game ran: the live phase may be over. */
+  afterStep() {
+    if (this.sim && !LIVE.has(this.sim.phase) && this.liveN === this.n) {
       this.hasta = 0;
+      this.report();
+    }
+  }
+
+  /** Runs the live phase up to the granted step (headless: tests, a reconnection). Returns the steps run. */
+  pump(max = 8) {
+    let steps = 0;
+    while (steps < max && this.canStep()) {
+      this.sim.step();
+      steps++;
+      this.afterStep();
     }
     return steps;
   }
 
-  /** Tells the server which phase this sim is in and its hash; then the phase counter moves on. */
+  stateMsg(n) {
+    const sim = this.sim;
+    return { t: 'estado', n, fase: sim.phase, h: hashSim(sim), sigue: sim.phase === 'end' ? !this.match.over : undefined };
+  }
+
+  /** Tells the server which phase this sim is in now and its hash; then the phase counter moves on. */
   report() {
     if (!this.sim) return;
+    if (this.sim.phase === 'end') endMatchRound(this.match, this.sim); // once: the round ends once
     const n = this.n++;
-    if (!this.replaying) this.send({ t: 'estado', n, fase: this.sim.phase, h: hashSim(this.sim) });
+    this.liveN = LIVE.has(this.sim.phase) ? this.n : -1;
+    if (!this.replaying) this.send(this.stateMsg(n));
   }
 }

@@ -1,170 +1,229 @@
-// Lockstep 1v1 sin red: dos clientes con su propia Simulation, un Room que reparte las órdenes y
-// compara hashes. Juegan una ronda completa; si algún hash difiere el Room manda `desync`.
+// Lockstep sin red: un Room (la lógica del servidor) y clientes con su propia Simulation. Juegan
+// partidas completas; si algún hash difiere en una transición el Room manda `desync`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
 import { ALL_MAPS, DEFAULT_MAP } from '../src/data/maps/index.js';
-import { Room } from '../src/net/roomLogic.js';
+import { Room, roomCode, CODE_CHARS } from '../src/net/roomLogic.js';
 import { LockstepClient } from '../src/net/LockstepClient.js';
 import { hashSim } from '../src/net/stateHash.js';
 
-const HUMANS = { attackers: 'human', defenders: 'human' };
+const createSim = ({ map, options }) => new Simulation(ALL_MAPS[map] ?? ALL_MAPS[DEFAULT_MAP], options);
 
-/** Server + clients in one process; messages go through queues, so ordering is as in a socket. */
-function harness({ seed = 11 } = {}) {
+/** Server + clients in one process; messages go through queues, in order, as in a socket. */
+function harness({ seeds = [11, 12, 13, 14, 15, 16, 17] } = {}) {
   let now = 0;
-  const room = new Room('ABCDE', { seed: () => seed, token: (() => { let i = 0; return () => `tok${i++}`; })() });
-  const inbox = [new Array(), new Array()];
+  let s = 0;
+  let k = 0;
+  const room = new Room('ABCDE', { seed: () => seeds[s++ % seeds.length], token: () => `tok${k++}` });
+  const inbox = [];
   const toServer = [];
-  const clients = [0, 1].map((i) => new LockstepClient({
-    send: (m) => toServer.push([i, m]),
-    createSim: (start) => new Simulation(ALL_MAPS[DEFAULT_MAP], { seed: start.semilla, controllers: HUMANS }),
-  }));
+  const clients = [];
+  const ids = [];
   const deliver = (out) => {
     for (const { to, msg } of out) {
-      if (to === '*') inbox.forEach((q) => q.push(msg));
-      else if (to >= 0) inbox[to].push(msg);
+      inbox.forEach((q, i) => { if (to === '*' ? ids[i] >= 0 : ids[i] === to) q.push(msg); });
     }
   };
   const h = {
-    room, clients, get now() { return now; },
-    join(i, nombre) {
-      const r = room.join({ nombre }, now);
-      clients[i].me = r.id;
+    room, clients,
+    get now() { return now; },
+    /** A phone opens the room's link (a new client; with a token: the same player coming back). */
+    connect(i, hello) {
+      inbox[i] = [];
+      ids[i] = -1;
+      clients[i] = new LockstepClient({ send: (m) => toServer.push([i, m]), createSim });
+      const r = room.join(hello, now);
+      ids[i] = r.id;
       deliver(r.out);
+      h.flush();
+      return clients[i];
     },
-    pushToServer() {
-      while (toServer.length) {
-        const [i, m] = toServer.shift();
-        deliver(room.receive(clients[i].me, m, now));
+    drop(i) {
+      deliver(room.leave(ids[i], now));
+      ids[i] = -1;
+      inbox[i] = [];
+    },
+    say(i, msg) {
+      deliver(room.receive(ids[i], msg, now));
+      h.flush();
+    },
+    flush() {
+      for (let guard = 0; guard < 20; guard++) {
+        clients.forEach((c, i) => { while (inbox[i] && inbox[i].length) c.receive(inbox[i].shift()); });
+        clients.forEach((c, i) => { if (ids[i] >= 0) c.pump(8); });
+        if (!toServer.length) break;
+        while (toServer.length) {
+          const [i, m] = toServer.shift();
+          if (ids[i] >= 0) deliver(room.receive(ids[i], m, now));
+        }
       }
     },
-    /** One round of the world: server tick, deliveries, each client runs its steps. */
+    /** 50 ms of the world: the server's clock, deliveries, the clients' steps. */
     cycle(ms = 50) {
       now += ms;
       deliver(room.tick(now));
-      for (let k = 0; k < 4; k++) {
-        clients.forEach((c, i) => { while (inbox[i].length) c.receive(inbox[i].shift()); });
-        clients.forEach((c) => c.pump(8));
-        h.pushToServer();
-      }
+      h.flush();
     },
-    run(maxCycles, until) {
-      for (let i = 0; i < maxCycles && !until(); i++) h.cycle();
+    run(maxCycles, until, act = () => {}) {
+      for (let i = 0; i < maxCycles && !until(); i++) {
+        act();
+        h.cycle();
+      }
+      return until();
     },
   };
   return h;
 }
 
-function startMatch(h) {
-  h.join(0, 'Ana');
-  h.join(1, 'Beto');
-  h.room.receive(1, { t: 'lobby', listo: true }, 0);
-  const out = h.room.receive(0, { t: 'iniciar' }, 0);
-  assert.equal(out.find((o) => o.msg.t === 'error'), undefined);
-  // deliver the start through the harness' normal path
-  h.cycle(0);
+/** What a scripted player does each cycle: plans the first turn, recalls the drone, LISTO. */
+function autopilot(c) {
+  if (!c.sim || c.finished) return;
+  const sim = c.sim;
+  if (sim.phase === 'drone' && c.team === 'attackers' && !c.recalled) {
+    c.recalled = c.n;
+    c.command({ type: 'droneRecall' });
+  }
+  if (!c.deciding) return;
+  if (sim.phase === 'plan' && c.team === 'attackers' && sim.turn <= 1 && c.planned !== c.n) {
+    c.planned = c.n;
+    const site = sim.site;
+    for (const u of sim.teams.attackers) c.command({ type: 'addWaypoint', unitId: u.id, x: site.x, y: site.y, user: true });
+  }
+  if (c.recalled !== undefined && sim.phase !== 'drone') c.recalled = undefined;
+  c.ready();
 }
 
-test('el lobby: dos jugadores en bandos distintos y el anfitrión inicia', () => {
+function lobbyOf2(h, duracion = 1) {
+  const a = h.connect(0, { nombre: 'Ana' });
+  const b = h.connect(1, { nombre: 'Beto' });
+  h.say(0, { t: 'lobby', duracion, mapa: DEFAULT_MAP });
+  h.say(1, { t: 'lobby', listo: true });
+  return [a, b];
+}
+
+test('códigos de sala sin letras que se confundan', () => {
+  for (const ch of '01OIL') assert.ok(!CODE_CHARS.includes(ch));
+  let x = 0;
+  const code = roomCode(() => ((x = (x + 0.37) % 1)));
+  assert.match(code, /^[2-9A-Z]{5}$/);
+});
+
+test('el lobby: bandos, anfitrión, LISTO y sala llena', () => {
   const room = new Room('ZZZZZ');
   const a = room.join({ nombre: 'Ana' }, 0);
-  const b = room.join({ nombre: 'Beto' }, 0);
+  const b = room.join({ nombre: 'Beto<script>' }, 0);
   assert.deepEqual(room.players.map((p) => p.team), ['attackers', 'defenders']);
+  assert.equal(room.players[1].name, 'Betoscript');
   assert.equal(room.join({ nombre: 'Cami' }, 0).id, -1, 'sala llena');
   assert.ok(room.receive(a.id, { t: 'iniciar' }, 0).some((o) => o.msg.t === 'error'), 'sin LISTO del otro no inicia');
   room.receive(b.id, { t: 'lobby', listo: true }, 0);
-  assert.ok(room.receive(b.id, { t: 'iniciar' }, 0).length === 0, 'solo el anfitrión inicia');
+  room.receive(b.id, { t: 'lobby', equipo: 'attackers' }, 0);
+  assert.deepEqual(room.players.map((p) => p.team), ['defenders', 'attackers'], 'pasarse de bando cambia a los dos');
+  assert.equal(room.players[1].ready, false, 'cambiar de bando quita el LISTO');
+  room.receive(b.id, { t: 'lobby', listo: true }, 0);
+  assert.equal(room.receive(b.id, { t: 'iniciar' }, 0).length, 0, 'solo el anfitrión inicia');
   assert.ok(room.receive(a.id, { t: 'iniciar' }, 0).some((o) => o.msg.t === 'start'));
+  assert.equal(room.join({ nombre: 'Cami' }, 0).id, -1, 'no se entra a una partida empezada');
+});
+
+test('las órdenes del rival no se ven hasta el cierre y el servidor firma el bando', () => {
+  const room = new Room('Q', { seed: () => 5 });
+  room.join({ nombre: 'A' }, 0);
+  room.join({ nombre: 'B' }, 0);
+  room.receive(1, { t: 'lobby', listo: true }, 0);
+  room.receive(0, { t: 'iniciar' }, 0);
+  const out = room.receive(1, { t: 'ordenes', n: 0, lista: [{ type: 'buy', unitId: 0, item: 'flash', team: 'attackers' }] }, 0);
+  assert.equal(out.length, 0, 'nada se reenvía antes del cierre');
+  room.receive(0, { t: 'listo', n: 0 }, 0);
+  const close = room.receive(1, { t: 'listo', n: 0 }, 0).find((o) => o.msg.t === 'cierre');
+  assert.equal(close.msg.ordenes[1].lista[0].team, 'defenders', 'el bando lo pone el servidor');
 });
 
 test('una ronda 1v1 completa por lockstep: los dos clientes terminan con el mismo estado', () => {
-  const h = (() => {
-    const x = harness();
-    x.join(0, 'Ana');
-    x.join(1, 'Beto');
-    x.room.receive(1, { t: 'lobby', listo: true }, 0);
-    return x;
-  })();
-  const [att, def] = h.clients;
-  const out = h.room.receive(0, { t: 'iniciar' }, 0);
-  // the start reaches both clients
-  for (const { msg } of out) h.clients.forEach((c) => c.receive(msg));
-  assert.equal(att.phase, 'buy');
+  const h = harness();
+  const [a, b] = lobbyOf2(h, 1);
+  h.say(0, { t: 'iniciar' });
+  assert.equal(a.phase, 'buy');
+  assert.equal(b.team, 'defenders');
+  const done = h.run(20000, () => h.room.status === 'finished', () => h.clients.forEach(autopilot));
+  assert.ok(done, `la partida termina (fase ${a.phase}, turno ${a.sim.turn})`);
+  assert.equal(a.desync, null, 'ningún desync');
+  assert.equal(a.phase, 'end');
+  assert.equal(hashSim(a.sim), hashSim(b.sim));
+  assert.ok(a.sim.turn >= 2, 'se jugaron turnos');
+  assert.equal(a.match.score.player, b.match.score.ai, 'los dos llevan el mismo marcador');
+});
 
-  const waitPhase = (c, phase) => h.run(2000, () => c.phase === phase && c.deciding);
-  const both = (fn) => { fn(att); fn(def); };
-
-  // buy and prep: nothing to do but LISTO
-  waitPhase(att, 'buy');
-  both((c) => c.ready());
-  h.run(200, () => att.phase !== 'buy' && def.phase !== 'buy' && att.deciding);
-  assert.equal(att.phase, 'prep');
-  both((c) => c.ready());
-  // the drone phase (live) ends with the recall of the attackers; then planning
-  h.run(400, () => att.phase === 'drone' && def.phase === 'drone');
-  if (att.phase === 'drone') {
-    att.command({ type: 'droneRecall' });
-    h.run(2000, () => att.phase === 'plan' && def.phase === 'plan' && att.deciding);
-  }
-  assert.equal(att.phase, 'plan');
-
-  // planning: the attackers walk toward the site; then turns until the round ends
-  const site = att.sim.site;
-  for (let turn = 0; turn < 20 && att.phase !== 'end'; turn++) {
-    if (turn === 0) {
-      for (const u of att.sim.teams.attackers) att.command({ type: 'addWaypoint', unitId: u.id, x: site.x ?? 20, y: site.y ?? 15, user: true });
-    }
-    both((c) => c.ready());
-    const turnBefore = att.n;
-    h.run(4000, () => att.n > turnBefore + 1 && ((att.phase === 'plan' && att.deciding && def.phase === 'plan') || att.phase === 'end'));
-  }
-  h.run(200, () => h.room.status === 'finished');
-
-  assert.equal(h.clients[0].desync, null, 'ningún desync');
-  assert.equal(h.clients[1].desync, null);
-  assert.equal(att.phase, 'end');
+test('al mejor de 3: cambio de bando a la mitad y fin de partida', () => {
+  const h = harness();
+  const [a, b] = lobbyOf2(h, 3);
+  h.say(0, { t: 'iniciar' });
+  const teams = [];
+  let last = null;
+  h.run(80000, () => h.room.status === 'finished', () => {
+    if (a.sim !== last) teams.push(a.team);
+    last = a.sim;
+    h.clients.forEach(autopilot);
+  });
   assert.equal(h.room.status, 'finished');
-  assert.equal(hashSim(att.sim), hashSim(def.sim));
+  assert.equal(a.desync, null);
+  assert.ok(a.finished && b.finished);
+  assert.equal(teams[0], 'attackers');
+  assert.equal(teams[1], 'defenders', 'la segunda ronda, del otro lado');
+  assert.ok(a.match.over, 'la partida terminó para el cliente');
+  assert.equal(Math.max(a.match.score.player, a.match.score.ai), 2);
+  assert.deepEqual(a.match.score, { player: b.match.score.ai, ai: b.match.score.player });
+});
+
+test('el plazo de una fase de decisión la cierra sin LISTO', () => {
+  const h = harness();
+  const [a] = lobbyOf2(h, 1);
+  h.say(0, { t: 'iniciar' });
+  assert.equal(a.phase, 'buy');
+  assert.ok(h.run(500, () => a.phase === 'prep'), 'la compra cierra sola a los 20 s');
 });
 
 test('reconexión a mitad de un turno: el cliente que vuelve repite el registro y sigue igual', () => {
-  const h = harness({ seed: 3 });
-  h.join(0, 'Ana');
-  h.join(1, 'Beto');
-  h.room.receive(1, { t: 'lobby', listo: true }, 0);
-  const [att, oldDef] = h.clients;
-  for (const { msg } of h.room.receive(0, { t: 'iniciar' }, 0)) h.clients.forEach((c) => c.receive(msg));
-  h.cycle(0);
-  const both = () => h.clients.forEach((c) => c.ready());
-  h.run(100, () => att.deciding);
-  both(); // buy
-  h.run(200, () => att.phase === 'prep' && att.deciding);
-  both(); // prep
-  h.run(400, () => att.phase === 'drone');
-  att.command({ type: 'droneRecall' });
-  h.run(400, () => att.phase === 'plan' && att.deciding);
-  both();
-  h.run(400, () => att.phase === 'exec');
-  h.run(10, () => false); // some steps of the turn run
+  const h = harness({ seeds: [3] });
+  const [a] = lobbyOf2(h, 1);
+  h.say(0, { t: 'iniciar' });
+  h.run(4000, () => a.phase === 'exec', () => h.clients.forEach(autopilot));
+  h.run(10, () => false);
+  assert.equal(a.phase, 'exec');
 
-  // Beto's phone drops and comes back with a fresh page: the same token, a new client
-  h.room.leave(1, h.now);
-  const oldSend = oldDef.send;
-  const fresh = new LockstepClient({
-    send: oldSend,
-    createSim: (s) => new Simulation(ALL_MAPS[DEFAULT_MAP], { seed: s.semilla, controllers: HUMANS }),
-  });
-  h.clients[1] = fresh;
-  const back = h.room.join({ token: h.room.players[1].token }, h.now);
-  assert.equal(back.id, 1);
-  fresh.me = 1;
-  for (const { to, msg } of back.out) if (to === 1 || to === '*') fresh.receive(msg);
+  // Beto's phone drops; the turn goes on; he comes back with a fresh page and his token.
+  const token = h.room.players[1].token;
+  h.drop(1);
+  h.run(20, () => false);
+  const back = h.connect(1, { token });
+  assert.equal(back.me, 1);
+  assert.ok(back.sim, 'reconstruyó la ronda');
+  h.run(4000, () => a.phase === 'plan' && back.phase === 'plan' && a.deciding && back.deciding);
+  assert.equal(hashSim(a.sim), hashSim(back.sim));
+  assert.equal(a.desync, null);
+  assert.ok(h.run(20000, () => h.room.status === 'finished', () => h.clients.forEach(autopilot)), 'la partida termina');
+  assert.equal(a.desync, null);
+});
 
-  h.run(2000, () => att.phase === 'plan' && fresh.phase === 'plan' && att.deciding);
-  assert.equal(att.phase, 'plan');
-  assert.equal(fresh.phase, 'plan');
-  assert.equal(hashSim(att.sim), hashSim(fresh.sim));
-  assert.equal(att.desync, null);
-  assert.equal(fresh.desync, null);
+test('reconexión en una fase de decisión: el plazo espera al que se cayó', () => {
+  const h = harness();
+  const [a] = lobbyOf2(h, 1);
+  h.say(0, { t: 'iniciar' });
+  h.drop(1);
+  assert.ok(!h.run(1000, () => a.phase !== 'buy'), 'sin el rival la compra no cierra por plazo');
+  const back = h.connect(1, { token: h.room.players[1].token });
+  assert.equal(back.phase, 'buy');
+  assert.ok(h.run(1000, () => a.phase === 'prep' && back.phase === 'prep'), 'de vuelta, el plazo sigue corriendo');
+});
+
+test('la sala se guarda y se recupera (el Durable Object puede hibernar)', () => {
+  const h = harness();
+  lobbyOf2(h, 1);
+  h.say(0, { t: 'iniciar' });
+  h.run(30, () => false, () => h.clients.forEach(autopilot));
+  const json = JSON.parse(JSON.stringify(h.room));
+  const copy = Room.fromJSON(json, {});
+  assert.deepEqual(JSON.parse(JSON.stringify(copy)), json);
+  assert.equal(copy.n, h.room.n);
 });
