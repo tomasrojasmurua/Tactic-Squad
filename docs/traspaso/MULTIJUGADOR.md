@@ -18,7 +18,8 @@ casos raros.
 | Socket con reconexión, latido y luz de conexión | `src/net/Connection.js` |
 | Une la red con el juego | `src/net/OnlineSession.js`, `Game.js` (`newOnlineRound`, pasos según el servidor), `SessionController.js` (`onlineRequest`, `advance` online) |
 | Pantallas: crear/unirse, sala con INVITAR (compartir del celular o WhatsApp), bandos, formato, mapa, LISTO/EMPEZAR | `src/ui/RoomView.js` |
-| Hash del estado | `src/net/stateHash.js`, `src/net/snapshot.js` |
+| Hash del estado y snapshot (guardar/restaurar la sim con el mismo hash) | `src/net/stateHash.js`, `src/net/snapshot.js` |
+| Luz de conexión y ausencia del rival en la partida | `src/ui/NetBadge.js` |
 | Despliegue | `.github/workflows/pages.yml`: job `server` (wrangler) escribe la URL en `src/config/server.js` del sitio |
 
 **Decisiones de la implementación**
@@ -40,8 +41,18 @@ invitación → LISTO → turnos con hashes iguales → recarga a mitad de parti
 **Probar en local**: `cd server && npx wrangler dev --port 8787`, `npm start` y abrir
 `http://localhost:8080/?servidor=http://localhost:8787` en dos ventanas.
 
-**Pendiente**: resincronización por snapshot (hoy un `desync` solo avisa), abandono declarado, 2v2,
-UI que lea solo `teamView`, indicador de conexión en el HUD, `wakeLock`.
+**Robustez (31 oct)**
+- **Resincronización**: si los hashes difieren, la sala pide `foto` al anfitrión (o a quien esté
+  conectado), reparte `resync` con su snapshot y sigue; el snapshot queda en el registro, así que una
+  reconexión posterior lo repite. Las referencias a datos fijos viajan como rutas (mapa compilado y
+  objetos congelados de una sim nueva); probado restaurando en cada turno y a mitad de turno en los tres
+  mapas (mismo hash y misma continuación).
+- **Abandono**: un jugador desconectado 90 s (`ROOM.abandonMs`) termina la partida; la sala vuelve al
+  lobby (su asiento queda por si vuelve). El rival ve la cuenta atrás en la partida.
+- **Pantalla encendida** durante la partida (`navigator.wakeLock`, se pide de nuevo al volver a la app).
+
+**Pendiente**: 2v2, UI que lea solo `teamView`, repetición de la última baja online (necesita las
+órdenes del rival en la grabación).
 
 ## 1. Lo que pidió Tomás
 

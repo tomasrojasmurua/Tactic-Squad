@@ -227,3 +227,39 @@ test('la sala se guarda y se recupera (el Durable Object puede hibernar)', () =>
   assert.deepEqual(JSON.parse(JSON.stringify(copy)), json);
   assert.equal(copy.n, h.room.n);
 });
+
+test('un teléfono que se desfasa toma el estado del anfitrión y la partida sigue igual en los dos', () => {
+  const h = harness({ seeds: [4] });
+  const [a, b] = lobbyOf2(h, 1);
+  h.say(0, { t: 'iniciar' });
+  h.run(4000, () => a.phase === 'exec', () => h.clients.forEach(autopilot));
+  // Something on Beto's phone came out different (another engine rounding): his sim drifts.
+  b.sim.units[0].x += 0.013;
+  assert.notEqual(hashSim(a.sim), hashSim(b.sim));
+  h.run(4000, () => a.phase === 'plan' && b.phase === 'plan' && a.deciding && b.deciding);
+  assert.ok(b.desync, 'hubo resincronización');
+  assert.equal(hashSim(b.sim), hashSim(a.sim), 'Beto tiene el estado del anfitrión');
+  // A reconnection after it replays the snapshot too.
+  const token = h.room.players[1].token;
+  h.drop(1);
+  const back = h.connect(1, { token });
+  assert.equal(hashSim(back.sim), hashSim(a.sim));
+  assert.ok(h.run(20000, () => h.room.status === 'finished', () => h.clients.forEach(autopilot)), 'la partida termina');
+  assert.equal(hashSim(back.sim), hashSim(a.sim));
+});
+
+test('abandono: el que no vuelve en 90 s pierde la partida y la sala vuelve al lobby', () => {
+  const h = harness();
+  const [a] = lobbyOf2(h, 3);
+  const events = [];
+  a.on = (type) => events.push(type);
+  h.say(0, { t: 'iniciar' });
+  h.run(4000, () => a.phase === 'exec', () => h.clients.forEach(autopilot));
+  h.drop(1);
+  h.run(60000 / 50, () => false, () => autopilot(a));
+  assert.equal(h.room.status, 'playing', 'a los 60 s todavía espera');
+  h.run(40000 / 50, () => h.room.status !== 'playing', () => autopilot(a));
+  assert.equal(h.room.status, 'lobby');
+  assert.ok(events.includes('abandono') && events.includes('lobby'));
+  assert.equal(a.sim, null);
+});

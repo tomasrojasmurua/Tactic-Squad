@@ -14,6 +14,7 @@
 import { phaseTick } from '../sim/round.js';
 import { createMatch, matchLoadout, endMatchRound } from '../session/Match.js';
 import { hashSim } from './stateHash.js';
+import { encodeSim, restoreSim } from './snapshot.js';
 
 const LIVE = new Set(['drone', 'exec']);
 const DECIDING = new Set(['buy', 'prep', 'plan', 'end']);
@@ -37,12 +38,14 @@ export function onlineRound(start, round, match) {
 export class LockstepClient {
   /**
    * @param deps.send       (msg) => void, to the server
-   * @param deps.createSim  ({map, seed, round, options}) => Simulation (a new round)
-   * @param deps.on         (type, data) => void: 'hola' 'sala' 'round' 'advance' 'fase' 'live' 'desync' 'fin' 'lobby' 'error'
+   * @param deps.createSim  ({map, seed, round, options}) => Simulation (a new round: the game shows it)
+   * @param deps.buildSim   ({map, seed, round, options}) => Simulation (the same, only built: a snapshot's reference)
+   * @param deps.on         (type, data) => void: 'hola' 'sala' 'round' 'advance' 'fase' 'resync' 'fin' 'lobby' 'abandono' 'error'
    */
-  constructor({ send, createSim, on = () => {} }) {
+  constructor({ send, createSim, buildSim = createSim, on = () => {} }) {
     this.send = send;
     this.createSim = createSim;
+    this.buildSim = buildSim;
     this.on = on;
     this.sim = null;
     this.me = -1;
@@ -98,9 +101,14 @@ export class LockstepClient {
       case 'orden':
         if (msg.n === this.n && this.sim) this.sim.enqueue(msg.cmd);
         return;
-      case 'desync':
-        this.desync = msg;
-        return this.on('desync', msg);
+      case 'foto':
+        // The phones drifted apart and this one is the reference: its state for everybody.
+        if (this.sim && msg.n === this.n - 1 && !this.replaying) this.send({ t: 'foto', n: msg.n, data: encodeSim(this.sim, this.buildSim(this.roundInfo)) });
+        return;
+      case 'resync':
+        return this.onResync(msg);
+      case 'abandono':
+        return this.on('abandono', msg);
       case 'fin':
         if (msg.n !== this.n + 1) return; // closes the round's result (its phase `n`)
         this.n = msg.n;
@@ -136,8 +144,17 @@ export class LockstepClient {
     this.hasta = 0;
     this.fase = null;
     this.readyAt = -1;
-    this.sim = this.createSim(onlineRound(this.start, round, this.match));
+    this.roundInfo = onlineRound(this.start, round, this.match);
+    this.sim = this.createSim(this.roundInfo);
     this.on('round', { round: round.ronda, team: this.team, replaying: this.replaying });
+  }
+
+  /** Everybody takes the reference phone's state (it already is, for that phone: a no-op there). */
+  onResync(msg) {
+    if (!this.sim || msg.n !== this.n - 1) return;
+    this.desync = msg;
+    restoreSim(this.sim, msg.data, this.buildSim(this.roundInfo));
+    this.on('resync', msg);
   }
 
   /** A reconnection: the same messages again from the start; nothing is sent until it is over. */
