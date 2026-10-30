@@ -258,3 +258,27 @@ test('composiciones: la IA atacante juega su plan (brecha dura: el Escudo en pun
   const pick = play(['marksman', 'shield', 'assault']);
   assert.ok(pick.marksmanStop > 3, `el Tirador se queda a ${pick.marksmanStop.toFixed(1)} m de la bomba`);
 });
+
+test('cobertura: el Tirador se queda atrás solo donde ve el sitio al que van (no detrás de una esquina); si no, entra con los suyos', async () => {
+  const { segmentBlocked } = await import('../src/core/geom.js');
+  let held = 0;
+  for (const map of ['warehouse', 'hotel', 'port']) {
+    for (const site of ['A', 'B']) {
+      const sim = new Simulation(MAPS[map], { seed: 3, site, controllers: { attackers: 'ai', defenders: 'ai' }, roles: { attackers: ['marksman', 'shield', 'assault'], defenders: ['anchor', 'shotgunner', 'trapper'] } });
+      for (let g = 0; g < 20000 && sim.phase !== 'exec'; g++) {
+        if (sim.phase === 'buy' || sim.phase === 'prep' || sim.phase === 'plan') sim.advancePhase();
+        else sim.step();
+      }
+      // The site they go for (they do not know where the bomb is yet).
+      const goal = sim.compiled.sites.find((s) => s.id === sim.attackAi.target);
+      const m = sim.teams.attackers.find((u) => u.role === 'marksman');
+      const end = [...m.route].reverse().find((p) => p.user);
+      assert.ok(goal && end, `${map} ${site}: tiene sitio y ruta`);
+      if (Math.hypot(end.x - goal.bombX, end.y - goal.bombY) < 2.5) continue; // entra con los suyos
+      held++;
+      const w = sim.world;
+      assert.ok(!segmentBlocked(w.segments, w.staticSegmentCount, end.x, end.y, goal.bombX, goal.bombY), `${map} ${site}: desde su puesto ve el punto de la bomba`);
+    }
+  }
+  assert.ok(held >= 3, `se queda cubriendo en ${held} de 6 casos`);
+});
