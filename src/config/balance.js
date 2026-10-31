@@ -279,6 +279,19 @@ export const ENTRY = Object.freeze({
 });
 
 /**
+ * Night (sim/perception.js litFor): the map's `dark` rooms have no light. An enemy standing in one is
+ * seen only within `range` m, or inside the cone of the viewer's flashlight (`light`), or always when
+ * his own flashlight is on: a light in the dark is seen from far away. Each operator has a flashlight
+ * (unit.light, order 'light'); it starts on for the side in `on`. The drone and the cameras see in the
+ * dark (night vision); the mirror and the fiber-optic camera look close enough not to need it.
+ */
+export const NIGHT = Object.freeze({
+  range: 5,
+  light: { fov: 50 * DEG, range: 18 },
+  on: Object.freeze({ attackers: true, defenders: false }),
+});
+
+/**
  * Suppression (sim/stress.js): stress 0-1 per soldier, from bullets passing close, wounds,
  * explosions and teammates falling in sight; it eases off after a calm moment. It costs aim and
  * reaction and, past `pinAt`, a moment flat on the floor. Both sides, the AI too.

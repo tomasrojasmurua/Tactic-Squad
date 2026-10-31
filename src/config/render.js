@@ -158,8 +158,8 @@ export const DECOR = Object.freeze({
 
 export const LIGHTING = Object.freeze({
   direction: [0.45, 0.62, -1.0], // direction light travels: from the top-left of the screen, downward
-  ambient: 0.6,
-  diffuse: 0.5,
+  ambient: 0.48, // night (realism stage 6): was 0.6
+  diffuse: 0.44, // night: was 0.5
   shadowOffset: [0.42, 0.55], // wall shadow offset on floor (m), matches light direction
   shadowStrength: 0.42,
   shadowTint: [0.52, 0.6, 0.82],
@@ -173,6 +173,13 @@ export const LIGHTING = Object.freeze({
 export const OUTLINE = Object.freeze({
   width: 0.028, // m
   strength: 0.78,
+});
+
+/** Night (config/balance.js NIGHT): the dark rooms' shade over the floor and the flashlights' beams. */
+export const NIGHT_LOOK = Object.freeze({
+  shade: [0.02, 0.03, 0.08, 0.62], // over a dark room's floor
+  beam: [1, 0.95, 0.78, 0.34], // at the flashlight, fading to `beamEdge` at its reach
+  beamEdge: [1, 0.95, 0.78, 0],
 });
 
 export const OVERLAY = Object.freeze({

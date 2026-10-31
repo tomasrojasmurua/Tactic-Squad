@@ -21,6 +21,7 @@ function iconOf(o) {
   if (o.item) return GEAR_ICON[o.item] || '';
   if (o.id === 'squad') return ICON.squad;
   if (o.id === 'reload') return ICON.bullets;
+  if (o.id === 'light') return ICON.flashlight;
   return EXTRA[o.id] || '';
 }
 
@@ -33,6 +34,7 @@ export function radialLabel(o) {
   else if (o.id === 'pace') name = o.active ? R.normalPace : R.sneak;
   else if (o.id === 'peek') name = o.active ? T.peek.on : T.peek.off;
   else if (o.id === 'cover') name = o.active ? T.cover.on : T.cover.off;
+  else if (o.id === 'light') name = o.active ? R.lightOff : R.lightOn;
   else name = R[o.id] || o.id;
   return o.count !== null && o.count !== undefined ? `${name} · ${R.left(o.count)}` : name;
 }

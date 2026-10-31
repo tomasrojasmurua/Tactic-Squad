@@ -1,9 +1,9 @@
 // Who sees whom this tick, target acquisition and reaction times.
-import { COMBAT, ENTRY, MONITOR, CALLOUT } from '../config/balance.js';
+import { COMBAT, ENTRY, MONITOR, CALLOUT, NIGHT } from '../config/balance.js';
 import { angleDiff, angleTo } from '../core/math.js';
 import { canSee } from './vision.js';
 import { EV } from '../core/events.js';
-import { peekEye, isMonitoring, isAiControlled } from './queries.js';
+import { peekEye, isMonitoring, isAiControlled, isDark } from './queries.js';
 import { alertAiUnit } from './ai.js';
 import { rememberSeen } from './view.js';
 import { camSeesTraps } from './traps.js';
@@ -25,7 +25,7 @@ export function updatePerception(sim) {
     const cfg = viewer.vision; // VISION[team], scaled by the role
     for (const other of units) {
       if (!other.alive || other.team === viewer.team) continue;
-      if (canSee(world, viewer, other.x, other.y, cfg)) {
+      if (canSee(world, viewer, other.x, other.y, cfg) && litFor(sim, viewer, other)) {
         viewer.visibleEnemies.push(other.id);
         other.seenByEnemy = true;
       }
@@ -58,6 +58,18 @@ export function updatePerception(sim) {
 }
 
 const eye = { x: 0, y: 0, facing: 0, fov: 0, range: 0 };
+
+/**
+ * Night (NIGHT): can `v`, who has a line of sight to `o`, make him out? Always, unless `o` stands
+ * in a dark room with his flashlight off; then only up close or inside the cone of v's flashlight.
+ */
+function litFor(sim, v, o) {
+  if (o.light || !isDark(sim, o.x, o.y)) return true;
+  const d2 = sq(o.x - v.x) + sq(o.y - v.y);
+  if (d2 <= NIGHT.range * NIGHT.range) return true;
+  const L = NIGHT.light;
+  return v.light && d2 <= L.range * L.range && Math.abs(angleDiff(v.facing, angleTo(v.x, v.y, o.x, o.y))) <= L.fov / 2;
+}
 
 /**
  * A mirror under a door (`eye`: its spot) in the sight of an enemy in the room glints: his side

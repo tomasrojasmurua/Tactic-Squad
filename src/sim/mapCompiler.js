@@ -39,6 +39,12 @@ export function compileMap(def) {
   }));
   // Named areas (debrief: "fell in the kitchen"). First match wins.
   const rooms = (def.rooms || []).map((r) => ({ id: r.id, box: boxFromRect(r.rect) }));
+  // Rooms with no light at night (`dark`: room ids; sim/perception.js litFor).
+  const dark = (def.dark || []).map((id) => {
+    const r = rooms.find((q) => q.id === id);
+    if (!r) throw new Error(`Sala oscura desconocida: ${id}`);
+    return r.box;
+  });
   const sites = def.sites.map((s) => ({ id: s.id, rect: s.rect, box: boxFromRect(s.rect), bombX: s.bomb[0], bombY: s.bomb[1] }));
   const doorIds = new Set(def.doors.map((d) => d.id));
   for (const e of def.entries) if (!doorIds.has(e.door)) throw new Error(`Entrada ${e.id}: puerta desconocida ${e.door}`);
@@ -94,6 +100,7 @@ export function compileMap(def) {
     debris,
     doorways,
     rooms,
+    dark,
     floors: def.floors,
     paint: def.paint || [],
     palette: def.palette || {}, // wall colors (render only)

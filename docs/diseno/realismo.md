@@ -244,3 +244,33 @@ Esta es la línea base para las etapas. El sitio A del Hotel queda justo en el b
   49/47** (A 52/49, B 47/45), **Puerto 46/45** (A 44/41, B 49/48). Con reacción × 0,7 en los cortes el
   Puerto quedaba en 46/44; con 0,6 vuelve a la meta. El sitio A del Puerto sigue siendo lo pendiente
   de la próxima pasada de mapas (ya estaba en 44/42).
+
+## Etapa 6 hecha: noche, penumbra y linternas (31 oct)
+
+- Tomás eligió **ambiente nocturno**. La escena entera es algo más oscura (`LIGHTING.ambient` 0,6 →
+  0,48, `diffuse` 0,5 → 0,44).
+- **Salas oscuras** en los datos del mapa (`dark`: ids de `rooms`; se compilan a cajas y se consultan
+  con `queries.isDark`). Almacén: oficinas y comedor (el paso de la entrada del callejón). Hotel: lencería, oficina y
+  escalera. Puerto: inspección, oficina de aduana y sala de máquinas. Se dibujan con una penumbra azul
+  sobre el piso.
+- **Regla de visión** (`perception.js litFor`, números en `NIGHT`): a quien está en una sala oscura
+  con la linterna apagada solo se lo ve a 5 m o dentro del haz de la linterna del que mira (50°,
+  18 m). A quien lleva la linterna encendida se lo ve como de día, esté donde esté: la luz lo delata.
+  Igual para los dos bandos y la IA. El dron y las cámaras ven a oscuras (visión nocturna); el espejo
+  y la cámara de fibra miran tan cerca que no cambian.
+- **Linterna** por soldado (`unit.light`, orden `light`, en la preparación, la planificación o
+  durante el turno): rueda del soldado (posición 7, arriba a la izquierda), tecla L y estado en la
+  ficha. Empieza encendida para los atacantes y apagada para los defensores (`NIGHT.on`). La IA no
+  la cambia.
+- El haz se dibuja como un cono de luz cortado por las paredes (el propio y el de un enemigo a la
+  vista). Se recalcula solo cuando el soldado o una puerta se mueven. **Falta medir los fps en el
+  iPhone**: la penumbra son tres rectángulos y cada haz es un polígono de visión más, pero no se
+  coordinó con la rama `claude/graficos-realismo` (sigue sin fusionar).
+- Equilibrio (800 rondas, dos tandas, % atacante): **Almacén 50/50** (A 45/49, B 55/51), **Hotel
+  49/47**, **Puerto 46/45**: los mismos que en la etapa 5. La IA pelea casi siempre en los sitios y
+  sus accesos, así que las salas oscuras elegidas le cambian poco; la noche pesa en las decisiones
+  del jugador (por dónde entrar, con la linterna encendida o no). Se probaron salas que sí se pelean:
+  la **expedición** del Almacén a oscuras bajó el sitio A a 41 en una tanda (48/51 en total) y el
+  **taller** (sitio B) a oscuras dio B 45/38 y 45/43 en total: **un sitio a oscuras favorece mucho
+  al defensor**. Si se quiere un sitio oscuro, hay que compensarlo (por ejemplo, linterna encendida
+  para los defensores de la IA en ese sitio, o más alcance a oscuras).

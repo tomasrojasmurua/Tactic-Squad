@@ -136,6 +136,11 @@ los atacantes.
   - **Asomarse y volver** (en el último punto): se queda 1,5 s mirando hacia donde
     marcaste en ese punto y vuelve a donde estaba, mirando como antes. Sirve para
     chequear un pasillo sin abandonar el puesto. Vuelve sosteniendo el ángulo, más lento.
+- **Noche.** Cada mapa tiene salas sin luz (en penumbra azul). Ahí, sin linterna, solo se
+  ve a 5 m. Cada soldado lleva **linterna** (rueda del soldado, arriba a la izquierda; tecla L):
+  encendida ve dentro de su haz (50°, 18 m), pero **a él se lo ve desde lejos**. Empieza
+  encendida para los atacantes y apagada para los defensores. El dron y las cámaras ven a
+  oscuras.
 - **Puertas.** Si nadie decide, el operador **la abre y pasa**. El "?" sobre una puerta
   de la ruta es una invitación, no un freno.
 - **GO por colores.** ESPERAR en un punto lo asigna a un grupo de color. Durante el

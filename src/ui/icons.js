@@ -47,6 +47,11 @@ export const ICON = {
     `<circle cx="6" cy="8" r="2.6" fill="currentColor"/><circle cx="12" cy="8" r="2.6" fill="currentColor" opacity=".75"/><circle cx="18" cy="8" r="2.6" fill="currentColor" opacity=".5"/>
      <path d="M3 16 H19 M15 12.5 L19.5 16 L15 19.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`,
   ),
+  flashlight: svg(
+    '0 0 24 24',
+    `<path d="M2 10 H9 L12 7.5 V16.5 L9 14 H2 Z" fill="currentColor"/>
+     <path d="M13.5 8 L22 4 V20 L13.5 16 Z" fill="currentColor" opacity=".45"/>`,
+  ),
   bullets: svg(
     '0 0 40 40',
     `<g fill="currentColor" transform="rotate(-25 20 20)"><rect x="8" y="10" width="6" height="22" rx="1"/>

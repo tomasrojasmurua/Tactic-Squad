@@ -594,6 +594,15 @@ export class SessionController {
         this.sound('select');
         return;
       }
+      case 'light': {
+        // LINTERNA (L; the operator's radial): preparation, planning, or during the turn stamped with its step.
+        const u = controllableUnit(this.sim, session.selectedId, session.team);
+        if (!u || !this.owned(u) || !(phase === 'prep' || phase === 'planning' || phase === 'running' || phase === 'paused')) return;
+        const cmd = { type: 'light', unitId: u.id, on: !u.light };
+        this.command(phase === 'running' || phase === 'paused' ? { ...cmd, atTick: this.sim.round.execTick } : cmd);
+        this.sound('select');
+        return;
+      }
       case 'unitInfo':
         // The selected operator's sheet: class, weapon, utility (ui/UnitSheet.js). It follows the selection.
         if (phase === 'title') return;

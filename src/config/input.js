@@ -16,6 +16,7 @@ export const KEYS = Object.freeze({
   newPlan: ['KeyN'], // fresh round with no routes
   focus: ['KeyF'],
   reload: ['KeyY'], // the selected operator reloads now
+  light: ['KeyL'], // the selected operator's flashlight on / off (night)
   unitInfo: ['KeyJ'], // the selected operator's sheet (class, weapon, utility)
   help: ['F1', 'Slash', 'KeyI'],
   mute: ['KeyM'],

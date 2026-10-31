@@ -26,6 +26,12 @@ export function debrisAt(sim, x, y) {
   return null;
 }
 
+/** Is (x, y) in a room with no light (the map's `dark`)? */
+export function isDark(sim, x, y) {
+  for (const b of sim.compiled.dark) if (pointInBox(x, y, b)) return true;
+  return false;
+}
+
 /** The items a side can buy (its buy panel; the incendiaria is the defenders' only). */
 export const buyableItems = (team) => (team === 'attackers' ? BUY.items : BUY.defenderItems);
 

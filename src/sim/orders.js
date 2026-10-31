@@ -44,6 +44,7 @@
 //   {type:'undoWaypoint', unitId}              removes the last user waypoint (and its leg)
 //   {type:'clearRoute', unitId}                also cancels an entry he is preparing
 //   {type:'reload', unitId, atTick?}           RECARGAR: a fresh magazine at the next step (behind cover, before going in)
+//   {type:'light', unitId, on, atTick?}        LINTERNA: his flashlight on / off (NIGHT: sees into dark rooms, but is seen)
 //   {type:'go', code?, atTick?}                during a turn ("now!"): releases the units waiting for that code
 //                                              (none given: the first code someone waits for); whoever is still
 //                                              on the way to a hold of it goes straight through when he gets
@@ -144,10 +145,10 @@ const OWN_ROUTE_ORDERS = ['addWaypoint', 'beginStroke', 'promoteLast', 'setLook'
 /** Orders each round phase takes (sim/round.js PHASE; literal keys: round.js imports this module). */
 const PHASE_ORDERS = Object.freeze({
   buy: ['buy'],
-  prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade', 'wire', 'placeTrap', 'camera', 'endRecon'],
+  prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade', 'wire', 'placeTrap', 'camera', 'endRecon', 'light'],
   drone: ['drone', 'droneRecall'],
-  plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry', 'setWatch', 'reload'],
-  exec: ['go', 'reload'],
+  plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry', 'setWatch', 'reload', 'light'],
+  exec: ['go', 'reload', 'light'],
   end: [],
 });
 
@@ -189,6 +190,10 @@ export function applyCommand(sim, cmd, by = 'human') {
   if (!unit || !unit.alive || !obeys(sim, unit, cmd, by)) return;
   if (unit.follow && OWN_ROUTE_ORDERS.includes(cmd.type)) unit.follow = null;
   switch (cmd.type) {
+    case 'light':
+      unit.light = cmd.on !== false;
+      sim.emit(EV.LIGHT, { unitId: unit.id, team: unit.team, on: unit.light });
+      return;
     case 'reload':
       // RECARGAR: a fresh magazine at the turn's next step (to do it behind cover, before going in).
       if (unit.mag < unit.weapon.magazine && unit.reserve > 0) unit.reloadNow = true;
