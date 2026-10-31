@@ -345,3 +345,71 @@ test('una orden de tiempo real que llega tarde (un segundo "recoger dron") no de
   assert.ok(c.every((x) => !x.desync), 'sin resincronizar');
   assert.equal(new Set(c.map((x) => hashSim(x.sim))).size, 1);
 });
+
+test('juntos vs IA: tres amigos atacan, uno cada uno; la IA defiende y todos terminan igual', () => {
+  const h = harness({ seeds: [21, 22, 23] });
+  h.connect(0, { nombre: 'Ana' });
+  h.say(0, { t: 'lobby', modo: 'coop', duracion: 3, mapa: DEFAULT_MAP });
+  const c = ['Ana', 'Beto', 'Caro'].map((nombre, i) => (i ? h.connect(i, { nombre }) : h.clients[0]));
+  assert.deepEqual(h.room.players.map((p) => p.team), ['attackers', 'attackers', 'attackers'], 'todos atacan');
+  h.say(1, { t: 'lobby', equipo: 'defenders' });
+  assert.equal(h.room.players[1].team, 'attackers', 'nadie se pasa a la defensa');
+  h.say(0, { t: 'iniciar' });
+  assert.equal(h.room.status, 'lobby', 'no empieza sin que estén listos');
+  for (const i of [1, 2]) h.say(i, { t: 'lobby', listo: true });
+  h.say(1, { t: 'clases', roles: { attackers: ['entry'], defenders: [] } });
+  h.say(0, { t: 'iniciar' });
+  assert.equal(h.room.status, 'playing');
+  const [ana, beto, caro] = c;
+  assert.deepEqual([ana.slots, beto.slots, caro.slots], [[0], [1], [2]], 'un soldado cada uno');
+  assert.equal(ana.sim.teams.attackers.length, 3);
+  assert.equal(ana.sim.teams.defenders.length, 3);
+  assert.equal(ana.sim.controllers.defenders, 'ai', 'la IA defiende');
+  assert.equal(beto.sim.teams.attackers[1].role, 'entry', 'Beto juega la clase que eligió');
+  assert.ok(ana.owns(0) && !ana.owns(1) && beto.owns(1));
+
+  const teams = new Set();
+  let rounds = 0;
+  let last = null;
+  const done = h.run(120000, () => h.room.status === 'finished', () => {
+    if (ana.sim !== last) {
+      rounds++;
+      teams.add(ana.team);
+    }
+    last = ana.sim;
+    h.clients.forEach(autopilot);
+  });
+  assert.ok(done, 'la partida termina');
+  assert.ok(rounds >= 2, `${rounds} rondas`);
+  assert.deepEqual([...teams], ['attackers'], 'siempre atacan: no hay cambio de bando');
+  const hashes = c.map((x) => hashSim(x.sim));
+  assert.equal(new Set(hashes).size, 1, `los tres terminan igual: ${hashes}`);
+  assert.ok(c.every((x) => !x.desync), 'sin resincronizar');
+});
+
+test('juntos vs IA: con dos jugadores el anfitrión manda a dos soldados; con uno solo no empieza', () => {
+  const h = harness({ seeds: [31] });
+  h.connect(0, { nombre: 'Ana' });
+  h.say(0, { t: 'lobby', modo: 'coop', duracion: 1, mapa: DEFAULT_MAP });
+  h.say(0, { t: 'iniciar' });
+  assert.equal(h.room.status, 'lobby', 'solo: no empieza');
+  h.connect(1, { nombre: 'Beto' });
+  h.say(1, { t: 'lobby', listo: true });
+  h.say(0, { t: 'iniciar' });
+  const [ana, beto] = h.clients;
+  assert.deepEqual([ana.slots, beto.slots], [[0, 1], [2]]);
+  assert.equal(ana.sim.teams.attackers.length, 3);
+  // Four friends: four soldiers against four defenders.
+  const h4 = harness({ seeds: [32] });
+  h4.connect(0, { nombre: 'Ana' });
+  h4.say(0, { t: 'lobby', modo: 'coop', duracion: 1, mapa: DEFAULT_MAP });
+  for (const [i, nombre] of ['Beto', 'Caro', 'Dani'].entries()) h4.connect(i + 1, { nombre });
+  assert.equal(h4.connect(4, { nombre: 'Eli' }).me, -1, 'sala llena con 4');
+  for (const i of [1, 2, 3]) h4.say(i, { t: 'lobby', listo: true });
+  h4.say(0, { t: 'iniciar' });
+  assert.deepEqual(h4.clients.slice(0, 4).map((x) => x.slots), [[0], [1], [2], [3]]);
+  assert.equal(h4.clients[0].sim.teams.defenders.length, 4);
+  // Back to 1 contra 1 is not possible with more than two in the room.
+  h4.say(0, { t: 'lobby', modo: '1v1' });
+  assert.equal(h4.room.settings.modo, 'coop');
+});

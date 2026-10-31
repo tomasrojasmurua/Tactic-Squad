@@ -73,7 +73,7 @@ export const FLOW_TEXTS = Object.freeze({
   /** Online: the room (ui/RoomView.js, net/OnlineSession.js). */
   online: {
     title: 'Multijugador',
-    note: '1 contra 1 o 2 contra 2, cada uno en su celular. Crea una sala y comparte la invitación, o entra con el código que te pasaron.',
+    note: '1 contra 1, 2 contra 2 o hasta cuatro amigos juntos contra la IA, cada uno en su celular. Crea una sala y comparte la invitación, o entra con el código que te pasaron.',
     name: 'Tu nombre',
     namePlaceholder: 'Cómo te verá el rival',
     create: 'Crear sala',
@@ -84,7 +84,9 @@ export const FLOW_TEXTS = Object.freeze({
     unavailable: 'Multijugador no disponible: falta el servidor',
     room: (code) => `Sala ${code}`,
     mode: 'Modo',
-    modes: { '1v1': '1 contra 1', '2v2': '2 contra 2' },
+    modes: { '1v1': '1 contra 1', '2v2': '2 contra 2', coop: 'Juntos vs IA' },
+    coopNote: 'Hasta cuatro amigos atacan juntos. Cada uno manda un soldado; con dos jugadores, el anfitrión manda dos.',
+    aiDefends: 'La IA defiende',
     invite: 'Invitar',
     inviteText: (code, url) => `¡Juguemos Tactic Squad! Entra a la sala ${code}: ${url}`,
     copied: 'Enlace copiado',
@@ -122,6 +124,7 @@ export const FLOW_TEXTS = Object.freeze({
     rival: 'Rival',
     mateReady: (name) => `${name}: listo ✓`,
     mateDeciding: (name) => `${name} está planificando…`,
+    matesReady: (done, total) => `Compañeros listos: ${done}/${total}`,
     toRoom: 'VOLVER A LA SALA',
     rivalGone: (name, s) => `${name || 'Tu rival'} se desconectó · ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`,
     desync: 'Las partidas se desincronizaron',

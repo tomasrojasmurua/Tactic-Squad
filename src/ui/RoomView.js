@@ -4,7 +4,7 @@
 //           sides with their players (ready, connection), the host's format and map, ELEGIR CLASES,
 //           LISTO (the guest) or EMPEZAR (the host, once the guest is ready)
 // Emits EV.REQUEST {action: 'onlineCreate' {name} | 'onlineJoin' {name, code} | 'room_team_<side>' |
-// 'room_ready' | 'room_map_<id>' | 'room_bestOf_<n>' | 'room_mode_<1v1|2v2>' | 'room_pick' | 'room_start' | 'back'}.
+// 'room_ready' | 'room_map_<id>' | 'room_bestOf_<n>' | 'room_mode_<1v1|2v2|coop>' | 'room_pick' | 'room_start' | 'back'}.
 import { EV } from '../core/events.js';
 import { MAPS } from '../data/maps/index.js';
 import { BEST_OF, MAP_CHOICES } from '../session/Lobby.js';
@@ -119,7 +119,7 @@ export class RoomView {
     // Each side: its players (two seats in a 2v2; an empty one says so) and "pasarme aquí".
     this.sides = TEAMS.map((team) => {
       const box = el('div', `rm-side ${team}`, `<span class="lb-side">${TEAM_LABEL[team]}</span>`);
-      const seats = [0, 1].map(() => {
+      const seats = [0, 1, 2, 3].map(() => {
         const row = el('div', 'lb-player', '<b class="rm-name"></b><span class="st"></span>');
         box.append(row);
         return { row, name: row.firstChild, st: row.lastChild };
@@ -131,7 +131,11 @@ export class RoomView {
       r('.rm-sides').append(box);
       return { team, box, seats, move };
     });
-    this.modes = ['1v1', '2v2'].map((m) => opt(r('.rm-mode'), O.modes[m], `room_mode_${m}`, m));
+    this.modes = ['1v1', '2v2', 'coop'].map((m) => opt(r('.rm-mode'), O.modes[m], `room_mode_${m}`, m));
+    // A coop: the defenders' column says the AI defends and how the soldiers are shared out.
+    this.coopNote = el('p', 'rm-coopnote');
+    setText(this.coopNote, O.coopNote);
+    this.sides[1].move.before(this.coopNote);
     this.bestOf = BEST_OF.map((n) => opt(r('.bestof'), L.bestOf(n), `room_bestOf_${n}`, n));
     this.maps = MAP_CHOICES.map((id) => opt(r('.rm-maps'), MAPS[id] ? MAPS[id].name : L.randomMap, `room_map_${id}`, id));
     this.pick = button('', O.pick, null, 'room_pick');
@@ -201,12 +205,23 @@ export class RoomView {
     const me = room && room.jugadores.find((j) => j.id === o.me);
     this.isHost = !!room && room.anfitrion === o.me;
     const settings = room ? room.ajustes : { duracion: 3, mapa: null, modo: '1v1' };
+    const coop = settings.modo === 'coop';
     const perSide = settings.modo === '2v2' ? 2 : 1;
+    this.coopNote.hidden = !coop;
     for (const s of this.sides) {
       const players = room ? room.jugadores.filter((j) => j.equipo === s.team) : [];
+      // A coop: up to four friends attack; the AI defends (one row that says so).
+      const seatsHere = coop ? (s.team === 'attackers' ? 4 : 1) : perSide;
       s.seats.forEach((seat, k) => {
         const p = players[k];
-        seat.row.hidden = k >= perSide;
+        seat.row.hidden = k >= seatsHere;
+        if (coop && s.team === 'defenders') {
+          setText(seat.name, O.aiDefends);
+          setText(seat.st, '');
+          toggle(seat.row, 'you', false);
+          toggle(seat.row, 'empty', false);
+          return;
+        }
         const mine = !!p && p.id === o.me;
         setText(seat.name, p ? `${p.nombre}${mine ? ` (${O.you})` : ''}${p.id === room.anfitrion ? ' ★' : ''}` : O.free);
         setText(seat.st, !p ? '' : !p.conectado ? O.offline : p.listo || p.id === room.anfitrion ? O.ready : O.notReady);
@@ -214,7 +229,7 @@ export class RoomView {
         toggle(seat.row, 'you', mine);
         toggle(seat.row, 'empty', !p);
       });
-      s.move.hidden = !me || me.equipo === s.team;
+      s.move.hidden = !me || me.equipo === s.team || coop;
     }
     for (const b of this.modes) {
       toggle(b, 'on', b.dataset.key === settings.modo);
@@ -230,7 +245,7 @@ export class RoomView {
       b.hidden = !this.isHost && b.dataset.key === 'random';
     }
     this.hostNote.hidden = this.isHost;
-    const full = room && room.jugadores.length === perSide * 2 && room.jugadores.every((j) => j.conectado);
+    const full = room && (coop ? room.jugadores.length >= 2 : room.jugadores.length === perSide * 2) && room.jugadores.every((j) => j.conectado);
     const guestReady = full && room.jugadores.every((j) => j.id === room.anfitrion || (j.listo && j.conectado));
     if (this.isHost) {
       setText(this.goLabel, !full ? O.startNeedsPlayer : !guestReady ? O.startNeeds : O.start);

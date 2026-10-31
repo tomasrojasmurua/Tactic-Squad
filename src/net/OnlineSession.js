@@ -13,6 +13,7 @@ import { Connection, createRoom, serverUrl } from './Connection.js';
 import { LockstepClient } from './LockstepClient.js';
 import { MAP_CHOICES } from '../session/Lobby.js';
 import { DEFAULT_MAP } from '../data/maps/index.js';
+import { T } from '../ui/texts.js';
 
 const NAME_KEY = 'ts.nombre';
 const tokenKey = (code) => `ts.sala.${code}`;
@@ -234,8 +235,11 @@ export class OnlineSession {
         // The other side's names (the score says them) and, in a 2v2, the teammate's.
         const me = data.jugadores.find((j) => j.id === o.me);
         const others = data.jugadores.filter((j) => j.id !== o.me);
-        o.rival = others.filter((j) => !me || j.equipo !== me.equipo).map((j) => j.nombre).join(' y ');
+        o.coop = data.ajustes.modo === 'coop';
+        // A coop plays against the AI: the score says "IA".
+        o.rival = o.coop ? T.flow.lobby.ai : others.filter((j) => !me || j.equipo !== me.equipo).map((j) => j.nombre).join(' y ');
         o.mate = me ? others.find((j) => j.equipo === me.equipo) || null : null;
+        o.mates = me ? others.filter((j) => j.equipo === me.equipo) : [];
         // The host's room starts on his last map (a concrete one: "al azar" draws now).
         if (data.anfitrion === o.me && !data.ajustes.mapa && data.estado === 'lobby') {
           const pref = this.session.lobby.map;
