@@ -291,10 +291,11 @@ export default {
 
   defense: {
     A: [
-      // Anchor behind the south reefer's end: the bomb at an angle, out of the aisle's line.
-      { at: [55.0, 19.4], facing: -120 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
-      // Between the reefers, by the bomb: the aisle from the yard and the gap to the lane.
-      { at: [53.6, 13.4], facing: 180 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'scan', from: 140 * DEG, to: 220 * DEG, period: 6, reactsToNoise: true } },
+      // Anchor at the fence's corner past the south reefer: the bomb from behind, out of the aisle's line.
+      // (31 oct: anchor and trapper pulled back to the fence and one barricade less — the attackers won 34-37 % here.)
+      { at: [57.0, 17.0], facing: -150 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
+      // Behind the reefers at the fence: the bomb and the aisle from deep.
+      { at: [56.6, 11.0], facing: 200 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'scan', from: 140 * DEG, to: 220 * DEG, period: 6, reactsToNoise: true } },
       // Behind the back row, where the quay meets the yard: holds the quay and the aisle, does not chase.
       { at: [50.6, 7.6], facing: -170 * DEG, weapon: 'rifle', role: 'roamer', behavior: { type: 'hold', reactsToNoise: false } },
       // The lane, by the forklift.
@@ -313,7 +314,7 @@ export default {
   },
 
   aiBarricades: {
-    A: ['consol-carril', 'carga', 'aduana-consol'],
+    A: ['consol-carril'],
     B: ['aduana-consol', 'consol-maquinas', 'carga'],
   },
 

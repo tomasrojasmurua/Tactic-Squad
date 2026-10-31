@@ -142,3 +142,18 @@ En negrita, lo que está fuera de 45-55 %. Las dos tandas coinciden, así que no
 empezar las etapas conviene corregir **el sitio B del Almacén** (sube al atacante) y **el sitio A
 del Puerto** (lo baja) con los datos de cada mapa. Si no, cualquier etapa mide sobre una base
 desequilibrada.
+
+**Corregido el 31 oct** (solo datos de los mapas, sin tocar clases). En el Almacén B, el Trampero y el
+Merodeador pasan a puestos dentro del taller. En el Puerto A, el Ancla y el Trampero se retiran hacia
+la cerca y la IA pone una sola barricada. Resultado con 800 rondas y dos tandas:
+
+| Mapa | Tanda | Total | Sitio A | Sitio B |
+| --- | --- | --- | --- | --- |
+| Almacén | 1-800 | 51 | 47 | 55 |
+| Almacén | 10001-10800 | 51 | 50 | 51 |
+| Hotel (sin cambios) | 1-800 | 45 | 45 | 45 |
+| Hotel (sin cambios) | 10001-10800 | 45 | 42 | 47 |
+| Puerto | 1-800 | 50 | 50 | 49 |
+| Puerto | 10001-10800 | 49 | 46 | 51 |
+
+Esta es la línea base para las etapas. El sitio A del Hotel queda justo en el borde (45/42).
