@@ -92,9 +92,4 @@ export const PROPS = Object.freeze({
   woodpile: { w: 2.0, d: 0.8, h: 1.3, blocksMove: true },
   sawBench: { w: 4.0, d: 1.4, h: 1.1, blocksMove: true },
   bunkBed: { w: 2.0, d: 0.9, h: 1.7, blocksMove: true, blocksVision: true },
-  // the school (Liceo)
-  lockers: { w: 2.4, d: 0.5, h: 1.9, blocksMove: true, blocksVision: true },
-  schoolDesk: { w: 1.1, d: 0.55, h: 0.72, blocksMove: true },
-  bleachers: { w: 6.0, d: 2.0, h: 1.4, blocksMove: true },
-  teacherDesk: { w: 1.6, d: 0.75, h: 0.78, blocksMove: true },
 });

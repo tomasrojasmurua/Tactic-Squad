@@ -138,7 +138,7 @@ for (const [id, map] of Object.entries(MAPS)) {
 }
 
 test('el lobby ofrece los mapas de partida; el de entrenamiento queda para el tutorial', () => {
-  assert.deepEqual(MAP_CHOICES.filter((m) => m !== 'random').sort(), ['forest', 'hotel', 'port', 'school', 'warehouse']);
+  assert.deepEqual(MAP_CHOICES.filter((m) => m !== 'random').sort(), ['embassy', 'forest', 'hotel', 'port', 'warehouse']);
   assert.ok(!MAP_CHOICES.includes(TRAINING_MAP));
   assert.ok(ALL_MAPS[TRAINING_MAP] && ALL_MAPS[DEFAULT_MAP]);
   assert.deepEqual(ALL_MAPS[TRAINING_MAP].size, { w: 40, h: 28 });

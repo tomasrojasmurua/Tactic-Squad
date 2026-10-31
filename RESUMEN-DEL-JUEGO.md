@@ -58,10 +58,12 @@ sitio B en la cámara de frío, tras puertas pesadas. **Operación Aserradero** 
 campamento maderero en el bosque: el lindero con tres portones, un bosque abierto de pinos, rocas y
 troncos cortado por un camino de tierra, y el campamento al este. Sitio A en el galpón de la sierra
 (con su oficina y un depósito a oscuras), sitio B en la cabaña del guarda; el patio de troncos los
-une por fuera. **Operación Liceo** (58 × 36 m), un colegio cerrado de noche: la calle con el bus
-escolar, el ala de aulas al norte, un pasillo de 41 m con casilleros que lo ve todo, y al sur el
-hall, la secretaría a oscuras, el comedor y el gimnasio. Sitio A en la biblioteca, sitio B en el
-gimnasio; los patios que rodean el edificio son los flancos. El tutorial sigue en el almacén original
+une por fuera. **Operación Embajada** (58 × 36 m), un recinto
+amurallado de noche: la avenida con autos diplomáticos, el jardín delantero con la caseta de guardia, la
+cancillería al norte (recepción con escáner, sala consular, oficinas, archivo a oscuras) y la residencia
+del embajador al sur (comedor, estudio, cocina, despensa a oscuras y suite). Sitio A en la sala de
+comunicaciones, sitio B en el salón; el jardín interior los une y el pasillo de servicio es la entrada
+trasera de la cancillería. El tutorial sigue en el almacén original
 (40 × 28 m, fuera del lobby). La ficha de cada mapa nunca sugiere clases.
 La ronda es **3 contra 3**: el mapa trae 4 puestos de defensa por sitio y se usan los 3
 primeros (`config/squad.js` `DEFENDERS`).
@@ -292,7 +294,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 | Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (soportes del mapa a elegir, gratis). Sensor y elección de refuerzos por el defensor: faltan |
 | Paredes blandas destructibles | **Descartado** por decisión de diseño (27 oct 2026): no se implementan |
 | Plazos de las fases | **Parcial.** El reloj existe (`PhaseClock`), pero contra la IA no hay límite |
-| Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Parcial.** Cinco mapas (Almacén, Hotel, Puerto, Aserradero y Liceo; IA contra IA con escuadras al azar, 1.600 rondas por mapa: entre 48 y 51 % para el atacante, cada sitio entre 45 y 55 %). 5v5 y dificultades: faltan |
+| Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Parcial.** Cinco mapas (Almacén, Hotel, Puerto, Aserradero y Embajada; IA contra IA con escuadras al azar, 1.600 rondas por mapa: entre 48 y 52 % para el atacante, cada sitio entre 45 y 56 %). 5v5 y dificultades: faltan |
 | Online | **Falta.** El código está preparado (determinismo, órdenes serializables, grabador de planes, `teamView`). Bloquea que el render lea la sim entera |
 | Equilibrio 45-55 % | **Medido** (29 oct 2026, 600 rondas por mapa, escuadras a ciegas): atacantes 54 % Almacén, 46 % Hotel, 50 % Puerto. Por clase, tabla en `docs/traspaso/CLASES-Y-MAPAS.md` |
 

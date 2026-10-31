@@ -222,7 +222,7 @@ muelle 3, portón 1, aduana 1). Resultado (800 rondas × 2 tandas, % atacante):
 El sitio B del Almacén (55/51 en las dos tandas completas; 53/48 solo en ese sitio) queda dentro de
 la meta y no se tocó.
 
-## Mapas nuevos (1 nov): Aserradero y Liceo
+## Mapas nuevos (1 nov): Aserradero y Embajada
 
 Pedido de Tomás: un par de mapas más, uno en el bosque, equilibrados y tan cuidados como los otros.
 
@@ -244,18 +244,22 @@ angosta), arbusto, roca, peñasco, tocón, troncos sueltos y apilados, leña, la
 nuevo `ground` (`render/shaders/floor.js`): musgo y pasto en manchones, tierra, agujas y ramitas, sin
 juntas de losa.
 
-### Operación Liceo (`school`, 58 × 36 m)
+### Operación Embajada (`embassy`, 58 × 36 m)
 
-Un colegio cerrado de noche. Al oeste está la calle (lado atacante), con el bus escolar y autos, y la
-reja con tres entradas: **canchas**, **escalinata** y **estacionamiento**. El edificio tiene:
-- al norte, dos aulas, la **biblioteca (sitio A)** y la sala de profesores;
-- en el centro, un **pasillo de 41 m** con casilleros que lo ve todo;
-- al sur, el hall, la secretaría (a oscuras), el comedor y el **gimnasio (sitio B)**, con vestuarios
-  y el depósito de material (a oscuras).
+Reemplaza a la Operación Liceo, cuyo concepto Tomás descartó. Es un recinto diplomático amurallado,
+de noche. Al oeste está la avenida (lado atacante) con autos diplomáticos y tres accesos en el muro:
+**lateral** (el portón de servicio, al norte), **avenida** (el portón principal) y **jardín** (al sur).
+Adentro:
+- el jardín delantero, con la caseta de guardia, la entrada de autos y el coche oficial;
+- al norte, la **cancillería**: recepción con escáner de seguridad, sala consular con ventanillas,
+  oficinas, el archivo (a oscuras) y la **sala de comunicaciones (sitio A)**, con sus racks;
+- detrás, el pasillo de servicio, que llega a la puerta trasera de comunicaciones;
+- en el medio, el **jardín interior**, que une los dos edificios;
+- al sur, la **residencia del embajador**: el **salón (sitio B)** con piano y sofás, el comedor, el
+  estudio, la cocina, la despensa (a oscuras) y la suite.
 
-Los patios que rodean el edificio (la cancha al norte y el patio sur) son los flancos. Piezas nuevas:
-casilleros, pupitre, escritorio del profesor y gradas. Pisos nuevos de colegio: linóleo, baldosa de
-aula, parqué de gimnasio y alfombra de biblioteca.
+Piso nuevo `lawn` (el patrón del bosque, más verde). Se borraron las piezas, pisos y textos que solo
+usaba el Liceo.
 
 ### Cómo se equilibraron
 
@@ -266,26 +270,30 @@ escuadras sorteadas) se probaron puestos, barricadas, trampas, cámaras y entrad
   patio (con la del patio quedaba en 40/43 %).
 - **Aserradero B** (56 %): el ancla pasó del fondo de la cocina a la puerta que da a la sala común.
   Meter al merodeador del patio en la cabaña lo subía a 88 %.
-- **Liceo** (24 % al principio): se agregaron el patio sur, con puertas al comedor y al gimnasio, y la
-  puerta de la cancha a profesores. Se ensancharon las puertas de la biblioteca (es de doble hoja) y
-  de las aulas, y el gimnasio ganó cobertura alta: el estante de pelotas y los cajones de colchonetas.
-- **Liceo A**: el merodeador del pasillo barre con la mirada en vez de clavar el oeste. Dentro de la
-  biblioteca dejaba el sitio en 55-63 %; fijo en el pasillo, en 36 %.
-- **Liceo B**: el trampero espera dentro del gimnasio, junto a la puerta doble del pasillo, sin
-  perseguir ruidos, y la IA atacante reparte sus entradas por igual.
+- **Embajada A** (43/44 % al principio): el ancla dejó la esquina del fondo de comunicaciones y se
+  puso junto a la puerta del archivo, y el merodeador de las oficinas sostiene su puerta sin replegarse.
+  La barricada de la puerta consular es la que le da su chance al atacante: con la barricada en otra
+  puerta, o sin ninguna, el sitio caía a 16-28 %.
+- **Embajada B** (42/42 %): la IA atacante reparte sus entradas por igual entre las tres.
 
-**Arreglo de la simulación** que destapó el Liceo: un soldado de la IA que debía pararse "al costado del
-marco" de una puerta del pasillo recibía un punto unos milímetros dentro del margen de la pared.
-Caminaba contra la pared hasta que se acababa la ronda (11 de cada 100 rondas del Liceo terminaban por
-tiempo). Ahora, si lleva un rato trabado a menos de 30 cm de su punto, cuenta como que llegó
-(`MOVE.stuckArrive`). En el Almacén no cambia ninguna ronda de las primeras 100.
+**Arreglos de la simulación** que destaparon los mapas nuevos:
+- **Punto inalcanzable.** Un soldado de la IA que debía pararse "al costado del marco" de una puerta
+  recibía un punto unos milímetros dentro del margen de la pared, y caminaba contra la pared hasta
+  que se acababa la ronda (11 de cada 100 rondas del Liceo). Ahora, si lleva un rato trabado a menos
+  de 30 cm de su punto, cuenta como que llegó (`MOVE.stuckArrive`).
+- **Bloqueo mutuo en una puerta** (Embajada: 10 de cada 100 rondas terminaban por tiempo). Uno
+  esperaba a un lado de la puerta a que su compañero la cruzara primero, y el compañero frenaba detrás
+  de él como si caminara adelante. Quien espera su turno en una puerta (`waitDoor`) ya no frena a los
+  que vienen atrás, igual que quien espera el GO. Esto también pasaba en el Puerto, donde favorecía a la
+  defensa: su sitio B subió a 59 % y se corrigió haciendo que la IA atacante entre a B por la aduana 3
+  de cada 5 veces.
 
-Resultado (800 rondas × 2 tandas, % atacante; los tres mapas viejos no cambiaron con el arreglo):
+Resultado (800 rondas × 2 tandas, % atacante, con los dos arreglos):
 
 | Mapa | Total | Sitio A | Sitio B |
 | --- | --- | --- | --- |
-| Almacén | 50 / 50 | 45 / 49 | 55 / 51 |
-| Hotel | 49 / 47 | 52 / 49 | 47 / 45 |
-| Puerto | 50 / 49 | 48 / 49 | 52 / 50 |
-| Aserradero | 50 / 51 | 51 / 54 | 49 / 48 |
-| Liceo | 50 / 51 | 50 / 51 | 50 / 52 |
+| Almacén | 50 / 50 | 45 / 49 | 56 / 51 |
+| Hotel | 50 / 47 | 53 / 49 | 47 / 45 |
+| Puerto | 52 / 50 | 52 / 49 | 51 / 50 |
+| Aserradero | 50 / 51 | 50 / 54 | 49 / 48 |
+| Embajada | 48 / 52 | 47 / 49 | 48 / 54 |
