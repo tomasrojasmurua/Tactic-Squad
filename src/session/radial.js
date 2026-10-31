@@ -7,7 +7,7 @@
 //   door point  how he goes through: open (up), kick, flash, grenade, charge (down), crack, fiber
 //               camera (the Explorador), and where he looks after
 //   point       pace (up), cover, flash, grenade, smoke, incendiaria / gas, peek, look
-//   himself     squad in file (up), cover, and the throws from where he stands
+//   himself     squad in file (up), cover, the throws from where he stands, and reload
 //
 //   option = {id, slot, action, enabled, active, item?, mode?}
 //   action: the EV.REQUEST that applies it once the point is targeted (SessionController.radialApply)
@@ -46,6 +46,7 @@ export function radialOptions(sim, session, unitId, index) {
     const options = [{ id: 'squad', slot: 0, action: 'squad', enabled: sim.teams[u.team].some((o) => o.alive && o !== u), active: false }];
     if (u.team === 'attackers' && !u.route.length) options.push({ id: 'cover', slot: 1, action: 'cover', enabled: true, active: !!u.cover });
     options.push(...tossOptions(u, -1, null));
+    options.push({ id: 'reload', slot: 6, action: 'reload', enabled: u.mag < u.weapon.magazine && u.reserve > 0, active: !!u.reloadNow });
     return { kind: 'here', options };
   }
   const p = u.route[index];

@@ -43,6 +43,7 @@
 //   {type:'unfollow', unitId}                  back to his own orders (the route he had stays)
 //   {type:'undoWaypoint', unitId}              removes the last user waypoint (and its leg)
 //   {type:'clearRoute', unitId}                also cancels an entry he is preparing
+//   {type:'reload', unitId, atTick?}           RECARGAR: a fresh magazine at the next step (behind cover, before going in)
 //   {type:'go', code?, atTick?}                during a turn ("now!"): releases the units waiting for that code
 //                                              (none given: the first code someone waits for); whoever is still
 //                                              on the way to a hold of it goes straight through when he gets
@@ -145,8 +146,8 @@ const PHASE_ORDERS = Object.freeze({
   buy: ['buy'],
   prep: [...ROUTE_ORDERS, 'chooseEntry', 'chooseSite', 'placeUnit', 'setWatch', 'barricade', 'wire', 'placeTrap', 'camera', 'endRecon'],
   drone: ['drone', 'droneRecall'],
-  plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry', 'setWatch'],
-  exec: ['go'],
+  plan: [...ROUTE_ORDERS, 'defuseNow', 'chooseEntry', 'setWatch', 'reload'],
+  exec: ['go', 'reload'],
   end: [],
 });
 
@@ -188,6 +189,10 @@ export function applyCommand(sim, cmd, by = 'human') {
   if (!unit || !unit.alive || !obeys(sim, unit, cmd, by)) return;
   if (unit.follow && OWN_ROUTE_ORDERS.includes(cmd.type)) unit.follow = null;
   switch (cmd.type) {
+    case 'reload':
+      // RECARGAR: a fresh magazine at the turn's next step (to do it behind cover, before going in).
+      if (unit.mag < unit.weapon.magazine && unit.reserve > 0) unit.reloadNow = true;
+      return;
     case 'buy':
       return refuse(sim, unit.id, buyItem(sim, unit, cmd.item, cmd.count ?? 1));
     case 'placeUnit':

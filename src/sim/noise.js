@@ -33,6 +33,8 @@ function kindOf(ev) {
       return ev.sneak ? 'sneak' : 'step';
     case EV.SHOT:
       return 'shot';
+    case EV.RELOAD:
+      return 'reload'; // the magazine out and in: heard up close
     case EV.DOOR_OPEN:
       return ev.mode === 'kick' ? 'kick' : ev.mode === 'crack' ? 'crack' : 'door';
     case EV.CHARGE_PLANT:
