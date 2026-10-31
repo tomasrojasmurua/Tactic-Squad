@@ -77,6 +77,8 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     points: 0, // utility points left to buy with (buy phase / preparation: sim/prep.js)
     bash: null, // breaking a barricade: {door, t, next} (sim/barricades.js)
     blind: 0, // s flashed / stunned: sees nothing, does not shoot
+    wounds: { leg: false, arm: false }, // lasting wounds (sim/wounds.js)
+    bleed: 0, // m walked since his last blood drop
     stress: 0, // 0-1 suppression (sim/stress.js): worse aim and reaction, a moment flat at the top
     stressCalm: 0, // s since the last thing that stressed him
     pinned: 0, // s flat on the floor (suppressed): he does not walk

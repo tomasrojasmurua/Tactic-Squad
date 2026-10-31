@@ -18,6 +18,7 @@ import { TEAMS } from '../config/squad.js';
 import { roleFlag } from '../config/operators.js';
 import { enemyTeam } from './queries.js';
 import { dcos, dsin, sq } from '../core/dmath.js';
+import { woundStepNoise } from './wounds.js';
 
 export function createNoise() {
   const pulses = {};
@@ -66,7 +67,8 @@ export function collectNoise(sim, from) {
     if (!src) continue;
     const listener = enemyTeam(src.team);
     // A Merodeador's steps and suppressed shots carry less.
-    const r = NOISE.radius[kind] * (kind === 'step' ? src.mods.stepNoise : kind === 'shot' ? src.mods.shotNoise : 1);
+    const steps = kind === 'step' || kind === 'sneak';
+    const r = NOISE.radius[kind] * (kind === 'step' ? src.mods.stepNoise : kind === 'shot' ? src.mods.shotNoise : 1) * (steps ? woundStepNoise(src) : 1);
     const r2 = r * r;
     let heard = false;
     let exact = false;

@@ -37,6 +37,7 @@ import { createIntel, updateBash, spotBarricades } from './barricades.js';
 import { spotWires, updateWires } from './wires.js';
 import { updateEars } from './ears.js';
 import { updateStress } from './stress.js';
+import { spotBlood } from './wounds.js';
 
 export class Simulation {
   /**
@@ -96,6 +97,7 @@ export class Simulation {
     this.fires = []; // incendiaria pools burning (sim/fire.js)
     this.gases = []; // tear gas clouds (sim/gas.js)
     this.parapets = []; // the Ancla's barriers, set up as the assault begins (sim/parapets.js)
+    this.blood = []; // drops left by the badly hurt (sim/wounds.js)
     this.fireSeq = 0;
     this.smokeDirty = false;
     this.grenadeSeq = 0;
@@ -303,6 +305,7 @@ export class Simulation {
     for (const u of this.units) if (u.alive) updateCombat(this, u, dt);
     updateAbilities(this, dt);
     updateStress(this, dt); // suppression eases off; past its top, a moment flat (sim/stress.js)
+    spotBlood(this); // the blood the other side has seen (sim/wounds.js)
     updateObjectives(this, dt);
     if (this.round.enabled) collectNoise(this, firstEvent);
     afterTick(this, endRound);

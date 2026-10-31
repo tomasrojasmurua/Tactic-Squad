@@ -165,6 +165,7 @@ export class OverlayLayer {
 
     this.cameras(t, g, sim, own, mpp, time, own === 'defenders' && (session.phase === 'prep' || session.phase === 'drone'));
     this.traps(t, sim, own, mpp);
+    this.blood(g, sim, own);
     this.fires(t, sim, frame);
     this.smokes(t, sim, frame);
     this.gases(t, sim, frame);
@@ -697,6 +698,21 @@ export class OverlayLayer {
       const wob = 0.05 * Math.sin(frame.time * 1.7 + g.y);
       t.circle(g.x, g.y, g.r * (1.04 + wob), rgba(c[0], c[1], c[2], 0.26), 28, rgba(c[0], c[1], c[2], 0.12));
       t.ring(g.x, g.y, g.r * (1 + wob), 0.05, rgba(c[0], c[1], c[2], 0.35), 32);
+    }
+  }
+
+  /**
+   * Blood drops of the badly hurt (sim/wounds.js): his own side sees its trail; the other side only
+   * the drops one of its soldiers has seen. Dark, irregular, on the floor.
+   */
+  blood(g, sim, own) {
+    let k = 0;
+    for (const d of sim.blood) {
+      k++;
+      if (d.team !== own && !d.known) continue;
+      const r = 0.08 + ((k * 37) % 5) * 0.012; // a little uneven, the same every frame
+      g.circle(d.x, d.y, r, rgba(0.32, 0.03, 0.03, 0.85), 10, rgba(0.32, 0.03, 0.03, 0.4));
+      g.circle(d.x + r * 0.7, d.y - r * 0.4, r * 0.45, rgba(0.36, 0.04, 0.04, 0.7), 8);
     }
   }
 

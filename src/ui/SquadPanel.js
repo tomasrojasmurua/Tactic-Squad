@@ -145,6 +145,9 @@ function setStatus(node, u, sim) {
   } else if (u.target >= 0) {
     text = S.combat;
     cls = 'alert';
+  } else if ((u.wounds.leg || u.wounds.arm) && !u.moving && !u.waitingGo) {
+    text = S.wounded;
+    cls = 'alert';
   } else if (u.reloadTimer > 0) {
     text = S.reloading;
   } else if (u.entry && u.entry.phase === 'prep') {
