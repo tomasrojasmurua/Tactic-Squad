@@ -1437,3 +1437,7 @@ body.cine .banner { opacity: 0.45; }
 body.radial-on .entry-picker, body.radial-on .ptag { opacity: 0.25; }
 @keyframes radialIn { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
 body.touch .card.squad-all { display: none !important; } /* touch: ESCUADRA is in the operator's radial */
+
+/* Suppression (ui/Hud.js, sim/stress.js): the edges close in, darker, while the squad is under fire. */
+.suppress-vignette { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.25s; background: radial-gradient(ellipse at center, transparent 45%, rgba(4, 5, 6, 0.55) 72%, rgba(0, 0, 0, 0.85) 100%); }
+.unit-sheet .us-stress { color: #ff9a7a; }

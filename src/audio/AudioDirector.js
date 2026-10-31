@@ -17,6 +17,7 @@ import { weaponSoundNames, gunLayerNames, GUN_LAYERS } from './recipes/index.js'
 import { acousticsAt, impactSoundFor, nearMiss } from './surfaces.js';
 import { Ambience } from './Ambience.js';
 import { Music } from './Music.js';
+import { squadStress } from '../sim/queries.js';
 
 /** Route edit kind (EV.ROUTE_CHANGED) -> UI cue. */
 const ROUTE_CUES = Object.freeze({ add: 'waypoint', look: 'look', undo: 'undo', clear: 'undo', hold: 'hold' });
@@ -317,6 +318,8 @@ export class AudioDirector {
       this.e.setPaused(paused);
     }
     this.ambience.update(dt, this.spatialize.listener ? this.spatialize.listener() : { x: 0, y: 0 });
+    // Suppression of the viewer's squad (sim/stress.js) muffles the world while it lasts.
+    if (!paused) this.e.setMuffle(this.sim ? squadStress(this.sim, this.viewer.team) : 0);
     this.music.update(dt);
     // Bomb beeps speed up with the defuse progress.
     const progress = this.sim ? defuseProgress(this.sim) : -1;

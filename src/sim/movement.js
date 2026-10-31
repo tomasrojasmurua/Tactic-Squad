@@ -106,6 +106,7 @@ export function updateMovement(sim, u, dt) {
     u.pause = Math.max(0, u.pause - dt); // peeking: he holds the look of the point, then walks on
     return resetStuck(u);
   }
+  if (u.pinned > 0) return resetStuck(u); // suppressed: flat on the floor a moment (sim/stress.js)
   if (u.waitingGo || u.entry || u.bash || u.goDelay > 0 || !u.route.length) return resetStuck(u);
   if (u.waitDoor >= 0) {
     if (doorClaimed(sim, u, u.waitDoor)) return resetStuck(u); // a teammate is still to go through it: after him

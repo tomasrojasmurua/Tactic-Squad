@@ -36,6 +36,7 @@ import { updateDrone } from './drone.js';
 import { createIntel, updateBash, spotBarricades } from './barricades.js';
 import { spotWires, updateWires } from './wires.js';
 import { updateEars } from './ears.js';
+import { updateStress } from './stress.js';
 
 export class Simulation {
   /**
@@ -301,6 +302,7 @@ export class Simulation {
     updateWires(this); // sim/wires.js: an attacker stepping into barbed wire rattles it
     for (const u of this.units) if (u.alive) updateCombat(this, u, dt);
     updateAbilities(this, dt);
+    updateStress(this, dt); // suppression eases off; past its top, a moment flat (sim/stress.js)
     updateObjectives(this, dt);
     if (this.round.enabled) collectNoise(this, firstEvent);
     afterTick(this, endRound);

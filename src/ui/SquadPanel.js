@@ -139,6 +139,9 @@ function setStatus(node, u, sim) {
   } else if (u.blind > 0) {
     text = S.blind;
     cls = 'alert';
+  } else if (u.pinned > 0 || u.stress >= 0.5) {
+    text = S.suppressed;
+    cls = 'alert';
   } else if (u.target >= 0) {
     text = S.combat;
     cls = 'alert';

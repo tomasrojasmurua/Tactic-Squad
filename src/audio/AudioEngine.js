@@ -14,6 +14,8 @@ import { SoundBank } from './SoundBank.js';
 import { VoicePool } from './VoicePool.js';
 import { createImpulse } from './reverb.js';
 
+const STRESS_MUFFLE_HZ = 1300; // the world's low-pass at full suppression (setMuffle)
+
 const dbToGain = (db) => Math.pow(10, db / 20);
 const gainNode = (ctx, v) => {
   const g = ctx.createGain();
@@ -222,8 +224,23 @@ export class AudioEngine {
   }
 
   /** Tactical pause: muffle the world (tails keep ringing), filter the music. */
+  /**
+   * Suppression (sim/stress.js) of the viewer's squad, 0-1: the world sounds muffled, like through
+   * ringing ears (the pause's low-pass, opened back up as it eases off).
+   */
+  setMuffle(k) {
+    if (!this.ctx || this.paused) return;
+    const q = Math.round(k * 20) / 20; // a few steps: no automation every frame
+    if (q === this.muffle) return;
+    this.muffle = q;
+    const hz = PAUSE.openHz * Math.pow(STRESS_MUFFLE_HZ / PAUSE.openHz, q);
+    this.pauseFilter.frequency.setTargetAtTime(hz, this.now, 0.15);
+  }
+
   setPaused(on) {
     if (!this.ctx) return;
+    this.paused = on;
+    this.muffle = -1;
     const t = this.now;
     const s = PAUSE.seconds;
     this.pauseFilter.frequency.setTargetAtTime(on ? PAUSE.lowpassHz : PAUSE.openHz, t, s);
