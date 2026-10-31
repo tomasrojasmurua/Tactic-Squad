@@ -4,8 +4,8 @@
 // Every option keeps its place on an 8-slot ring (0 = up, clockwise) whatever the context, so
 // the hand learns it: a flash is always to the right, a grenade down-right, a smoke down.
 //
-//   door point  how he goes through: open (up), kick, flash, grenade, charge (down), crack, fiber
-//               camera (the Explorador), and where he looks after
+//   door point  how he goes through: open (up), kick, flash, grenade, charge (down), mirror (the
+//               Explorador: his fiber-optic camera there instead), cutting the pie, and where he looks after
 //   point       pace (up), cover, flash, grenade, smoke, incendiaria / gas, peek, look
 //   himself     squad in file (up), cover, the throws from where he stands, and reload
 //
@@ -20,7 +20,7 @@ export const RADIAL = Object.freeze({
   maxPx: 170, // beyond this the finger has left the menu: release cancels
 });
 
-const DOOR_SLOTS = Object.freeze({ none: 0, kick: 1, flash: 2, frag: 3, breach: 4, slow: 5, cam: 6 });
+const DOOR_SLOTS = Object.freeze({ none: 0, kick: 1, flash: 2, frag: 3, breach: 4, mirror: 5, cam: 5, pie: 6 });
 const TOSS_SLOTS = Object.freeze({ flash: 2, frag: 3, smoke: 4, molotov: 5, gas: 5 });
 
 function tossOptions(u, at, p) {
@@ -58,7 +58,7 @@ export function radialOptions(sim, session, unitId, index) {
     const current = p.ask || p.toss ? null : p.entry || 'none';
     const options = [];
     for (const [mode, slot] of Object.entries(DOOR_SLOTS)) {
-      if (mode === 'cam' && u.ability !== 'fiberCam') continue;
+      if (mode === (u.ability === 'fiberCam' ? 'mirror' : 'cam')) continue; // one slot: the camera, or the mirror
       const item = ENTRY_GEAR[mode] || null;
       const left = item ? gearLeft(u, item, index) : -1;
       const enabled = mode === 'none' || (entryModeFits(sim, k, mode, u) && (!item || left > 0 || current === mode));

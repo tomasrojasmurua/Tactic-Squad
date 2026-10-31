@@ -152,7 +152,9 @@ function setStatus(node, u, sim) {
   } else if (u.reloadTimer > 0) {
     text = S.reloading;
   } else if (u.entry && u.entry.phase === 'prep') {
-    text = u.entry.mode === 'breach' ? S.planting : u.entry.mode === 'cam' ? S.threading : S.cracking;
+    text = u.entry.mode === 'breach' ? S.planting : u.entry.mode === 'cam' ? S.threading : S.mirroring;
+  } else if (u.entry && u.entry.phase === 'act' && u.entry.step === 'pie') {
+    text = S.cutting;
   } else if (u.entry && u.entry.phase === 'act') {
     // A throw from a doorway carries its item as the mode; a toss to any point, as `item`.
     text = u.entry.mode === 'breach' ? S.firing : S.throwing[u.entry.mode === 'toss' ? u.entry.item : u.entry.mode] || S.throwing.any;

@@ -1,6 +1,6 @@
 // Barricades in the assault. A barricaded door (door.barricaded, put up by
 // the defenders in the preparation: sim/prep.js) stays shut: it blocks
-// bodies, sight, bullets and the drone, and cannot be opened, cracked or
+// bodies, sight, bullets and the drone, and cannot be opened or
 // kicked open. An attacker who tries any of that starts breaking it
 // instead (unit.bash): BARRICADE.breakTime standing at it, loud blows,
 // paused while he fights. A breach charge blows it at once. Either way the

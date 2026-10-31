@@ -108,7 +108,8 @@ export const T = Object.freeze({
     dead: 'Abatido',
     waitingGo: 'Esperando GO',
     waitingCode: (c) => `Esperando ${goName(c)}`,
-    cracking: 'Entreabriendo',
+    mirroring: 'Pasando el espejo',
+    cutting: 'Despejando por cortes',
     planting: 'Colocando carga',
     threading: 'Pasando la cámara',
     throwing: { flash: 'Lanzando flash', frag: 'Lanzando granada', smoke: 'Lanzando humo', molotov: 'Lanzando incendiaria', gas: 'Disparando gas', any: 'Lanzando' },
@@ -149,6 +150,8 @@ export const T = Object.freeze({
     flash: '¡Flash!',
     smoke: '¡Humo!',
     down: '¡Abatido!',
+    glint: '¡Un espejo en la puerta!',
+    mirrorBroken: '¡Me rompieron el espejo!',
   },
 
   /** The touch radial (ui/RadialMenu.js): its title and option names. */
@@ -236,12 +239,13 @@ export const T = Object.freeze({
     now: 'Ya',
     close: 'Cerrar',
     none: 'Abrir',
-    modes: { kick: 'Patada', slow: 'Entreabrir', flash: 'Flash', frag: 'Granada', breach: 'Carga', cam: 'Cámara' },
-    tags: { kick: 'PATADA', slow: 'ENTREABRIR', flash: 'FLASH', frag: 'GRANADA', breach: 'CARGA', cam: 'CÁMARA', wait: 'ESPERA' },
+    modes: { kick: 'Patada', mirror: 'Espejo', pie: 'Cortes', flash: 'Flash', frag: 'Granada', breach: 'Carga', cam: 'Cámara' },
+    tags: { kick: 'PATADA', mirror: 'ESPEJO', pie: 'CORTES', flash: 'FLASH', frag: 'GRANADA', breach: 'CARGA', cam: 'CÁMARA', wait: 'ESPERA' },
     hints: {
       none: 'Abre la puerta y pasa',
       kick: 'De golpe: sin pausa, aturde al de detrás. Ruidosa',
-      slow: 'Al llegar la entorna y mira por la rendija (una franja de la sala); con el GO pasa',
+      mirror: 'Al llegar se agacha y pasa un espejo bajo la puerta: ve una parte baja y cercana de la sala. Si lo ven, se lo rompen de un tiro; con el GO pasa',
+      pie: 'Con el GO abre y, desde el marco, revisa los ángulos de la sala uno por uno antes de entrar: más lento, pero entra más alerta',
       flash: 'Desde el costado del marco: con el GO abre y lanza un flash; el resto espera el estallido',
       frag: 'Desde el costado del marco: con el GO abre y lanza una granada; el resto espera el estallido',
       breach: 'Desde el costado del marco: al llegar coloca la carga; el GO revienta la puerta',
@@ -539,6 +543,7 @@ export const T = Object.freeze({
     trapFound: { sight: 'Trampa en el suelo a la vista', drone: 'El dron encontró una trampa', scout: 'El Explorador vio una trampa' },
     trapDown: (n) => `${n} rompió una trampa`,
     fiberCam: (n) => `${n} pasa la cámara bajo la puerta`,
+    mirrorBroken: (n) => `Le rompieron el espejo a ${n}`,
   },
 
   help: {
@@ -557,7 +562,7 @@ export const T = Object.freeze({
       ['Clic derecho (arrastrar)', 'Fijar dirección de mirada del último punto'],
       ['H', 'El último punto espera a un grupo GO (violeta → rosa → blanco → sin espera)'],
       ['T', 'Paso sigiloso en el último tramo (lento y casi sin ruido); otra vez: normal'],
-      ['E', 'Cómo entra por la puerta junto al último punto: abrir, patada, entreabrir, flash, granada, carga'],
+      ['E', 'Cómo entra por la puerta junto al último punto: abrir, patada, espejo, cortes, flash, granada, carga'],
       ['Z · X · C (o G)', 'Durante el turno: ¡ahora! GO violeta · rosa · blanco (G: el primero listo). Los que aún no llegan, siguen de largo'],
       ['Retroceso / Z', 'Deshacer último punto (al planificar)'],
       ['X / Supr', 'Borrar ruta (al planificar)'],

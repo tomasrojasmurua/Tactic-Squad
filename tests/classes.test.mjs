@@ -65,7 +65,7 @@ test('Explorador: pasa la cámara de fibra bajo la puerta cerrada y ve la sala s
   const events = runFor(sim, 3);
   assert.deepEqual(rejected(events), []);
   assert.equal(c.entry?.mode, 'cam');
-  assert.ok(!office.open && !office.cracked, 'la puerta sigue cerrada');
+  assert.ok(!office.open, 'la puerta sigue cerrada');
   assert.ok(events.some((e) => e.type === EV.FIBER_CAM && e.unitId === c.id));
   const eye = {};
   assert.ok(peekEye(sim, c, eye), 'mira bajo la puerta');
@@ -77,7 +77,7 @@ test('Explorador: pasa la cámara de fibra bajo la puerta cerrada y ve la sala s
       if (canSee(sim.world, eye, x, y, eye)) seen++;
     }
   }
-  assert.ok(seen / all > 0.4, `ve ${((100 * seen) / all).toFixed(0)} % de la sala (más que por una rendija)`);
+  assert.ok(seen / all > 0.4, `ve ${((100 * seen) / all).toFixed(0)} % de la sala (más que con el espejo)`);
   assert.ok(sim.memory.attackers.has(d0.id), 'el defensor de adentro queda marcado');
   assert.ok(d0.seenByEnemy);
   assert.ok(!events.some((e) => e.type === EV.DOOR_OPEN), 'no hizo ruido de puerta');

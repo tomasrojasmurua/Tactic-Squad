@@ -7,7 +7,7 @@
 // A door nobody decides is simply opened on the way (ENTRY.undecided).
 //
 //   CÓMO    at a door, a wheel around the point with every entry (open,
-//           kick, charge, grenade, flash, crack); modes that do not fit the
+//           kick, charge, grenade, flash, mirror, cutting the pie); modes that do not fit the
 //           doorway or need gear he no longer has are disabled, gear left is
 //           shown; the hub closes it. The rest sits in a panel beside it
 //   CUÁNDO  right away, or with a GO group (a color: config/ui.js GO_GROUPS)
@@ -30,7 +30,7 @@ import { ENTRY_ICON } from './icons.js';
 import { T } from './texts.js';
 
 // The door wheel: every entry around the door point, clockwise from the top.
-const WHEEL = ['none', 'kick', 'breach', 'frag', 'flash', 'slow', 'cam']; // 'cam': only for whoever carries the fiber-optic camera
+const WHEEL = ['none', 'kick', 'breach', 'frag', 'flash', 'mirror', 'cam', 'pie']; // 'cam' instead of 'mirror' for whoever carries the fiber-optic camera
 const GAP_PX = 26; // between the point and the popover (a point away from doors)
 const EDGE_PX = 8; // kept from the screen edges
 const RING_R = 64; // px from the door point to the center of each wheel button
@@ -122,7 +122,7 @@ export class EntryPicker {
     const key = cam ? 'cam' : 'plain';
     if (this.wheelKey === key) return;
     this.wheelKey = key;
-    const modes = WHEEL.filter((m) => cam || m !== 'cam');
+    const modes = WHEEL.filter((m) => m !== (cam ? 'mirror' : 'cam'));
     for (const [mode, { b }] of this.buttons) {
       const n = modes.indexOf(mode);
       b.hidden = n < 0;

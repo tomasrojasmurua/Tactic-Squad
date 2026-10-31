@@ -38,6 +38,9 @@ export class FxDirector {
     bus.on(EV.GO_CODE, () => this.onGo());
     bus.on(EV.HOLD_REACHED, (e) => this.pingUnit(e.unitId, 'hold'));
     bus.on(EV.FIBER_CAM, (e) => this.pingUnit(e.unitId, 'scout')); // the Explorador's camera under a door
+    // A mirror under a door: the side that caught its glint sees it; the one that loses it sees it break.
+    bus.on(EV.MIRROR_SEEN, (e) => e.team === this.viewer.team && this.overlay.ping(e.x, e.y, 'glint', -1, this.realClock()));
+    bus.on(EV.MIRROR_BROKEN, (e) => e.team === this.viewer.team && this.overlay.ping(e.x, e.y, 'kill', -1, this.realClock()));
     bus.on(EV.GRENADE_DETONATE, (e) => (e.kind === 'smoke' || e.kind === 'molotov' || e.kind === 'gas' ? null : e.kind === 'flash' ? this.onFlash(e) : this.onBlast(e.x, e.y, 0, 0, FX.shake.frag)));
     bus.on(EV.CHARGE_BLAST, (e) => this.onBreach(e));
     bus.on(EV.BARRICADE_BROKEN, (e) => e.how === 'bash' && this.onDoor({ ...e, mode: 'kick' }));
@@ -263,7 +266,6 @@ export class FxDirector {
   }
 
   onDoor(e) {
-    if (e.mode === 'crack') return; // eased ajar: no dust, no shake
     const P = this.particles;
     // Dust ring pushed out of the doorway + a few wood splinters.
     for (let i = 0; i < 12; i++) {

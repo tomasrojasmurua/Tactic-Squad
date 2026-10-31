@@ -173,6 +173,7 @@ export class Hud {
       const u = this.sim && this.sim.units[e.unitId];
       if (u && u.team === this.viewer.team) this.pushInfo(T.feed.fiberCam(u.name));
     });
+    bus.on(EV.MIRROR_BROKEN, (e) => e.team === this.viewer.team && this.pushInfo(T.feed.mirrorBroken(this.sim.units[e.unitId].name)));
     // Defender cameras (sim/cameras.js), told to the attackers.
     bus.on(EV.CAMERA_FOUND, (e) => this.viewer.team === 'attackers' && this.pushInfo(e.byDrone ? T.feed.cameraFoundDrone : T.feed.cameraFound));
     bus.on(EV.CAMERA_SPOT, () => this.viewer.team === 'attackers' && this.pushInfo(T.feed.cameraSpot));

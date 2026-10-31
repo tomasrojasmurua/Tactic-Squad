@@ -303,7 +303,8 @@ function spot(sim, site, i) {
  * AI_ATTACK.flashers operators with a flashbang throw one (a known
  * barricade: the first with a charge blows it); the others follow on the
  * same code, right after the bang; an Explorador among them looks under
- * the door with his fiber-optic camera while they wait.
+ * the door with his fiber-optic camera while they wait. A door with no
+ * flash for it is cleared by slicing the pie (ENTRY.pie) by the first one in.
  */
 function stackDoors(sim, squad, plan = {}) {
   const doors = [];
@@ -336,8 +337,15 @@ function stackDoors(sim, squad, plan = {}) {
       } else if (mode || u.route[i].ask) order(sim, { type: 'setEntry', unitId: u.id, mode, index: i });
     };
     for (const [u, mode] of throwers) order1(u, mode);
-    // The Explorador waiting with them looks under the door with his camera meanwhile.
-    for (const u of stacked) if (!throwers.some(([t]) => t === u)) order1(u, code && !barricade && entryModeFits(sim, k, 'cam', u) ? 'cam' : null);
+    // The Explorador waiting with them looks under the door with his camera meanwhile. With no
+    // flash for that door the first one in clears it by slicing the pie from the frame instead.
+    let slicer = !throwers.length && code && !barricade;
+    for (const u of stacked) {
+      if (throwers.some(([t]) => t === u)) continue;
+      const cam = code && !barricade && entryModeFits(sim, k, 'cam', u);
+      order1(u, cam ? 'cam' : slicer ? 'pie' : null);
+      if (!cam && slicer) slicer = false;
+    }
   });
 }
 

@@ -19,6 +19,6 @@ MULTIJUGADOR (decidido): 1v1 (3 soldados por jugador) y 2v2 (4 soldados por equi
 
 GRÁFICOS (decidido): seguir con el render WebGL2 propio, no migrar a Three.js. Plan por etapas en `docs/diseno/graficos-realismo.md` (rama `claude/graficos-realismo`). Va después del multijugador.
 
-DECISIONES QUE NO SE REABREN: no hay paredes destructibles ni blandas. No hay pausa táctica al contacto. No hay economía de dinero. Entreabrir solo deja ver la franja de la rendija. Los defensores del jugador nunca se mueven solos. Las rondas no se repiten. No se migra a Three.js.
+DECISIONES QUE NO SE REABREN: no hay paredes destructibles ni blandas. No hay pausa táctica al contacto. No hay economía de dinero. Entreabrir ya no existe: lo reemplazó el espejo (31 oct). Los defensores del jugador nunca se mueven solos. Las rondas no se repiten. No se migra a Three.js.
 
 ---

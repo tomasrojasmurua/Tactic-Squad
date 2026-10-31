@@ -13,7 +13,7 @@
 //   {type:'setHold', unitId, code, index?}     that waypoint (default: last) waits for `code` ('A'|'B'|'C'; null: no hold;
 //                                              index 'here' as for setToss)
 //   {type:'setEntry', unitId, mode, index?}    how he goes through the doorway next to that waypoint (default: last):
-//                                              ENTRY.modes ('kick'|'slow'|'flash'|'frag'|'breach'|'cam') or null (just walk through).
+//                                              ENTRY.modes ('kick'|'mirror'|'pie'|'flash'|'frag'|'breach'|'cam') or null (just walk through).
 //                                              A throw or a charge moves the point beside the frame (ENTRY.beside),
 //                                              the others back in front of the door: its index may change
 //                                              (EV.ROUTE_CHANGED moved)

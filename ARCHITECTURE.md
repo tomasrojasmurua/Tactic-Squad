@@ -145,8 +145,8 @@ canStep?  (en fases de decisión el tiempo no corre)
 | `vision.js` | Línea de vista y polígonos de visibilidad. Geometría pura sobre la lista de segmentos, **compartida** por la percepción y la niebla de guerra: lo que ves en pantalla es exactamente lo que la sim considera visible |
 | `perception.js` | Quién ve a quién en este paso, adquisición de blanco y tiempos de reacción |
 | `combat.js` | Disparo: retardo de reacción, ráfagas, dispersión y retroceso, balas hitscan, cobertura baja, daño por parte del cuerpo |
-| `doors.js` | Puertas con bisagra: abrir, entreabrir, patear, volar. La geometría de la hoja alimenta LOS y balas |
-| `entries.js` | Entradas a puerta estilo Door Kickers: `kick`, `slow` (entreabrir), `flash`, `frag`, `breach`, armadas en un punto de ruta y liberadas con un GO. Una puerta sin decidir se abre al pasar (`ENTRY.undecided = 'open'`). También el **lanzamiento libre** (`armToss`, modo `toss`): flash, granada o humo a un punto, cortado por `queries.tossLanding` |
+| `doors.js` | Puertas con bisagra: abrir, patear, volar. La geometría de la hoja alimenta LOS y balas |
+| `entries.js` | Entradas a puerta estilo Door Kickers: `kick`, `mirror` (espejo bajo la puerta), `pie` (despejar por cortes), `flash`, `frag`, `breach`, armadas en un punto de ruta y liberadas con un GO. Una puerta sin decidir se abre al pasar (`ENTRY.undecided = 'open'`). También el **lanzamiento libre** (`armToss`, modo `toss`): flash, granada o humo a un punto, cortado por `queries.tossLanding` |
 | `smoke.js` | Nubes de humo: crecen, duran y se disipan; `World.updateSmokeSegments` las convierte en polígonos que tapan la vista |
 | `cameras.js` | Cámaras del defensor (`CAMERA.max` en los `cameraMounts` del mapa; la IA y el inicio: `aiCameras[sitio]`; orden `camera` en preparación y dron): ven atacantes y alertan a la IA, se descubren (operadores, dron) y se rompen de un tiro |
 | `traps.js` | Trampas del Trampero (`aiTraps` del mapa, orden `placeTrap`): atrapan al atacante que las pisa y lo delatan; se descubren con sigilo, dron o la cámara de fibra del Explorador y se rompen de un tiro |

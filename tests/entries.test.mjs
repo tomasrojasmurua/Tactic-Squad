@@ -1,11 +1,12 @@
-// Entradas a salas por puerta (sim/entries.js): códigos GO, patada,
-// entreabrir, flash, granada y carga de brecha, y que todo siga determinista.
+// Entradas a salas por puerta (sim/entries.js): códigos GO, patada, espejo,
+// despejar por cortes, flash, granada y carga de brecha, y que todo siga determinista.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../src/sim/Simulation.js';
 import { applyRole } from '../src/sim/units.js';
-import { ENTRY, DOORS } from '../src/config/balance.js';
-import { isGoReady, codeWaiting, pendingDoors, peekEye } from '../src/sim/queries.js';
+import { ENTRY } from '../src/config/balance.js';
+import { EV } from '../src/core/events.js';
+import { isGoReady, codeWaiting, pendingDoors, peekEye, entryModeFits } from '../src/sim/queries.js';
 import { canSee } from '../src/sim/vision.js';
 import { ALL_MAPS, TRAINING_MAP } from '../src/data/maps/index.js';
 
@@ -87,25 +88,50 @@ test('el botón de espera rota entre los códigos: A, B, C y sin espera', () => 
   assert.deepEqual(seen, ['A', 'B', 'C', null]);
 });
 
-test('entreabrir: al llegar la puerta queda entornada (se ve, no se pasa) y con el GO se abre', () => {
-  const { sim, a, b, d0, door } = atTheDoor({ defender: [14, 13.2], facing: 0 });
-  b.x = 3; // LOBO lejos: por la rendija también pasan las balas
+test('espejo: al llegar se agacha y mira bajo la puerta cerrada (se ve, no se dispara) y con el GO pasa', () => {
+  const { sim, a, b, d0, door } = atTheDoor({ defender: [13, 12.9], facing: 0 }); // de espaldas a la puerta
+  b.x = 3;
   b.y = 18;
-  stack(sim, a, 11.75, 'A', 'slow');
-  runFor(sim, 1.0);
-  assert.equal(a.entry?.mode, 'slow');
-  assert.equal(isGoReady(sim, T), false, 'aún entreabriendo');
+  stack(sim, a, 11.75, 'A', 'mirror');
   runFor(sim, 1.5);
-  assert.ok(door.cracked && !door.open, 'entornada, todavía cerrada para el paso');
-  assert.ok(Math.abs(Math.abs(door.angle) - DOORS.crackAngle) < 1e-9);
+  assert.equal(a.entry?.mode, 'mirror');
+  assert.equal(isGoReady(sim, T), false, 'aún pasando el espejo');
+  runFor(sim, 1.5);
+  assert.ok(!door.open, 'la puerta sigue cerrada');
   assert.ok(isGoReady(sim, T));
-  assert.ok(d0.seenByEnemy, 'por la rendija se ve al defensor del pasillo');
+  assert.ok(d0.seenByEnemy, 'por el espejo se ve al defensor del pasillo');
   assert.equal(a.target, -1, 'pero no se le dispara a través de la puerta');
   assert.equal(a.stats.shots, 0);
+  assert.ok(a.mirror, 'nadie vio el espejo');
   cmd(sim, { type: 'go' });
   runFor(sim, 2.5);
   assert.ok(door.open);
   assert.ok(a.x > 10.5, 'cruzó la puerta');
+});
+
+test('espejo: el que mira la puerta ve el destello, lo marca y se lo rompe de un tiro', () => {
+  const { sim, a, b } = atTheDoor({ defender: [13.5, 12.7], facing: Math.PI }); // mirando la puerta
+  b.x = 3;
+  b.y = 18;
+  const seen = [];
+  const broken = [];
+  stack(sim, a, 11.75, 'A', 'mirror');
+  const end = sim.tick + Math.round(4 / sim.dt);
+  while (sim.tick < end) {
+    const from = sim.events.length;
+    sim.step();
+    for (let i = from; i < sim.events.length; i++) {
+      const ev = sim.events[i];
+      if (ev.type === EV.MIRROR_SEEN) seen.push(ev);
+      if (ev.type === EV.MIRROR_BROKEN) broken.push(ev);
+    }
+  }
+  assert.equal(seen.length >= 1, true, 'vio el destello');
+  assert.equal(broken.length, 1, 'se lo rompió');
+  assert.equal(a.mirror, false, 'sin espejo el resto de la ronda');
+  assert.ok(sim.memory.defenders.has(a.id), 'los defensores saben que hay alguien en esa puerta');
+  assert.equal(peekEye(sim, a, {}), false, 'ya no ve bajo la puerta');
+  assert.equal(entryModeFits(sim, a.entry.doorway, 'mirror', a), false, 'no puede volver a usarlo');
 });
 
 test('patada: la puerta se abre de golpe con el GO y el que está detrás queda aturdido', () => {
@@ -237,13 +263,13 @@ test('en el "?" se decide cómo y cuándo: patada con el GO B', () => {
   assert.ok(door.open && a.x > 10.5, 'patada y adentro');
 });
 
-/** Una entrada completa por turnos: entreabrir con A, flash y patada por dos puertas con B; el jugador da cada GO en el turno, cuando su grupo está en posición (B no antes de 1 s). */
+/** Una entrada completa por turnos: espejo con A, flash y patada por dos puertas con B; el jugador da cada GO en el turno, cuando su grupo está en posición (B no antes de 1 s). */
 function playEntryRound(seed) {
   const sim = new Simulation(MAP, { seed, site: 'A', entry: 'principal' });
   sim.skipToAssault();
   const [a, b, c] = sim.teams.attackers;
   const go = [];
-  stack(sim, a, 11.75, 'A', 'slow', [12.5, 12.4]);
+  stack(sim, a, 11.75, 'A', 'mirror', [12.5, 12.4]);
   stack(sim, b, 13.65, 'B', 'flash', [12.5, 13.1]);
   wp(sim, c, 9.25, 9.95);
   cmd(sim, { type: 'setHold', unitId: c.id, code: 'B' });
@@ -269,7 +295,7 @@ function playEntryRound(seed) {
     turn: sim.turn,
     go,
     outcome: sim.outcome && { winner: sim.outcome.winner, reason: sim.outcome.reason },
-    doors: sim.doors.map((d) => [d.open, d.cracked, d.destroyed, +d.angle.toFixed(9)]),
+    doors: sim.doors.map((d) => [d.open, d.destroyed, +d.angle.toFixed(9)]),
     units: sim.units.map((u) => [u.alive, u.hp, +u.x.toFixed(6), +u.y.toFixed(6), u.blind.toFixed(6), { ...u.gear }]),
   };
 }
@@ -282,23 +308,51 @@ test('una ronda con entradas coordinadas es determinista', () => {
   assert.deepEqual(a, b);
 });
 
-test('entreabrir: por la rendija se ve una franja de la sala, no la sala entera', () => {
+test('espejo: ve una parte baja y cercana de la sala, no la sala entera', () => {
   const { sim, a } = atTheDoor({ defender: [36, 3] });
   wp(sim, a, 9.25, 9.3); // junto a la puerta de la oficina (x = 10, la sala al este)
   cmd(sim, { type: 'setHold', unitId: a.id, code: 'A' });
-  cmd(sim, { type: 'setEntry', unitId: a.id, mode: 'slow' });
-  runFor(sim, 3);
+  cmd(sim, { type: 'setEntry', unitId: a.id, mode: 'mirror' });
+  runFor(sim, 4);
   const eye = {};
-  assert.ok(peekEye(sim, a, eye), 'mira por la rendija');
-  const cfg = { fov: ENTRY.slow.peekFov, range: a.vision.range };
+  assert.ok(peekEye(sim, a, eye), 'mira bajo la puerta');
+  assert.equal(eye.range, ENTRY.mirror.range);
   let seen = 0;
   let all = 0;
+  let far = 0;
   for (let x = 10.6; x < 17; x += 0.4) {
     for (let y = 2.6; y < 10.8; y += 0.4) {
       all++;
-      if (canSee(sim.world, eye, x, y, cfg)) seen++;
+      if (!canSee(sim.world, eye, x, y, eye)) continue;
+      seen++;
+      if (Math.hypot(x - eye.x, y - eye.y) > ENTRY.mirror.range) far++;
     }
   }
   const part = seen / all;
-  assert.ok(part > 0.05 && part < 0.25, `ve ${(part * 100).toFixed(0)} % de la sala`);
+  assert.ok(part > 0.1 && part < 0.6, `ve ${(part * 100).toFixed(0)} % de la sala`);
+  assert.equal(far, 0, 'nada más allá de su alcance');
+});
+
+test('despejar por cortes: con el GO abre, revisa los ángulos desde el marco, entra más alerta y el resto lo espera', () => {
+  const { sim, a, b, door } = atTheDoor({ defender: [36, 3] });
+  stack(sim, a, 11.75, 'A', 'pie');
+  stack(sim, b, 13.65, 'A', null);
+  runFor(sim, 2.5);
+  assert.ok(isGoReady(sim, T));
+  const x0 = a.x;
+  cmd(sim, { type: 'go' });
+  runFor(sim, 0.2);
+  assert.ok(door.open, 'abrió la puerta');
+  assert.equal(a.entry?.step, 'pie');
+  assert.ok(b.goDelay > 1, 'el compañero espera los cortes');
+  const looks = [];
+  for (let i = 0; i < 6; i++) {
+    looks.push(a.facing);
+    runFor(sim, 0.25);
+  }
+  assert.ok(Math.abs(a.x - x0) < 0.05, 'se queda en el marco mientras corta');
+  assert.ok(Math.max(...looks) - Math.min(...looks) > ENTRY.pie.arc * 0.5, 'barre la sala con la mirada');
+  assert.ok(a.pieUntil > sim.time, 'entra más alerta');
+  runFor(sim, 2);
+  assert.ok(a.x > 10.5, 'y después entra');
 });

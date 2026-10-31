@@ -4,8 +4,13 @@
 //
 //   kick    on release the door bursts open (no pause to push it); loud, and
 //           whoever stands right behind it reels for a moment
-//   slow    on arrival the door is cracked ajar (sight gets through, bodies
-//           do not) and he waits; on release he pushes it open and goes
+//   mirror  on arrival he slides a mirror under the closed door and, while he
+//           waits, sees a low wedge of the room (sim/queries.js peekEye); an
+//           enemy who sees it may shoot it to pieces (sim/perception.js); on
+//           release he opens the door and goes
+//   pie     "despejar por cortes": on release he opens the door and stays at
+//           the frame turning through the room's angles one by one (ENTRY.pie),
+//           sharper for a while after it; then he goes
 //   flash   on release he opens the door, throws a flashbang inside and goes
 //   frag    same with a fragmentation grenade
 //   breach  on arrival he plants a charge on the door; on release it blows
@@ -14,9 +19,9 @@
 //           the closed door and, while he waits, sees the room beyond it
 //           (sim/queries.js peekEye); on release he opens it and goes
 //
-// Lifecycle (unit.entry): 'prep' (cracking / planting, cannot move) ->
+// Lifecycle (unit.entry): 'prep' (mirror / camera / planting, cannot move) ->
 // 'armed' (done; waits while waitingGo or goDelay) -> 'act' (opening,
-// throwing, fuse) -> null. A GO that releases a thrower or a breacher holds
+// throwing, fuse, cutting the pie) -> null. A GO that releases a thrower or a breacher holds
 // the rest of that code (unit.goDelay) until the bang, so the room is
 // entered right after it: "flash and clear". Everything here is
 // deterministic (no RNG at all) and driven by orders: it works the same in
@@ -29,7 +34,7 @@ import { solidLineOfSight } from './vision.js';
 import { spawnSmoke } from './smoke.js';
 import { spawnFire } from './fire.js';
 import { spawnGas } from './gas.js';
-import { openDoor, crackDoor, destroyDoor } from './doors.js';
+import { openDoor, destroyDoor } from './doors.js';
 import { alertAiUnit } from './ai.js';
 import { applyBlast } from './combat.js';
 import { isAiControlled, tossLanding, tossDoorway, tossRangeOf } from './queries.js';
@@ -37,11 +42,11 @@ import { isAiControlled, tossLanding, tossDoorway, tossRangeOf } from './queries
 const LAND = { x: 0, y: 0, reach: 0, viaX: 0, viaY: 0, leg1: 0, leg2: 0 };
 import { startBash, breakBarricade } from './barricades.js';
 import { cutWiresNear } from './wires.js';
-import { dcos, dhypot, dsin, sq } from '../core/dmath.js';
+import { dcos, dhypot, sq } from '../core/dmath.js';
 import { stressBlast } from './stress.js';
 
 /** Seconds each mode works on arrival before it is armed (0 = armed at once). */
-const PREP = Object.freeze({ slow: ENTRY.slow.prepTime, breach: ENTRY.breach.prepTime, cam: ENTRY.cam.prepTime });
+const PREP = Object.freeze({ mirror: ENTRY.mirror.prepTime, breach: ENTRY.breach.prepTime, cam: ENTRY.cam.prepTime });
 
 /**
  * Called when a unit reaches a waypoint with a throw (waypoint.toss: {item,
@@ -66,22 +71,11 @@ export function armEntry(sim, u, p) {
   const d = sim.world.doorways[k];
   if (!d) return;
   const side = farSide(d, u, u.route[0]);
-  const door = doorOf(sim, k);
-  // While stacked he aims through the doorway (unless the player set a look there);
-  // cracking a door, through the gap it leaves at the latch side.
-  let ax = d.cx;
-  let ay = d.cy;
-  if (p.entry === 'slow' && door && !door.open) {
-    ax = door.def.hingeX + dcos(door.def.closedAngle) * door.def.length * 0.85;
-    ay = door.def.hingeY + dsin(door.def.closedAngle) * door.def.length * 0.85;
-  }
-  const look = p.look !== null ? p.look : angleTo(u.x, u.y, ax + d.normalX * side * ENTRY.lookPast, ay + d.normalY * side * ENTRY.lookPast);
+  // While stacked he aims through the doorway (unless the player set a look there).
+  const look = p.look !== null ? p.look : angleTo(u.x, u.y, d.cx + d.normalX * side * ENTRY.lookPast, d.cy + d.normalY * side * ENTRY.lookPast);
   const prep = (PREP[p.entry] || 0) * (p.entry === 'breach' ? u.mods.breachPrep : 1);
-  u.entry = { mode: p.entry, doorway: k, side, look, phase: prep > 0 ? 'prep' : 'armed', t: prep, spent: false, step: null, grenade: null };
-  if (p.entry === 'slow' && door) {
-    crackDoor(sim, door, u);
-    alertNear(sim, u, d.cx, d.cy, ENTRY.slow.hearing, false);
-  } else if (p.entry === 'breach') {
+  u.entry = { mode: p.entry, doorway: k, side, look, phase: prep > 0 ? 'prep' : 'armed', t: prep, spent: false, step: null, grenade: null, glint: 0, axis: 0 };
+  if (p.entry === 'breach') {
     sim.emit(EV.CHARGE_PLANT, { unitId: u.id, doorId: d.id, x: d.cx, y: d.cy, time: prep });
   }
 }
@@ -102,6 +96,7 @@ export function releaseDelay(sim, u) {
   // A charge still being planted: the others wait for the plant AND the blast.
   if (e.mode === 'breach') return (e.phase === 'prep' ? e.t : 0) + ENTRY.breach.fuse + ENTRY.followGap;
   if (e.phase !== 'armed') return 0;
+  if (e.mode === 'pie') return ENTRY.pie.time; // the others wait for his angles
   const item = thrownItem(e);
   if (!item) return 0;
   if ((u.gear[item] || 0) <= 0) return 0;
@@ -124,6 +119,8 @@ export function updateEntries(sim, dt) {
       if (!u.waitingGo && u.goDelay <= 0) release(sim, u, e);
     } else if (e.phase === 'act') {
       e.t -= dt;
+      // Cutting the pie: his look turns from one side of the room to the other, a slice at a time.
+      if (e.step === 'pie') e.look = e.axis + ENTRY.pie.arc * (0.5 - Math.max(0, e.t) / ENTRY.pie.time);
       if (e.t <= 0) act(sim, u, e);
     }
   }
@@ -153,9 +150,19 @@ function release(sim, u, e) {
       }
       u.entry = null;
       return;
-    case 'slow':
+    case 'mirror':
     case 'cam':
-      u.entry = null; // the door is ajar / he pulls the camera back: his route through it opens it
+      u.entry = null; // he pulls the mirror / the camera back: his route through the door opens it
+      return;
+    case 'pie':
+      if (door && door.barricaded) return startBash(sim, door, u); // break it first (still armed)
+      if (door && !door.open) openDoor(sim, door, u, 'push');
+      e.phase = 'act';
+      e.step = 'pie';
+      e.t = ENTRY.pie.time;
+      e.axis = angleTo(u.x, u.y, d.cx + d.normalX * e.side * ENTRY.lookPast, d.cy + d.normalY * e.side * ENTRY.lookPast);
+      e.look = e.axis - ENTRY.pie.arc / 2;
+      u.pieUntil = sim.time + ENTRY.pie.time + ENTRY.pie.carry;
       return;
     case 'toss':
       if ((u.gear[e.item] || 0) <= 0) return reject(sim, u, e);
@@ -197,7 +204,7 @@ function act(sim, u, e) {
     return;
   }
   if (e.step === 'fire') detonateBreach(sim, u, e);
-  u.entry = null; // 'wait' / 'fire' done: he follows his route through the doorway
+  u.entry = null; // 'wait' / 'fire' / 'pie' done: he follows his route through the doorway
 }
 
 function reject(sim, u, e) {
@@ -230,7 +237,7 @@ function farSide(d, u, next) {
 /**
  * Where a grenade thrown by u through the entry's doorway lands: through the
  * doorway center, ENTRY.throwDistance into the room (short of the first wall).
- * The cast starts past the slab of a cracked door. Pure: same answer at
+ * Pure: same answer at
  * release and at the throw.
  */
 const path = { fromX: 0, fromY: 0, viaX: 0, viaY: 0, x: 0, y: 0, leg1: 0, leg2: 0, flight: 0 };

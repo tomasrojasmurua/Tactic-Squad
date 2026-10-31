@@ -158,11 +158,19 @@ export const ENTRY_ICON = {
     `<path fill="currentColor" d="M6 2 H11 V11 L19 13.5 C21 14 22 15.5 22 17 V19 H5 Z"/><rect x="5" y="20" width="17" height="2" fill="currentColor"/>
      <path d="M1.5 9 L4 10 M1 13 L3.8 13.3 M1.5 17 L4 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
   ),
-  slow: svg(
+  mirror: svg(
     '0 0 24 24',
-    `<path d="M4 21 V3 H12" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 3 L16 6 V20 L12 21 Z" fill="currentColor"/>
-     <path d="M17 12 C18.5 9.6 20.5 9.6 22 12 C20.5 14.4 18.5 14.4 17 12 Z" fill="none" stroke="currentColor" stroke-width="1.6"/>
-     <circle cx="19.5" cy="12" r="1" fill="currentColor"/>`,
+    `<path d="M3 21 L13 11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+     <ellipse cx="16.5" cy="7.5" rx="5" ry="3.6" transform="rotate(-45 16.5 7.5)" fill="currentColor"/>
+     <ellipse cx="16.5" cy="7.5" rx="3" ry="1.8" transform="rotate(-45 16.5 7.5)" fill="#111" opacity=".55"/>
+     <path d="M14.6 6.2 L17.2 8.8" stroke="#fff" stroke-width="1" stroke-linecap="round" opacity=".8"/>`,
+  ),
+  pie: svg(
+    '0 0 24 24',
+    `<path d="M3 3 V21 M3 3 H7 M3 21 H7" fill="none" stroke="currentColor" stroke-width="2.2"/>
+     <path d="M5 12 L21 4 A 18 18 0 0 1 22.5 9 Z" fill="currentColor"/>
+     <path d="M5 12 L22.5 11 A 18 18 0 0 1 22 15.5 Z" fill="currentColor" opacity=".75"/>
+     <path d="M5 12 L21.3 18.5 A 18 18 0 0 1 19 21.5 Z" fill="currentColor" opacity=".5"/>`,
   ),
   flash: svg(
     '0 0 24 24',
