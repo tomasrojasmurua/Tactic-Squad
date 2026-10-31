@@ -16,6 +16,7 @@ import { routePoint } from './routePoint.js';
 import { wireFactor } from './wires.js';
 import { inFire } from './fire.js';
 import { datan2, dcos, dhypot, dsin, sq } from '../core/dmath.js';
+import { woundSpeed, bleed } from './wounds.js';
 
 const carrot = { x: 0, y: 0 };
 
@@ -122,6 +123,7 @@ export function updateMovement(sim, u, dt) {
   if (sneaking) speed *= MOVE.sneakFactor; // the leg he walks is a quiet one
   speed *= followFactor(sim, u, dcos(moveDir), dsin(moveDir));
   speed *= wireFactor(sim, u); // barbed wire in the doorway (sim/wires.js)
+  speed *= woundSpeed(u); // a leg wound (sim/wounds.js)
   if (speed > 0 && doorwayBusy(sim, u)) speed = 0; // queue: an ally is still in the doorway ahead
   if (speed > 0 && fireAhead(sim, u, moveDir)) speed = 0; // an AI attacker waits for the fire to burn down
 
@@ -164,6 +166,7 @@ export function updateMovement(sim, u, dt) {
   if (moved > 0) {
     u.moving = true;
     u.distanceWalked += moved;
+    bleed(sim, u, moved); // badly hurt: blood on the way (sim/wounds.js)
     u.stepAccum += moved;
     if (u.stepAccum >= MOVE.footstepStride) {
       u.stepAccum -= MOVE.footstepStride;

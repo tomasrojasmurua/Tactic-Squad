@@ -37,7 +37,7 @@ export class UnitSheet {
         <div class="us-gun">${WEAPON_ICONS[u.weaponId] || ''}<span><b class="us-wname"></b><small class="us-ammo"></small></span></div>
       </div>
       <div class="us-sec"><h4>${S.gear}</h4><div class="us-gear"></div></div>
-      <div class="us-sec"><h4>${S.traits}</h4><ul class="us-traits"><li class="us-hp"></li><li class="us-stress"></li>${roleTraits(u.role).map((t) => `<li>${t}</li>`).join('')}</ul></div>`;
+      <div class="us-sec"><h4>${S.traits}</h4><ul class="us-traits"><li class="us-hp"></li><li class="us-wound us-leg"></li><li class="us-wound us-arm"></li><li class="us-stress"></li>${roleTraits(u.role).map((t) => `<li>${t}</li>`).join('')}</ul></div>`;
     const q = (s) => this.node.querySelector(s);
     setText(q('.us-class'), r.label || u.role);
     setText(q('.us-name'), u.name);
@@ -51,6 +51,10 @@ export class UnitSheet {
     this.gear = q('.us-gear');
     this.hp = q('.us-hp');
     this.stress = q('.us-stress');
+    this.leg = q('.us-leg');
+    this.arm = q('.us-arm');
+    setText(this.leg, T.unitSheet.leg);
+    setText(this.arm, T.unitSheet.arm);
     this.gearKey = '';
   }
 
@@ -68,6 +72,8 @@ export class UnitSheet {
     const S = T.unitSheet;
     setText(this.ammo, S.ammo(u.mag, u.reserve));
     setText(this.hp, S.hp(Math.max(0, Math.round(u.hp)), u.maxHp));
+    this.leg.hidden = !u.wounds.leg;
+    this.arm.hidden = !u.wounds.arm;
     const st = Math.round(u.stress * 100);
     this.stress.hidden = st < 5;
     if (st >= 5) setText(this.stress, S.stress(st));

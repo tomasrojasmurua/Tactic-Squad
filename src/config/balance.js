@@ -295,6 +295,24 @@ export const STRESS = Object.freeze({
   pinCooldown: 3, // ...and not again before this
 });
 
+/**
+ * Wounds that last (sim/wounds.js): a bullet in a limb is a leg or an arm. Leg: slower, louder
+ * steps. Arm: worse aim, slower reload. Nobody heals. Below `bleedBelow` of his health a soldier
+ * leaves a blood drop every `bleedEvery` m he walks: the other side sees it when it comes into its
+ * sight (information, not a reveal).
+ */
+export const WOUNDS = Object.freeze({
+  legShare: 0.5, // of the limb hits, the legs
+  legSpeed: 0.6,
+  legStepNoise: 1.5, // his steps are heard this much farther (NOISE.radius.step / sneak)
+  armSpread: 1.5,
+  armReload: 1.3,
+  bleedBelow: 0.5,
+  bleedEvery: 0.9, // m walked per drop
+  maxDrops: 240, // the round keeps the latest
+  spotEvery: 15, // steps between the checks of who sees new drops
+});
+
 export const ROUND = Object.freeze({
   // The assault is played in We-Go turns (sim/round.js): both sides plan blind, then
   // every order runs at once for turnSeconds. The bomb's timer only runs while a turn

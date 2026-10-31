@@ -18,6 +18,7 @@ import { recordDeath } from './debrief.js';
 import { propNear, struckSurface, isAiControlled } from './queries.js';
 import { datan2, dcos, dhypot, dsin, dtan, sq } from '../core/dmath.js';
 import { stressShot, stressAllyDown, stressSpread } from './stress.js';
+import { woundLimb, woundSpread, woundReload } from './wounds.js';
 
 export function updateCombat(sim, u, dt) {
   u.fireCooldown = Math.max(0, u.fireCooldown - dt);
@@ -88,7 +89,7 @@ function lineOfFire(world, u, t) {
 const FIRE_PROBES = [0, 0, 0, 1, 0, -1, 1, 0, -1, 0];
 
 function startReload(sim, u) {
-  u.reloadTimer = u.weapon.reloadTime;
+  u.reloadTimer = u.weapon.reloadTime * woundReload(u); // an arm wound slows it (sim/wounds.js)
   sim.emit(EV.RELOAD, { unitId: u.id, weaponId: u.weaponId, x: u.x, y: u.y });
 }
 
@@ -111,7 +112,7 @@ function fire(sim, u) {
   const walk = u.moving ? w.movingSpread * u.speedFraction * u.speedFraction * (u.focused ? COMBAT.focusedMovingSpread : 1) : 0;
   let spread = w.spread + walk;
   if (isSettled(u) || u.focused) spread *= COMBAT.settledSpread;
-  spread = spread * COMBAT.accuracy * u.mods.spread * (u.gassed > 0 ? ENTRY.gas.spread : 1) * stressSpread(u) + u.recoil; // tear gas (sim/gas.js), suppression (sim/stress.js)
+  spread = spread * COMBAT.accuracy * u.mods.spread * (u.gassed > 0 ? ENTRY.gas.spread : 1) * stressSpread(u) * woundSpread(u) + u.recoil; // tear gas (sim/gas.js), suppression (sim/stress.js)
   const { ox, oy } = fireLine;
   // Aim error is measured from the line of fire; the facing only gates WHEN he can shoot.
   const angle = datan2(fireLine.ty - oy, fireLine.tx - ox) + rng.gauss() * spread;
@@ -296,6 +297,7 @@ function applyHit(sim, shooter, victim, x, y, dx, dy, covered, limb = false, gua
   const rng = sim.rng;
   const w = shooter.weapon;
   const part = limb ? 'limb' : rollBodyPart(rng, shooter, covered);
+  const wound = part === 'limb' ? woundLimb(sim, victim) : null; // a leg or an arm, for the rest of the round
   let damage = rng.range(w.damage[0], w.damage[1]) * falloff(w, dhypot(x - shooter.x, y - shooter.y));
   if (part === 'head') damage *= COMBAT.headshotMultiplier;
   else if (part === 'limb') damage *= COMBAT.limbMultiplier;
@@ -304,7 +306,7 @@ function applyHit(sim, shooter, victim, x, y, dx, dy, covered, limb = false, gua
   shooter.stats.hits++;
   const lethal = victim.hp <= 0;
   const headshot = part === 'head';
-  sim.emit(EV.HIT, { unitId: victim.id, team: victim.team, role: victim.role, attackerId: shooter.id, x, y, dirX: dx, dirY: dy, damage, headshot, part, covered, lethal });
+  sim.emit(EV.HIT, { unitId: victim.id, team: victim.team, role: victim.role, attackerId: shooter.id, x, y, dirX: dx, dirY: dy, damage, headshot, part, wound, covered, lethal });
 
   if (!lethal) {
     // Aim punch: a wound throws the victim's aim off and delays a first shot
