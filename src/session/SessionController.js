@@ -358,7 +358,10 @@ export class SessionController {
 
   /** LISTO / SPACE: ends a decision phase; recalls the drone; resumes a paused turn; a running turn cannot be stopped. */
   ready() {
-    if (this.ackTutorial()) return; // a tutorial card is up: LISTO / Space / Enter closes it
+    // A card up: LISTO / Space / Enter closes it. In a lesson that is all it does (the card is a step);
+    // a first-time tip outside the lessons only closes and LISTO goes on (it never eats the LISTO).
+    const tip = !this.session.tutorial.active && this.session.tutorial.card;
+    if (this.ackTutorial() && !tip) return;
     const phase = this.session.phase;
     if ((isDecisionPhase(this.session) || phase === 'drone') && this.tutorial.blocksReady()) {
       this.notice('tutorialFirst');
