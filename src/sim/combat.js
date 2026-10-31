@@ -33,6 +33,11 @@ export function updateCombat(sim, u, dt) {
     return;
   }
 
+  if (u.reloadNow) {
+    // Ordered (RECARGAR): now, whatever he faces — the player chose the moment.
+    u.reloadNow = false;
+    if (u.mag < u.weapon.magazine && u.reserve > 0) return startReload(sim, u);
+  }
   if (u.target < 0) {
     if (u.mag < u.weapon.magazine * COMBAT.tacticalReloadFraction && u.reserve > 0) startReload(sim, u);
     return;

@@ -585,6 +585,15 @@ export class SessionController {
         session.ui.moreOpen = !session.ui.moreOpen;
         this.sound('select');
         return;
+      case 'reload': {
+        // RECARGAR (Y; the operator's radial): planning, or during the turn stamped with its step.
+        const u = controllableUnit(this.sim, session.selectedId, session.team);
+        if (!u || !this.owned(u) || !(phase === 'planning' || phase === 'running' || phase === 'paused')) return;
+        if (u.mag >= u.weapon.magazine || u.reserve <= 0) return this.notice('reloadFull');
+        this.command(phase === 'planning' ? { type: 'reload', unitId: u.id } : { type: 'reload', unitId: u.id, atTick: this.sim.round.execTick });
+        this.sound('select');
+        return;
+      }
       case 'unitInfo':
         // The selected operator's sheet: class, weapon, utility (ui/UnitSheet.js). It follows the selection.
         if (phase === 'title') return;

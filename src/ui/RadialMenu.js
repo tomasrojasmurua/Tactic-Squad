@@ -20,6 +20,7 @@ function iconOf(o) {
   if (o.mode) return ENTRY_ICON[o.mode] || '';
   if (o.item) return GEAR_ICON[o.item] || '';
   if (o.id === 'squad') return ICON.squad;
+  if (o.id === 'reload') return ICON.bullets;
   return EXTRA[o.id] || '';
 }
 
