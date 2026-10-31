@@ -4,11 +4,17 @@
 // the ONLY sim helpers that input/ui/render may import besides vision.js.
 import { pointInBox, pointAabbDistance, pointSegDist2, rayCast } from '../core/geom.js';
 import { angleDiff } from '../core/math.js';
-import { MOVE, ROUND, ENTRY, CAMERA, PREP } from '../config/balance.js';
+import { MOVE, ROUND, ENTRY, CAMERA, PREP, BUY, SIM } from '../config/balance.js';
 import { ROLES } from '../config/operators.js';
 import { PROP_SURFACE, SURFACE_PROBE, DOOR_SURFACE, FENCE_SURFACE } from '../config/materials.js';
 import { TEAMS } from '../config/squad.js';
 import { datan2, dcos, dhypot, dsin, sq } from '../core/dmath.js';
+
+/** Steps per execution turn (sim/round.js runs them; the HUD shows what is left). */
+export const TURN_TICKS = Math.round(ROUND.turnSeconds * SIM.tickRate);
+
+/** The items a side can buy (its buy panel; the incendiaria is the defenders' only). */
+export const buyableItems = (team) => (team === 'attackers' ? BUY.items : BUY.defenderItems);
 
 /** The opposing side of a team. */
 export const enemyTeam = (team) => (team === TEAMS[0] ? TEAMS[1] : TEAMS[0]);

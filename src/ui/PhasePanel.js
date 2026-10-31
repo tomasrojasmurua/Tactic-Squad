@@ -19,8 +19,7 @@
 import { EV } from '../core/events.js';
 import { ROLES } from '../config/operators.js';
 import { BUY, PREP, TRAP } from '../config/balance.js';
-import { controllableUnit, cameraLimit, wireLimit } from '../sim/queries.js';
-import { buyableItems } from '../sim/prep.js';
+import { controllableUnit, cameraLimit, wireLimit, buyableItems } from '../sim/queries.js';
 import { inRecon, watchInPlanning } from '../session/Session.js';
 import { watchOf, watchModeFits, WATCH_MODES } from '../session/watch.js';
 import { el, setText, toggle } from './dom.js';

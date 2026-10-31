@@ -30,7 +30,11 @@ import { UI } from './ui/UI.js';
 import { createKillCam, stepKillCam } from './session/KillCam.js';
 import { OnlineSession } from './net/OnlineSession.js';
 
-const ONLINE_SLACK = 3; // steps an online phone may lag behind the server's grant before it hurries
+// Online, a live phase plays a little behind the server's grant (ONLINE_RESERVE steps, one
+// grant): a grant that arrives late on a mobile network is absorbed and the turn never stutters.
+// Further behind than that (a slow frame, the page was hidden) it hurries, a few steps per frame.
+const ONLINE_RESERVE = 6; // steps kept in hand (net/roomLogic.js ROOM.grantTicks: 100 ms)
+const ONLINE_HURRY = 12; // steps beyond the reserve before it runs extra steps
 const ONLINE_CATCHUP = 24; // at most this many extra steps per frame
 
 export class Game {
@@ -182,7 +186,7 @@ export class Game {
     if (this.killcam) return this.stepKillcam();
     // Online, a live phase runs only up to the step the server granted (the round's tail is local).
     const online = this.online.active;
-    if (online && this.sim.phase !== 'end' && !this.online.canStep()) return;
+    if (online && this.sim.phase !== 'end' && !this.online.canStep(ONLINE_RESERVE)) return;
     this.drone.update(); // the drone's stick, stamped with the step about to run
     this.sim.step(dt);
     this.flushEvents();
@@ -256,8 +260,8 @@ export class Game {
     this.online.update();
     // Online and behind the server (a slow frame, the page was hidden): a few extra steps per frame.
     if (this.online.active && this.loop.simulating && !this.killcam) {
-      const extra = Math.min(this.online.behind - ONLINE_SLACK, ONLINE_CATCHUP);
-      for (let i = 0; i < extra && this.online.canStep(); i++) this.step(this.sim.dt);
+      const extra = Math.min(this.online.behind - ONLINE_RESERVE - ONLINE_HURRY, ONLINE_CATCHUP);
+      for (let i = 0; i < extra && this.online.canStep(ONLINE_RESERVE); i++) this.step(this.sim.dt);
     }
     this.flow.update(dt);
     if (!this.loop.simulating) {

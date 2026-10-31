@@ -33,7 +33,7 @@ import { ROLES, DEFAULT_DEFENDER_ROLE } from '../config/operators.js';
 import { applyRole, roleGear } from './units.js';
 import { createBomb } from './objectives.js';
 import { setWire, wiredDoors } from './wires.js';
-import { wireLimit, cameraLimit } from './queries.js';
+import { wireLimit, cameraLimit, buyableItems } from './queries.js';
 import { dcos, dsin, sq } from '../core/dmath.js';
 
 // ------------------------------------------------------------ buy
@@ -42,7 +42,7 @@ import { dcos, dsin, sq } from '../core/dmath.js';
 const BUY_PHASE = Object.freeze({ attackers: 'buy', defenders: 'buy' });
 
 /** What a side may buy (BUY.items / BUY.defenderItems). */
-export const buyableItems = (team) => (team === 'attackers' ? BUY.items : BUY.defenderItems);
+export { buyableItems }; // (defined with the readers: sim/queries.js)
 
 /** The utility points an operator of `team` gets this round: BUY.points, plus BUY.lossBonus if his side lost the last round of a match. */
 export function pointsFor(sim, team) {

@@ -3,8 +3,7 @@
 // kill feed, toasts and the red damage vignette.
 import { EV } from '../core/events.js';
 import { HUD, VIGNETTE, GO_GROUPS } from '../config/ui.js';
-import { teamUnits, enemyTeam, isGoReady, bombKnownTo, codeInUse, codeWaiting, goStatus } from '../sim/queries.js';
-import { TURN_TICKS } from '../sim/round.js';
+import { teamUnits, enemyTeam, isGoReady, bombKnownTo, codeInUse, codeWaiting, goStatus, TURN_TICKS } from '../sim/queries.js';
 import { ENTRY, ROUND, SIM, DRONE } from '../config/balance.js';
 import { isDecisionPhase, pilotsDrone, isDefenderSetup, showCameras, inRecon } from '../session/Session.js';
 import { coachHint } from './coach.js';

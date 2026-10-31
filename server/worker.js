@@ -13,6 +13,7 @@ import { Room, roomCode } from '../src/net/roomLogic.js';
 
 const CODE = /^\/sala\/([2-9A-Z]{4,8})$/;
 const TICK_MS = 50;
+const SAVE_MS = 2000; // orders in a phase are written at most this often (a phase change: at once)
 const IDLE_MS = 6 * 60 * 60 * 1000; // a room with nobody connected is deleted after this long
 
 const cors = (res) => {
@@ -117,6 +118,11 @@ export class Sala extends DurableObject {
       const out = this.room.receive(me.id, msg, now);
       this.dispatch(out, ws);
       if (msg.t === 'ping' || msg.t === 'reloj') return; // nothing changed: no write
+      if (msg.t === 'ordenes' && !out.some(({ msg: m }) => m.t !== 'previa' && m.t !== 'orden')) {
+        // Orders within a phase: storage writes are counted (free plan), so they are grouped.
+        this.saveSoon();
+        return;
+      }
     } else return;
     await this.save();
     this.schedule();
@@ -175,6 +181,14 @@ export class Sala extends DurableObject {
     } catch (e) {
       console.error('tick', e);
     }
+  }
+
+  saveSoon() {
+    if (this.saveTimer) return;
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = null;
+      this.save().catch((e) => console.error('save', e));
+    }, SAVE_MS);
   }
 
   async save() {

@@ -48,6 +48,8 @@ las capas de presentación solo pueden importar de `sim/` los lectores puros
 | `src/render/` | 5.116 | Renderer WebGL2 propio por capas, shaders GLSL ES 3.0, geometría, efectos | Solo lee la sim |
 | `src/ui/` | 2.400 | HUD en DOM, pantallas, textos en español | Todos los strings en `ui/texts.js` y `ui/flowTexts.js` |
 | `src/audio/` | 3.633 | Motor de audio procedural, sonidos horneados en un worker, música generativa | Solo escucha eventos |
+| `src/net/` | ~1.700 | Multijugador: lógica de sala pura (`roomLogic.js`), lockstep del cliente, conexión, hash y snapshot de la sim | La sala no simula; el cliente solo avanza la sim con lo que reparte el servidor |
+| `server/` | ~200 | Worker y Durable Object de Cloudflare (una sala por código) sobre `src/net/roomLogic.js` | Solo cañerías: sockets, temporizador, almacenamiento |
 
 ---
 
@@ -347,9 +349,19 @@ El código ya está ordenado para la versión en red, aunque no haya nada de red
 - El render lee la sim completa en vez de `teamView` (ver arriba). Es la pieza que
   bloquea el online y la que más cuesta. Las cámaras y el humo se dibujan leyendo
   `sim.cameras` / `sim.smokes` (filtrando por `known` para el atacante).
-- Un solo mapa. La ronda es 3 contra 3 (`config/squad.js` `DEFENDERS`, los primeros puestos de
-  `defense`); el 5 contra 5 necesita más puestos en el mapa.
-- Faltan las clases Escudo, Tirador, Granadero y Vigía.
+- El 5 contra 5 necesita más puestos y puntos de aparición por mapa (hoy hay 4: el 2v2 online usa 4 por bando).
+- Las capas de presentación solo importan de `sim/` los lectores (`queries.js`, `vision.js`, `view.js`) y el
+  mapa compilado (`mapCompiler.js` para la ficha del lobby).
+
+### Multijugador y rendimiento (31 oct)
+
+- En una fase en tiempo real el teléfono juega ~100 ms detrás del último paso que dio el servidor
+  (`Game.js` `ONLINE_RESERVE`): un mensaje que llega tarde no frena a los soldados.
+- Las órdenes de un cuadro viajan en un solo mensaje (`LockstepClient.post`, `flushOrders`).
+- El Durable Object escribe la sala al cambiar de fase y, con órdenes dentro de una fase, como mucho
+  cada 2 s (`server/worker.js` `SAVE_MS`): el plan gratuito cuenta las escrituras.
+- Medido: un paso de la sim 40-60 µs, el hash 0,2 ms, el snapshot ~25 KB; el registro de reconexión
+  de una partida al mejor de 3 ~3 KB; cada teléfono recibe ~11 mensajes por segundo en un turno.
 
 ---
 

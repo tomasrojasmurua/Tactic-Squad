@@ -11,8 +11,7 @@
 //
 //   option = {id, slot, action, enabled, active, item?, mode?}
 //   action: the EV.REQUEST that applies it once the point is targeted (SessionController.radialApply)
-import { controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, lastUserIndex, HERE } from '../sim/queries.js';
-import { buyableItems } from '../sim/prep.js';
+import { controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, lastUserIndex, HERE, buyableItems } from '../sim/queries.js';
 
 export const RADIAL = Object.freeze({
   slots: 8,
