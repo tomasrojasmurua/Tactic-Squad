@@ -206,3 +206,18 @@ Ajustes del cierre (sin tocar clases ni geometría que cambie rutas):
 La prueba de mapas (`tests/maps.test.mjs`) usa ahora las escuadras sorteadas de la IA, como una
 partida real: con la escuadra por defecto el atacante del Puerto ganaba ~20 %, que no es la
 escuadra contra la que se juega.
+
+### Pasada del 1 de noviembre (después del realismo)
+
+Con supresión, heridas, espejo y noche, el sitio A del Puerto había bajado a 44/41 % (dos tandas de
+800). Se probaron, solo en ese sitio, una trampa o una cámara menos, sin barricada, puestos más
+adelantados o más atrás y otras entradas de la IA atacante: los puestos y la utilidad no lo
+movían; las entradas sí. **La IA atacante entra a A por el portón el doble que por el muelle** (antes
+muelle 3, portón 1, aduana 1). Resultado (800 rondas × 2 tandas, % atacante):
+
+| Mapa | Total | Sitio A | Sitio B |
+| --- | --- | --- | --- |
+| Puerto | 50 / 49 | 48 / 49 | 52 / 50 |
+
+El sitio B del Almacén (55/51 en las dos tandas completas; 53/48 solo en ese sitio) queda dentro de
+la meta y no se tocó.

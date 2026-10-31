@@ -80,12 +80,16 @@ export function encodeSim(sim, fresh) {
     if (typeof v !== 'object' || v === null) return v;
     if (compiled.has(v)) return { $c: compiled.get(v) };
     if (frozen.has(v)) return { $s: frozen.get(v) };
-    if (Object.isFrozen(v) && plainProto(v)) {
-      // A frozen constant a fresh sim does not have (a module's private one): it travels as a frozen copy.
-      const o = Array.isArray(v) ? v.map(enc) : Object.fromEntries(Object.keys(v).map((k) => [k, enc(v[k])]));
-      return { $f: o, arr: Array.isArray(v) };
-    }
     if (ids.has(v)) return { $r: ids.get(v) };
+    if (Object.isFrozen(v) && plainProto(v)) {
+      // A frozen constant a fresh sim does not have (a module's private one): it travels as a frozen
+      // copy, once: two units holding the same one (HOLD_AFTER_ROTATION) share the copy again, so the
+      // restored state hashes the same (net/stateHash.js counts a shared object once).
+      const id = ids.size;
+      ids.set(v, id);
+      const o = Array.isArray(v) ? v.map(enc) : Object.fromEntries(Object.keys(v).map((k) => [k, enc(v[k])]));
+      return { $f: o, arr: Array.isArray(v), $i: id };
+    }
     const shared = count.get(v) > 1;
     const id = ids.size;
     if (shared) ids.set(v, id);
@@ -123,7 +127,11 @@ export function restoreSim(sim, data, reference = sim) {
     if (v.$c !== undefined) return resolve(sim.compiled, v.$c);
     if (v.$s !== undefined) return resolve(fresh, v.$s);
     if (v.$r !== undefined) return byId.get(v.$r);
-    if (v.$f !== undefined) return Object.freeze(v.arr ? v.$f.map(dec) : Object.fromEntries(Object.keys(v.$f).map((k) => [k, dec(v.$f[k])])));
+    if (v.$f !== undefined) {
+      const f = Object.freeze(v.arr ? v.$f.map(dec) : Object.fromEntries(Object.keys(v.$f).map((k) => [k, dec(v.$f[k])])));
+      if (v.$i !== undefined) byId.set(v.$i, f);
+      return f;
+    }
     let out;
     if (v.$a) {
       out = [];
