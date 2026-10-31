@@ -189,3 +189,15 @@ Esta es la línea base para las etapas. El sitio A del Hotel queda justo en el b
   sitio A del Puerto bajó ~2 puntos (dentro del ruido de ~400 rondas por sitio). Se probaron variantes
   de mapa y de números (pierna 0,75, brazo 1,25, puestos, trampas, cámaras) y ninguna lo movió fuera del
   ruido: queda anotado para la próxima pasada de mapas.
+
+## Etapa 3 hecha: munición y recarga (31 oct)
+
+- Ya existían el conteo de cargador y reserva por arma, la recarga automática con el cargador vacío y
+  la **recarga táctica** (sin blanco y con un tercio o menos, recarga sola; los dos bandos y la IA).
+- Nuevo: la orden **RECARGAR** (rueda del soldado, abajo a la izquierda; tecla Y), en la planificación
+  o durante el turno: un cargador nuevo en el paso siguiente, para hacerlo a cubierto antes de entrar.
+- Nuevo: la recarga **se oye** (`NOISE.radius.reload` 5 m, entre el paso sigiloso y el normal).
+- Nuevo: el número del cargador en la ficha se pone ámbar con un tercio o menos.
+- Equilibrio: idéntico al de la etapa 2, ronda por ronda. La IA ya recargaba sola y no lee los pulsos
+  de ruido (son información para el jugador), así que IA contra IA no cambia. Lo nuevo sirve a los
+  jugadores.

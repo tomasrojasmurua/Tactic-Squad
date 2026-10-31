@@ -103,6 +103,7 @@ export class SquadPanel {
       setStyle(c.hp, 'width', hp);
       setStyle(c.chipHp, 'width', hp);
       setText(c.chipAmmo, u.alive ? u.mag : '—');
+      toggle(c.root, 'low-ammo', u.alive && u.mag <= u.weapon.magazine * 0.34); // time to reload (RECARGAR)
       toggle(c.root, 'selected', session.selectedId === id && u.alive);
       toggle(c.root, 'dead', !u.alive);
       // A 2v2: the teammate's operators are shown, not commanded.

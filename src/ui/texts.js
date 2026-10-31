@@ -148,6 +148,7 @@ export const T = Object.freeze({
     normalPace: 'Paso normal',
     look: 'Mirada (toca hacia dónde)',
     squad: 'Escuadra en fila',
+    reload: 'Recargar ahora',
     left: (n) => `quedan ${n}`,
   },
 
@@ -553,6 +554,7 @@ export const T = Object.freeze({
       ['Rueda · + / −', 'Zoom'],
       ['V', 'Ver todo el mapa (otra vez: volver)'],
       ['F', 'Centrar en el operador'],
+      ['Y', 'Recargar el seleccionado (a cubierto, antes de entrar)'],
       ['J · clic en su tarjeta seleccionada', 'Ficha del operador: clase, arma, equipo que lleva'],
       ['R · N', 'Solo en el tutorial: repetir la lección con el mismo plan · con un plan nuevo. Las rondas no se repiten'],
       ['Espacio (al terminar la ronda)', 'Saltar la repetición de la última baja'],
