@@ -1,6 +1,8 @@
-// On-screen controls for touch devices (>= 44px targets, safe-area aware):
-// a right-hand column (LISTO, GO, hold, undo, clear) and a bottom
-// row (contextual defuse, restart, see all, fullscreen, music, help). Emits EV.REQUEST.
+// On-screen controls for touch devices (>= 44px targets, safe-area aware), kept to the minimum so
+// the map stays clear (the rest is gestures: input/TouchController.js, ui/RadialMenu.js):
+// a right-hand column — LISTO, the GO groups during a turn, the contextual DESACTIVAR, and
+// ESPERAR / DESHACER / BORRAR as discreet icons — and a ⋯ button with the utilities (see all,
+// cameras, fullscreen, music, help, a lesson's restart). Emits EV.REQUEST.
 import { EV } from '../core/events.js';
 import { canOrderDefuse, isGoReady, codeInUse, codeWaiting, goStatus, lastUserIndex, holdCode } from '../sim/queries.js';
 import { ENTRY } from '../config/balance.js';
@@ -15,15 +17,27 @@ export class TouchBar {
   constructor(root, bus) {
     this.bus = bus;
     this.column = el('div', 'tbar tbar-col');
-    this.row = el('div', 'tbar tbar-row');
-    root.append(this.column, this.row);
+    this.row = el('div', 'tbar tbar-row'); // the ⋯ menu's list
+    this.more = el('button', 'tbtn tbar-more', '<span class="ti">⋯</span>');
+    this.more.setAttribute('aria-label', T.touch.more);
+    this.more.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.bus.emit(EV.REQUEST, { action: 'more' });
+    });
+    this.action = el('div', 'tbar tbar-action'); // the contextual DESACTIVAR, centered at the bottom
+    root.append(this.column, this.more, this.row, this.action);
 
     // Most buttons act on press (instant feel). Destructive ones act on release
     // INSIDE the button, so a thumb that lands there by accident can slide off.
     const ON_RELEASE = ['restart', 'clear'];
     const mk = (parent, cls, icon, label, action) => {
       const b = el('button', `tbtn ${cls}`, `<span class="ti">${icon}</span><span class="tl">${label}</span>`);
-      const fire = () => this.bus.emit(EV.REQUEST, { action });
+      b.setAttribute('aria-label', label);
+      const fire = () => {
+        this.bus.emit(EV.REQUEST, { action });
+        if (parent === this.row && action !== 'more') this.bus.emit(EV.REQUEST, { action: 'more' }); // a menu item closes the menu
+      };
       b.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
         e.preventDefault();
@@ -48,7 +62,8 @@ export class TouchBar {
       return { code, b, label: b.querySelector('.tl') };
     });
     // ESPERAR opens the GO colors next to the column (ui.holdMenu): the group is chosen, not cycled.
-    this.hold = mk(this.column, '', ICON.hold, T.touch.hold, 'holdMenu');
+    this.defuse = mk(this.action, 'plant', ICON.bomb, T.touch.defuse, 'defuse');
+    this.hold = mk(this.column, 'mini', ICON.hold, T.touch.hold, 'holdMenu');
     this.holdMenu = el('div', 'hold-menu');
     for (const code of [...ENTRY.goCodes, 'now']) {
       const g = GO_GROUPS[code];
@@ -62,10 +77,9 @@ export class TouchBar {
       this.holdMenu.appendChild(b);
     }
     root.appendChild(this.holdMenu);
-    this.undo = mk(this.column, '', ICON.undo, T.touch.undo, 'undo');
-    this.clear = mk(this.column, '', ICON.trash, T.touch.clear, 'clear');
+    this.undo = mk(this.column, 'mini', ICON.undo, T.touch.undo, 'undo');
+    this.clear = mk(this.column, 'mini', ICON.trash, T.touch.clear, 'clear');
 
-    this.defuse = mk(this.row, 'plant', ICON.bomb, T.touch.defuse, 'defuse');
     this.restart = mk(this.row, 'restart', ICON.restart, T.touch.restart, 'restart'); // set apart from the utilities (CSS)
     this.overview = mk(this.row, 'overview', ICON.overview, T.flow.overview, 'overview');
     this.cams = mk(this.row, 'cams', ICON.camera, T.touch.cameras, 'cameras');
@@ -83,7 +97,10 @@ export class TouchBar {
   update(sim, session) {
     const show = session.touch && session.phase !== 'title';
     toggle(this.column, 'on', show);
-    toggle(this.row, 'on', show);
+    toggle(this.action, 'on', show);
+    toggle(this.more, 'on', show);
+    toggle(this.row, 'on', show && session.ui.moreOpen);
+    toggle(this.more, 'active', show && session.ui.moreOpen);
     if (!show) return;
     const phase = session.phase;
     const deciding = isDecisionPhase(session);

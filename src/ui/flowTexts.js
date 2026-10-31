@@ -216,6 +216,8 @@ export const FLOW_TEXTS = Object.freeze({
     confirm_newPlan: { touch: 'Repite para empezar un plan nuevo (se borra el actual)', desk: 'Pulsa N otra vez para empezar un plan nuevo' },
     onlineUnavailable: 'Multijugador no disponible: falta el servidor',
     onlineTakeOver: 'Tu compañero no volvió: ahora mandas también a sus soldados',
+    holdForMenu: 'Mantén pulsado y desliza para elegir (suelta en el centro para cancelar)',
+    lookPick: 'Toca hacia dónde mira en ese punto',
     partnerUnit: 'Ese soldado es de tu compañero: tú mandas a los tuyos',
     onlineResync: 'Tu partida se había desfasado: se puso al día con la del anfitrión',
     replayDiverged: (n) => `Plan cambiado: ${n === 1 ? 'esta fase ya no se repite' : `estas ${n} fases ya no se repiten`}; sigues tú`,

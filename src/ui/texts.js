@@ -137,6 +137,18 @@ export const T = Object.freeze({
     bombDefused: 'Bomba: desactivada',
     match: (round, player, ai, rival = 'IA') => `Ronda ${round} · Tú ${player}–${ai} ${rival}`,
   },
+  /** The touch radial (ui/RadialMenu.js): its title and option names. */
+  radial: {
+    titles: { door: '¿Cómo entra? Desliza y suelta', point: 'Este punto: desliza y suelta', here: 'Desde donde está: desliza y suelta' },
+    open: 'Abrir',
+    toss: 'Lanzar',
+    sneak: 'Sigilo en este tramo',
+    normalPace: 'Paso normal',
+    look: 'Mirada (toca hacia dónde)',
+    squad: 'Escuadra en fila',
+    left: (n) => `quedan ${n}`,
+  },
+
   /** The selected operator's sheet (ui/UnitSheet.js). */
   unitSheet: {
     weapon: 'Arma',
@@ -563,6 +575,7 @@ export const T = Object.freeze({
     fullscreen: 'Pantalla',
     help: 'Ayuda',
     music: 'Música',
+    more: 'Más opciones',
     rows: [
       ['Tocar operador / tarjeta', 'Seleccionar'],
       ['Tocar otra vez su tarjeta (o su nombre)', 'Ficha del operador: clase, arma, equipo que lleva'],

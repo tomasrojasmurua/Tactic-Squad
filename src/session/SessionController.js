@@ -34,6 +34,7 @@ import { Tutorial } from './Tutorial.js';
 import { createMatch, matchLoadout, endMatchRound } from './Match.js';
 import { createLobby, savedLobby, lobbySet, lobbyStart, openPick, pickMissing, aiRoles, canPick, MAP_CHOICES } from './Lobby.js';
 import { ROOM } from '../net/roomLogic.js';
+import { radialOptions, radialHover, radialMargin } from './radial.js';
 
 export class SessionController {
   /**
@@ -559,6 +560,31 @@ export class SessionController {
       case 'fullscreen':
         toggleFullscreen();
         return;
+      case 'radialOpen':
+        this.radialOpen(req);
+        return;
+      case 'radialMove':
+        this.radialMove(req);
+        return;
+      case 'radialUp':
+        this.radialUp();
+        return;
+      case 'radialCancel':
+        session.ui.radial = null;
+        return;
+      case 'holdHint':
+        // Touch: a tap on a "?" or a point; its menu is a hold (and a slide).
+        if (req.unitId !== undefined) this.select(req.unitId);
+        this.notice('holdForMenu');
+        return;
+      case 'unitPeek':
+        // Touch: holding an operator's chip shows his sheet until the finger lifts.
+        session.ui.unitPeek = req.unitId ?? null;
+        return;
+      case 'more':
+        session.ui.moreOpen = !session.ui.moreOpen;
+        this.sound('select');
+        return;
       case 'unitInfo':
         // The selected operator's sheet: class, weapon, utility (ui/UnitSheet.js). It follows the selection.
         if (phase === 'title') return;
@@ -877,6 +903,56 @@ export class SessionController {
     }
     this.sound('select');
     return true;
+  }
+
+  /**
+   * Touch radial (session/radial.js, ui/RadialMenu.js): a hold on a "?" / a point of the selected
+   * operator's route (`index`) or on the operator himself (HERE) opens it around the finger.
+   */
+  radialOpen({ unitId, index, x, y }) {
+    const s = this.session;
+    if (!isPlanningTime(s) || s.helpOpen || !this.owned(this.sim.units[unitId])) return;
+    const menu = radialOptions(this.sim, s, unitId, index);
+    if (!menu || !menu.options.length) return;
+    if (s.selectedId !== unitId) this.select(unitId);
+    // The ring is kept whole on screen (near an edge it opens a little away from the finger).
+    const m = radialMargin();
+    const cx = Math.min(Math.max(x, m), Math.max(m, window.innerWidth - m));
+    const cy = Math.min(Math.max(y, m), Math.max(m, window.innerHeight - m));
+    s.ui.radial = { unitId, index, x: cx, y: cy, kind: menu.kind, options: menu.options, hover: -1, fx: x, fy: y };
+    if (navigator.vibrate) navigator.vibrate(12);
+  }
+
+  radialMove({ x, y }) {
+    const r = this.session.ui.radial;
+    if (!r) return;
+    r.fx = x;
+    r.fy = y;
+    const h = radialHover(r.options, x - r.x, y - r.y);
+    if (h !== r.hover && h >= 0 && navigator.vibrate) navigator.vibrate(8);
+    r.hover = h;
+  }
+
+  /** The finger lifted: the option under it applies on that point (none: nothing happens). */
+  radialUp() {
+    const r = this.session.ui.radial;
+    this.session.ui.radial = null;
+    if (!r || r.hover < 0) return;
+    const o = r.options[r.hover];
+    this.targetDoor(`door_${r.unitId}_${r.index}`); // the point the option is about
+    if (o.action === 'lookPick') {
+      this.session.ui.lookPick = { unitId: r.unitId, index: r.index };
+      this.closePicker();
+      this.notice('lookPick');
+      return;
+    }
+    if (o.action === 'squad') {
+      this.closePicker();
+      this.planning.toggleSquad();
+      return;
+    }
+    this.handleRequest(o.action);
+    if (!o.action.startsWith('toss_')) this.closePicker(); // a throw waits for where it lands (the next tap)
   }
 
   /** Out of a 2v2's pick: the device's squad of 3 again (its first two take the pair just picked). */

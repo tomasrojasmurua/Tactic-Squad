@@ -6,6 +6,7 @@ import { EV } from '../core/events.js';
 import { teamUnits } from '../sim/queries.js';
 import { el, setText, toggle, setStyle, setClassName } from './dom.js';
 import { ICON } from './icons.js';
+import { HUD } from '../config/ui.js';
 import { T } from './texts.js';
 
 export class SquadPanel {
@@ -21,6 +22,30 @@ export class SquadPanel {
       void c.root.offsetWidth; // restart animation
       c.root.classList.add('hit');
     });
+  }
+
+  /**
+   * Touch on a chip: a tap selects him; held, his sheet shows until the finger lifts
+   * (ui/UnitSheet.js, session.ui.unitPeek).
+   */
+  holdChip(ev, unitId) {
+    ev.preventDefault();
+    let peek = false;
+    const timer = setTimeout(() => {
+      peek = true;
+      this.bus.emit(EV.REQUEST, { action: 'unitPeek', unitId });
+      if (navigator.vibrate) navigator.vibrate(10);
+    }, HUD.holdMs);
+    const up = (u) => {
+      if (u.pointerId !== ev.pointerId) return;
+      clearTimeout(timer);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      if (peek) this.bus.emit(EV.REQUEST, { action: 'unitPeek', unitId: null });
+      else this.bus.emit(EV.SELECT, { unitId });
+    };
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
   }
 
   /** One card per operator of `team` (the side this screen plays). */
@@ -41,6 +66,7 @@ export class SquadPanel {
         <div class="chip-am"></div><div class="chip-hp"><div class="hp-fill"></div></div>`;
       root.addEventListener('pointerdown', (ev) => {
         ev.stopPropagation();
+        if (ev.pointerType === 'touch') return this.holdChip(ev, u.id);
         if (root.classList.contains('selected')) this.bus.emit(EV.REQUEST, { action: 'unitInfo' }); // his sheet
         else this.bus.emit(EV.SELECT, { unitId: u.id });
       });

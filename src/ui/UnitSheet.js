@@ -54,7 +54,9 @@ export class UnitSheet {
   }
 
   update(sim, session) {
-    const u = session.ui.unitInfo && session.phase !== 'title' && session.phase !== 'ended' ? controllableUnit(sim, session.selectedId, session.team) : null;
+    // A held chip (touch) shows that operator's; else the open sheet shows the selected one's.
+    const id = session.ui.unitPeek !== null && session.ui.unitPeek !== undefined ? session.ui.unitPeek : session.ui.unitInfo ? session.selectedId : -1;
+    const u = session.phase !== 'title' && session.phase !== 'ended' ? controllableUnit(sim, id, session.team) : null;
     toggle(this.node, 'hidden', !u);
     if (!u) return;
     const key = `${sim.seed}:${u.id}:${u.role}`;
