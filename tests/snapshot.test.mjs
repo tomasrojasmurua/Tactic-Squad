@@ -76,3 +76,17 @@ test('dos jugadores humanos: el snapshot del lobby online también vale', () => 
   const copy = roundTrip(sim, { map, options });
   assert.equal(hashSim(copy), hashSim(sim));
 });
+
+test('una constante congelada que comparten dos soldados vuelve compartida (mismo hash)', () => {
+  const a = args(4, 'warehouse');
+  const sim = new Simulation(a.map, a.options);
+  sim.skipToAssault();
+  const hold = Object.freeze({ type: 'hold', reactsToNoise: true }); // like sim/ai.js HOLD_AFTER_ROTATION
+  const [d1, d2] = sim.teams.defenders;
+  d1.behavior = hold;
+  d2.behavior = hold;
+  const restored = roundTrip(sim, a);
+  assert.equal(restored.teams.defenders[0].behavior, restored.teams.defenders[1].behavior, 'la misma copia');
+  assert.ok(Object.isFrozen(restored.teams.defenders[0].behavior));
+  assert.equal(hashSim(restored), hashSim(sim));
+});
