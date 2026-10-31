@@ -48,8 +48,3 @@ export function hexToRgb(hex) {
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
 }
 
-export function mixRgb(a, b, t) {
-  return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
-}
-
-export const scaleRgb = (c, k) => [c[0] * k, c[1] * k, c[2] * k];

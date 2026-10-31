@@ -43,9 +43,6 @@ import { placeParapets } from './parapets.js';
 
 export const PHASE = Object.freeze({ buy: 'buy', prep: 'prep', drone: 'drone', plan: 'plan', exec: 'exec', end: 'end' });
 
-/** Phases where the sides decide (time stopped). */
-export const DECISION_PHASES = Object.freeze([PHASE.buy, PHASE.prep, PHASE.plan]);
-
 /** Steps per execution turn. */
 export const TURN_TICKS = Math.round(ROUND.turnSeconds * SIM.tickRate);
 

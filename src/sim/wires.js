@@ -7,7 +7,7 @@
 // and cross it freely. A grenade or a breach charge going off near it clears
 // it. The attackers know a wire once one of them (or the drone) has seen it
 // or walked into it: sim.intel.wires (door indices), like the barricades.
-import { WIRE, PREP, COMBAT } from '../config/balance.js';
+import { WIRE, COMBAT } from '../config/balance.js';
 import { EV } from '../core/events.js';
 import { canSee } from './vision.js';
 import { alertAiUnit } from './ai.js';

@@ -1,8 +1,7 @@
 // Gameplay balance: every simulation number lives here, not in sim code.
-// Owner: gameplay. Changing any value changes the deterministic replay
-// (tests/sim-bench.mjs prints a new hash) — that is expected.
-// tests/sim-plans.mjs plays hundreds of rounds with good and clumsy plans:
-// run it after any change here.
+// Owner: gameplay. Changing any value changes the deterministic replay — that is expected.
+// After a change that touches the rules, measure: node scripts/balance.mjs 800 ciegas <mapa>
+// (and a second batch of seeds), goal 45-55 % per side and per site.
 import { DEG } from '../core/math.js';
 
 export const SIM = Object.freeze({

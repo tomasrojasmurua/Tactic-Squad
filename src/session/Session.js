@@ -17,8 +17,6 @@ import { PLAYER_TEAM } from '../config/squad.js';
 import { DEFAULT_MAP } from '../data/maps/index.js';
 import { lastUserIndex, controllableUnit } from '../sim/queries.js';
 
-export const PHASES = Object.freeze(['title', 'buy', 'prep', 'drone', 'planning', 'running', 'paused', 'ended']);
-
 /** Session phase for each round phase of the sim. */
 export const SESSION_PHASE = Object.freeze({ buy: 'buy', prep: 'prep', drone: 'drone', plan: 'planning', exec: 'running', end: 'ended' });
 

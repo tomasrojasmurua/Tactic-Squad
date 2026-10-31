@@ -350,8 +350,6 @@ El código ya está ordenado para la versión en red, aunque no haya nada de red
 - Un solo mapa. La ronda es 3 contra 3 (`config/squad.js` `DEFENDERS`, los primeros puestos de
   `defense`); el 5 contra 5 necesita más puestos en el mapa.
 - Faltan las clases Escudo, Tirador, Granadero y Vigía.
-- Varios comentarios del código mencionan `docs/BRIEF.md` y `tests/sim-plans.mjs`, que
-  no venían en el zip original y no existen en el repo.
 
 ---
 

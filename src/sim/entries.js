@@ -32,7 +32,7 @@ import { spawnGas } from './gas.js';
 import { openDoor, crackDoor, destroyDoor } from './doors.js';
 import { alertAiUnit } from './ai.js';
 import { applyBlast } from './combat.js';
-import { isAiControlled, ENTRY_GEAR, tossLanding, tossDoorway, tossRangeOf } from './queries.js';
+import { isAiControlled, tossLanding, tossDoorway, tossRangeOf } from './queries.js';
 
 const LAND = { x: 0, y: 0, reach: 0, viaX: 0, viaY: 0, leg1: 0, leg2: 0 };
 import { startBash, breakBarricade } from './barricades.js';

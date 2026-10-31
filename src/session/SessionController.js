@@ -21,7 +21,7 @@ import { FLOW } from '../config/ui.js';
 import { lessonById, nextLesson } from '../config/lessons.js';
 import { loadPref, savePref } from './storage.js';
 import { requestFullscreenLandscape, toggleFullscreen } from '../ui/device.js';
-import { controllableUnit, defuseCandidate, firstAlive, teamUnits, pendingDoors, lastUserIndex, enemyTeam, HERE } from '../sim/queries.js';
+import { controllableUnit, defuseCandidate, teamUnits, pendingDoors, lastUserIndex, enemyTeam, HERE } from '../sim/queries.js';
 import { phaseTick } from '../sim/round.js';
 import { SESSION_PHASE, isDecisionPhase, isPlanningTime, isLivePhase, pilotsDrone, isDefenderSetup, inRecon, watchInPlanning } from './Session.js';
 import { watchOf, watchOrder } from './watch.js';
