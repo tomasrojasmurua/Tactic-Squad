@@ -1436,3 +1436,4 @@ body.cine .banner { opacity: 0.45; }
 .radial-label.chosen { color: #fff; border-top-color: var(--cyan); }
 body.radial-on .entry-picker, body.radial-on .ptag { opacity: 0.25; }
 @keyframes radialIn { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
+body.touch .card.squad-all { display: none !important; } /* touch: ESCUADRA is in the operator's radial */

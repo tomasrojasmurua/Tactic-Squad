@@ -71,8 +71,8 @@ export const T = Object.freeze({
   /** Title screen: how to play in three steps (touch / desktop). */
   howTo: {
     touch: [
-      ['1', 'Toca un operador y arrastra el dedo desde él para dibujar su ruta (ESCUADRA: los demás lo siguen).'],
-      ['2', 'Mantén pulsado un punto para elegir hacia dónde mira.'],
+      ['1', 'Toca un operador y arrastra el dedo desde él para dibujar su ruta. Mantén pulsada su ficha para ver su clase.'],
+      ['2', 'Mantén pulsado un ?, un punto o un soldado y desliza: cómo entra, qué lanza, hacia dónde mira. Suelta para elegir.'],
       ['3', `LISTO: el turno corre ${TURN} s. Luego corriges el plan con lo que pasó.`],
     ],
     desk: [
@@ -578,16 +578,16 @@ export const T = Object.freeze({
     more: 'Más opciones',
     rows: [
       ['Tocar operador / tarjeta', 'Seleccionar'],
-      ['Tocar otra vez su tarjeta (o su nombre)', 'Ficha del operador: clase, arma, equipo que lleva'],
-      ['ESCUADRA (junto a las tarjetas)', 'Los demás siguen al seleccionado en fila: una ruta para todos'],
+      ['Mantener pulsada su tarjeta', 'Ficha del operador: clase, arma, equipo que lleva (al soltar se esconde)'],
+      ['Mantener pulsado un ? · un punto · el operador', 'Rueda: desliza hacia una opción y suelta (en el centro: nada). Cómo entra por la puerta, qué lanza, sigilo, asomarse, mirada, escuadra en fila'],
       ['Mando DRON', 'Mover el dron de reconocimiento; RETIRAR lo termina'],
       ['Tocar el suelo', 'Añadir punto de ruta'],
       ['Arrastrar desde el operador o el final de su ruta', 'Dibujar ruta'],
       ['Arrastrar un punto · un tramo', 'Mover ese punto · crear uno nuevo en el tramo'],
-      ['Tocar un punto, una etiqueta o un ?', 'Menú del punto: cómo entra por la puerta, cuándo (GO), a qué paso (sigilo) y qué lanza'],
-      ['Tocar otra vez al operador seleccionado', 'Lanzar (o esperar un GO) desde donde está, sin moverse; después sigue su ruta'],
+      ['ESPERAR (a la derecha)', 'El último punto elegido espera un grupo GO (violeta, rosa, blanco)'],
+      ['⋯ (arriba a la derecha)', 'Ver todo el mapa, cámaras, pantalla completa, música, ayuda'],
       ['Arrastrar el suelo', 'Mover cámara'],
-      ['Mantener pulsado un punto', 'Arrastrar para fijar la mirada'],
+      ['Mantener pulsado el suelo', 'Arrastrar para fijar hacia dónde mira el último punto'],
       ['Mantener pulsado el suelo', 'El último punto mira hacia ahí'],
       ['Dos dedos', 'Mover cámara · pellizcar para zoom'],
       ['Dedo en el borde al dibujar', 'La cámara te sigue'],
@@ -698,9 +698,9 @@ export const T = Object.freeze({
   coach: {
     select: { touch: 'Toca a un operador para darle órdenes', desk: 'Selecciona un operador (clic o 1·2·3)' },
     route: { touch: (n) => `Arrastra desde ${n} para dibujar su ruta`, desk: (n) => `Clic o arrastra para trazar la ruta de ${n}` },
-    look: { touch: 'Mantén pulsado un punto y arrastra: hacia dónde mira', desk: 'Clic derecho y arrastra: hacia dónde mira' },
+    look: { touch: 'Mantén pulsado un punto o un ?: desliza y suelta para elegir', desk: 'Clic derecho y arrastra: hacia dónde mira' },
     next: {
-      touch: (n) => `Bien. Ahora ${n}: tócalo y traza su ruta · o ESCUADRA: todos siguen esta ruta en fila`,
+      touch: (n) => `Bien. Ahora ${n}: tócalo y traza su ruta · o mantén pulsado al líder: escuadra en fila`,
       desk: (n) => `Bien. Ahora ${n} (tecla o clic) · o Q: todos siguen esta ruta en fila`,
     },
     ready: { touch: 'Pulsa LISTO · ESPERAR marca un grupo GO que lanzas en el turno', desk: 'ESPACIO: listo · H marca un grupo GO que lanzas en el turno' },

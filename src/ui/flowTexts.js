@@ -274,18 +274,21 @@ export const FLOW_TEXTS = Object.freeze({
     door: {
       title: 'Decide la puerta',
       text: {
-        touch: 'La ruta cruza una puerta cerrada: verás un ? sobre ella. Sin hacer nada, ÁGUILA la abre y pasa. Toca el ? para elegir cómo entra; prueba FLASH: abre y lanza un flash adentro.',
+        touch: 'La ruta cruza una puerta cerrada: verás un ? sobre ella. Sin hacer nada, ÁGUILA la abre y pasa. Mantén pulsado el ?, desliza el dedo hacia FLASH (a la derecha) y suelta: abre y lanza un flash adentro.',
         desk: 'La ruta cruza una puerta cerrada: verás un ? sobre ella. Sin hacer nada, ÁGUILA la abre y pasa. Haz clic en el ? para elegir cómo entra; prueba FLASH: abre y lanza un flash adentro.',
       },
     },
     hold: {
       title: 'Elige cuándo',
-      text: 'En CUÁNDO elige VIOLETA: ÁGUILA esperará en la puerta hasta que des el GO violeta. Cada color es un grupo: los que esperan el mismo color entran juntos.',
+      text: {
+        touch: 'Toca ESPERAR (a la derecha) y elige VIOLETA: ÁGUILA esperará en esa puerta hasta que des el GO violeta. Cada color es un grupo: los que esperan el mismo color entran juntos.',
+        desk: 'En CUÁNDO elige VIOLETA: ÁGUILA esperará en la puerta hasta que des el GO violeta. Cada color es un grupo: los que esperan el mismo color entran juntos.',
+      },
     },
     look: {
       title: 'Hacia dónde mira',
       text: {
-        touch: 'Mantén pulsado el último punto de la ruta y arrastra: es hacia dónde mirará al llegar. Quien ya apunta al ángulo dispara primero.',
+        touch: 'Mantén pulsado el último punto de la ruta, desliza hacia MIRADA (arriba a la izquierda), suelta y toca hacia dónde mirará al llegar. Quien ya apunta al ángulo dispara primero.',
         desk: 'Clic derecho en el último punto de la ruta y arrastra: es hacia dónde mirará al llegar. Quien ya apunta al ángulo dispara primero.',
       },
     },
@@ -318,7 +321,7 @@ export const FLOW_TEXTS = Object.freeze({
     doorBeside: {
       title: 'Granada desde el costado',
       text: {
-        touch: 'Toca el ? y elige GRANADA. ÁGUILA se pega al costado del marco, fuera de la línea de fuego, abre y lanza adentro. FLASH y CARGA también se hacen desde el costado.',
+        touch: 'Mantén pulsado el ? y desliza hacia GRANADA (abajo a la derecha). ÁGUILA se pega al costado del marco, fuera de la línea de fuego, abre y lanza adentro. FLASH y CARGA también se hacen desde el costado.',
         desk: 'Haz clic en el ? y elige GRANADA. ÁGUILA se pega al costado del marco, fuera de la línea de fuego, abre y lanza adentro. FLASH y CARGA también se hacen desde el costado.',
       },
     },
@@ -332,7 +335,7 @@ export const FLOW_TEXTS = Object.freeze({
     doorHere: {
       title: 'Lanzar sin moverte',
       text: {
-        touch: 'Toca a ZORRO y vuelve a tocarlo: el menú «Desde donde está». En LANZAR elige HUMO o FLASH y toca dónde cae. Lanza desde su sitio y después sigue su ruta, si le das una.',
+        touch: 'Mantén pulsado a ZORRO y desliza hacia HUMO (abajo) o FLASH (a la derecha); suelta y toca dónde cae. Lanza desde su sitio y después sigue su ruta, si le das una.',
         desk: 'Elige a ZORRO (3) y haz clic sobre él: el menú «Desde donde está». En LANZAR elige HUMO o FLASH y haz clic dónde cae. Lanza desde su sitio y después sigue su ruta, si le das una.',
       },
     },
@@ -352,14 +355,14 @@ export const FLOW_TEXTS = Object.freeze({
     squadFile: {
       title: 'Escuadra en fila',
       text: {
-        touch: 'Elige a ÁGUILA y toca ESCUADRA: LOBO y ZORRO la siguen en fila por su ruta. Una ruta para todos.',
+        touch: 'Mantén pulsado a ÁGUILA y desliza hacia arriba (ESCUADRA EN FILA): LOBO y ZORRO la siguen en fila por su ruta. Una ruta para todos.',
         desk: 'Elige a ÁGUILA (1) y pulsa Q (o ESCUADRA): LOBO y ZORRO la siguen en fila por su ruta. Una ruta para todos.',
       },
     },
     squadGroups: {
       title: 'Dos grupos, dos GO',
       text: {
-        touch: 'Traza a ÁGUILA hasta la puerta principal y en CUÁNDO elige VIOLETA. Luego da a ZORRO su propia ruta (sale de la fila) hasta la puerta de la oficina, al norte, con CUÁNDO ROSA.',
+        touch: 'Traza a ÁGUILA hasta la puerta principal y con ESPERAR elige VIOLETA. Luego da a ZORRO su propia ruta (sale de la fila) hasta la puerta de la oficina, al norte, y con ESPERAR elige ROSA.',
         desk: 'Traza a ÁGUILA hasta la puerta principal y en CUÁNDO elige VIOLETA (Z). Luego da a ZORRO (3) su propia ruta (sale de la fila) hasta la puerta de la oficina, al norte, con CUÁNDO ROSA (X).',
       },
     },

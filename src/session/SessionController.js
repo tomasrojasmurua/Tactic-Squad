@@ -940,9 +940,9 @@ export class SessionController {
     if (!r || r.hover < 0) return;
     const o = r.options[r.hover];
     this.targetDoor(`door_${r.unitId}_${r.index}`); // the point the option is about
+    // The point stays targeted (its tag lit): ESPERAR then sets that point's GO group.
     if (o.action === 'lookPick') {
       this.session.ui.lookPick = { unitId: r.unitId, index: r.index };
-      this.closePicker();
       this.notice('lookPick');
       return;
     }
@@ -951,8 +951,7 @@ export class SessionController {
       this.planning.toggleSquad();
       return;
     }
-    this.handleRequest(o.action);
-    if (!o.action.startsWith('toss_')) this.closePicker(); // a throw waits for where it lands (the next tap)
+    this.handleRequest(o.action); // a throw then waits for where it lands (the next tap)
   }
 
   /** Out of a 2v2's pick: the device's squad of 3 again (its first two take the pair just picked). */
