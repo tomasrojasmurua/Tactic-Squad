@@ -40,14 +40,11 @@ import { summarizeNoise } from './noise.js';
 import { launchDrone, droneOver, endDrone } from './drone.js';
 import { aiBuy, aiPrepare } from './prep.js';
 import { placeParapets } from './parapets.js';
+import { TURN_TICKS } from './queries.js';
 
 export const PHASE = Object.freeze({ buy: 'buy', prep: 'prep', drone: 'drone', plan: 'plan', exec: 'exec', end: 'end' });
 
-/** Phases where the sides decide (time stopped). */
-export const DECISION_PHASES = Object.freeze([PHASE.buy, PHASE.prep, PHASE.plan]);
-
-/** Steps per execution turn. */
-export const TURN_TICKS = Math.round(ROUND.turnSeconds * SIM.tickRate);
+export { TURN_TICKS }; // steps per execution turn (defined with the readers: sim/queries.js)
 
 /** Steps a turn runs at least before a contact can end it (Simulation stopOnContact). */
 const MIN_CONTACT_TICKS = Math.round(ROUND.minContactSeconds * SIM.tickRate);

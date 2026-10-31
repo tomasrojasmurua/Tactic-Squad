@@ -321,11 +321,12 @@ export default {
     ],
     B: [
       // Anchor behind the chargers' corner: the hall door across the workshop.
-      { at: [53.4, 25.6], facing: 178 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
-      // By the bench at the hall door's side: the roller door from the alley.
-      { at: [44.6, 23.4], facing: 60 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'hold', reactsToNoise: true } },
-      // In the hall on aisle 4, looking west; falls back into the workshop.
-      { at: [44.0, 19.6], facing: 180 * DEG, weapon: 'smg', role: 'roamer', behavior: { type: 'hold', reactsToNoise: true, rotate: { to: [50.0, 23.8], look: 180 * DEG } } },
+      // (31 oct: the three posts of B pulled into the workshop — the attackers won 61-64 % here.)
+      { at: [53.4, 25.3], facing: 178 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
+      // Off the hall door's line, by the dispatch door: the hall door at an angle, 5 m.
+      { at: [47.0, 23.2], facing: 156 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'hold', reactsToNoise: true } },
+      // In the workshop by the roller door: the alley door and the hall door's back.
+      { at: [49.0, 27.6], facing: 210 * DEG, weapon: 'smg', role: 'roamer', behavior: { type: 'hold', reactsToNoise: true } },
       // Dispatch, at its window on the hall.
       { at: [43.2, 19.4], facing: 180 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: 150 * DEG, to: 210 * DEG, period: 6, reactsToNoise: true } },
     ],

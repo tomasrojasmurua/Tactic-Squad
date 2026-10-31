@@ -4,11 +4,17 @@
 // the ONLY sim helpers that input/ui/render may import besides vision.js.
 import { pointInBox, pointAabbDistance, pointSegDist2, rayCast } from '../core/geom.js';
 import { angleDiff } from '../core/math.js';
-import { MOVE, ROUND, ENTRY, DOORS, CAMERA, PREP } from '../config/balance.js';
+import { MOVE, ROUND, ENTRY, CAMERA, PREP, BUY, SIM } from '../config/balance.js';
 import { ROLES } from '../config/operators.js';
 import { PROP_SURFACE, SURFACE_PROBE, DOOR_SURFACE, FENCE_SURFACE } from '../config/materials.js';
 import { TEAMS } from '../config/squad.js';
 import { datan2, dcos, dhypot, dsin, sq } from '../core/dmath.js';
+
+/** Steps per execution turn (sim/round.js runs them; the HUD shows what is left). */
+export const TURN_TICKS = Math.round(ROUND.turnSeconds * SIM.tickRate);
+
+/** The items a side can buy (its buy panel; the incendiaria is the defenders' only). */
+export const buyableItems = (team) => (team === 'attackers' ? BUY.items : BUY.defenderItems);
 
 /** The opposing side of a team. */
 export const enemyTeam = (team) => (team === TEAMS[0] ? TEAMS[1] : TEAMS[0]);
@@ -73,11 +79,6 @@ export function struckSurface(sim, x, y) {
 /** Bomb defuse progress 0..1 while someone works on it, else -1. */
 export const defuseProgress = (sim) => (sim.bomb.defuserId >= 0 ? sim.bomb.progress : -1);
 
-export function firstAlive(sim, team) {
-  for (const u of sim.teams[team]) if (u.alive) return u;
-  return null;
-}
-
 /** A living unit the given (human) side may command, or null. */
 export function controllableUnit(sim, unitId, team = humanTeam(sim)) {
   const u = unitId >= 0 ? sim.units[unitId] : null;
@@ -94,27 +95,6 @@ export function routeTail(unit) {
 export function lastUserIndex(unit) {
   for (let i = unit.route.length - 1; i >= 0; i--) if (unit.route[i].user) return i;
   return -1;
-}
-
-/** Is any living unit already waiting for the GO code? */
-export function anyWaitingGo(sim) {
-  for (const u of sim.units) if (u.alive && u.waitingGo) return true;
-  return false;
-}
-
-/** Does any living unit have a GO hold on its route (reached or not)? */
-export function anyGoHold(sim) {
-  for (const u of sim.units) {
-    if (!u.alive) continue;
-    for (const p of u.route) if (p.hold) return true;
-  }
-  return false;
-}
-
-/** Id of the bomb site ('A' | 'B') containing a point, or null. */
-export function siteAt(sim, x, y) {
-  for (const s of sim.compiled.sites) if (pointInBox(x, y, s.box)) return s.id;
-  return null;
 }
 
 /** Does this side know where the bomb is? The defenders placed it; the attackers must find it. */
@@ -173,21 +153,6 @@ export function doorwayNear(world, x, y, maxDist) {
     }
   }
   return best;
-}
-
-/** Living units of a side that still have a GO hold ahead on their route (not yet waiting). */
-export function holdsPending(sim, team = humanTeam(sim)) {
-  let n = 0;
-  for (const u of sim.teams[team]) {
-    if (!u.alive || u.waitingGo) continue;
-    for (const p of u.route) {
-      if (p.hold) {
-        n++;
-        break;
-      }
-    }
-  }
-  return n;
 }
 
 /**

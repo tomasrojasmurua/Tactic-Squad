@@ -95,6 +95,7 @@ export class OnlineSession {
       buildSim: (info) => this.game.buildRound(info),
       on: (type, data) => this.onEvent(type, data),
     });
+    this.client.batching = true; // one message per frame (OnlineSession.update)
     this.conn = new Connection({
       code,
       hello: () => ({ nombre: this.name, token: loadPref(tokenKey(code), null) }),
@@ -194,8 +195,8 @@ export class OnlineSession {
   }
 
   /** May the sim take one more step (the server granted it)? */
-  canStep() {
-    return !!this.client && this.client.canStep();
+  canStep(reserve = 0) {
+    return !!this.client && this.client.canStep(reserve);
   }
 
   afterStep() {
@@ -211,6 +212,7 @@ export class OnlineSession {
   update() {
     if (!this.conn) return;
     this.conn.update();
+    this.client.flushOrders();
     const nudge = this.client && this.client.clockMsg();
     if (nudge) this.send(nudge);
     this.state({ quality: this.conn.quality });

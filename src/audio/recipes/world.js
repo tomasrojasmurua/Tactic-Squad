@@ -92,29 +92,6 @@ export function creak(k, lowHz, highHz, dur, formants) {
 
 // ------------------------------------------------------------ ambience loops
 
-/** Fluorescent ballast: exact 100 Hz harmonics (periodic, loops by itself) + gated buzz (cross-faded). */
-export function humLoop(k, seconds) {
-  const { sr, rng } = k;
-  const n = len(sr, seconds);
-  const extra = len(sr, 0.25);
-  const buzz = new Float32Array(n + extra);
-  const bf = new SVF(sr).set(2400, 1.3);
-  for (let i = 0; i < buzz.length; i++) {
-    const t = i / sr;
-    bf.tick(white(rng));
-    buzz[i] = bf.bp * Math.pow(Math.abs(Math.sin(2 * Math.PI * 50 * t)), 12) * 0.5;
-  }
-  const out = seamlessLoop(buzz, n);
-  const harmonics = [[100, 1], [200, 0.55], [300, 0.35], [400, 0.18], [600, 0.12], [800, 0.05]];
-  for (let i = 0; i < n; i++) {
-    const t = i / sr;
-    let s = 0;
-    for (const [hz, a] of harmonics) s += Math.sin(2 * Math.PI * hz * t) * a;
-    out[i] += s * 0.35;
-  }
-  return out;
-}
-
 /** Air handling: band-limited pink noise with slow swells that fit the loop exactly. */
 export function ventLoop(k, seconds) {
   const { sr, rng } = k;

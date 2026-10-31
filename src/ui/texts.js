@@ -1,7 +1,7 @@
 // Every user-facing string (Spanish). Keep UI copy here, not in components.
 
 import { FLOW_TEXTS } from './flowTexts.js';
-import { ROUND, DRONE, PREP } from '../config/balance.js';
+import { ROUND, DRONE } from '../config/balance.js';
 import { GO_GROUPS } from '../config/ui.js';
 
 const TURN = ROUND.turnSeconds;

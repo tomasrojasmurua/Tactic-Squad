@@ -7,7 +7,6 @@ import { rgba, BLACK } from './overlayColors.js';
 
 const OLIVE = [0.4, 0.48, 0.24];
 const STEEL = [0.72, 0.74, 0.76];
-const DARK = [0.08, 0.09, 0.1];
 const WOOD = [0.58, 0.38, 0.19];
 const WOOD_LIGHT = [0.8, 0.58, 0.32];
 const NAIL = [0.85, 0.86, 0.88];

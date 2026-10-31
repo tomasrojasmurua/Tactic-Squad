@@ -89,6 +89,9 @@ export class LockstepClient {
     this.desync = null;
     this.replaying = false;
     this.early = [];
+    this.outbox = [];
+    this.outboxN = -1;
+    this.batching = false;
   }
 
   get phase() {
@@ -227,15 +230,29 @@ export class LockstepClient {
   command(cmd) {
     if (!this.sim || this.replaying || this.finished) return;
     const mine = { ...cmd, team: this.team };
-    if (LIVE.has(this.sim.phase)) {
-      this.send({ t: 'ordenes', n: this.n, lista: [mine] });
-      return;
-    }
+    if (LIVE.has(this.sim.phase)) return this.post(mine);
     if (!DECIDING.has(this.sim.phase) || this.isReady) return;
     if (!this.shared) this.sim.enqueue(mine); // 2v2: it applies when the server hands it back (previa)
     // The server has not opened this phase yet (its `fase` is on the way): it goes when it does.
     if (!this.fase || this.fase.n !== this.n) this.early.push(mine);
-    else this.send({ t: 'ordenes', n: this.n, lista: [mine] });
+    else this.post(mine);
+  }
+
+  /**
+   * An order on its way. Batching (net/OnlineSession.js sets it): the orders of a frame go in one
+   * message (a freehand stroke is dozens of points); flushOrders() sends them. Else at once.
+   */
+  post(cmd) {
+    if (this.outbox.length && this.outboxN !== this.n) this.outbox.length = 0; // stale: its phase is over
+    this.outboxN = this.n;
+    this.outbox.push(cmd);
+    if (!this.batching) this.flushOrders();
+  }
+
+  flushOrders() {
+    if (!this.outbox.length) return;
+    if (this.outboxN === this.n) this.send({ t: 'ordenes', n: this.n, lista: this.outbox.slice() });
+    this.outbox.length = 0;
   }
 
   /** Does this player command that unit (its side's, and one of his operators in a 2v2)? */
@@ -248,6 +265,7 @@ export class LockstepClient {
   /** LISTO: this side is done with the phase (the round's result, too). */
   ready() {
     if (!this.deciding) return;
+    this.flushOrders(); // the orders before the LISTO
     this.readyAt = this.n;
     this.send({ t: 'listo', n: this.n });
   }
@@ -280,9 +298,9 @@ export class LockstepClient {
   }
 
   /** Is the sim allowed one more step (a live phase, below the granted step)? */
-  canStep() {
+  canStep(reserve = 0) {
     const sim = this.sim;
-    return !!sim && LIVE.has(sim.phase) && phaseTick(sim) < this.hasta;
+    return !!sim && LIVE.has(sim.phase) && phaseTick(sim) < this.hasta - reserve;
   }
 
   /** Steps the server granted that this phone has not run yet (it runs faster to catch up). */

@@ -23,12 +23,11 @@
 import { EV } from '../core/events.js';
 import { ENTRY } from '../config/balance.js';
 import { GO_GROUPS } from '../config/ui.js';
-import { controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode, lastUserIndex, HERE } from '../sim/queries.js';
+import { controllableUnit, entryDoorwayAt, entryModeFits, gearLeft, ENTRY_GEAR, holdCode, lastUserIndex, HERE, buyableItems } from '../sim/queries.js';
 import { canEditRoutes, targetIndex } from '../session/Session.js';
 import { el, setText, toggle, setStyle } from './dom.js';
 import { ENTRY_ICON } from './icons.js';
 import { T } from './texts.js';
-import { buyableItems } from '../sim/prep.js';
 
 // The door wheel: every entry around the door point, clockwise from the top.
 const WHEEL = ['none', 'kick', 'breach', 'frag', 'flash', 'slow', 'cam']; // 'cam': only for whoever carries the fiber-optic camera

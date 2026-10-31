@@ -156,13 +156,6 @@ export function grains(rng, sr, density) {
   return (t) => (rng.next() < density(t) / sr ? white(rng) * (0.4 + rng.next() * 0.6) : 0);
 }
 
-/** Adds `src` into `dst` at a sample offset with a gain. */
-export function mixInto(dst, src, offset = 0, gain = 1) {
-  const n = Math.min(src.length, dst.length - offset);
-  for (let i = 0; i < n; i++) dst[offset + i] += src[i] * gain;
-  return dst;
-}
-
 // ------------------------------------------------------------ post-processing
 
 /** Removes DC with a gentle one-pole high-pass (no step at the start). */

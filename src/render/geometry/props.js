@@ -418,4 +418,3 @@ export function buildProp(m, prop) {
   m.setTransform();
 }
 
-export const PROP_TYPES = [...Object.keys(BUILDERS), ...Object.keys(EXTRA_BUILDERS)];
