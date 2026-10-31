@@ -182,13 +182,14 @@ export function updateMovement(sim, u, dt) {
  * walking, or stopped mid-route (kicking a door, queued) — instead of
  * walking into him. Allies coming the other way, resting (no route) or
  * waiting for GO never block: they are pushed aside (separateUnits), so two
- * operators can never deadlock.
+ * operators can never deadlock. Nor do allies standing aside for a teammate at a door (waitDoor).
  */
 function followFactor(sim, u, dirX, dirY) {
   let factor = 1;
   const reach = MOVE.followGap + MOVE.followSlowRange;
   for (const a of sim.teams[u.team]) {
-    if (a === u || !a.alive || !(a.wasMoving || (a.route.length && !a.waitingGo))) continue;
+    // (one standing to let a teammate through a door first does not block either: that teammate may be u)
+    if (a === u || !a.alive || !(a.wasMoving || (a.route.length && !a.waitingGo && a.waitDoor < 0))) continue;
     const rx = a.x - u.x;
     const ry = a.y - u.y;
     const along = rx * dirX + ry * dirY;

@@ -268,27 +268,4 @@ export const EXTRA_BUILDERS = Object.freeze({
       m.box(-w / 2 + 0.3, 0, z + 0.24, 0.4, d - 0.2, 0.08, '#e8e2d0');
     }
   },
-  // --- the school (Liceo)
-  lockers(m, w, d, h) {
-    const n = Math.max(1, Math.round(w / 0.4));
-    for (let i = 0; i < n; i++) {
-      const x = -w / 2 + (i + 0.5) * (w / n);
-      m.box(x, 0, 0.08, w / n - 0.02, d, h - 0.08, i % 2 ? '#2f6db0' : '#2a64a2', { top: '#3a7cc4' });
-      m.box(x, d / 2 + 0.005, h * 0.75, w / n - 0.12, 0.01, 0.05, '#1b1c1f'); // vents
-    }
-    m.box(0, 0, 0, w, d, 0.08, '#1b1c1f');
-  },
-  schoolDesk(m, w, d, h) {
-    for (const x of [-1, 1]) m.box((x * (w - 0.1)) / 2, 0, 0, 0.04, d - 0.1, h - 0.03, '#5b616b');
-    m.box(0, 0, h - 0.03, w, d, 0.03, '#c9a26b', { top: '#d6b07a' });
-    m.box(-w * 0.2, 0.05, h, 0.24, 0.3, 0.02, C.white, { yaw: 0.2 }); // a notebook
-  },
-  teacherDesk(m, w, d, h) {
-    m.box(0, 0, 0, w, d, h, '#7c5734', { top: '#8d6640' });
-    m.box(w * 0.25, -0.05, h, 0.4, 0.3, 0.02, C.white, { yaw: -0.1 });
-    m.box(-w * 0.25, 0, h, 0.32, 0.22, 0.2, '#2a2b2e'); // a monitor
-  },
-  bleachers(m, w, d, h) {
-    for (let i = 0; i < 3; i++) m.box(0, d / 2 - (i + 0.5) * (d / 3), 0, w, d / 3, (h * (i + 1)) / 3, '#9a6a3c', { top: '#b07a45' });
-  },
 });

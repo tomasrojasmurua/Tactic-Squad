@@ -47,12 +47,7 @@ export const FLOORS = Object.freeze({
   millConcrete: { pattern: 'concrete', a: '#8d8577', b: '#6e675b', scale: 3.0 },
   cabinPlanks: { pattern: 'wood', a: '#9a6a3c', b: '#6b4425', scale: 0.22 },
   cabinRug: { pattern: 'rug', a: '#7a3b2a', b: '#d2b47a', scale: 1.0 },
-  // the school (Liceo)
-  schoolLino: { pattern: 'checker', a: '#c9c3b4', b: '#b3ac9b', scale: 0.6 },
-  classroomTiles: { pattern: 'tiles', a: '#cfd6c8', b: '#aab5a4', scale: 0.5 },
-  gymWood: { pattern: 'wood', a: '#c99a62', b: '#a77a46', scale: 0.3 },
-  libraryCarpet: { pattern: 'carpet', a: '#3e5a7a', b: '#324a66', scale: 1.0 },
-  courtAsphalt: { pattern: 'asphalt', a: '#55595e', b: '#45484c', scale: 1.0 },
+  lawn: { pattern: 'ground', a: '#4f7a3a', b: '#5f6e3a', scale: 1.0 }, // the embassy's gardens
 });
 
 export const WALL = Object.freeze({
@@ -198,10 +193,6 @@ export const PROP_SURFACE = Object.freeze({
   sawBench: 'metal',
   bunkBed: 'wood',
   bush: 'fabric',
-  lockers: 'metal',
-  schoolDesk: 'wood',
-  bleachers: 'wood',
-  teacherDesk: 'wood',
   desk: 'wood',
   bookshelf: 'wood',
   counter: 'wood',

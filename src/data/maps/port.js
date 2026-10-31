@@ -352,7 +352,7 @@ export default {
 
   aiEntries: {
     A: { muelle: 1, porton: 2 }, // 1 nov: muelle 3 / porton 1 / aduana 1 left site A at 44/41 %
-    B: { aduana: 1, porton: 1, muelle: 1 },
+    B: { aduana: 3, porton: 1, muelle: 1 }, // 1 nov: with the AI's door deadlock fixed, an even share left B at 59 %
   },
 
   camera: { start: [8, 22], height: 22, frame: [1, 15, 26, 13], defendFrame: [30, 3, 30, 34] },
