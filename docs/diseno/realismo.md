@@ -129,3 +129,16 @@ Qué existe hoy de cada tema y qué cambia para las etapas siguientes. Referenci
 `node scripts/balance.mjs 800 ciegas <mapa> [primera semilla]`, % de victorias del atacante.
 (El script acepta ahora una primera semilla para medir una segunda tanda.)
 
+| Mapa | Tanda | Total | Sitio A | Sitio B |
+| --- | --- | --- | --- | --- |
+| Almacén | 1-800 | **56** | 47 | **64** |
+| Almacén | 10001-10800 | **56** | 50 | **61** |
+| Hotel | 1-800 | 45 | 45 | 45 |
+| Hotel | 10001-10800 | 45 | **42** | 47 |
+| Puerto | 1-800 | **41** | **34** | 49 |
+| Puerto | 10001-10800 | **44** | **37** | 51 |
+
+En negrita, lo que está fuera de 45-55 %. Las dos tandas coinciden, así que no es ruido. Antes de
+empezar las etapas conviene corregir **el sitio B del Almacén** (sube al atacante) y **el sitio A
+del Puerto** (lo baja) con los datos de cada mapa. Si no, cualquier etapa mide sobre una base
+desequilibrada.
