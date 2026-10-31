@@ -10,6 +10,9 @@ export const HUD = Object.freeze({
   lowTimeSeconds: 20, // the bomb's timer turns red (and beeps: config/audio.js BOMB_BEEP)
   bombUrgentSeconds: 10, // ...and beats under this
   cineFadeMs: 1800, // touch: while a turn runs the HUD fades this long after the last touch (a film)
+  calloutMs: 1500, // a soldier's callout stays this long over him (ui/Callouts.js)...
+  calloutGapMs: 900, // ...and he says nothing new before this
+  calloutLiftPx: 34, // px above his feet
   holdMs: 380, // touch: a chip / a "?" held this long shows its sheet / its radial
   clockWarnSeconds: 5, // the decision clock turns amber this close to its deadline
   deadGunColor: '#666',

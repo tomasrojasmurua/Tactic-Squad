@@ -313,6 +313,15 @@ export default {
     ],
   },
 
+  // Noisy floor: gravel past the quay gate and along the lane by the loading door, the steel grating
+  // between the reefers and inside the cold room's door.
+  debris: [
+    { kind: 'gravel', rect: [13.0, 4.2, 3.0, 2.6] },
+    { kind: 'gravel', rect: [42.4, 23.4, 3.0, 1.4] },
+    { kind: 'metal', rect: [47.7, 11.2, 2.4, 1.4] },
+    { kind: 'metal', rect: [47.6, 30.6, 1.6, 2.0] },
+  ],
+
   aiBarricades: {
     A: ['consol-carril'],
     B: ['aduana-consol', 'consol-maquinas', 'carga'],

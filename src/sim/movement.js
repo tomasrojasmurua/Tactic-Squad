@@ -17,6 +17,7 @@ import { wireFactor } from './wires.js';
 import { inFire } from './fire.js';
 import { datan2, dcos, dhypot, dsin, sq } from '../core/dmath.js';
 import { woundSpeed, bleed } from './wounds.js';
+import { debrisAt } from './queries.js';
 
 const carrot = { x: 0, y: 0 };
 
@@ -170,7 +171,7 @@ export function updateMovement(sim, u, dt) {
     u.stepAccum += moved;
     if (u.stepAccum >= MOVE.footstepStride) {
       u.stepAccum -= MOVE.footstepStride;
-      sim.emit(EV.FOOTSTEP, { unitId: u.id, team: u.team, x: u.x, y: u.y, speed: u.speedFraction * MOVE.speed, sneak: sneaking });
+      sim.emit(EV.FOOTSTEP, { unitId: u.id, team: u.team, x: u.x, y: u.y, speed: u.speedFraction * MOVE.speed, sneak: sneaking, debris: debrisAt(sim, u.x, u.y) });
     }
     tryOpenDoors(sim, u);
   }

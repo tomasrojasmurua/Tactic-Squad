@@ -139,6 +139,18 @@ export const T = Object.freeze({
     bombDefused: 'Bomba: desactivada',
     match: (round, player, ai, rival = 'IA') => `Ronda ${round} · Tú ${player}–${ai} ${rival}`,
   },
+  /** Callouts over the player's soldiers (ui/Callouts.js). */
+  callouts: {
+    contact: '¡Contacto!',
+    reload: '¡Recargando!',
+    hurt: '¡Herido!',
+    pinned: '¡Me tienen clavado!',
+    frag: '¡Granada!',
+    flash: '¡Flash!',
+    smoke: '¡Humo!',
+    down: '¡Abatido!',
+  },
+
   /** The touch radial (ui/RadialMenu.js): its title and option names. */
   radial: {
     titles: { door: '¿Cómo entra? Desliza y suelta', point: 'Este punto: desliza y suelta', here: 'Desde donde está: desliza y suelta' },

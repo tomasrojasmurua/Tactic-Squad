@@ -17,6 +17,7 @@ import { TutorialCard } from './TutorialCard.js';
 import { NetBadge } from './NetBadge.js';
 import { UnitSheet } from './UnitSheet.js';
 import { RadialMenu } from './RadialMenu.js';
+import { Callouts } from './Callouts.js';
 import { el, toggle, setStyle } from './dom.js';
 import { HUD } from '../config/ui.js';
 import { ICON } from './icons.js';
@@ -40,6 +41,7 @@ export class UI {
     this.netBadge = new NetBadge(root);
     this.unitSheet = new UnitSheet(root, bus);
     this.radial = new RadialMenu(root);
+    this.callouts = new Callouts(root, bus, session);
     this.rotate = el('div', 'rotate', `<div class="rotate-box"><div class="rotate-phone">${ICON.phone}</div><h2>${T.rotate.title}</h2><p>${T.rotate.text}</p></div>`);
     root.appendChild(this.rotate);
     // Plates that fade when a unit is under them (the touch column only dims: it stays usable).
@@ -71,6 +73,7 @@ export class UI {
     this.netBadge.update(session);
     this.unitSheet.update(sim, session);
     this.radial.update(session);
+    this.callouts.update(sim, session, camera, poseOf);
     // Touch, while a turn runs: a film — the HUD fades a moment after the last touch (a touch brings it back).
     const cine = session.touch && session.phase === 'running' && performance.now() - (session.lastTouchAt || 0) > HUD.cineFadeMs;
     toggle(document.body, 'cine', cine);

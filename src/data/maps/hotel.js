@@ -406,6 +406,14 @@ export default {
     ],
   },
 
+  // Noisy floor: the bar's broken window glass on the terrace, glass in the corridor by the suite's
+  // door (a broken picture frame), the kitchen's steel floor by its terrace door.
+  debris: [
+    { kind: 'glass', rect: [31.2, 27.6, 2.8, 1.8] },
+    { kind: 'glass', rect: [37.2, 9.2, 2.2, 1.2] },
+    { kind: 'metal', rect: [50.2, 25.2, 2.4, 1.4] },
+  ],
+
   aiBarricades: {
     A: ['suite'],
     B: ['bar-terraza', 'cocina-terraza', 'oficina-bar'],
