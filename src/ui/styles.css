@@ -1443,3 +1443,14 @@ body.touch .card.squad-all { display: none !important; } /* touch: ESCUADRA is i
 .unit-sheet .us-stress { color: #ff9a7a; }
 .unit-sheet .us-wound { color: #ff6f6f; }
 .card.low-ammo .chip-am, .card.low-ammo .am { color: var(--amber); }
+
+/* Callouts (ui/Callouts.js): a few words over the player's own soldier. */
+.callouts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.callout {
+  position: absolute; left: 0; top: 0; padding: 3px 8px; white-space: nowrap; font-family: var(--font-display); font-size: 13px; font-weight: 800;
+  letter-spacing: 0.06em; color: #fff; background: rgba(6, 8, 10, 0.86); border-left: 2px solid var(--cyan); border-radius: 2px;
+}
+.callout.off { display: none; }
+.callout.pop { animation: calloutPop 0.18s ease-out; }
+@keyframes calloutPop { from { opacity: 0; margin-top: 6px; } to { opacity: 1; margin-top: 0; } }
+body.cine .callouts { opacity: 1; } /* the film keeps its voices */

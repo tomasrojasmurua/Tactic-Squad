@@ -8,7 +8,7 @@ export const EV = Object.freeze({
   SHOT: 'shot',
   HIT: 'hit', // {unitId, team, role, attackerId, x, y, dirX, dirY, damage, headshot, part:'head'|'torso'|'limb', covered, lethal, blast?}
   DEATH: 'death', // {unitId, killerId, x, y, angle, team}
-  FOOTSTEP: 'footstep', // {unitId, team, x, y, speed (m/s)}
+  FOOTSTEP: 'footstep', // {unitId, team, x, y, speed (m/s), sneak, debris: 'glass'|'metal'|'gravel'|null}
   DOOR_OPEN: 'doorOpen', // {doorId, unitId, x, y, mode:'kick'|'push'|'crack'}
   RELOAD: 'reload', // {unitId, weaponId, x, y}
   PINNED: 'pinned', // {unitId, team, x, y}: suppressed, flat on the floor a moment (sim/stress.js)

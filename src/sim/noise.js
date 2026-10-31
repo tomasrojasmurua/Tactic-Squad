@@ -30,7 +30,8 @@ export function createNoise() {
 function kindOf(ev) {
   switch (ev.type) {
     case EV.FOOTSTEP:
-      return ev.sneak ? 'sneak' : 'step';
+      // Broken glass, sheet metal, gravel: heard even sneaking (the map's `debris`).
+      return ev.debris || (ev.sneak ? 'sneak' : 'step');
     case EV.SHOT:
       return 'shot';
     case EV.RELOAD:
@@ -69,7 +70,7 @@ export function collectNoise(sim, from) {
     if (!src) continue;
     const listener = enemyTeam(src.team);
     // A Merodeador's steps and suppressed shots carry less.
-    const steps = kind === 'step' || kind === 'sneak';
+    const steps = kind === 'step' || kind === 'sneak' || kind === 'glass' || kind === 'metal' || kind === 'gravel';
     const r = NOISE.radius[kind] * (kind === 'step' ? src.mods.stepNoise : kind === 'shot' ? src.mods.shotNoise : 1) * (steps ? woundStepNoise(src) : 1);
     const r2 = r * r;
     let heard = false;

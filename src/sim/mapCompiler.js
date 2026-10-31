@@ -24,6 +24,8 @@ export function compileMap(def) {
   const props = def.props.map(compileProp);
   const zones = {};
   for (const [key, z] of Object.entries(def.zones || {})) zones[key] = { ...z, box: boxFromRect(z.rect) };
+  // Noisy floor (broken glass, sheet metal, gravel): a step there is heard even sneaking (sim/noise.js).
+  const debris = (def.debris || []).map((d) => ({ kind: d.kind, rect: d.rect, box: boxFromRect(d.rect) }));
   // Every passable gap in a wall (doors and doorless openings): used to aim
   // through doorways while approaching them and to snap planned points.
   const doorways = gaps.filter((g) => !g.isWindow).map((g) => ({
@@ -89,6 +91,7 @@ export function compileMap(def) {
     windows,
     props,
     zones,
+    debris,
     doorways,
     rooms,
     floors: def.floors,

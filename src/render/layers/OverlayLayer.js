@@ -165,6 +165,7 @@ export class OverlayLayer {
 
     this.cameras(t, g, sim, own, mpp, time, own === 'defenders' && (session.phase === 'prep' || session.phase === 'drone'));
     this.traps(t, sim, own, mpp);
+    this.debris(g, sim);
     this.blood(g, sim, own);
     this.fires(t, sim, frame);
     this.smokes(t, sim, frame);
@@ -698,6 +699,35 @@ export class OverlayLayer {
       const wob = 0.05 * Math.sin(frame.time * 1.7 + g.y);
       t.circle(g.x, g.y, g.r * (1.04 + wob), rgba(c[0], c[1], c[2], 0.26), 28, rgba(c[0], c[1], c[2], 0.12));
       t.ring(g.x, g.y, g.r * (1 + wob), 0.05, rgba(c[0], c[1], c[2], 0.35), 32);
+    }
+  }
+
+  /**
+   * The map's noisy floor (sim/queries.js debrisAt), seen by both sides so they can plan around it:
+   * broken glass (pale shards), sheet metal (a riveted plate), gravel (stones).
+   */
+  debris(g, sim) {
+    for (const d of sim.compiled.debris) {
+      const [x, y, w, h] = d.rect;
+      let seed = Math.round(x * 31 + y * 17) >>> 0;
+      const rnd = () => ((seed = (Math.imul(seed ^ (seed >>> 15), 0x2c1b3c6d) + 0x9e3779b9) >>> 0) / 4294967296);
+      if (d.kind === 'metal') {
+        g.quad(x, y, x + w, y, x + w, y + h, x, y + h, rgba(0.42, 0.46, 0.5, 0.75));
+        g.quad(x + 0.06, y + 0.06, x + w - 0.06, y + 0.06, x + w - 0.06, y + h - 0.06, x + 0.06, y + h - 0.06, rgba(0.55, 0.59, 0.63, 0.7));
+        for (let i = 1; i < w / 0.5; i++) g.line(x + i * 0.5, y + 0.1, x + i * 0.5, y + h - 0.1, 0.025, rgba(0.32, 0.35, 0.38, 0.8));
+        for (const [cx, cy] of [[x + 0.12, y + 0.12], [x + w - 0.12, y + 0.12], [x + 0.12, y + h - 0.12], [x + w - 0.12, y + h - 0.12]]) g.circle(cx, cy, 0.04, rgba(0.75, 0.78, 0.8, 0.9), 6);
+        continue;
+      }
+      const n = Math.round(w * h * (d.kind === 'glass' ? 9 : 14));
+      for (let i = 0; i < n; i++) {
+        const px = x + rnd() * w;
+        const py = y + rnd() * h;
+        if (d.kind === 'glass') {
+          const a = rnd() * Math.PI * 2;
+          const r = 0.05 + rnd() * 0.08;
+          g.tri(px, py, px + Math.cos(a) * r, py + Math.sin(a) * r, px + Math.cos(a + 2) * r * 0.6, py + Math.sin(a + 2) * r * 0.6, rgba(0.78, 0.9, 0.96, 0.55 + rnd() * 0.35));
+        } else g.circle(px, py, 0.03 + rnd() * 0.04, rgba(0.5 + rnd() * 0.15, 0.48, 0.42, 0.8), 6);
+      }
     }
   }
 

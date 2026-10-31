@@ -20,6 +20,12 @@ export function squadStress(sim, team) {
   return k;
 }
 
+/** The noisy floor at a point ('glass' | 'metal' | 'gravel': the map's `debris`), or null. */
+export function debrisAt(sim, x, y) {
+  for (const d of sim.compiled.debris) if (pointInBox(x, y, d.box)) return d.kind;
+  return null;
+}
+
 /** The items a side can buy (its buy panel; the incendiaria is the defenders' only). */
 export const buyableItems = (team) => (team === 'attackers' ? BUY.items : BUY.defenderItems);
 

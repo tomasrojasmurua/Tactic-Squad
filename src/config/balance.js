@@ -343,8 +343,8 @@ export const NOISE = Object.freeze({
   jitter: 0.9, // ...and shifted up to this much (deterministic, from the seed)
   keepTurns: 3, // a pulse stays on the map this many turns, fading
   // Radius heard (m) by kind; the loudest kind of a cell names its pulse.
-  radius: Object.freeze({ cough: 7, wire: 10, sneak: 2, reload: 5, step: 6, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, trap: 14, flash: 18, frag: 22, breach: 22 }),
-  rank: Object.freeze(['sneak', 'reload', 'step', 'cough', 'crack', 'door', 'wire', 'plant', 'defuse', 'kick', 'bash', 'trap', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
+  radius: Object.freeze({ cough: 7, wire: 10, sneak: 2, reload: 5, step: 6, gravel: 7, metal: 8, glass: 9, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, trap: 14, flash: 18, frag: 22, breach: 22 }),
+  rank: Object.freeze(['sneak', 'reload', 'step', 'gravel', 'metal', 'glass', 'cough', 'crack', 'door', 'wire', 'plant', 'defuse', 'kick', 'bash', 'trap', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
 });
 
 /**

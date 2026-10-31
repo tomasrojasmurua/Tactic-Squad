@@ -332,6 +332,14 @@ export default {
     ],
   },
 
+  // Noisy floor (heard even sneaking): glass from a broken office window past reception's hall
+  // door, the dock's steel plate inside the dock door, gravel by the roller door in the alley.
+  debris: [
+    { kind: 'glass', rect: [22.6, 16.6, 1.8, 2.8] },
+    { kind: 'metal', rect: [46.2, 8.6, 2.4, 1.6] },
+    { kind: 'gravel', rect: [46.4, 29.6, 2.8, 1.8] },
+  ],
+
   aiBarricades: {
     A: ['porton-anden', 'oficina-nave'],
     B: ['expedicion-nave', 'recepcion-nave', 'porton-callejon'],

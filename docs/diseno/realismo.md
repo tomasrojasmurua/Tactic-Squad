@@ -201,3 +201,20 @@ Esta es la línea base para las etapas. El sitio A del Hotel queda justo en el b
 - Equilibrio: idéntico al de la etapa 2, ronda por ronda. La IA ya recargaba sola y no lee los pulsos
   de ruido (son información para el jugador), así que IA contra IA no cambia. Lo nuevo sirve a los
   jugadores.
+
+## Etapa 4 hecha: sonido y callouts (31 oct)
+
+- **Suelo ruidoso**: parches de vidrio roto, chapa y grava en cada mapa (`debris` en los datos del
+  mapa; se dibujan en el piso, los dos bandos los ven). Pisarlos hace más ruido: grava 7 m, chapa 8 m,
+  vidrio 9 m (`NOISE.radius`), aunque se vaya en sigilo. Almacén: vidrio, chapa y grava; Hotel: dos
+  de vidrio y uno de chapa; Puerto: dos de grava y dos de chapa, en pasos que conviene cruzar callado.
+  Un test comprueba que cada mapa tiene al menos tres parches, todos sobre piso transitable.
+- **Callouts** (`ui/Callouts.js`, textos en `T.callouts`): una burbuja breve sobre el soldado propio
+  que recarga, recibe un impacto, queda clavado por la supresión, lanza una granada, ve a un enemigo
+  ("¡Contacto!", el más cercano) o abate a uno. Una por soldado cada 0,9 s; no se repiten en la
+  repetición.
+- No se hizo el **chirrido de puerta entreabierta**: entreabrir desaparece en la etapa 5 (lo reemplaza
+  el espejo).
+- Equilibrio: idéntico al de las etapas 2 y 3 (Almacén 49/50, Hotel 50/47, Puerto 47/45; mismos
+  sitios). La IA no lee los pulsos de ruido, así que IA contra IA no cambia; lo nuevo es información
+  para el jugador. Sigue pendiente el sitio A del Puerto (44/42) para la próxima pasada de mapas.
