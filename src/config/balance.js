@@ -54,6 +54,9 @@ export const MOVE = Object.freeze({
   // Stuck: over stuckTime s of walking he got less than stuckFraction of the way he walked
   // (pushed against a wall): he finds the way to his next point again.
   stuckFraction: 0.15,
+  // ...and his point is this close (m): he is there (a stack point beside a frame a hair inside the wall's
+  // margin could never be stepped on exactly: he walked on the spot until the round ran out).
+  stuckArrive: 0.3,
   stuckTime: 0.6,
   // "Asomarse y volver" (waypoint.pause): he stands on the point this long, looking where it says,
   // then walks back to where he came from (orders.js setPeek).

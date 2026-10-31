@@ -41,7 +41,7 @@ puedas reaccionar en vez de mirar cómo te matan.
 
 ## 2. Cómo se juega una ronda
 
-Tres mapas, apaisados para el celular horizontal y cada uno con su historia (detalle en
+Cinco mapas, apaisados para el celular horizontal y cada uno con su historia (detalle en
 `docs/diseno/mapas-v2.md`). Cada uno tiene tres carriles, tres entradas del atacante separadas
 (no salen de la misma pared) y sitios con tres o más accesos de tipos distintos.
 **Operación Almacén** (56 × 34 m), un centro de distribución de noche: andén de camiones al norte,
@@ -54,7 +54,14 @@ ventanas a la terraza); la cocina une los dos. **Operación Puerto** (60 × 38 m
 turno de noche: un patio de contenedores a una, dos y tres alturas, girados y con huecos (un
 reach stacker a medio apilar, un contenedor abierto con su carga en el suelo, uno golpeado
 aparte), el muelle con la grúa y el carril de camiones. Sitio A en los reefers, al aire libre;
-sitio B en la cámara de frío, tras puertas pesadas. El tutorial sigue en el almacén original
+sitio B en la cámara de frío, tras puertas pesadas. **Operación Aserradero** (58 × 36 m), un
+campamento maderero en el bosque: el lindero con tres portones, un bosque abierto de pinos, rocas y
+troncos cortado por un camino de tierra, y el campamento al este. Sitio A en el galpón de la sierra
+(con su oficina y un depósito a oscuras), sitio B en la cabaña del guarda; el patio de troncos los
+une por fuera. **Operación Liceo** (58 × 36 m), un colegio cerrado de noche: la calle con el bus
+escolar, el ala de aulas al norte, un pasillo de 41 m con casilleros que lo ve todo, y al sur el
+hall, la secretaría a oscuras, el comedor y el gimnasio. Sitio A en la biblioteca, sitio B en el
+gimnasio; los patios que rodean el edificio son los flancos. El tutorial sigue en el almacén original
 (40 × 28 m, fuera del lobby). La ficha de cada mapa nunca sugiere clases.
 La ronda es **3 contra 3**: el mapa trae 4 puestos de defensa por sitio y se usan los 3
 primeros (`config/squad.js` `DEFENDERS`).
@@ -285,7 +292,7 @@ Todo lo de abajo está probado (81 pruebas) y jugable en el HTML.
 | Refuerzos: puerta trabada, sensor, cámara | **Parcial.** Barricadas y cámaras (soportes del mapa a elegir, gratis). Sensor y elección de refuerzos por el defensor: faltan |
 | Paredes blandas destructibles | **Descartado** por decisión de diseño (27 oct 2026): no se implementan |
 | Plazos de las fases | **Parcial.** El reloj existe (`PhaseClock`), pero contra la IA no hay límite |
-| Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Parcial.** Tres mapas (Almacén, Hotel y Puerto; IA contra IA con escuadras al azar, 1.600 rondas por mapa: 52 %, 50 % y 48 % para el atacante, cada sitio entre 47 y 54 %); Embajada en camino. 5v5 y dificultades: faltan |
+| Versiones 3v3 y 5v5, más mapas, dificultades de IA | **Parcial.** Cinco mapas (Almacén, Hotel, Puerto, Aserradero y Liceo; IA contra IA con escuadras al azar, 1.600 rondas por mapa: entre 48 y 51 % para el atacante, cada sitio entre 45 y 55 %). 5v5 y dificultades: faltan |
 | Online | **Falta.** El código está preparado (determinismo, órdenes serializables, grabador de planes, `teamView`). Bloquea que el render lea la sim entera |
 | Equilibrio 45-55 % | **Medido** (29 oct 2026, 600 rondas por mapa, escuadras a ciegas): atacantes 54 % Almacén, 46 % Hotel, 50 % Puerto. Por clase, tabla en `docs/traspaso/CLASES-Y-MAPAS.md` |
 
