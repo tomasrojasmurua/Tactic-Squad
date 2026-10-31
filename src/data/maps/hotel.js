@@ -174,6 +174,9 @@ export default {
     { id: 'cocina', rect: [42, 11, 13, 16] },
   ],
 
+  // Rooms with no light at night (config/balance.js NIGHT): seen into only up close or with a flashlight.
+  dark: ['lenceria', 'oficinaHotel', 'escalera'],
+
   floors: [
     { rect: [1, 1, 6, 32], material: 'yardAsphalt' },
     { rect: [7, 27, 48, 6], material: 'terraceStone' },

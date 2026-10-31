@@ -105,6 +105,9 @@ export default {
     { id: 'taller', rect: [42, 21.5, 13, 7.5] },
   ],
 
+  // Rooms with no light at night (config/balance.js NIGHT): seen into only up close or with a flashlight.
+  dark: ['oficinas', 'comedor'],
+
   floors: [
     { rect: [1, 1, 9, 32], material: 'yardAsphalt' },
     { rect: [10, 1, 45, 7], material: 'yardAsphalt' },

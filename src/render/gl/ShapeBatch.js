@@ -209,19 +209,20 @@ export class ShapeBatch {
     this.buf.length = i;
   }
 
-  /** Triangle fan from (cx, cy) through the flat polygon `pts`. */
-  fan(cx, cy, pts, c, closed = false) {
+  /** Triangle fan from (cx, cy) through the flat polygon `pts` (`edge`: the polygon's color, a gradient from `c`). */
+  fan(cx, cy, pts, c, closed = false, edge = c) {
     const n = pts.length / 2;
     const last = closed ? n : n - 1;
     if (last <= 0) return;
     let i = this.reserve(last * 3);
     const d = this.buf.data;
     const a = c[3];
+    const ae = edge[3];
     for (let k = 0; k < last; k++) {
       const j = (k + 1) % n;
       i = put(d, i, cx, cy, c, a);
-      i = put(d, i, pts[k * 2], pts[k * 2 + 1], c, a);
-      i = put(d, i, pts[j * 2], pts[j * 2 + 1], c, a);
+      i = put(d, i, pts[k * 2], pts[k * 2 + 1], edge, ae);
+      i = put(d, i, pts[j * 2], pts[j * 2 + 1], edge, ae);
     }
     this.buf.length = i;
   }

@@ -8,9 +8,9 @@
 // garbage: colors come from a small rotating pool, points and poses from
 // scratch buffers. A pooled color is valid until 16 more are requested,
 // which is always enough because ShapeBatch consumes colors immediately.
-import { HEIGHTS, OVERLAY } from '../../config/render.js';
+import { HEIGHTS, OVERLAY, NIGHT_LOOK } from '../../config/render.js';
 import { GO_GROUPS } from '../../config/ui.js';
-import { ENTRY, MOVE, ROUND, NOISE, DRONE, CAMERA, PREP } from '../../config/balance.js';
+import { ENTRY, MOVE, ROUND, NOISE, DRONE, CAMERA, PREP, NIGHT } from '../../config/balance.js';
 import { teamView } from '../../sim/view.js';
 import { visibilityPolygon } from '../../sim/vision.js';
 import { hexToRgb, lerp, lerpAngle } from '../../core/math.js';
@@ -44,6 +44,7 @@ export class OverlayLayer {
     this.gpos = { x: 0, y: 0, k: 0 }; // scratch grenade position
     this.land = { x: 0, y: 0, reach: 0 }; // scratch throw landing (tossMarker)
     this.camPoly = []; // scratch camera fields of view (cameras), one per camera
+    this.beams = new Map(); // flashlight beams (night) by unit id: {x, y, facing, version, poly}, recast when one moves
     this.ghosts = []; // free camera mounts' fields of view (cached: mountGhosts)
     this.ghostKey = '';
     this.ghostSim = null;
@@ -69,6 +70,7 @@ export class OverlayLayer {
   }
 
   reset() {
+    this.beams.clear();
     this.markers.reset();
     this.pings.clear();
     this.lastSelected = -1;
@@ -81,6 +83,31 @@ export class OverlayLayer {
 
   onSpotted(unitId, time) {
     this.markers.onSpotted(unitId, time);
+  }
+
+  /**
+   * Night (NIGHT): the dark rooms' floor in shade, and the beam of every flashlight on that this
+   * side can see (its own, and an enemy's in sight), cut by the walls like a field of view.
+   */
+  night(g, sim, frame, unitLayer, own) {
+    const dark = sim.compiled.dark;
+    if (!dark.length) return;
+    for (const b of dark) g.quad(b.minX, b.minY, b.maxX, b.minY, b.maxX, b.maxY, b.minX, b.maxY, NIGHT_LOOK.shade);
+    const L = NIGHT.light;
+    for (const u of sim.units) {
+      if (!u.alive || !u.light || (u.team !== own && !u.seenByEnemy)) continue;
+      const p = unitLayer.poseInto(u, frame.alpha, this.pose);
+      let b = this.beams.get(u.id);
+      if (!b) this.beams.set(u.id, (b = { x: NaN, y: 0, facing: 0, version: -1, poly: null }));
+      if (b.x !== p.x || b.y !== p.y || b.facing !== p.facing || b.version !== sim.world.segmentsVersion) {
+        b.poly = visibilityPolygon(sim.world, p.x, p.y, p.facing, L.fov, L.range, b.poly);
+        b.x = p.x;
+        b.y = p.y;
+        b.facing = p.facing;
+        b.version = sim.world.segmentsVersion;
+      }
+      g.fan(p.x, p.y, b.poly, NIGHT_LOOK.beam, false, NIGHT_LOOK.beamEdge);
+    }
   }
 
   rgb(u) {
@@ -110,6 +137,8 @@ export class OverlayLayer {
       if (selected >= 0 && sim.units[selected]) this.ping(sim.units[selected].x, sim.units[selected].y, 'select', selected, time);
       this.lastSelected = selected;
     }
+
+    this.night(g, sim, frame, unitLayer, own);
 
     // --- ground: shadows, rings
     for (const u of sim.units) {

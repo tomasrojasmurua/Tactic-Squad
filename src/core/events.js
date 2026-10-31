@@ -23,6 +23,7 @@ export const EV = Object.freeze({
   GAS_START: 'gasStart', // {id, x, y, unitId}: a tear gas cloud bursts (sim/gas.js)
   GAS_END: 'gasEnd', // {id, x, y}: it has thinned out
   COUGH: 'cough', // {unitId, team, x, y}: someone choking on tear gas coughs (heard: sim/noise.js)
+  LIGHT: 'light', // {unitId, team, on}: an operator switched his flashlight on / off (order 'light')
   MIRROR_SEEN: 'mirrorSeen', // {unitId, byId, team, x, y}: an enemy (byId, of `team`) caught the glint of unitId's mirror under a door (sim/perception.js)
   MIRROR_BROKEN: 'mirrorBroken', // {unitId, byId, team, x, y, fromX, fromY}: byId shot unitId's mirror to pieces (team: the mirror's)
   FIBER_CAM: 'fiberCam', // {unitId, doorId, x, y}: an Explorador threaded his fiber-optic camera under a door (sim/entries.js)

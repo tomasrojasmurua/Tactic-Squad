@@ -102,6 +102,9 @@ export default {
     { id: 'bodega', rect: [37, 25, 22, 12] },
   ],
 
+  // Rooms with no light at night (config/balance.js NIGHT): seen into only up close or with a flashlight.
+  dark: ['inspeccion', 'oficinaAduana', 'maquinas'],
+
   floors: [
     { rect: [0, 0, 60, 3], material: 'harborWater' },
     { rect: [1, 3, 11, 34], material: 'yardAsphalt' },

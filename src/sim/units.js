@@ -2,7 +2,7 @@
 // Everything that varies per operator comes from its ROLE (config/operators.js):
 // systems read u.maxHp, u.mods.*, u.vision and u.ability — never a hard-coded
 // per-unit value — so new roles need no changes here.
-import { UNIT, VISION } from '../config/balance.js';
+import { UNIT, VISION, NIGHT } from '../config/balance.js';
 import { WEAPONS } from '../config/weapons.js';
 import { ROLES, BASE_MODIFIERS } from '../config/operators.js';
 
@@ -79,6 +79,7 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     blind: 0, // s flashed / stunned: sees nothing, does not shoot
     wounds: { leg: false, arm: false }, // lasting wounds (sim/wounds.js)
     bleed: 0, // m walked since his last blood drop
+    light: NIGHT.on[team], // flashlight on (order 'light'; NIGHT): sees into the dark, and is seen from far
     reloadNow: false, // RECARGAR ordered: a fresh magazine at the next step (sim/combat.js)
     stress: 0, // 0-1 suppression (sim/stress.js): worse aim and reaction, a moment flat at the top
     stressCalm: 0, // s since the last thing that stressed him
