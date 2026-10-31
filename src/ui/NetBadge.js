@@ -33,6 +33,10 @@ export class NetBadge {
     else if (gone) {
       const left = Math.max(0, ((o.room.abandono || 0) - (performance.now() - this.goneSince)) / 1000);
       line = O.rivalGone(rival.nombre, Math.ceil(left));
+    } else if (o.mates && o.mates.length > 1 && ['buy', 'prep', 'planning'].includes(session.phase)) {
+      // Coop: how many of the friends are done with this phase.
+      const done = o.mates.filter((m) => (o.listos || []).includes(m.id)).length;
+      line = O.matesReady(done, o.mates.length);
     } else if (o.mate && ['buy', 'prep', 'planning'].includes(session.phase)) {
       // 2v2: is the teammate done with this phase?
       line = (o.listos || []).includes(o.mate.id) ? O.mateReady(o.mate.nombre) : O.mateDeciding(o.mate.nombre);

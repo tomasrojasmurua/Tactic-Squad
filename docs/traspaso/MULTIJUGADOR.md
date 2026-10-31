@@ -67,6 +67,20 @@ invitación → LISTO → turnos con hashes iguales → recarga a mitad de parti
 - Arreglo general: al terminar el dron o un turno se descartan las órdenes selladas que ya no se
   aplicarán (un segundo "recoger dron"); antes desfasaban a algún teléfono.
 
+**Juntos vs IA (1 nov)**
+- Tercer modo de la sala, `coop`: hasta cuatro amigos atacan juntos y la IA defiende (la elige el
+  anfitrión; empieza con dos o más). En la sala, la columna de defensores dice "La IA defiende".
+- Soldados: uno por jugador y al menos tres (`Room.squad`: `max(3, jugadores)`). Con dos jugadores, el
+  anfitrión manda dos (`slotsOf` reparte el resto a los primeros asientos). La IA pone tantos
+  defensores como atacantes: con cuatro amigos, cuatro contra cuatro. Sus clases son las que sortea para
+  la ronda (`coopDefenders`, completadas con la primera que cabe).
+- Siempre atacan: no hay cambio de bando a la mitad (`createMatch(..., { switchSides: false })`) y el
+  marcador dice "IA". Cada uno elige solo la clase de su soldado (dos si es el anfitrión de a dos).
+- Las órdenes del equipo van y vuelven como en el 2v2 (`previa`): todos ven las rutas de todos en
+  vivo. En la partida se ve cuántos compañeros marcaron LISTO.
+- La IA defensora corre dentro de la simulación (`controllers.defenders = 'ai'`), igual en todos los
+  teléfonos.
+
 **Pendiente**: UI que lea solo `teamView`, repetición de la última baja online (necesita las órdenes
 del rival en la grabación), medir el equilibrio de 4 contra 4 con la IA (las composiciones de la IA son
 de 3).

@@ -16,9 +16,10 @@
 // the bonus start over.
 import { MATCH } from '../config/balance.js';
 
-export function createMatch(team = 'attackers', bestOf = MATCH.bestOf) {
+/** `switchSides` false: the player keeps his side the whole match (an online coop always attacks). */
+export function createMatch(team = 'attackers', bestOf = MATCH.bestOf, { switchSides = true } = {}) {
   const toWin = Math.floor(bestOf / 2) + 1;
-  return { bestOf, toWin, switchAfter: toWin - 1, round: 1, team, score: { player: 0, ai: 0 }, lossBonus: null, slots: null, history: [], over: null };
+  return { bestOf, toWin, switchAfter: switchSides ? toWin - 1 : Infinity, round: 1, team, score: { player: 0, ai: 0 }, lossBonus: null, slots: null, history: [], over: null };
 }
 
 const OTHER_SIDE = Object.freeze({ attackers: 'defenders', defenders: 'attackers' });

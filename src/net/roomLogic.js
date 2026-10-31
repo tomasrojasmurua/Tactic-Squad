@@ -26,8 +26,11 @@
 // Message names follow docs/traspaso/MULTIJUGADOR.md (t: the type).
 
 export const ROOM = Object.freeze({
-  seats: Object.freeze({ '1v1': 2, '2v2': 4 }), // players per mode
-  squad: Object.freeze({ '1v1': 3, '2v2': 4 }), // operators per side (config/squad.js SQUAD_2V2)
+  // Players per mode. 'coop': up to four friends on the attacking side, against the AI defending
+  // (it starts with two or more).
+  seats: Object.freeze({ '1v1': 2, '2v2': 4, coop: 4 }),
+  squad: Object.freeze({ '1v1': 3, '2v2': 4 }), // operators per side (config/squad.js SQUAD_2V2); coop: squadOf
+  coopMin: 2,
   phaseSeconds: Object.freeze({ buy: 20, prep: 60, plan: 30, end: 30 }),
   grantMs: 100, // a live phase advances this much wall time per `pasos`
   grantTicks: 6, // steps per grant (60 Hz)
@@ -68,9 +71,14 @@ export class Room {
     return ROOM.seats[this.settings.modo];
   }
 
-  /** Operators per side this match (3 in a 1v1, 4 in a 2v2). */
+  /** Operators per side this match (3 in a 1v1, 4 in a 2v2; in a coop one per player, at least 3). */
   get squad() {
-    return ROOM.squad[this.settings.modo];
+    return this.coop ? Math.max(3, this.players.length) : ROOM.squad[this.settings.modo];
+  }
+
+  /** Everybody attacks together, against the AI. */
+  get coop() {
+    return this.settings.modo === 'coop';
   }
 
   /** The players on `team`, in seat order (the first commands the first operators). */
@@ -80,6 +88,7 @@ export class Room {
 
   /** The side with a free seat (the emptier one first), or null. */
   freeTeam(except = null) {
+    if (this.coop) return 'attackers';
     const half = this.seats / 2;
     const count = (t) => this.players.filter((q) => q !== except && q.team === t).length;
     return TEAMS.filter((t) => count(t) < half).sort((a, b) => count(a) - count(b))[0] || null;
@@ -178,7 +187,7 @@ export class Room {
     if (this.status !== 'lobby') return [];
     if (m.nombre) p.name = cleanName(m.nombre) || p.name;
     if (m.listo !== undefined) p.ready = !!m.listo;
-    if (TEAMS.includes(m.equipo) && p.team !== m.equipo) {
+    if (TEAMS.includes(m.equipo) && p.team !== m.equipo && !this.coop) {
       // A tap on the other side: to a free seat there; a full side swaps with its first player.
       if (this.teamOf(m.equipo).length >= this.seats / 2) {
         const other = this.teamOf(m.equipo)[0];
@@ -192,8 +201,9 @@ export class Room {
       let changed = false;
       if (ROOM.seats[m.modo] && m.modo !== this.settings.modo && this.players.length <= ROOM.seats[m.modo]) {
         this.settings.modo = m.modo;
-        // Fewer seats per side: whoever no longer fits moves to the other side.
-        for (const q of this.players) if (this.teamOf(q.team).length > this.seats / 2) q.team = OTHER[q.team];
+        // A coop: everybody attacks. Else fewer seats per side: whoever no longer fits moves to the other side.
+        if (this.coop) for (const q of this.players) q.team = 'attackers';
+        else for (const q of this.players) if (this.teamOf(q.team).length > this.seats / 2) q.team = OTHER[q.team];
         changed = true;
       }
       if (m.mapa !== undefined && m.mapa !== this.settings.mapa) {
@@ -217,8 +227,12 @@ export class Room {
     return [];
   }
 
-  /** Can the host start: a full room, the sides even, everyone else ready and connected. */
+  /** Can the host start: a full room, the sides even, everyone else ready and connected (a coop: two or more, all attacking). */
   canStart() {
+    if (this.coop) {
+      return this.players.length >= ROOM.coopMin
+        && this.players.every((q) => q.team === 'attackers' && q.connected && (q.ready || q.id === this.host));
+    }
     return this.players.length === this.seats
       && TEAMS.every((t) => this.teamOf(t).length === this.seats / 2)
       && this.players.every((q) => q.connected && (q.ready || q.id === this.host));
@@ -255,13 +269,18 @@ export class Room {
     };
   }
 
-  /** The operators a player commands: his side's, split in seat order (2 each in a 2v2). */
+  /**
+   * The operators a player commands: his side's, split in seat order (2 each in a 2v2, 1 each in a
+   * coop; when they do not split evenly, the first seats take one more).
+   */
   slotsOf(p) {
-    if (p.gaveUp) return []; // gone too long in a 2v2: his teammate has his operators
+    if (p.gaveUp) return []; // gone too long: his teammate has his operators
     const mates = this.teamOf(p.team).filter((q) => !q.gaveUp);
-    const per = this.squad / mates.length;
     const k = mates.indexOf(p);
-    return Array.from({ length: per }, (_, i) => k * per + i);
+    const base = Math.floor(this.squad / mates.length);
+    const extra = this.squad % mates.length;
+    const from = k * base + Math.min(k, extra);
+    return Array.from({ length: base + (k < extra ? 1 : 0) }, (_, i) => from + i);
   }
 
   /** May `p` give this order (its unit is one of his; side orders with no unit: anyone on the side)? */
@@ -330,7 +349,7 @@ export class Room {
       return [...this.broadcast({ t: 'fin', n: this.n }), send('*', this.roomMsg())];
     }
     this.round++;
-    if (this.round === switchAfter(this.settings.duracion) + 1) for (const q of this.players) q.team = OTHER[q.team];
+    if (!this.coop && this.round === switchAfter(this.settings.duracion) + 1) for (const q of this.players) q.team = OTHER[q.team];
     return [...this.broadcast({ t: 'ronda', n: this.n, ...this.roundFields() }), ...this.openDecision('buy', now)];
   }
 

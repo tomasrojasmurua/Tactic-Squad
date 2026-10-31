@@ -1454,3 +1454,5 @@ body.touch .card.squad-all { display: none !important; } /* touch: ESCUADRA is i
 .callout.pop { animation: calloutPop 0.18s ease-out; }
 @keyframes calloutPop { from { opacity: 0; margin-top: 6px; } to { opacity: 1; margin-top: 0; } }
 body.cine .callouts { opacity: 1; } /* the film keeps its voices */
+.lobby .rm-side .lb-player[hidden], .lobby .rm-coopnote[hidden] { display: none; }
+.lobby .rm-coopnote { margin: 2px 0 0; padding: 0 4px; font-size: 12px; line-height: 1.35; color: var(--muted, #9aa3ad); }

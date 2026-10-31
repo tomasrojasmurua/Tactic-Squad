@@ -18,10 +18,23 @@ import { createMatch, matchLoadout, endMatchRound } from '../session/Match.js';
 import { hashSim } from './stateHash.js';
 import { encodeSim, restoreSim } from './snapshot.js';
 import { ROLES, PICK_ROLES, DEF_PICK_ROLES } from '../config/operators.js';
+import { aiRoles } from '../session/Lobby.js';
 
 const LIVE = new Set(['drone', 'exec']);
 const DECIDING = new Set(['buy', 'prep', 'plan', 'end']);
 export const HUMANS = Object.freeze({ attackers: 'human', defenders: 'human' });
+/** An online coop: the friends attack together, the AI defends. */
+export const COOP = Object.freeze({ attackers: 'human', defenders: 'ai' });
+
+/**
+ * The AI defenders' classes in a coop: the squad the AI draws for the round's seed, and when the
+ * squad is bigger (four friends) the first classes that still fit, the same on every phone.
+ */
+export function coopDefenders(seed, squad) {
+  const out = aiRoles(seed, 'defenders').slice(0, squad);
+  while (out.length < squad) out.push(DEF_PICK_ROLES.find((id) => out.filter((x) => x === id).length < ROLES[id].max));
+  return out;
+}
 
 /**
  * Each side's classes: every player's picks on his operators (in a 2v2, 2 each). A pick his
@@ -56,11 +69,15 @@ export function onlineRoles(start, round) {
 
 /** What the round's Simulation is built with (the same on every phone). */
 export function onlineRound(start, round, match) {
+  const squad = start.squad || 3;
+  const coop = start.modo === 'coop';
+  const roles = onlineRoles(start, round);
+  if (coop) roles.defenders = coopDefenders(round.semilla, squad);
   return {
     map: start.mapa,
     seed: round.semilla,
     round: round.ronda,
-    options: { seed: round.semilla, controllers: HUMANS, roles: onlineRoles(start, round), loadout: matchLoadout(match), lossBonus: match.lossBonus, stopOnContact: false, squad: start.squad || 3 },
+    options: { seed: round.semilla, controllers: coop ? COOP : HUMANS, roles, loadout: matchLoadout(match), lossBonus: match.lossBonus, stopOnContact: false, squad },
   };
 }
 
@@ -175,11 +192,12 @@ export class LockstepClient {
   onStart(msg) {
     this.start = msg;
     this.squad = msg.squad || 3;
-    this.shared = msg.modo === '2v2'; // a side of two players: its orders apply on the server's echo
+    this.shared = msg.modo === '2v2' || msg.modo === 'coop'; // a side of two or more players: its orders apply on the server's echo
+    this.coop = msg.modo === 'coop';
     this.n = 0;
     this.finished = false;
     this.desync = null;
-    this.match = createMatch(msg.equipos[this.me], msg.duracion);
+    this.match = createMatch(msg.equipos[this.me], msg.duracion, { switchSides: !this.coop });
     this.newRound(msg);
   }
 

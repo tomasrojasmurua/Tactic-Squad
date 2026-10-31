@@ -908,9 +908,15 @@ export class SessionController {
         this.online.start();
       } else if (key === 'pick') {
         // The roster, for the sides this player will play (both in a match: it switches at half-time).
-        lobby.bestOf = (o.room && o.room.ajustes.duracion) || lobby.bestOf;
-        lobby.side = (me && me.equipo) || lobby.side;
-        if (o.room && o.room.ajustes.modo === '2v2' && !lobby.full) {
+        const coop = o.room && o.room.ajustes.modo === 'coop';
+        // A coop always attacks: only that side is picked (one operator each; two for the host of a pair).
+        if (coop && lobby.keptBestOf == null) lobby.keptBestOf = lobby.bestOf; // the device's own format, back after the pick
+        lobby.bestOf = coop ? 1 : (o.room && o.room.ajustes.duracion) || lobby.bestOf;
+        lobby.side = coop ? 'attackers' : (me && me.equipo) || lobby.side;
+        if (coop && !lobby.full) {
+          lobby.full = lobby.roles;
+          lobby.roles = { attackers: lobby.full.attackers.slice(0, o.room.anfitrion === o.me && o.room.jugadores.length === 2 ? 2 : 1), defenders: lobby.full.defenders.slice() };
+        } else if (o.room && o.room.ajustes.modo === '2v2' && !lobby.full) {
           // A 2v2: two operators of each side are this player's (the device's squad of 3 waits aside).
           lobby.full = lobby.roles;
           lobby.roles = { attackers: lobby.full.attackers.slice(0, 2), defenders: lobby.full.defenders.slice(0, 2) };
@@ -972,7 +978,7 @@ export class SessionController {
     this.handleRequest(o.action); // a throw then waits for where it lands (the next tap)
   }
 
-  /** Out of a 2v2's pick: the device's squad of 3 again (its first two take the pair just picked). */
+  /** Out of a 2v2's (or a coop's) pick: the device's squad of 3 again (its first two take the pair just picked). */
   restoreSquad() {
     const lobby = this.session.lobby;
     if (!lobby.full) return;
@@ -985,6 +991,8 @@ export class SessionController {
     }
     lobby.roles = lobby.full;
     lobby.full = null;
+    if (lobby.keptBestOf != null) lobby.bestOf = lobby.keptBestOf;
+    lobby.keptBestOf = null;
   }
 
   /** Back to the main menu (or `view` of it: the online room's lobby): the round is dropped (a new one waits behind the menu). */
