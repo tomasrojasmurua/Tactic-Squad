@@ -1,6 +1,7 @@
 // Equilibrio IA contra IA: juega N rondas completas con semillas fijas (las
 // dos IA deciden solas, nadie aprieta nada) y cuenta quién gana, por sitio y
-// por motivo. Uso: node scripts/balance.mjs [N] [defensores, p. ej. 0,1,2 | ciegas | -] [mapa, p. ej. hotel]
+// por motivo. Uso: node scripts/balance.mjs [N] [defensores, p. ej. 0,1,2 | ciegas | -] [mapa, p. ej. hotel] [primera semilla, 1]
+// (otra tanda de semillas, p. ej. 10001, para confirmar que un cambio no es ruido)
 // "ciegas": cada IA elige su escuadra como en una partida (session/Lobby.js aiRoles)
 // y se cuenta también por clase.
 // La meta de diseño es 45-55 % por bando (RESUMEN-DEL-JUEGO.md).
@@ -21,9 +22,9 @@ export function playRound(seed, opts = {}, map = DEFAULT_MAP) {
 }
 
 /** {rounds, attackers, bySite: {A: [wins, n]}, reasons: {winner/reason: n}, byRole: {side:role: [attacker wins, n]}} */
-export function measure(n, opts = {}, map = DEFAULT_MAP) {
+export function measure(n, opts = {}, map = DEFAULT_MAP, first = 1) {
   const r = { rounds: n, attackers: 0, bySite: {}, reasons: {}, byRole: {} };
-  for (let seed = 1; seed <= n; seed++) {
+  for (let seed = first; seed < first + n; seed++) {
     const sim = playRound(seed, opts, map);
     const o = sim.outcome || { winner: 'none', reason: 'stuck' };
     if (o.winner === 'attackers') r.attackers++;
@@ -47,8 +48,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const opts = arg === 'ciegas' ? { squads: 'blind' } : arg && arg !== '-' ? { defenders: arg.split(',').map(Number) } : {};
   const map = process.argv[4] || DEFAULT_MAP;
   if (!MAPS[map]) throw new Error(`Mapa desconocido: ${map} (hay: ${Object.keys(MAPS).join(', ')})`);
-  const r = measure(n, opts, map);
-  console.log(MAPS[map].name);
+  const first = +(process.argv[5] || 1);
+  const r = measure(n, opts, map, first);
+  console.log(`${MAPS[map].name}${first !== 1 ? ` (semillas ${first}-${first + n - 1})` : ''}`);
   const pct = (a, b) => `${((100 * a) / b).toFixed(0)} %`;
   console.log(`Atacantes ganan ${r.attackers}/${n} (${pct(r.attackers, n)})`);
   for (const [site, [w, t]] of Object.entries(r.bySite)) console.log(`  sitio ${site}: ${w}/${t} (${pct(w, t)})`);
