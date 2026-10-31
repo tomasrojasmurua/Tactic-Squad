@@ -351,7 +351,7 @@ export default {
   },
 
   aiEntries: {
-    A: { muelle: 3, porton: 1, aduana: 1 },
+    A: { muelle: 1, porton: 2 }, // 1 nov: muelle 3 / porton 1 / aduana 1 left site A at 44/41 %
     B: { aduana: 1, porton: 1, muelle: 1 },
   },
 
