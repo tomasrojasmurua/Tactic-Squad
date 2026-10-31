@@ -13,6 +13,13 @@ import { datan2, dcos, dhypot, dsin, sq } from '../core/dmath.js';
 /** Steps per execution turn (sim/round.js runs them; the HUD shows what is left). */
 export const TURN_TICKS = Math.round(ROUND.turnSeconds * SIM.tickRate);
 
+/** How suppressed a side is (sim/stress.js): the most stressed of its living units, 0-1. */
+export function squadStress(sim, team) {
+  let k = 0;
+  for (const u of sim.teams[team] || []) if (u.alive && u.stress > k) k = u.stress;
+  return k;
+}
+
 /** The items a side can buy (its buy panel; the incendiaria is the defenders' only). */
 export const buyableItems = (team) => (team === 'attackers' ? BUY.items : BUY.defenderItems);
 

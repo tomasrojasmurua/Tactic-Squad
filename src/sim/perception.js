@@ -7,6 +7,7 @@ import { peekEye, isMonitoring } from './queries.js';
 import { rememberSeen } from './view.js';
 import { camSeesTraps } from './traps.js';
 import { dhypot, sq } from '../core/dmath.js';
+import { stressReaction } from './stress.js';
 
 export function updatePerception(sim) {
   const { units, world } = sim;
@@ -164,6 +165,7 @@ function reactionTime(sim, u, e) {
   if (sim.time - u.doorwayAt < COMBAT.doorwayTime) r = u.mods.doorwayReaction < 1 ? r * u.mods.doorwayReaction : r + COMBAT.doorwayPenalty;
   if (u.alertTimer > 0 || (u.lastKnown && u.lastKnown.until > sim.time)) r *= COMBAT.alertFactor;
   if (u.gassed > 0) r *= ENTRY.gas.reaction; // tear gas (sim/gas.js)
+  r *= stressReaction(u); // suppression (sim/stress.js)
   return r * u.mods.reaction * (u.monitor ? MONITOR.reaction : 1); // a Vigía looking at his monitor (sim/cameras.js)
 }
 

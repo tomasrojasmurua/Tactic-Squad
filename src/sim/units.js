@@ -77,6 +77,10 @@ export function createUnit({ id, team, slot, name, color, x, y, facing, role: ro
     points: 0, // utility points left to buy with (buy phase / preparation: sim/prep.js)
     bash: null, // breaking a barricade: {door, t, next} (sim/barricades.js)
     blind: 0, // s flashed / stunned: sees nothing, does not shoot
+    stress: 0, // 0-1 suppression (sim/stress.js): worse aim and reaction, a moment flat at the top
+    stressCalm: 0, // s since the last thing that stressed him
+    pinned: 0, // s flat on the floor (suppressed): he does not walk
+    pinCooldown: 0,
     gassed: 0, // s still choking on tear gas (sim/gas.js): sees little, aims and reacts worse, coughs
     coughIn: 0, // s to his next cough while gassed
     monitor: false, // a Vigía looking at his camera monitor now (sim/cameras.js): cameras report at once, he barely watches his angle

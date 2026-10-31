@@ -389,8 +389,8 @@ export default {
       { at: [49.2, 6.4], facing: -168 * DEG, weapon: 'rifle', role: 'anchor', behavior: { type: 'hold', reactsToNoise: false } },
       // By the room-service door, the kitchen side covered; lays the traps.
       { at: [46.2, 9.6], facing: 160 * DEG, weapon: 'rifle', role: 'trapper', behavior: { type: 'scan', from: 140 * DEG, to: 215 * DEG, period: 6, reactsToNoise: true } },
-      // In the kitchen, on room service and the swing door; falls back into the suite.
-      { at: [41.2, 7.4], facing: 100 * DEG, weapon: 'smg', role: 'roamer', behavior: { type: 'hold', reactsToNoise: true, rotate: { to: [47.6, 4.0], look: 180 * DEG } } },
+      // In the suite's living room, on its doors (31 oct, with the suppression: the attackers won 41/38 % here).
+      { at: [44.0, 3.8], facing: 180 * DEG, weapon: 'smg', role: 'roamer', behavior: { type: 'hold', reactsToNoise: true } },
       // The office, on the corridor door.
       { at: [38.0, 13.4], facing: -120 * DEG, weapon: 'rifle', behavior: { type: 'scan', from: -150 * DEG, to: -90 * DEG, period: 6, reactsToNoise: true } },
     ],
@@ -407,7 +407,7 @@ export default {
   },
 
   aiBarricades: {
-    A: ['cocina-terraza', 'suite', 'lenceria-vestibulo'],
+    A: ['suite'],
     B: ['bar-terraza', 'cocina-terraza', 'oficina-bar'],
   },
 

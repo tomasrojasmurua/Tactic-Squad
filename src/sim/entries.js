@@ -38,6 +38,7 @@ const LAND = { x: 0, y: 0, reach: 0, viaX: 0, viaY: 0, leg1: 0, leg2: 0 };
 import { startBash, breakBarricade } from './barricades.js';
 import { cutWiresNear } from './wires.js';
 import { dcos, dhypot, dsin, sq } from '../core/dmath.js';
+import { stressBlast } from './stress.js';
 
 /** Seconds each mode works on arrival before it is armed (0 = armed at once). */
 const PREP = Object.freeze({ slow: ENTRY.slow.prepTime, breach: ENTRY.breach.prepTime, cam: ENTRY.cam.prepTime });
@@ -366,6 +367,7 @@ function flashAt(sim, g) {
  * and stun (frozen where he stands).
  */
 function blastAt(sim, x, y, radius, damage, minDamage, blindSeconds, owner, plane, stunSeconds = 0) {
+  stressBlast(sim, x, y, radius); // everyone near it is shaken (sim/stress.js)
   for (const o of sim.units) {
     if (!o.alive) continue;
     const dist = dhypot(o.x - x, o.y - y);

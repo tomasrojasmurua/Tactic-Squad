@@ -17,6 +17,7 @@ import { alertAiUnit } from './ai.js';
 import { recordDeath } from './debrief.js';
 import { propNear, struckSurface, isAiControlled } from './queries.js';
 import { datan2, dcos, dhypot, dsin, dtan, sq } from '../core/dmath.js';
+import { stressShot, stressAllyDown, stressSpread } from './stress.js';
 
 export function updateCombat(sim, u, dt) {
   u.fireCooldown = Math.max(0, u.fireCooldown - dt);
@@ -110,7 +111,7 @@ function fire(sim, u) {
   const walk = u.moving ? w.movingSpread * u.speedFraction * u.speedFraction * (u.focused ? COMBAT.focusedMovingSpread : 1) : 0;
   let spread = w.spread + walk;
   if (isSettled(u) || u.focused) spread *= COMBAT.settledSpread;
-  spread = spread * COMBAT.accuracy * u.mods.spread * (u.gassed > 0 ? ENTRY.gas.spread : 1) + u.recoil; // tear gas (sim/gas.js)
+  spread = spread * COMBAT.accuracy * u.mods.spread * (u.gassed > 0 ? ENTRY.gas.spread : 1) * stressSpread(u) + u.recoil; // tear gas (sim/gas.js), suppression (sim/stress.js)
   const { ox, oy } = fireLine;
   // Aim error is measured from the line of fire; the facing only gates WHEN he can shoot.
   const angle = datan2(fireLine.ty - oy, fireLine.tx - ox) + rng.gauss() * spread;
@@ -205,6 +206,7 @@ function fire(sim, u) {
     if (sq(o.x - u.x) + sq(o.y - u.y) < r2) alertAiUnit(o, u.x, u.y, COMBAT.alertDuration, true);
   }
 
+  stressShot(sim, u, ox, oy, dx, dy, hitT, victim); // whom it whizzed past (sim/stress.js)
   if (victim) applyHit(sim, u, victim, toX, toY, dx, dy, covered, limb, guard);
 }
 
@@ -363,5 +365,6 @@ export function kill(sim, victim, killer, angle, code = null) {
   victim.waitingGo = false;
   victim.entry = null;
   if (killer && killer.team !== victim.team) killer.stats.kills++;
+  stressAllyDown(sim, victim);
   sim.emit(EV.DEATH, { unitId: victim.id, killerId: victim.killerId, team: victim.team, x: victim.x, y: victim.y, angle });
 }

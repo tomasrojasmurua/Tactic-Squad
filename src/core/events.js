@@ -11,6 +11,7 @@ export const EV = Object.freeze({
   FOOTSTEP: 'footstep', // {unitId, team, x, y, speed (m/s)}
   DOOR_OPEN: 'doorOpen', // {doorId, unitId, x, y, mode:'kick'|'push'|'crack'}
   RELOAD: 'reload', // {unitId, weaponId, x, y}
+  PINNED: 'pinned', // {unitId, team, x, y}: suppressed, flat on the floor a moment (sim/stress.js)
   SPOTTED: 'spotted', // {unitId, byTeam, x, y}
   HOLD_REACHED: 'holdReached', // {unitId, code}
   GO_CODE: 'goCode', // {released, code}

@@ -273,6 +273,28 @@ export const ENTRY = Object.freeze({
   gas: { fuse: 0.8, hearing: 9, radius: 3.0, grow: 0.8, seconds: 10, fade: 2, vision: 3, spread: 3, reaction: 2.1, coughEvery: 1.4 },
 });
 
+/**
+ * Suppression (sim/stress.js): stress 0-1 per soldier, from bullets passing close, wounds,
+ * explosions and teammates falling in sight; it eases off after a calm moment. It costs aim and
+ * reaction and, past `pinAt`, a moment flat on the floor. Both sides, the AI too.
+ */
+export const STRESS = Object.freeze({
+  nearMissRadius: 1.5, // m from a bullet's line
+  nearMiss: 0.22, // per bullet passing right by (half of it at nearMissRadius)
+  wound: 0.3,
+  blast: 0.6, // an explosion right by him (falling to 0 at blastReach × its radius)
+  blastReach: 2,
+  allyDown: 0.3, // a teammate falling in sight within allyRange
+  allyRange: 14,
+  calmDelay: 1.2, // s without any of that before it eases off...
+  decay: 0.35, // ...this much per second
+  spread: 1.0, // aim error × (1 + spread · stress)
+  reaction: 0.4, // time to react × (1 + reaction · stress)
+  pinAt: 0.75, // at this stress he hugs the floor...
+  pinSeconds: 0.6, // ...this long (not walking his route)...
+  pinCooldown: 3, // ...and not again before this
+});
+
 export const ROUND = Object.freeze({
   // The assault is played in We-Go turns (sim/round.js): both sides plan blind, then
   // every order runs at once for turnSeconds. The bomb's timer only runs while a turn

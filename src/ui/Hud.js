@@ -3,7 +3,7 @@
 // kill feed, toasts and the red damage vignette.
 import { EV } from '../core/events.js';
 import { HUD, VIGNETTE, GO_GROUPS } from '../config/ui.js';
-import { teamUnits, enemyTeam, isGoReady, bombKnownTo, codeInUse, codeWaiting, goStatus, TURN_TICKS } from '../sim/queries.js';
+import { teamUnits, enemyTeam, isGoReady, bombKnownTo, codeInUse, codeWaiting, goStatus, TURN_TICKS, squadStress } from '../sim/queries.js';
 import { ENTRY, ROUND, SIM, DRONE } from '../config/balance.js';
 import { isDecisionPhase, pilotsDrone, isDefenderSetup, showCameras, inRecon } from '../session/Session.js';
 import { coachHint } from './coach.js';
@@ -20,6 +20,10 @@ export class Hud {
     this.vignetteLevel = 0;
     this.vignetteFloor = 0;
     root.appendChild(this.vignette);
+    // Suppression (sim/stress.js): the edges close in, darker, while the squad is under fire.
+    this.suppress = el('div', 'suppress-vignette');
+    this.suppressLevel = -1;
+    root.appendChild(this.suppress);
 
     this.banner = el('div', 'banner', `<div class="phase"></div><div class="clock"></div><div class="sub"></div><div class="cbar"><i></i></div>`);
     this.phaseText = this.banner.querySelector('.phase');
@@ -289,6 +293,11 @@ export class Hud {
     setText(this.kills, m ? `${T.objective.match(shownRound, m.score.player, m.score.ai, rival)} · ${killsText}` : killsText);
     const b = sim.bomb;
     setText(this.bombText, b.defused ? T.objective.bombDefused : bombKnownTo(sim, session.team) ? T.objective.bombAt(b.site) : T.objective.bombUnknown);
+    const sk = session.phase === 'title' ? 0 : Math.round(squadStress(sim, session.team) * 20) / 20;
+    if (sk !== this.suppressLevel) {
+      this.suppressLevel = sk;
+      setStyle(this.suppress, 'opacity', String(sk));
+    }
     setText(this.timer, formatTime(sim.timeLeft));
     toggle(this.timer, 'low', sim.timeLeft < HUD.lowTimeSeconds);
     // The top clock: hidden on the menu; defused, a green tick; the last seconds red and beating.

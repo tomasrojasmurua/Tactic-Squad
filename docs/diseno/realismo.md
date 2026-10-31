@@ -157,3 +157,20 @@ la cerca y la IA pone una sola barricada. Resultado con 800 rondas y dos tandas:
 | Puerto | 10001-10800 | 49 | 46 | 51 |
 
 Esta es la línea base para las etapas. El sitio A del Hotel queda justo en el borde (45/42).
+
+---
+
+## Etapa 1 hecha: supresión (31 oct)
+
+- `src/sim/stress.js`, números en `config/balance.js` `STRESS`. Estrés 0-1 por soldado: sube con las
+  balas enemigas que pasan a menos de 1,5 m (más cuanto más cerca), las heridas, las explosiones a la
+  vista (hasta 2 × su radio) y un compañero que cae a la vista (14 m). Baja 0,35 por segundo tras 1,2 s
+  de calma.
+- Efectos: error de puntería × (1 + estrés); tiempo de reacción × (1 + 0,4 · estrés); al llegar a
+  0,75 se tira al piso 0,6 s (no avanza por su ruta), y no otra vez antes de 3 s. Igual para los dos
+  bandos y la IA.
+- En pantalla (solo los propios): viñeta oscura, mundo apagado (paso bajo del audio), estado
+  "Suprimido" en la ficha y "Bajo fuego: estrés N %" en su información.
+- Equilibrio (800 rondas, dos tandas, % atacante): Almacén 50/51, Puerto 47/48. El Hotel bajó a 45/42
+  (sitio A 41/38): la supresión favorece un poco a quien defiende quieto. Se corrigió con el mapa (el
+  Merodeador espera en la suite y la IA pone una sola barricada en A): **Hotel 50/48 (A 52/50, B 48/46)**.
