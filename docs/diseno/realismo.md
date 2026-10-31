@@ -174,3 +174,18 @@ Esta es la línea base para las etapas. El sitio A del Hotel queda justo en el b
 - Equilibrio (800 rondas, dos tandas, % atacante): Almacén 50/51, Puerto 47/48. El Hotel bajó a 45/42
   (sitio A 41/38): la supresión favorece un poco a quien defiende quieto. Se corrigió con el mapa (el
   Merodeador espera en la suite y la IA pone una sola barricada en A): **Hotel 50/48 (A 52/50, B 48/46)**.
+
+## Etapa 2 hecha: heridas (31 oct)
+
+- `src/sim/wounds.js`, números en `config/balance.js` `WOUNDS`. Un impacto en una extremidad es pierna
+  o brazo (mitad y mitad). Pierna: velocidad × 0,6 y pasos que se oyen 1,5 × más lejos. Brazo:
+  puntería × 1,5 peor y recarga × 1,3 más lenta. Nadie se cura en la ronda; el tiempo para morir no
+  cambia (mismo daño).
+- Rastro de sangre: por debajo de la mitad de la vida, una gota cada 0,9 m caminados (`sim.blood`). Su
+  bando siempre la ve; el rival solo las gotas que un soldado suyo vio con su visión normal.
+- En pantalla: "Herido" en la ficha (quieto) y la herida con su efecto en la información del soldado.
+- Equilibrio (800 rondas, dos tandas, % atacante): **Almacén 49/50** (A 43/48, B 55/51), **Hotel
+  50/47** (A 52/49, B 47/45), **Puerto 47/45** (A 44/42, B 49/48). Los totales siguen en la meta. El
+  sitio A del Puerto bajó ~2 puntos (dentro del ruido de ~400 rondas por sitio). Se probaron variantes
+  de mapa y de números (pierna 0,75, brazo 1,25, puestos, trampas, cámaras) y ninguna lo movió fuera del
+  ruido: queda anotado para la próxima pasada de mapas.
