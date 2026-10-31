@@ -137,7 +137,8 @@ export class RoomView {
     setText(this.coopNote, O.coopNote);
     this.sides[1].move.before(this.coopNote);
     this.bestOf = BEST_OF.map((n) => opt(r('.bestof'), L.bestOf(n), `room_bestOf_${n}`, n));
-    this.maps = MAP_CHOICES.map((id) => opt(r('.rm-maps'), MAPS[id] ? MAPS[id].name : L.randomMap, `room_map_${id}`, id));
+    // Short names ("Almacén", not "Operación Almacén"): every map fits in two rows on a phone.
+    this.maps = MAP_CHOICES.map((id) => opt(r('.rm-maps'), MAPS[id] ? MAPS[id].name.replace(/^Operación /, '') : L.randomMap, `room_map_${id}`, id));
     this.pick = button('', O.pick, null, 'room_pick');
     this.go = el('button', 'btn primary lb-ready', '<span></span>');
     this.goLabel = this.go.firstChild;

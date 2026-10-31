@@ -5,12 +5,16 @@
 import warehouse from './warehouse.js';
 import hotel from './hotel.js';
 import port from './port.js';
+import forest from './forest.js';
+import school from './school.js';
 import training from './training.js';
 
 export const MAPS = Object.freeze({
   warehouse,
   hotel,
   port,
+  forest,
+  school,
 });
 
 export const TRAINING_MAP = 'training';

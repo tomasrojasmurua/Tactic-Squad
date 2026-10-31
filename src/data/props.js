@@ -81,4 +81,20 @@ export const PROPS = Object.freeze({
   piano: { w: 1.5, d: 1.8, h: 1.0, blocksMove: true },
   serviceTrolley: { w: 0.9, d: 0.6, h: 0.9, blocksMove: true },
   kitchenRange: { w: 2.4, d: 0.9, h: 0.92, blocksMove: true },
+  // the forest (Aserradero): only the trunk blocks; the crown is drawn high and narrow
+  pine: { w: 0.7, d: 0.7, h: 6.5, blocksMove: true, blocksVision: true },
+  bush: { w: 1.4, d: 1.1, h: 1.0, blocksMove: true },
+  rock: { w: 1.2, d: 0.9, h: 0.8, blocksMove: true },
+  boulder: { w: 2.4, d: 1.8, h: 1.9, blocksMove: true, blocksVision: true },
+  stump: { w: 0.6, d: 0.6, h: 0.45, blocksMove: true },
+  logPile: { w: 4.0, d: 1.6, h: 1.1, blocksMove: true },
+  logStack: { w: 6.0, d: 2.4, h: 2.4, blocksMove: true, blocksVision: true },
+  woodpile: { w: 2.0, d: 0.8, h: 1.3, blocksMove: true },
+  sawBench: { w: 4.0, d: 1.4, h: 1.1, blocksMove: true },
+  bunkBed: { w: 2.0, d: 0.9, h: 1.7, blocksMove: true, blocksVision: true },
+  // the school (Liceo)
+  lockers: { w: 2.4, d: 0.5, h: 1.9, blocksMove: true, blocksVision: true },
+  schoolDesk: { w: 1.1, d: 0.55, h: 0.72, blocksMove: true },
+  bleachers: { w: 6.0, d: 2.0, h: 1.4, blocksMove: true },
+  teacherDesk: { w: 1.6, d: 0.75, h: 0.78, blocksMove: true },
 });

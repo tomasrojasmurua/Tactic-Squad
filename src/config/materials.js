@@ -11,6 +11,7 @@ export const FLOOR_PATTERN = Object.freeze({
   asphalt: 5,
   rug: 6,
   water: 7,
+  ground: 8,
 });
 
 /** Floor materials referenced by maps. scale = tile/plank size in meters. */
@@ -40,6 +41,18 @@ export const FLOORS = Object.freeze({
   customsTiles: { pattern: 'tiles', a: '#c9ccc4', b: '#9ea39a', scale: 0.5 },
   customsCarpet: { pattern: 'carpet', a: '#4a5b6e', b: '#3b4a5b', scale: 1.0 },
   coldFloor: { pattern: 'concrete', a: '#b8c6cc', b: '#93a5ad', scale: 2.0 },
+  // the forest (Aserradero)
+  forestFloor: { pattern: 'ground', a: '#3f5233', b: '#4a4430', scale: 1.0 },
+  forestPath: { pattern: 'asphalt', a: '#6b5a44', b: '#574936', scale: 1.4 },
+  millConcrete: { pattern: 'concrete', a: '#8d8577', b: '#6e675b', scale: 3.0 },
+  cabinPlanks: { pattern: 'wood', a: '#9a6a3c', b: '#6b4425', scale: 0.22 },
+  cabinRug: { pattern: 'rug', a: '#7a3b2a', b: '#d2b47a', scale: 1.0 },
+  // the school (Liceo)
+  schoolLino: { pattern: 'checker', a: '#c9c3b4', b: '#b3ac9b', scale: 0.6 },
+  classroomTiles: { pattern: 'tiles', a: '#cfd6c8', b: '#aab5a4', scale: 0.5 },
+  gymWood: { pattern: 'wood', a: '#c99a62', b: '#a77a46', scale: 0.3 },
+  libraryCarpet: { pattern: 'carpet', a: '#3e5a7a', b: '#324a66', scale: 1.0 },
+  courtAsphalt: { pattern: 'asphalt', a: '#55595e', b: '#45484c', scale: 1.0 },
 });
 
 export const WALL = Object.freeze({
@@ -177,6 +190,18 @@ export const SURFACE_PROBE = 0.25; // m: an impact this close to a door slab / p
 export const DOOR_SURFACE = 'wood';
 export const FENCE_SURFACE = 'metal';
 export const PROP_SURFACE = Object.freeze({
+  pine: 'wood',
+  stump: 'wood',
+  logPile: 'wood',
+  logStack: 'wood',
+  woodpile: 'wood',
+  sawBench: 'metal',
+  bunkBed: 'wood',
+  bush: 'fabric',
+  lockers: 'metal',
+  schoolDesk: 'wood',
+  bleachers: 'wood',
+  teacherDesk: 'wood',
   desk: 'wood',
   bookshelf: 'wood',
   counter: 'wood',

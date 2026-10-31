@@ -204,4 +204,91 @@ export const EXTRA_BUILDERS = Object.freeze({
     for (let i = 0; i < Math.floor(w / 0.5); i++) for (const y of [-0.15, 0.15]) m.cylinder(-w / 2 + 0.3 + i * 0.5, y, h, 0.14, 0.03, '#111214', { sides: 8 });
     m.box(0, -d / 2 + 0.05, h, w, 0.1, 0.5, '#9aa1a8'); // splash back
   },
+  // --- the forest (Aserradero)
+  // A pine: the trunk (what blocks) and a narrow crown of three tiers, high above the soldiers.
+  pine(m, w, d, h, p) {
+    const k = (p.at ? p.at[0] * 7.3 + p.at[1] * 3.1 : 0) % 1; // a little variety per tree
+    const g = k < 0.33 ? '#24452f' : k < 0.66 ? '#2c5238' : '#1f3d2a';
+    m.cylinder(0, 0, 0, w * 0.32, h * 0.55, '#5a3d26', { sides: 7, top: '#6b4a2e' });
+    m.frustum(0, 0, h * 0.42, 1.15, 0.7, h * 0.2, g, { sides: 8, top: shift(g, 1.2), phase: k });
+    m.frustum(0, 0, h * 0.6, 0.9, 0.45, h * 0.2, shift(g, 1.08), { sides: 8, top: shift(g, 1.3), phase: k + 0.3 });
+    m.frustum(0, 0, h * 0.78, 0.6, 0.05, h * 0.22, shift(g, 1.16), { sides: 8, top: shift(g, 1.4), phase: k + 0.6 });
+  },
+  bush(m, w, d, h) {
+    m.frustum(0, 0, 0, w * 0.5, w * 0.3, h, '#2f5a36', { sides: 7, top: '#3f7546', sx: 1, sy: d / w });
+    m.frustum(w * 0.18, -d * 0.1, h * 0.5, w * 0.28, w * 0.12, h * 0.55, '#3a6a40', { sides: 6, top: '#4c8552' });
+  },
+  rock(m, w, d, h) {
+    m.frustum(0, 0, 0, w * 0.5, w * 0.3, h, '#7d7b74', { sides: 6, top: '#9a978e', sy: d / w });
+  },
+  boulder(m, w, d, h) {
+    m.frustum(0, 0, 0, w * 0.5, w * 0.36, h * 0.65, '#6f6d66', { sides: 7, top: '#8b887f', sy: d / w });
+    m.frustum(w * 0.08, 0, h * 0.65, w * 0.36, w * 0.16, h * 0.35, '#7d7b74', { sides: 7, top: '#9a978e', sy: d / w, phase: 0.4 });
+    m.frustum(-w * 0.3, d * 0.25, 0, w * 0.2, w * 0.1, h * 0.4, '#77756e', { sides: 5, top: '#938f86' });
+  },
+  stump(m, w, d, h) {
+    m.cylinder(0, 0, 0, w / 2, h, '#5a3d26', { sides: 8, top: '#c9a26b' });
+    m.cylinder(0, 0, h, w * 0.2, 0.005, '#a77f4c', { sides: 8 });
+  },
+  // Felled logs, ends to the camera's side: low cover.
+  logPile(m, w, d, h) {
+    const r = h / 3;
+    for (let row = 0; row < 3; row++) {
+      const n = 3 - row;
+      for (let i = 0; i < n; i++) {
+        const y = (i - (n - 1) / 2) * r * 2;
+        if (Math.abs(y) > d / 2) continue;
+        m.box(0, y, row * r * 1.6, w - row * 0.3, r * 1.9, r * 1.9, '#6b4a2e', { top: '#7c5734' });
+        m.box(w / 2 - row * 0.15 + 0.01, y, row * r * 1.6 + r * 0.2, 0.02, r * 1.5, r * 1.5, '#c9a26b');
+      }
+    }
+  },
+  logStack(m, w, d, h) {
+    m.box(0, 0, 0, w, d, h * 0.94, '#6b4a2e', { top: '#7c5734' });
+    for (let y = -d / 2 + 0.3; y < d / 2; y += 0.6) for (let z = 0.3; z < h * 0.94; z += 0.6) m.box(w / 2 + 0.01, y, z - 0.25, 0.02, 0.5, 0.5, '#c9a26b');
+    for (let x = -w / 2 + 0.6; x < w / 2; x += 1.2) m.box(x, 0, h * 0.94, 0.06, d + 0.04, 0.06, '#2a2c30'); // straps
+  },
+  woodpile(m, w, d, h) {
+    m.box(0, 0, 0, w, d, h, '#7c5734', { top: '#8d6640' });
+    for (let x = -w / 2 + 0.15; x < w / 2; x += 0.22) for (let z = 0.08; z < h; z += 0.22) m.box(x, d / 2 + 0.005, z, 0.17, 0.01, 0.17, '#c9a26b');
+    m.box(0, 0, h, w + 0.2, d + 0.3, 0.05, '#4a4d52'); // its tin roof
+  },
+  // The head saw: its bed, the carriage with a log on it and the blade's housing.
+  sawBench(m, w, d, h) {
+    m.box(0, 0, 0, w, d, h * 0.6, '#5b616b', { top: '#6f757e' });
+    m.box(-w * 0.1, 0, h * 0.6, w * 0.7, d * 0.5, h * 0.4, '#6b4a2e', { top: '#7c5734' });
+    m.box(w * 0.35, 0, h * 0.6, 0.5, d, h * 0.9, '#c98a2a', { top: '#d89a3a' });
+    m.cylinder(w * 0.35, 0, h * 1.5, 0.45, 0.04, '#9aa1a8', { sides: 14 });
+  },
+  bunkBed(m, w, d, h) {
+    for (const x of [-1, 1]) for (const y of [-1, 1]) m.box((x * (w - 0.08)) / 2, (y * (d - 0.08)) / 2, 0, 0.07, 0.07, h, '#6b4a2e');
+    for (const z of [0.3, h * 0.62]) {
+      m.box(0, 0, z, w, d, 0.12, '#6b4a2e');
+      m.box(0, 0, z + 0.12, w - 0.1, d - 0.08, 0.12, '#5b616b', { top: '#7a8290' });
+      m.box(-w / 2 + 0.3, 0, z + 0.24, 0.4, d - 0.2, 0.08, '#e8e2d0');
+    }
+  },
+  // --- the school (Liceo)
+  lockers(m, w, d, h) {
+    const n = Math.max(1, Math.round(w / 0.4));
+    for (let i = 0; i < n; i++) {
+      const x = -w / 2 + (i + 0.5) * (w / n);
+      m.box(x, 0, 0.08, w / n - 0.02, d, h - 0.08, i % 2 ? '#2f6db0' : '#2a64a2', { top: '#3a7cc4' });
+      m.box(x, d / 2 + 0.005, h * 0.75, w / n - 0.12, 0.01, 0.05, '#1b1c1f'); // vents
+    }
+    m.box(0, 0, 0, w, d, 0.08, '#1b1c1f');
+  },
+  schoolDesk(m, w, d, h) {
+    for (const x of [-1, 1]) m.box((x * (w - 0.1)) / 2, 0, 0, 0.04, d - 0.1, h - 0.03, '#5b616b');
+    m.box(0, 0, h - 0.03, w, d, 0.03, '#c9a26b', { top: '#d6b07a' });
+    m.box(-w * 0.2, 0.05, h, 0.24, 0.3, 0.02, C.white, { yaw: 0.2 }); // a notebook
+  },
+  teacherDesk(m, w, d, h) {
+    m.box(0, 0, 0, w, d, h, '#7c5734', { top: '#8d6640' });
+    m.box(w * 0.25, -0.05, h, 0.4, 0.3, 0.02, C.white, { yaw: -0.1 });
+    m.box(-w * 0.25, 0, h, 0.32, 0.22, 0.2, '#2a2b2e'); // a monitor
+  },
+  bleachers(m, w, d, h) {
+    for (let i = 0; i < 3; i++) m.box(0, d / 2 - (i + 0.5) * (d / 3), 0, w, d / 3, (h * (i + 1)) / 3, '#9a6a3c', { top: '#b07a45' });
+  },
 });

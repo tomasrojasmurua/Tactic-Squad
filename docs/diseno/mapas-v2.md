@@ -221,3 +221,71 @@ muelle 3, portón 1, aduana 1). Resultado (800 rondas × 2 tandas, % atacante):
 
 El sitio B del Almacén (55/51 en las dos tandas completas; 53/48 solo en ese sitio) queda dentro de
 la meta y no se tocó.
+
+## Mapas nuevos (1 nov): Aserradero y Liceo
+
+Pedido de Tomás: un par de mapas más, uno en el bosque, equilibrados y tan cuidados como los otros.
+
+### Operación Aserradero (`forest`, 58 × 36 m)
+
+Un campamento maderero en el bosque, de noche. Al oeste, el lindero (lado atacante) y la valla del
+campamento con tres portones: **sendero** (norte), **camino** (centro) y **arroyo** (sur). En el medio,
+un bosque abierto: pinos, rocas grandes, troncos apilados y tocones. Las coberturas son troncos y piedras,
+nunca paredes, y el camino de tierra lo cruza de oeste a este. Al sur hay un cobertizo de herramientas.
+Al este está el campamento:
+- **Sitio A, la sierra**: el galpón con la sierra principal y troncos. Se entra por el portón oeste, la
+  puerta al patio y, por el callejón norte, la oficina. El depósito no tiene luz.
+- **El patio de troncos**: une los dos sitios por fuera.
+- **Sitio B, la cabaña del guarda**: sala común, cocina, literas, baño y la despensa (a oscuras). Se
+  entra por el porche, el patio y la puerta trasera de la despensa.
+
+Piezas nuevas (`data/props.js`, `render/decor/props.js`): pino (solo el tronco tapa; la copa es alta y
+angosta), arbusto, roca, peñasco, tocón, troncos sueltos y apilados, leña, la sierra y la litera. Piso
+nuevo `ground` (`render/shaders/floor.js`): musgo y pasto en manchones, tierra, agujas y ramitas, sin
+juntas de losa.
+
+### Operación Liceo (`school`, 58 × 36 m)
+
+Un colegio cerrado de noche. Al oeste está la calle (lado atacante), con el bus escolar y autos, y la
+reja con tres entradas: **canchas**, **escalinata** y **estacionamiento**. El edificio tiene:
+- al norte, dos aulas, la **biblioteca (sitio A)** y la sala de profesores;
+- en el centro, un **pasillo de 41 m** con casilleros que lo ve todo;
+- al sur, el hall, la secretaría (a oscuras), el comedor y el **gimnasio (sitio B)**, con vestuarios
+  y el depósito de material (a oscuras).
+
+Los patios que rodean el edificio (la cancha al norte y el patio sur) son los flancos. Piezas nuevas:
+casilleros, pupitre, escritorio del profesor y gradas. Pisos nuevos de colegio: linóleo, baldosa de
+aula, parqué de gimnasio y alfombra de biblioteca.
+
+### Cómo se equilibraron
+
+Con el banco de pruebas de un solo sitio (300 rondas × 2 tandas por variante, IA contra IA con
+escuadras sorteadas) se probaron puestos, barricadas, trampas, cámaras y entradas:
+- **Aserradero A** (22 % al principio): el trampero dejó la ventana oeste, encima de la puerta, y se
+  pasó al fondo del galpón. La barricada de la IA va en la puerta norte de la oficina y no en la del
+  patio (con la del patio quedaba en 40/43 %).
+- **Aserradero B** (56 %): el ancla pasó del fondo de la cocina a la puerta que da a la sala común.
+  Meter al merodeador del patio en la cabaña lo subía a 88 %.
+- **Liceo** (24 % al principio): se agregaron el patio sur, con puertas al comedor y al gimnasio, y la
+  puerta de la cancha a profesores. Se ensancharon las puertas de la biblioteca (es de doble hoja) y
+  de las aulas, y el gimnasio ganó cobertura alta: el estante de pelotas y los cajones de colchonetas.
+- **Liceo A**: el merodeador del pasillo barre con la mirada en vez de clavar el oeste. Dentro de la
+  biblioteca dejaba el sitio en 55-63 %; fijo en el pasillo, en 36 %.
+- **Liceo B**: el trampero espera dentro del gimnasio, junto a la puerta doble del pasillo, sin
+  perseguir ruidos, y la IA atacante reparte sus entradas por igual.
+
+**Arreglo de la simulación** que destapó el Liceo: un soldado de la IA que debía pararse "al costado del
+marco" de una puerta del pasillo recibía un punto unos milímetros dentro del margen de la pared.
+Caminaba contra la pared hasta que se acababa la ronda (11 de cada 100 rondas del Liceo terminaban por
+tiempo). Ahora, si lleva un rato trabado a menos de 30 cm de su punto, cuenta como que llegó
+(`MOVE.stuckArrive`). En el Almacén no cambia ninguna ronda de las primeras 100.
+
+Resultado (800 rondas × 2 tandas, % atacante; los tres mapas viejos no cambiaron con el arreglo):
+
+| Mapa | Total | Sitio A | Sitio B |
+| --- | --- | --- | --- |
+| Almacén | 50 / 50 | 45 / 49 | 55 / 51 |
+| Hotel | 49 / 47 | 52 / 49 | 47 / 45 |
+| Puerto | 50 / 49 | 48 / 49 | 52 / 50 |
+| Aserradero | 50 / 51 | 51 / 54 | 49 / 48 |
+| Liceo | 50 / 51 | 50 / 51 | 50 / 52 |

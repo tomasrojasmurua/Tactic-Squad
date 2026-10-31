@@ -163,6 +163,32 @@ vec3 asphalt(vec2 p, float s) {
   return col;
 }
 
+// Forest ground: moss and grass in patches, pine needles, bare earth and a few fallen twigs. No joints.
+vec3 ground(vec2 p) {
+  float patches = fbm(p * 0.22 + 5.3);
+  vec3 col = mix(vA, vB, smoothstep(0.35, 0.7, patches));
+  col *= 0.86 + 0.24 * fbm(p * 1.6 + 2.1);
+  // bare earth where the needles thin out
+  float earth = smoothstep(0.62, 0.78, fbm(p * 0.4 + 17.0));
+  col = mix(col, vec3(0.33, 0.27, 0.19), earth * 0.55);
+  // needles: fine streaks in every direction
+  float n1 = vnoise(vec2(p.x * 22.0 + p.y * 7.0, p.y * 3.0));
+  float n2 = vnoise(vec2(p.y * 22.0 - p.x * 7.0, p.x * 3.0));
+  col *= 0.9 + 0.14 * max(n1, n2);
+  col = mix(col, vec3(0.42, 0.3, 0.17), smoothstep(0.82, 0.92, max(n1, n2)) * 0.35);
+  // twigs: short dark lines
+  vec2 tc = floor(p / 1.7);
+  vec2 tf = fract(p / 1.7) - 0.5;
+  float a = hash12(tc) * 6.2832;
+  vec2 dir = vec2(cos(a), sin(a));
+  float along = dot(tf, dir);
+  float across = dot(tf, vec2(-dir.y, dir.x));
+  float twig = (1.0 - smoothstep(0.004, 0.012, abs(across))) * step(abs(along), 0.18) * step(0.72, hash12(tc + 3.1));
+  col = mix(col, vec3(0.2, 0.14, 0.09), twig * 0.8);
+  col *= 0.95 + 0.07 * hash12(floor(p * 70.0));
+  return col;
+}
+
 // Harbor water (the port's dock): dark, with wind ripples and pale glints.
 vec3 water(vec2 p) {
   float r = fbm(vec2(p.x * 0.6, p.y * 2.4) + 7.0);
@@ -204,6 +230,7 @@ void main() {
   else if (pat == 4) col = concrete(vPos, s);
   else if (pat == 5) col = asphalt(vPos, s);
   else if (pat == 7) col = water(vPos);
+  else if (pat == 8) col = ground(vPos);
   else col = rug(vPos);
 
   vec4 decor = texture(uDecor, vPos / uMapSize);

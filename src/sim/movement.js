@@ -244,7 +244,8 @@ function doorwayBusy(sim, u) {
  * Pushed off his line (an ally in a doorway, a blast) an operator can end up
  * walking straight into a wall toward his next point. When he has been
  * trying to walk for MOVE.stuckTime without getting anywhere, the way to
- * that point is found again (the new corners are inserted before it).
+ * that point is found again (the new corners are inserted before it). Within
+ * MOVE.stuckArrive of it, he has arrived.
  */
 function unstick(sim, u, dt, moved) {
   const s = u.stuck;
@@ -257,6 +258,7 @@ function unstick(sim, u, dt, moved) {
   resetStuck(u);
   if (want <= 0 || went >= want * MOVE.stuckFraction) return;
   const p = u.route[0];
+  if (dhypot(p.x - u.x, p.y - u.y) <= MOVE.stuckArrive) return arriveAt(sim, u, u.route.shift());
   const path = sim.world.nav.findPath(u.x, u.y, p.x, p.y, NAV.snapRadius);
   if (!path || path.length < 2) return;
   path.pop(); // the point itself stays as it is (user, hold, entry...)
