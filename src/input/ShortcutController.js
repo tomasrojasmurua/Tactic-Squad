@@ -32,6 +32,7 @@ export class ShortcutController {
     if (matches(KEYS.pause, code)) return this.request('toggle');
     if (matches(KEYS.execute, code)) return this.request('execute');
     if (matches(KEYS.go, code)) return this.request('go');
+    if (matches(KEYS.unitInfo, code)) return this.request('unitInfo');
     // Z / X / C call a GO group, but only during a turn: while planning they edit routes (MouseKeyController).
     const g = KEYS.goGroups.indexOf(code);
     if (g >= 0 && (this.session.phase === 'running' || this.session.phase === 'paused')) return this.request(`go_${ENTRY.goCodes[g]}`);

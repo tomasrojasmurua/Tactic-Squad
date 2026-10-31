@@ -57,8 +57,8 @@ export class PlanningController {
     this.bus.emit(EV.SELECT, { unitId });
   }
 
-  request(action) {
-    this.bus.emit(EV.REQUEST, { action });
+  request(action, data = {}) {
+    this.bus.emit(EV.REQUEST, { action, ...data });
   }
 
   world(px, py) {
@@ -121,19 +121,23 @@ export class PlanningController {
   tap(px, py, touch = false) {
     if (!this.canEdit) return false;
     if (this.session.ui.tossPick) return this.placeToss(px, py);
+    if (this.session.ui.lookPick) return this.placeLook(px, py);
     const g = this.grab(px, py, touch);
     if (g.kind === 'other') {
       this.select(g.unit.id);
       return true;
     }
+    // On touch a point's menu (and the operator's own) is a hold and a slide (the radial); a tap says so.
     if (g.kind === 'waypoint') {
-      this.request(`door_${g.unit.id}_${g.index}`);
+      if (touch) this.request('holdHint', { unitId: g.unit.id });
+      else this.request(`door_${g.unit.id}_${g.index}`);
       return true;
     }
     if (g.kind === 'tail') {
       // A tap on the end of the route opens its menu (a double tap adds no point on top of it).
       const last = lastUserIndex(g.unit);
-      if (last >= 0) this.request(`door_${g.unit.id}_${last}`);
+      if (touch) this.request('holdHint', { unitId: g.unit.id });
+      else if (last >= 0) this.request(`door_${g.unit.id}_${last}`);
       return true;
     }
     const u = this.selectedUnit();
@@ -141,14 +145,15 @@ export class PlanningController {
     if (isDefenderSetup(this.session)) return this.place(u, px, py);
     if (g.kind === 'unit') {
       // Tapping the selected operator: his menu on the spot he stands on (throw / wait from here).
-      this.request(`door_${u.id}_${HERE}`);
+      if (touch) this.request('holdHint', { unitId: u.id });
+      else this.request(`door_${u.id}_${HERE}`);
       return true;
     }
     // A second tap on the last point (double tap, shaky finger) adds nothing.
     if (u.route.length && this.nearTail(px, py, touch ? TOUCH.duplicatePointPx : POINTER.duplicatePointPx)) return true;
     const w = this.world(px, py);
     const k = this.doorAt(w.x, w.y, touch);
-    if (k >= 0) return this.stackAt(u, k);
+    if (k >= 0) return this.stackAt(u, k, touch);
     this.command({ type: 'addWaypoint', unitId: u.id, x: w.x, y: w.y, user: true });
     return true;
   }
@@ -171,7 +176,7 @@ export class PlanningController {
    * the wall, the side his route reaches first) and the door wheel opens on
    * that point. Already stacked there: the wheel just opens.
    */
-  stackAt(u, k) {
+  stackAt(u, k, touch = false) {
     const sim = this.getSim();
     const d = sim.world.doorways[k];
     const tail = routeTail(u);
@@ -181,7 +186,8 @@ export class PlanningController {
       const x = d.cx + d.normalX * side * ENTRY.askDistance;
       const y = d.cy + d.normalY * side * ENTRY.askDistance;
       if (last >= 0 && Math.hypot(u.route[last].x - x, u.route[last].y - y) < 0.3) {
-        this.request(`door_${u.id}_${last}`);
+        if (touch) this.request('holdHint', { unitId: u.id });
+        else this.request(`door_${u.id}_${last}`);
         return true;
       }
       const path = sim.world.nav.findPath(tail.x, tail.y, x, y, NAV.snapRadius);
@@ -199,7 +205,8 @@ export class PlanningController {
       return true;
     }
     // The wheel opens on the new point once the sim reports it added (SessionController, EV.ROUTE_CHANGED).
-    this.session.ui.wheelAt = { unitId: u.id, x: best.x, y: best.y };
+    // On touch its "?" waits for a hold instead (the radial): the map stays clear.
+    if (!touch) this.session.ui.wheelAt = { unitId: u.id, x: best.x, y: best.y };
     this.command({ type: 'addWaypoint', unitId: u.id, x: best.x, y: best.y, user: true });
     return true;
   }
@@ -408,6 +415,19 @@ export class PlanningController {
     const w = this.world(px, py);
     this.session.pointTarget = { unitId: u.id, index: tp.index === HERE ? 0 : tp.index }; // "here" is his first point now
     this.command({ type: 'setToss', unitId: u.id, item: tp.item, x: w.x, y: w.y, index: tp.index });
+    return true;
+  }
+
+  /** Touch, after MIRADA on the radial: the tap is where that point looks. */
+  placeLook(px, py) {
+    const lp = this.session.ui.lookPick;
+    this.session.ui.lookPick = null;
+    const u = this.getSim().units[lp.unitId];
+    const p = u && u.alive ? u.route[lp.index] : null;
+    if (!p) return true;
+    const w = this.world(px, py);
+    if (Math.hypot(w.x - p.x, w.y - p.y) < POINTER.lookMinDistance) return true;
+    this.command({ type: 'setLook', unitId: u.id, angle: Math.atan2(w.y - p.y, w.x - p.x), index: lp.index });
     return true;
   }
 

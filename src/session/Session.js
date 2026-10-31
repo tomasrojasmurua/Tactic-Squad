@@ -67,6 +67,11 @@ export function createSession({ touch }) {
       wheelAt: null, // {unitId, x, y}: a tap on a door stacked him there; the door wheel opens once the point is added
       camera: -1, // defending: the last of your cameras the view jumped to (CÁMARAS / O)
       trapMode: false, // defender set-up: taps lay (or pick up) the selected Trampero's traps
+      unitInfo: false, // the selected operator's sheet is open (ui/UnitSheet.js)
+      unitPeek: null, // touch: the operator whose chip is held (his sheet shows meanwhile)
+      radial: null, // touch: the open radial {unitId, index, x, y, kind, options, hover, fx, fy} (session/radial.js)
+      lookPick: null, // touch: {unitId, index}: the next tap on the map is where that point looks
+      moreOpen: false, // touch: the ⋯ menu (map, cameras, screen, music, help)
     },
   };
 }

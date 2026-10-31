@@ -8,7 +8,7 @@ import { EV } from '../core/events.js';
 import { el, toggle, setStyle } from './dom.js';
 import { HEIGHTS } from '../config/render.js';
 import { HUD, GO_GROUPS } from '../config/ui.js';
-import { teamUnits, holdCode, ASK_CODE } from '../sim/queries.js';
+import { teamUnits, holdCode, ASK_CODE, HERE } from '../sim/queries.js';
 import { T } from './texts.js';
 
 export class WorldLabels {
@@ -115,6 +115,37 @@ export class WorldLabels {
     for (let i = n; i < this.points.length; i++) toggle(this.points[i].node, 'off', true);
   }
 
+  /**
+   * Touch on a tag: held, its radial opens around the finger (slide, lift: SessionController);
+   * a quick tap only says so. `action`: door_<unitId>_<index>.
+   */
+  holdTag(e, action) {
+    const [, id, index] = action.split('_');
+    const unitId = +id;
+    const req = (a, extra = {}) => this.bus.emit(EV.REQUEST, { action: a, ...extra });
+    let open = false;
+    const timer = setTimeout(() => {
+      open = true;
+      req('radialOpen', { unitId, index: index === HERE ? HERE : +index, x: e.clientX, y: e.clientY });
+    }, HUD.holdMs);
+    const move = (m) => {
+      if (m.pointerId !== e.pointerId) return;
+      if (open) req('radialMove', { x: m.clientX, y: m.clientY });
+    };
+    const up = (u) => {
+      if (u.pointerId !== e.pointerId) return;
+      clearTimeout(timer);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      if (open) req(u.type === 'pointercancel' ? 'radialCancel' : 'radialUp');
+      else req('holdHint', { unitId });
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  }
+
   point(i) {
     let t = this.points[i];
     if (!t) {
@@ -124,7 +155,8 @@ export class WorldLabels {
         if (!action) return;
         e.stopPropagation();
         e.preventDefault();
-        this.bus.emit(EV.REQUEST, { action });
+        if (e.pointerType === 'touch') this.holdTag(e, action);
+        else this.bus.emit(EV.REQUEST, { action });
       });
       this.node.appendChild(t.node);
       this.points.push(t);

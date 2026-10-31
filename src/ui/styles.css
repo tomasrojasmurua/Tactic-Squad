@@ -376,7 +376,7 @@ body.touch .help-box { max-height: calc(100dvh - 66px - var(--sat)); overflow: a
 .tbar { position: absolute; display: none; gap: 6px; pointer-events: none; }
 .tbar.on { display: flex; }
 .tbar-col { right: calc(8px + var(--sar)); top: 50%; transform: translateY(-50%); flex-direction: column; align-items: stretch; }
-.tbar-row { right: calc(8px + var(--sar)); top: calc(6px + var(--sat)); flex-direction: row; }
+.tbar-row { right: calc(8px + var(--sar)); top: calc(56px + var(--sat)); flex-direction: column; padding: 6px; background: rgba(6, 7, 9, 0.92); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55); }
 .tbtn {
   pointer-events: auto; touch-action: none; min-width: 60px; min-height: 48px; padding: 4px 6px; border-radius: 6px;
   font-family: var(--font); color: #fff; background: rgba(8, 9, 11, 0.8); border: 1px solid rgba(255, 255, 255, 0.18);
@@ -399,17 +399,17 @@ body.touch .help-box { max-height: calc(100dvh - 66px - var(--sat)); overflow: a
 .tbtn.go .ti b { font-size: 17px; }
 .tbtn.go.ready { animation: pulseGo 1s infinite; }
 /* Utility row (restart, fullscreen, help): icon-only squares, top-right. */
-.tbar-row .tbtn { min-width: 44px; width: 44px; min-height: 44px; height: 44px; padding: 0; background: rgba(8, 9, 11, 0.62); }
-.tbar-row .tbtn .tl { display: none; }
+.tbar-row .tbtn { flex-direction: row; justify-content: flex-start; gap: 10px; min-width: 170px; min-height: 44px; padding: 0 12px; background: transparent; border-color: transparent; }
+.tbar-row .tbtn .tl { font-size: 12px; }
 /* Plant: contextual, big and centered at the bottom where the thumb rests. */
-.tbar-row .tbtn.plant {
+.tbtn.plant {
   position: fixed; left: 50%; top: auto; bottom: calc(10px + var(--sab)); transform: translateX(-50%); width: auto; height: 52px; min-width: 150px;
   flex-direction: row; gap: 8px; padding: 0 18px; background: #8a5a10; border: 2px solid var(--amber); box-shadow: 0 0 0 4px rgba(255, 176, 46, 0.2);
   animation: pulsePlant 1.1s ease-in-out infinite;
 }
-.tbar-row .tbtn.plant .tl { display: block; font-size: 13px; color: #fff; letter-spacing: 0.2em; }
-.tbar-row .tbtn.plant .ti { width: 24px; height: 24px; color: #2a2c22; }
-.tbar-row .tbtn.plant:active { transform: translateX(-50%) scale(0.95); }
+.tbtn.plant .tl { display: block; font-size: 13px; color: #fff; letter-spacing: 0.2em; }
+.tbtn.plant .ti { width: 24px; height: 24px; color: #2a2c22; }
+.tbtn.plant:active { transform: translateX(-50%) scale(0.95); }
 @keyframes pulsePlant { 50% { box-shadow: 0 0 0 9px rgba(255, 176, 46, 0.12); } }
 
 /* ------------------------------------------------------------ flow states (session: tutorial, smart pause, confirm, GO) */
@@ -421,7 +421,7 @@ body.touch .help-box { max-height: calc(100dvh - 66px - var(--sat)); overflow: a
 }
 /* Armed restart ("¿Borrar plan?", 3 s): red warning; on the icon row the label drops under the button. */
 .btn[data-armed="1"], .tbtn[data-armed="1"] { background: rgba(120, 14, 10, 0.92); border-color: var(--red); animation: lowAmmo 0.5s ease-in-out infinite; }
-.tbar-row .tbtn.restart { position: relative; margin-right: 10px; } /* set apart from the harmless utilities */
+.tbar-row .tbtn.restart { position: relative; margin-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); } /* set apart from the harmless utilities */
 .tbar-row .tbtn.restart[data-armed="1"] .tl {
   display: block; position: absolute; top: calc(100% + 4px); right: 0; padding: 3px 7px; white-space: nowrap;
   font-size: 11px; color: #fff; background: rgba(120, 14, 10, 0.95); border-left: 3px solid var(--red);
@@ -1261,9 +1261,7 @@ body.killcam-on .banner, body.killcam-on .squad, body.killcam-on .feed, body.kil
 }
 /* Narrow phones (iPhone SE / mini, small Android): slimmer utility icons so the banner keeps its room. */
 @media (max-height: 520px) and (max-width: 760px) {
-  .tbar-row { gap: 4px; }
-  .tbar-row .tbtn { min-width: 40px; width: 40px; min-height: 40px; height: 40px; }
-  .tbar-row .tbtn.restart { margin-right: 6px; }
+  .tbar-row { gap: 2px; }
   .topbar { right: calc(280px + var(--sar)); max-width: calc(100vw - 500px - var(--sal) - var(--sar)); }
 }
 @keyframes tutPopPhone { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -1345,3 +1343,97 @@ body.killcam-on .banner, body.killcam-on .squad, body.killcam-on .feed, body.kil
   .bombclock .bc-time { font-size: 22px; }
   .bombclock .bc-sub { font-size: 10px; letter-spacing: 0.08em; }
 }
+
+/* The selected operator's sheet (ui/UnitSheet.js): under the squad, over the map. */
+.unit-sheet {
+  position: absolute; left: calc(264px + var(--sal)); top: calc(16px + var(--sat)); width: 320px; max-height: calc(100vh - 140px - var(--sat)); overflow-y: auto;
+  padding: 10px 14px 12px; background: rgba(6, 7, 9, 0.94); border-left: 3px solid var(--rc); z-index: 7; color: #e3e8ec;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6); animation: viewIn 0.16s ease-out;
+}
+.unit-sheet.hidden { display: none; }
+.unit-sheet .us-head { display: flex; align-items: center; gap: 10px; }
+.unit-sheet .us-em { width: 34px; height: 34px; flex: none; color: var(--rc); }
+.unit-sheet .us-em svg { width: 100%; height: 100%; display: block; }
+.unit-sheet .us-title { display: grid; flex: 1; line-height: 1.1; }
+.unit-sheet .us-class { font-family: var(--font-display); font-size: 20px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--rc); }
+.unit-sheet .us-name { font-size: 12px; font-weight: 800; letter-spacing: 0.14em; color: var(--op); }
+.unit-sheet .us-close { min-width: 44px; min-height: 44px; margin: -8px -10px 0 0; background: none; border: 0; color: #cfd6db; font-size: 26px; cursor: pointer; }
+.unit-sheet .us-blurb { margin: 6px 0 2px; font-size: 12.5px; line-height: 1.35; color: #c3cbd1; }
+.unit-sheet .us-sec { margin-top: 8px; }
+.unit-sheet h4 { margin: 0 0 4px; font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+.unit-sheet .us-gun { display: flex; align-items: center; gap: 10px; }
+.unit-sheet .us-gun svg { width: 96px; height: 28px; flex: none; color: #dfe4e8; }
+.unit-sheet .us-gun span { display: grid; line-height: 1.2; }
+.unit-sheet .us-gun b { font-size: 14px; }
+.unit-sheet .us-gun small { font-size: 12px; color: #b9c3ca; font-variant-numeric: tabular-nums; }
+.unit-sheet .us-gear { display: flex; flex-wrap: wrap; gap: 6px; }
+.unit-sheet .us-item { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 5px; background: rgba(255, 255, 255, 0.06); font-size: 12.5px; font-weight: 700; }
+.unit-sheet .us-item svg { width: 18px; height: 18px; flex: none; }
+.unit-sheet .us-item.spent { opacity: 0.4; }
+.unit-sheet .us-none { font-size: 12px; color: var(--muted); }
+.unit-sheet .us-traits { margin: 0; padding-left: 16px; font-size: 12.5px; line-height: 1.35; }
+.card-name .info-hint { margin-left: 4px; font-size: 12px; opacity: 0.7; }
+@media (max-height: 520px) {
+  .unit-sheet { top: calc(78px + var(--sat)); left: calc(8px + var(--sal)); width: 300px; max-height: calc(100dvh - 90px - var(--sat)); padding: 8px 12px 10px; }
+  .unit-sheet .us-blurb { display: none; }
+  /* The name under the selected chip opens the sheet too. */
+  .card.selected:not(.dead) .card-body { pointer-events: auto; }
+}
+
+/* The ⋯ button (TouchBar): the utilities behind one discreet dot row, top-right. */
+.tbtn.tbar-more { position: absolute; display: none; right: calc(8px + var(--sar)); top: calc(6px + var(--sat)); min-width: 44px; width: 44px; min-height: 44px; height: 44px; padding: 0; background: rgba(8, 9, 11, 0.45); border-color: rgba(255, 255, 255, 0.12); }
+.tbtn.tbar-more.on { display: flex; }
+.tbtn.tbar-more .ti { width: auto; height: auto; font-size: 26px; line-height: 1; color: #dfe4e8; }
+.tbtn.tbar-more.active { background: var(--cyan-deep); border-color: var(--cyan); }
+.tbar-action { left: 0; right: 0; bottom: 0; height: 0; }
+/* ESPERAR / DESHACER / BORRAR: icon-only, quiet until touched (the gestures do most of it). */
+.tbar-col .tbtn.mini { min-width: 44px; width: 44px; min-height: 44px; height: 44px; padding: 0; align-self: flex-end; background: rgba(8, 9, 11, 0.4); border-color: rgba(255, 255, 255, 0.1); }
+.tbar-col .tbtn.mini .tl { display: none; }
+.tbar-col .tbtn.mini .ti { width: 20px; height: 20px; opacity: 0.85; }
+.tbar-col .tbtn.mini.grp { border-color: var(--g); box-shadow: inset 0 0 0 1px var(--g); }
+.tbar-col .tbtn.mini.active { background: var(--cyan-deep); border-color: var(--cyan); }
+
+/* Touch: no text selection or iOS callout on a long press (the hold is a game gesture). */
+body.touch, body.touch #app { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+body.touch input { -webkit-user-select: text; user-select: text; }
+body.touch .card-name .info-hint { display: none; }
+
+/* A turn running on a phone is a film: the HUD fades after the last touch (ui/UI.js `cine`), the GO buttons and the bomb's clock stay. */
+.squad, .objective, .feed, .tbar-more, .tbar-col .tbtn:not(.go), .labels, .net-badge, .banner { transition: opacity 0.5s ease; }
+body.cine .squad, body.cine .objective, body.cine .feed, body.cine .tbar-more, body.cine .tbar-col .tbtn:not(.go), body.cine .net-badge { opacity: 0; pointer-events: none; }
+body.cine .labels { opacity: 0.35; }
+body.cine .banner { opacity: 0.45; }
+
+/* The radial (ui/RadialMenu.js): a ring around the finger, the chosen option grows; its name on top. */
+.radial { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 30; pointer-events: none; }
+.radial.hidden, .radial-label.hidden { display: none; }
+.radial .rd-ring::before {
+  content: ''; position: absolute; left: -126px; top: -126px; width: 252px; height: 252px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(5, 7, 9, 0.35) 0 22%, rgba(5, 7, 9, 0.82) 23% 100%); border: 1px solid rgba(255, 255, 255, 0.16);
+  animation: radialIn 0.12s ease-out;
+}
+.radial::after { content: ''; position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.7); }
+.radial .rd-opt {
+  position: absolute; left: -27px; top: -27px; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(14, 16, 19, 0.96); border: 2px solid rgba(255, 255, 255, 0.28); color: #eef2f4; transition: background 0.08s, border-color 0.08s;
+}
+.radial .rd-opt .rd-ic { width: 26px; height: 26px; display: grid; place-items: center; transition: transform 0.08s; }
+.radial .rd-opt .rd-ic svg { width: 100%; height: 100%; }
+.radial .rd-opt.off { opacity: 0.28; }
+.radial .rd-opt.active { border-color: var(--amber); }
+.radial .rd-opt.hover { background: var(--cyan-deep); border-color: var(--cyan); box-shadow: 0 0 0 5px rgba(47, 215, 255, 0.28); }
+.radial .rd-opt.hover .rd-ic { transform: scale(1.3); }
+.radial .rd-opt[data-kind='flash'] .rd-ic { color: #fff59e; }
+.radial .rd-opt[data-kind='frag'] .rd-ic { color: #b9d873; }
+.radial .rd-opt[data-kind='breach'] .rd-ic { color: #ffb02e; }
+.radial .rd-opt[data-kind='molotov'] .rd-ic { color: #ff7a2a; }
+.radial .rd-line { position: absolute; left: 0; top: -1.5px; height: 3px; transform-origin: 0 50%; background: linear-gradient(90deg, rgba(47, 215, 255, 0), var(--cyan)); border-radius: 2px; }
+.radial-label {
+  position: absolute; left: 50%; top: calc(64px + var(--sat)); transform: translateX(-50%); z-index: 31; pointer-events: none; white-space: nowrap;
+  padding: 6px 16px 7px; background: rgba(5, 6, 8, 0.92); border-top: 2px solid rgba(255, 255, 255, 0.3);
+  font-family: var(--font-display); font-size: 17px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #cfd6db;
+}
+.radial-label.chosen { color: #fff; border-top-color: var(--cyan); }
+body.radial-on .entry-picker, body.radial-on .ptag { opacity: 0.25; }
+@keyframes radialIn { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
+body.touch .card.squad-all { display: none !important; } /* touch: ESCUADRA is in the operator's radial */

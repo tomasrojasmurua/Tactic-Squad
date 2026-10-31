@@ -133,6 +133,22 @@ Lo marcado con → cambió después (sección 3).
 
 ---
 
+### 31 de octubre
+
+- **Turnos de ejecución de 10 s** (antes 5); el corte al ver un enemigo sigue igual. Reloj de la bomba
+  destacado junto al cartel de fase. Flash con más alcance (12 m) y granada con menos radio (3 m).
+- **Ficha del soldado** dentro de la partida: clase, arma, equipo que lleva y características.
+- **Controles táctiles para una pantalla limpia** (la partida se mira como una película):
+  - Mantener pulsada la ficha de un soldado muestra su información; al soltar se esconde.
+  - Mantener pulsado un "?", un punto de ruta o el soldado abre una **rueda radial**: se desliza hacia
+    una opción y se suelta (soltar en el centro no elige nada). **Solo mantener y deslizar** (sin
+    tocar para dejarla abierta). Cada opción tiene un lugar fijo (flash a la derecha, granada abajo a
+    la derecha, humo abajo…) para que la mano lo aprenda.
+  - ESPERAR, DESHACER y BORRAR **se mantienen**, pero como íconos discretos. Las utilidades (ver todo,
+    cámaras, pantalla, música, ayuda) van en un **botón ⋯** discreto.
+  - Durante el turno, en el celular, la interfaz se desvanece (modo película); un toque la devuelve.
+    Quedan los GO y el reloj de la bomba.
+
 ## 4. Preguntas abiertas
 
 - Ambiente visual: operación nocturna (penumbra y luz local) o luz de día.

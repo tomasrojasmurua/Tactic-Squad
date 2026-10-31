@@ -4,8 +4,10 @@
 //                  screen edge the camera follows the finger); from a waypoint:
 //                  move it; from a stretch of route: a new waypoint there;
 //                  from anywhere else: pan the camera
-//   long press     on a waypoint: drag to aim the facing there; anywhere else:
-//                  aim the facing of the route's last point (or the operator)
+//   long press     on a waypoint (a "?" too) or on the selected operator: the
+//                  radial menu around the finger (session/radial.js) — slide to an
+//                  option, lift to choose it (lifting in the middle: nothing);
+//                  anywhere else: aim the facing of the route's last point
 //   2 fingers      pan (centroid) + pinch zoom. A second finger that lands
 //                  right after a stroke began cancels that stroke (it was the
 //                  start of a pinch, not a drawing).
@@ -13,6 +15,8 @@
 //                  whole map; again = back to the previous view.
 import { TOUCH } from '../config/input.js';
 import { FLOW } from '../config/ui.js';
+import { HERE } from '../sim/queries.js';
+import { isDefenderSetup } from '../session/Session.js';
 
 export class TouchController {
   constructor({ planning, camera, framing, session }) {
@@ -33,6 +37,8 @@ export class TouchController {
 
   onTouchDown(e) {
     this.session.touch = true;
+    this.session.lastTouchAt = performance.now(); // a touch brings the HUD back during a turn (ui/UI.js)
+    this.session.ui.moreOpen = false; // a touch on the map closes the ⋯ menu
     this.pointers.set(e.id, { x: e.x, y: e.y });
     if (this.pointers.size === 1) {
       this.mode = 'pending';
@@ -46,6 +52,7 @@ export class TouchController {
     if (this.pointers.size === 2) {
       clearTimeout(this.timer);
       const pl = this.planning;
+      if (this.mode === 'radial') pl.request('radialCancel'); // a second finger: a pinch after all
       if (this.mode === 'draw') {
         // Early second finger: the user meant to pinch. Late: keep what was drawn.
         if (performance.now() - this.drawStart < TOUCH.strokeCancelMs || pl.draw.added === 0) pl.cancelDraw();
@@ -68,6 +75,9 @@ export class TouchController {
     p.y = e.y;
     const pl = this.planning;
     switch (this.mode) {
+      case 'radial':
+        pl.request('radialMove', { x: e.x, y: e.y });
+        break;
       case 'pending': {
         if (Math.hypot(e.x - this.start.x, e.y - this.start.y) < TOUCH.dragThresholdPx) break;
         clearTimeout(this.timer);
@@ -123,7 +133,9 @@ export class TouchController {
       this.mode = 'pending';
     }
     this.lookFromTimer = false;
-    if (this.mode === 'pending') {
+    if (this.mode === 'radial') {
+      pl.request('radialUp');
+    } else if (this.mode === 'pending') {
       pl.tap(e.x, e.y, true);
     } else if (this.mode === 'draw') {
       pl.endDraw(e.x, e.y);
@@ -173,16 +185,25 @@ export class TouchController {
   }
 
   longPress() {
-    if (this.mode !== 'pending' || this.pointers.size !== 1 || this.session.ui.tossPick) return;
+    if (this.mode !== 'pending' || this.pointers.size !== 1 || this.session.ui.tossPick || this.session.ui.lookPick) return;
     const pl = this.planning;
     const s = this.start;
     const onUnit = pl.unitAt(s.x, s.y, true);
     if (onUnit && onUnit.id !== this.session.selectedId) pl.select(onUnit.id);
-    if (!pl.selectedUnit()) return;
+    const u = pl.selectedUnit();
+    if (!u) return;
     const mpp = this.camera.metersPerPixel(0);
     const radius = Math.max(TOUCH.waypointPickMinRadius, TOUCH.waypointPickPx * mpp);
     const wp = pl.waypointAt(s.x, s.y, radius);
-    // On a waypoint: aim from it. Anywhere else: aim the end of the route toward the finger.
+    // On a point of his route, or on him: the radial (hold, slide, lift). Defenders setting up keep aiming.
+    if (pl.canEdit && !isDefenderSetup(this.session) && (wp >= 0 || onUnit)) {
+      pl.request('radialOpen', { unitId: u.id, index: wp >= 0 ? wp : HERE, x: s.x, y: s.y });
+      if (this.session.ui.radial) {
+        this.mode = 'radial';
+        return;
+      }
+    }
+    // Anywhere else: aim the end of the route toward the finger.
     if (!pl.beginLook(s.x, s.y, wp)) return;
     this.mode = 'look';
     this.lookFromTimer = true;

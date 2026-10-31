@@ -152,7 +152,8 @@ export class EntryPicker {
   }
 
   update(sim, session, camera) {
-    const tg = this.target(sim, session);
+    // On touch the radial does its job (ui/RadialMenu.js): this only shows while aiming a throw.
+    const tg = session.touch && !session.ui.tossPick ? null : this.target(sim, session);
     toggle(this.node, 'on', !!tg);
     if (!tg) {
       this.layoutKey = '';
