@@ -205,8 +205,6 @@ export const DOORS = Object.freeze({
   thickness: 0.12,
   routeLookahead: 4, // route points checked for "does my path cross this doorway?" (stops at GO holds)
   crossingSlack: 0.2, // m beyond the door half-width still counted as crossing it
-  crackAngle: 20 * DEG, // "entreabrir": the slab stops this far open (a crack to look through)
-  crackSpeed: 50 * DEG, // rad/s: a cracked door opens slowly and quietly
 });
 
 /**
@@ -215,7 +213,7 @@ export const DOORS = Object.freeze({
  * the six modes lives here. Ranges in m, times in s.
  */
 export const ENTRY = Object.freeze({
-  modes: Object.freeze(['kick', 'slow', 'flash', 'frag', 'breach', 'cam']), // order of the picker ('cam': the Explorador only)
+  modes: Object.freeze(['kick', 'mirror', 'pie', 'flash', 'frag', 'breach', 'cam']), // order of the picker ('cam': the Explorador only)
   goCodes: Object.freeze(['A', 'B', 'C']), // GO hold codes, in cycling and release order
   doorRange: 1.8, // m: a waypoint this close to a doorway can carry an entry for it
   // A route drawn through a closed door stops this far before it, on a "?" point: how and when to go
@@ -224,7 +222,7 @@ export const ENTRY = Object.freeze({
   // What an operator does at a "?" door nobody decided: 'open' (default, as in Door Kickers: he opens it
   // and goes through — the "?" only offers a better entry) or 'stop' (strict: he waits for a decision).
   undecided: 'open',
-  lookPast: 1.6, // m past the doorway a stacked operator aims (through the crack / at the room)
+  lookPast: 1.6, // m past the doorway a stacked operator aims (at the room)
   // Throwing through a door or blowing it, he stacks beside the frame, not in front of the opening:
   // `jamb` m past the door jamb, as close to the wall as he can walk (`wall` m from the wall plane at
   // most), on the side his route comes from (sim/orders.js stackBeside). He steps in after the bang.
@@ -232,11 +230,18 @@ export const ENTRY = Object.freeze({
   followGap: 0.12, // s after the grenade / charge goes off before the rest of the code moves in
   // De golpe: the door bursts open (no breach pause), loud, and whoever stands right behind it reels.
   kick: { hearing: 12, dazeRadius: 1.4, daze: 0.45 },
-  // Entreabrir: on arrival the door is cracked (DOORS.crackAngle) and he waits; GO opens it fully.
-  // While the door stays ajar he looks through the gap: an extra eye at the gap, peekBack m outside
-  // the wall plane, facing through it (it only reveals: no shooting through a closed door). The slab
-  // and the jamb frame the view: a wedge of the room, not all of it (sim/queries.js peekEye).
-  slow: { prepTime: 0.7, hearing: 2.2, peekFov: 90 * DEG, peekBack: 0.45 },
+  // Espejo (every operator carries one, both sides): on arrival he crouches at the closed door and
+  // slides a mirror under it (prepTime). While he waits there it shows a low, short wedge of the room: an
+  // eye `under` m past the door, `fov` wide, `range` m (sim/queries.js peekEye). It only reveals. An
+  // enemy who sees the mirror (its spot) catches the glint: his side learns someone is at that door, and
+  // after `breakTime` s in his sight he shoots it to pieces (the operator has no mirror for the rest of
+  // the round). The Explorador's fiber-optic camera ('cam') is the better tool and takes its place.
+  mirror: { prepTime: 2.0, fov: 90 * DEG, range: 6, under: 0.12, breakTime: 0.8, glintMemory: 3 },
+  // Despejar por cortes: on release he opens the door and stays at the frame `time` s turning through
+  // the room's angles, one side to the other (`arc` around the doorway's axis). For `carry` s after it
+  // (and while he does it) he reacts `reaction` × faster, and coming through that doorway costs him
+  // nothing (an Asaltante keeps his own threshold bonus if it is better). The rest of his GO code waits.
+  pie: { time: 1.8, arc: 120 * DEG, carry: 2.5, reaction: 0.6 },
   // Grenades go through the doorway: open it first (if closed), then throw `throwDistance` inside.
   throwDelay: 0.3, // s from the release (door opening) to the throw
   throwDistance: 3.2, // m past the doorway, along its normal (short of a wall)
@@ -343,8 +348,8 @@ export const NOISE = Object.freeze({
   jitter: 0.9, // ...and shifted up to this much (deterministic, from the seed)
   keepTurns: 3, // a pulse stays on the map this many turns, fading
   // Radius heard (m) by kind; the loudest kind of a cell names its pulse.
-  radius: Object.freeze({ cough: 7, wire: 10, sneak: 2, reload: 5, step: 6, gravel: 7, metal: 8, glass: 9, door: 7, crack: 2.2, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, trap: 14, flash: 18, frag: 22, breach: 22 }),
-  rank: Object.freeze(['sneak', 'reload', 'step', 'gravel', 'metal', 'glass', 'cough', 'crack', 'door', 'wire', 'plant', 'defuse', 'kick', 'bash', 'trap', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
+  radius: Object.freeze({ cough: 7, wire: 10, sneak: 2, reload: 5, step: 6, gravel: 7, metal: 8, glass: 9, door: 7, kick: 12, shot: 34, plant: 8, defuse: 10, bash: 14, trap: 14, flash: 18, frag: 22, breach: 22 }),
+  rank: Object.freeze(['sneak', 'reload', 'step', 'gravel', 'metal', 'glass', 'cough', 'door', 'wire', 'plant', 'defuse', 'kick', 'bash', 'trap', 'shot', 'flash', 'frag', 'breach']), // quiet -> loud
 });
 
 /**

@@ -356,7 +356,7 @@ export class OverlayLayer {
     if (e && e.phase !== 'act' && e.mode === 'toss') this.tossMarker(t, pos.x, pos.y, e.tx, e.ty, e.item, selected ? 1 : 0.55, mpp, e.doorway, tossRangeOf(u));
     else if (e && e.phase !== 'act') this.entryMarker(t, pos.x, pos.y, e.mode, e.doorway, selected, mpp);
     if (e && e.phase === 'prep') {
-      // Progress of the crack / the plant around the operator.
+      // Progress of the mirror / the camera / the plant around the operator.
       const total = e.mode === 'breach' ? ENTRY.breach.prepTime * u.mods.breachPrep : ENTRY[e.mode].prepTime;
       const k = 1 - Math.max(0, e.t) / total;
       const ec = OVERLAY.entryColors[e.mode];
@@ -516,7 +516,7 @@ export class OverlayLayer {
     const C = OVERLAY.camera;
     const c = C.color;
     let key = sim.site.id;
-    for (const d of sim.doors) key += d.barricaded ? 'b' : d.destroyed || d.open ? 'o' : d.cracked ? 'c' : '-';
+    for (const d of sim.doors) key += d.barricaded ? 'b' : d.destroyed || d.open ? 'o' : '-';
     if (this.ghostKey !== key || this.ghostSim !== sim) {
       this.ghostKey = key;
       this.ghostSim = sim;

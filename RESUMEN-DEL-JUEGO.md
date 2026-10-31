@@ -107,19 +107,23 @@ los atacantes.
   apilan detrás de él con su mismo color. Una orden propia saca a uno de la fila.
 - **Menú del punto.** Tocar un punto, su etiqueta o el final de la ruta abre un menú
   junto a él:
-  - **Puerta: una rueda alrededor del punto** con las seis entradas a la vista (Abrir,
-    Patada, Carga, Granada, Flash, Entreabrir); × en el centro o Esc la cierra. Lo demás
+  - **Puerta: una rueda alrededor del punto** con las entradas a la vista (Abrir,
+    Patada, Carga, Granada, Flash, Espejo o Cámara, Cortes); × en el centro o Esc la cierra. Lo demás
     (cuándo, paso, lanzar) queda en un panel al lado. **Tocar una puerta directamente**
     apila al operador del lado por donde llega y abre la rueda: un toque y una elección.
   - **Granada, Flash y Carga se hacen desde el costado del marco**, pegado a la pared y no
     parado frente al vano: al abrir la puerta, desde adentro casi no se lo ve. Abrir,
-    Patada y Entreabrir siguen frente a la puerta.
+    Patada, Espejo y Cortes siguen frente a la puerta.
   - **Puerta compartida.** Si dos rutas cruzan la misma puerta y uno ya decidió cómo
     entrar, al otro no se le pregunta: espera al costado libre del marco (etiqueta
     ESPERA) y cruza recién cuando el primero terminó su entrada (después del estallido).
-  - **Entreabrir** deja la puerta a 20° y el operador mira por la rendija: ve **una franja
-    de la sala** hacia el lado del pestillo, no la sala entera. Lo que ve se marca, pero no
-    dispara a través de la puerta; con el GO la abre y entra.
+  - **Espejo** (todos lo llevan): se agacha 2 s y mira bajo la puerta cerrada: una parte
+    baja y cercana de la sala (6 m). Lo que ve se marca, pero no dispara a través de la
+    puerta; con el GO la abre y entra. Quien mira esa puerta ve el destello, sabe que hay
+    alguien y se lo rompe de un tiro (sin espejo el resto de la ronda). El Explorador usa
+    su cámara, que es mejor.
+  - **Cortes** (despejar por cortes): con el GO abre y revisa la sala ángulo por ángulo
+    desde el marco (1,8 s) antes de entrar: más lento, pero entra más alerta.
   - **Cuándo:** Ya, o un GO de color.
   - **Paso:** Normal o **Sigilo**. A la mitad de velocidad, se oye a 2 m en vez de 6.
   - **Lanzar:** flash, granada o humo. El siguiente toque elige dónde cae, a 9 m como

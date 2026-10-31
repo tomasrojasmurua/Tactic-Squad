@@ -29,6 +29,8 @@ export class Callouts {
     bus.on(EV.RELOAD, (e) => !e.replay && say(e.unitId, 'reload'));
     bus.on(EV.HIT, (e) => !e.replay && !e.lethal && say(e.unitId, 'hurt'));
     bus.on(EV.PINNED, (e) => !e.replay && say(e.unitId, 'pinned'));
+    bus.on(EV.MIRROR_SEEN, (e) => !e.replay && say(e.byId, 'glint'));
+    bus.on(EV.MIRROR_BROKEN, (e) => !e.replay && say(e.unitId, 'mirrorBroken'));
     bus.on(EV.GRENADE_THROWN, (e) => !e.replay && say(e.unitId, e.kind === 'flash' ? 'flash' : e.kind === 'smoke' ? 'smoke' : 'frag'));
     bus.on(EV.DEATH, (e) => {
       if (e.replay || !this.sim) return;

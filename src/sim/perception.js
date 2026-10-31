@@ -3,7 +3,8 @@ import { COMBAT, ENTRY, MONITOR, CALLOUT } from '../config/balance.js';
 import { angleDiff, angleTo } from '../core/math.js';
 import { canSee } from './vision.js';
 import { EV } from '../core/events.js';
-import { peekEye, isMonitoring } from './queries.js';
+import { peekEye, isMonitoring, isAiControlled } from './queries.js';
+import { alertAiUnit } from './ai.js';
 import { rememberSeen } from './view.js';
 import { camSeesTraps } from './traps.js';
 import { dhypot, sq } from '../core/dmath.js';
@@ -31,9 +32,10 @@ export function updatePerception(sim) {
     }
   }
 
-  // Peeking through a door cracked ajar, or under it with the fiber-optic
-  // camera: whoever is in view is revealed to his side (shown, spotted,
-  // remembered), but he does not target him — the door is still shut.
+  // Looking under a closed door with a mirror or the fiber-optic camera:
+  // whoever is in view is revealed to his side (shown, spotted, remembered),
+  // but he does not target him — the door is still shut. A mirror can be
+  // seen from the room: its glint gives him away (mirrorGlint).
   for (const viewer of units) {
     if (viewer.blind > 0 || !peekEye(sim, viewer, eye)) continue;
     for (const other of units) {
@@ -44,7 +46,7 @@ export function updatePerception(sim) {
     if (viewer.entry.mode === 'cam') {
       camSeesTraps(sim, eye);
       callOut(sim, viewer);
-    }
+    } else mirrorGlint(sim, viewer);
   }
 
   for (const u of units) {
@@ -56,6 +58,37 @@ export function updatePerception(sim) {
 }
 
 const eye = { x: 0, y: 0, facing: 0, fov: 0, range: 0 };
+
+/**
+ * A mirror under a door (`eye`: its spot) in the sight of an enemy in the room glints: his side
+ * learns someone is at that door (remembered there, an AI defender alerted to it) and, after
+ * ENTRY.mirror.breakTime s in his sight, he shoots it to pieces — the operator has no mirror for
+ * the rest of the round. Out of sight, the count runs back down.
+ */
+function mirrorGlint(sim, u) {
+  const e = u.entry;
+  const M = ENTRY.mirror;
+  let by = null;
+  for (const o of sim.teams[u.team === 'attackers' ? 'defenders' : 'attackers']) {
+    if (o.alive && o.blind <= 0 && canSee(sim.world, o, eye.x, eye.y, o.vision)) {
+      by = o;
+      break;
+    }
+  }
+  if (!by) {
+    e.glint = Math.max(0, e.glint - sim.dt);
+    return;
+  }
+  if (e.glint === 0) {
+    sim.emit(EV.MIRROR_SEEN, { unitId: u.id, byId: by.id, team: by.team, x: eye.x, y: eye.y });
+    if (isAiControlled(sim, by)) alertAiUnit(by, eye.x, eye.y, M.glintMemory, false);
+  }
+  rememberSeen(sim, by.team, u);
+  e.glint += sim.dt;
+  if (e.glint < M.breakTime) return;
+  u.mirror = false;
+  sim.emit(EV.MIRROR_BROKEN, { unitId: u.id, byId: by.id, team: u.team, x: eye.x, y: eye.y, fromX: by.x, fromY: by.y });
+}
 
 /**
  * The Explorador under the door calls out what his fiber-optic camera shows
@@ -161,8 +194,10 @@ function reactionTime(sim, u, e) {
   }
   if (focused && !u.moving && u.stillTime >= COMBAT.holdTime) r *= u.mods.holdReaction; // a marksman on his angle
   if (sq(e.x - u.x) + sq(e.y - u.y) < sq(COMBAT.closeRange)) r *= u.mods.closeReaction; // the Escopetero, point blank
-  // Through a doorway: a moment lost, unless he cuts the angle as he goes in (the Asaltante).
-  if (sim.time - u.doorwayAt < COMBAT.doorwayTime) r = u.mods.doorwayReaction < 1 ? r * u.mods.doorwayReaction : r + COMBAT.doorwayPenalty;
+  // Through a doorway: a moment lost, unless he cuts the angle as he goes in (the Asaltante) or has
+  // just cleared the room's angles from the frame ("despejar por cortes": sharper, the better of the two).
+  if (sim.time < u.pieUntil) r *= Math.min(ENTRY.pie.reaction, u.mods.doorwayReaction);
+  else if (sim.time - u.doorwayAt < COMBAT.doorwayTime) r = u.mods.doorwayReaction < 1 ? r * u.mods.doorwayReaction : r + COMBAT.doorwayPenalty;
   if (u.alertTimer > 0 || (u.lastKnown && u.lastKnown.until > sim.time)) r *= COMBAT.alertFactor;
   if (u.gassed > 0) r *= ENTRY.gas.reaction; // tear gas (sim/gas.js)
   r *= stressReaction(u); // suppression (sim/stress.js)

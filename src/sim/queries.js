@@ -169,7 +169,7 @@ export function doorwayNear(world, x, y, maxDist) {
 }
 
 /**
- * Waiting for GO, done preparing his entry (door cracked, charge planted)
+ * Waiting for GO, done preparing his entry (mirror or camera under the door, charge planted)
  * AND already turned to the angle set for that hold.
  */
 export function isInPosition(u) {
@@ -295,7 +295,8 @@ export function entryDoorwayAt(world, x, y) {
 export function entryModeFits(sim, k, mode, u = null) {
   if (k < 0 || !ENTRY.modes.includes(mode)) return false;
   if (mode === 'cam' && (!u || u.ability !== 'fiberCam')) return false;
-  if (mode === 'flash' || mode === 'frag') return true;
+  if (mode === 'mirror' && u && !u.mirror) return false; // broken this round
+  if (mode === 'flash' || mode === 'frag' || mode === 'pie') return true;
   const door = k < sim.doors.length ? sim.doors[k] : null;
   return !!door && !door.destroyed && (mode === 'breach' || !door.open);
 }
@@ -318,44 +319,25 @@ export function gearLeft(u, item, skip = -1) {
 }
 
 /**
- * The eye of an operator looking through a door he cracked ajar ("entreabrir"):
- * his face at the gap, just outside the wall (ENTRY.slow.peekBack), looking
- * through it. Lines of sight still go through the world, so the cracked slab
- * and the jamb frame what he sees: a wedge of the room past the latch side,
- * not the whole room. Or the Explorador's fiber-optic camera ('cam'): the
- * lens on the floor just past the closed door (ENTRY.cam.under), wide, facing
- * into the room. Writes {x, y, facing, fov, range} into `out` (it doubles as
- * the vision config); false when he is not looking through a door.
+ * The eye of an operator looking under a closed door: his mirror ('mirror'), low and short, or
+ * the Explorador's fiber-optic camera ('cam'), wide and long. Either way the lens is on the floor
+ * just past the door, facing into the room; lines of sight still go through the world, so high
+ * cover and the walls beside the door hide what is behind them. Writes {x, y, facing, fov, range}
+ * into `out` (it doubles as the vision config); false when he is not looking under a door.
  */
 export function peekEye(sim, u, out) {
   const e = u.entry;
   if (!u.alive || !e || e.phase !== 'armed' || e.doorway >= sim.doors.length) return false;
-  if (e.mode === 'cam') return camEye(sim, u, e, out);
-  if (e.mode !== 'slow') return false;
-  const door = sim.doors[e.doorway];
-  if (!door.cracked || door.angle !== door.target) return false;
-  const d = sim.world.doorways[e.doorway];
-  const { hingeX, hingeY, closedAngle, length } = door.def;
-  // The gap: between the latch jamb (where the closed door ends) and the slab's free end.
-  const a = closedAngle + door.angle;
-  const gx = hingeX + (dcos(closedAngle) + dcos(a)) * length * 0.5;
-  const gy = hingeY + (dsin(closedAngle) + dsin(a)) * length * 0.5;
-  // Its point on the wall plane, then back out on his side.
-  const across = (gx - d.cx) * d.normalX + (gy - d.cy) * d.normalY;
-  const back = across + ENTRY.slow.peekBack * e.side;
-  out.x = gx - d.normalX * back;
-  out.y = gy - d.normalY * back;
-  out.facing = datan2(gy - out.y, gx - out.x);
-  out.fov = ENTRY.slow.peekFov;
-  out.range = u.vision.range;
-  return true;
+  if (e.mode === 'cam') return underEye(sim, e, ENTRY.cam, out);
+  if (e.mode === 'mirror' && u.mirror) return underEye(sim, e, ENTRY.mirror, out);
+  return false;
 }
 
-function camEye(sim, u, e, out) {
+function underEye(sim, e, C, out) {
   const door = sim.doors[e.doorway];
   if (door.open || door.destroyed) return false; // nothing to look under: he sees the room himself
+  if (C === ENTRY.mirror && door.barricaded) return false; // the boards hide the gap
   const d = sim.world.doorways[e.doorway];
-  const C = ENTRY.cam;
   out.x = d.cx + d.normalX * e.side * C.under;
   out.y = d.cy + d.normalY * e.side * C.under;
   out.facing = datan2(d.normalY * e.side, d.normalX * e.side);

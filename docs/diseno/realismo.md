@@ -218,3 +218,29 @@ Esta es la línea base para las etapas. El sitio A del Hotel queda justo en el b
 - Equilibrio: idéntico al de las etapas 2 y 3 (Almacén 49/50, Hotel 50/47, Puerto 47/45; mismos
   sitios). La IA no lee los pulsos de ruido, así que IA contra IA no cambia; lo nuevo es información
   para el jugador. Sigue pendiente el sitio A del Puerto (44/42) para la próxima pasada de mapas.
+
+## Etapa 5 hecha: espejo y despejar por cortes (31 oct)
+
+- **Entreabrir ya no existe** (juego, rueda, tutorial, textos, sonido del chirrido y el estado
+  "entornada" de las puertas).
+- **Espejo** (`ENTRY.mirror`; modo de entrada `mirror`): todo soldado lleva uno. Al llegar a la puerta
+  cerrada se agacha 2 s y pasa el espejo por debajo; mientras espera el GO ve una cuña baja y corta de
+  la sala (6 m, 90°, desde el piso justo pasada la puerta: no ve detrás de cobertura alta ni pegado a
+  la pared de la puerta). Solo revela; no dispara a través de la puerta. **Riesgo**: un enemigo que ve
+  ese punto ve el destello. Su bando sabe que hay alguien en esa puerta (queda marcado), la IA se pone
+  alerta y, tras 0,8 s mirándolo, se lo rompe de un tiro: sin espejo el resto de la ronda. No sirve
+  bajo una puerta con barricada.
+- **La cámara del Explorador sigue siendo mejor** (11 m, 150°, no delata, 1 s): en la rueda ocupa el
+  lugar del espejo para él.
+- **Despejar por cortes** (`ENTRY.pie`; modo `pie`): con el GO abre la puerta y se queda en el marco
+  1,8 s revisando la sala de un lado al otro (120°). Mientras lo hace y 2,5 s después reacciona más
+  rápido y cruzar esa puerta no le cuesta el momento de duda; el Asaltante se queda con su propia
+  ventaja si es mejor (no se suman). El resto de su código GO espera los cortes.
+- Rueda táctil: espejo abajo a la izquierda (cámara para el Explorador), cortes a la izquierda.
+- **IA**: nunca usó entreabrir, así que no usa el espejo (prepararlo frena el asalto y delata). En las
+  puertas donde no tiene flash, el primero que entra despeja por cortes; con flash sigue entrando
+  rápido.
+- Equilibrio (800 rondas, dos tandas, % atacante): **Almacén 50/50** (A 45/49, B 55/51), **Hotel
+  49/47** (A 52/49, B 47/45), **Puerto 46/45** (A 44/41, B 49/48). Con reacción × 0,7 en los cortes el
+  Puerto quedaba en 46/44; con 0,6 vuelve a la meta. El sitio A del Puerto sigue siendo lo pendiente
+  de la próxima pasada de mapas (ya estaba en 44/42).

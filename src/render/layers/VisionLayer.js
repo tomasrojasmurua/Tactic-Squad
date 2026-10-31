@@ -134,7 +134,7 @@ export class VisionLayer {
       if (p.near.buffer !== p.nearBuf.buffer) p.nearBuf = new Float32Array(p.near.length * 2);
       this.batch.fan(x, y, p.cone, WHITE, false);
       this.batch.fan(x, y, p.near, WHITE, true);
-      // Looking through a door cracked ajar, or under it (sim/queries.js peekEye): what the gap shows.
+      // Looking under a closed door with a mirror or the camera (sim/queries.js peekEye): what it shows.
       if (peekEye(sim, u, this.eye)) {
         const e = this.eye;
         p.peek = visibilityPolygon(sim.world, e.x, e.y, e.facing, e.fov, e.range, p.peekBuf);

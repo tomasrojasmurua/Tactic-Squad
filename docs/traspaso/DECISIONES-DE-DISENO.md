@@ -80,7 +80,7 @@ Lo marcado con → cambió después (sección 3).
   partida al mejor de 3, 5 o 7.
 - **Paredes destructibles (paredes blandas): descartadas.** No se proponen.
 - Cambio de bando a la mitad; rueda de comandos en la puerta; la granada espera la explosión.
-- **Entreabrir** solo deja ver la franja de la rendija (no espejo).
+- **Entreabrir** se quitó: lo reemplaza el **espejo** (bajo, corto, delata con el destello y se puede romper). La cámara del Explorador sigue siendo mejor (decisión de Tomás, 31 oct).
 - **Defensor fuerte por diseño, no por bono:** mismos números, ventaja al que sostiene un ángulo,
   **3 contra 3**, cámaras que avisan, orden "asomarse y volver".
 - Tutorial en lecciones; todo optimizado para celular horizontal.

@@ -346,7 +346,7 @@ export const FLOW_TEXTS = Object.freeze({
     },
     doorsEnd: {
       title: 'Otras entradas',
-      text: 'En el ? también tienes PATADA (de golpe: aturde al que está detrás, pero se oye lejos) y ENTREABRIR (mira por la rendija y pasa con el GO). Regla de oro: el que cruza la puerta mirando al frente pierde contra el que ya apunta al marco. Ciégalo, atúrdelo o espera a que se mueva.',
+      text: 'En el ? también tienes PATADA (de golpe: aturde al que está detrás, pero se oye lejos), ESPEJO (se agacha y mira bajo la puerta sin abrirla; si lo ven, se lo rompen) y CORTES (con el GO abre y revisa los ángulos desde el marco antes de entrar). Regla de oro: el que cruza la puerta mirando al frente pierde contra el que ya apunta al marco. Ciégalo, atúrdelo o espera a que se mueva.',
     },
     // Lesson 3: two groups with their GOs (config/lessons.js 'squad').
     squadWelcome: {

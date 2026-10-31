@@ -49,6 +49,7 @@ export class AudioDirector {
     on(EV.DEATH, (ev) => this.death(ev));
     on(EV.FOOTSTEP, (ev) => this.footstep(ev));
     on(EV.DOOR_OPEN, (ev) => this.door(ev));
+    on(EV.MIRROR_BROKEN, (ev) => this.mirrorBroken(ev));
     // Breaking a barricade: each blow is a kick that does not open it (the slam is the last one).
     on(EV.BARRICADE_HIT, (ev) => this.at('door.kick', ev.x, ev.y, L.doorKick, 'door'));
     on(EV.BARRICADE_BROKEN, (ev) => ev.how === 'bash' && this.at('door.slam', ev.x, ev.y, L.doorSlam, 'door'));
@@ -258,11 +259,15 @@ export class AudioDirector {
     this.music.onEvent('shot', 1);
   }
 
+  /** A mirror under a door shot to pieces: the shooter's gun, the glass and metal under the door. */
+  mirrorBroken(ev) {
+    const by = this.sim && this.sim.units[ev.byId];
+    if (!by) return;
+    this.shot({ x: ev.fromX, y: ev.fromY, weaponId: by.weaponId, suppressed: by.mods.shotNoise < 1, team: by.team });
+    this.at('impact.metal', ev.x, ev.y, L.impact, 'impact', { delay: 0.02 });
+  }
+
   door(ev) {
-    if (ev.mode === 'crack') {
-      this.at('door.crack', ev.x, ev.y, L.doorCrack, 'door');
-      return;
-    }
     this.music.onEvent(ev.mode === 'push' ? 'door' : 'kick');
     if (ev.mode === 'push') {
       // Pushed open: no boot, the hinge always speaks, the stop is softer.

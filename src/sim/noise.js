@@ -37,7 +37,7 @@ function kindOf(ev) {
     case EV.RELOAD:
       return 'reload'; // the magazine out and in: heard up close
     case EV.DOOR_OPEN:
-      return ev.mode === 'kick' ? 'kick' : ev.mode === 'crack' ? 'crack' : 'door';
+      return ev.mode === 'kick' ? 'kick' : 'door';
     case EV.CHARGE_PLANT:
       return 'plant';
     case EV.CHARGE_BLAST:
